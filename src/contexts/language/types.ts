@@ -204,8 +204,8 @@ export type TranslationKey =
   | 'nav.logout'
   | 'errors.pageNotFound';
 
-export type LanguageContextType = {
+export interface LanguageContextType {
   language: Language;
   setLanguage: Dispatch<SetStateAction<Language>>;
   t: (key: TranslationKey) => string;
-};
+}
