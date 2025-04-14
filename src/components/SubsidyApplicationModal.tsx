@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -6,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
+import { Check } from 'lucide-react';
 import { DocumentList } from './subsidy/DocumentList';
 import { ApplicationSummary } from './subsidy/ApplicationSummary';
 
@@ -36,7 +36,6 @@ export const SubsidyApplicationModal: React.FC<SubsidyApplicationModalProps> = (
     { name: t('common.irrigationForm'), type: "form", uploaded: false }
   ]);
   
-  // Calculate completion percentage
   const docsCompleteCount = requiredDocs.filter(doc => doc.uploaded).length;
   const completionPercentage = Math.round((docsCompleteCount / requiredDocs.length) * 100);
   
