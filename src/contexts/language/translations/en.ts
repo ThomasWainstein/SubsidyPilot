@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const enTranslations: Record<TranslationKey, string> = {
@@ -36,6 +37,9 @@ export const enTranslations: Record<TranslationKey, string> = {
   'common.irrigationForm': 'Irrigation Form',
   'common.uploadFromVault': 'Upload from Vault',
   'common.skipToEUPortal': 'Skip to EU Portal',
+  'common.returnHome': 'Return to Home',
+  'common.delete': 'Delete',
+  'common.send': 'Send',
   'home.title': 'AgriTool',
   'home.tagline': 'Manage your entire farm portfolio with AgriTool.',
   'dashboard.title': 'Consultant Dashboard',
@@ -48,6 +52,7 @@ export const enTranslations: Record<TranslationKey, string> = {
   'farm.profileTitle': 'Digital Farm Profile',
   'farm.profileSubtitle': 'Comprehensive digital profile for your farm',
   'farm.assistantTitle': 'AgriBot Assistant',
+  'farm.assistantDesc': 'Ask questions or provide additional information',
   'farm.assistantPlaceholder': 'Type additional information about your farm...',
   'farm.assistantResponse': 'Thank you! This update helps improve your sustainability alignment for two subsidy programs.',
   'farm.documentTitle': 'Document Vault',
@@ -57,6 +62,8 @@ export const enTranslations: Record<TranslationKey, string> = {
   'farm.emissionsScore': 'Emissions Score',
   'farm.ecoSchemeEligibility': 'Eligible for Eco-Scheme',
   'farm.aiUpdates': 'Recent AI Input to Profile',
+  'farm.aiUpdateInitial': "We've updated your sustainability profile to reflect new composting practices.",
+  'farm.aiUpdateResponse': 'This information has been added to your profile.',
   'subsidies.title': 'Subsidy Matches',
   'subsidies.subtitle': 'Available subsidies matching your farm profile',
   'subsidies.matchConfidence': 'Match Confidence',
@@ -112,6 +119,8 @@ export const enTranslations: Record<TranslationKey, string> = {
   'messages.saved': 'Your application has been saved as a draft.',
   'messages.documentUploaded': 'Document uploaded',
   'messages.documentUploadedDesc': 'has been uploaded successfully.',
+  'messages.documentRemoved': 'Document Removed',
+  'messages.documentRemovedDesc': 'Document has been removed from the vault',
   'messages.formGenerated': 'Form generated',
   'messages.formGeneratedDesc': 'has been generated and filled with your farm data.',
   'messages.documentDownloaded': 'Document downloaded',
@@ -180,4 +189,16 @@ export const enTranslations: Record<TranslationKey, string> = {
   'status.draft': 'Draft',
   'status.inPreparation': 'In Preparation',
   'status.readyToSubmit': 'Ready to Submit',
+  'features.digitalProfiles': 'Digital Farm Profiles',
+  'features.digitalProfilesDesc': 'Create comprehensive digital profiles for each farm, tracking all relevant information in one place.',
+  'features.subsidyMatching': 'Subsidy Matching',
+  'features.subsidyMatchingDesc': 'Automatically match farms with available subsidies and grants based on their profiles and activities.',
+  'features.applicationTracking': 'Application Tracking',
+  'features.applicationTrackingDesc': 'Manage the entire subsidy application process from drafting to submission and approval.',
+  'footer.allRightsReserved': 'All rights reserved.',
+  'nav.home': 'Home',
+  'nav.profile': 'Profile',
+  'nav.settings': 'Settings',
+  'nav.logout': 'Logout',
+  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.'
 };

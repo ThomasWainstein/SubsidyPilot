@@ -20,11 +20,11 @@ const NotFound = () => {
       <div className="text-center max-w-md px-4">
         <h1 className="text-6xl font-bold text-agri-green mb-4">404</h1>
         <p className="text-xl text-gray-600 mb-6">
-          Oops! The page you're looking for doesn't exist.
+          {t('errors.pageNotFound')}
         </p>
         <Button asChild size="lg">
           <Link to="/">
-            Return to Home
+            {t('common.returnHome')}
           </Link>
         </Button>
       </div>

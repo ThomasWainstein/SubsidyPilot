@@ -41,8 +41,8 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
     
     setDocuments(prev => [...prev, newDoc]);
     toast({
-      title: 'Document Uploaded',
-      description: 'New document has been added to the vault',
+      title: t('messages.documentUploaded'),
+      description: t('messages.documentUploadedDesc'),
     });
   };
   
@@ -50,8 +50,8 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
   const handleDelete = (id: string) => {
     setDocuments(prev => prev.filter(doc => doc.id !== id));
     toast({
-      title: 'Document Removed',
-      description: 'Document has been removed from the vault',
+      title: t('messages.documentRemoved'),
+      description: t('messages.documentRemovedDesc'),
     });
   };
 
@@ -91,7 +91,13 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
                   </div>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(doc.id)} className="text-gray-400 hover:text-red-500">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => handleDelete(doc.id)} 
+                className="text-gray-400 hover:text-red-500"
+                aria-label={t('common.delete')}
+              >
                 <Trash2 size={16} />
               </Button>
             </div>

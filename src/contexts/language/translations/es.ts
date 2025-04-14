@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const esTranslations: Record<TranslationKey, string> = {
@@ -36,6 +37,9 @@ export const esTranslations: Record<TranslationKey, string> = {
   'common.irrigationForm': 'Formulario de Irrigación',
   'common.uploadFromVault': 'Subir desde la Bóveda',
   'common.skipToEUPortal': 'Ir Directamente al Portal UE',
+  'common.returnHome': 'Volver a Inicio',
+  'common.delete': 'Eliminar',
+  'common.send': 'Enviar',
   'home.title': 'AgriTool',
   'home.tagline': 'Gestiona toda tu cartera agrícola con AgriTool.',
   'dashboard.title': 'Panel del Consultor',
@@ -48,6 +52,7 @@ export const esTranslations: Record<TranslationKey, string> = {
   'farm.profileTitle': 'Perfil Digital de la Granja',
   'farm.profileSubtitle': 'Perfil digital completo para tu granja',
   'farm.assistantTitle': 'Asistente AgriBot',
+  'farm.assistantDesc': 'Haz preguntas o proporciona información adicional',
   'farm.assistantPlaceholder': 'Escribe información adicional sobre tu granja...',
   'farm.assistantResponse': '¡Gracias! Esta actualización ayuda a mejorar tu alineación con dos programas de subsidios.',
   'farm.documentTitle': 'Bóveda de Documentos',
@@ -57,6 +62,8 @@ export const esTranslations: Record<TranslationKey, string> = {
   'farm.emissionsScore': 'Puntuación de Emisiones',
   'farm.ecoSchemeEligibility': 'Elegible para Eco-Esquema',
   'farm.aiUpdates': 'Entrada Reciente de IA al Perfil',
+  'farm.aiUpdateInitial': "Hemos actualizado tu perfil de sostenibilidad para reflejar nuevas prácticas de compostaje.",
+  'farm.aiUpdateResponse': 'Esta información ha sido añadida a tu perfil.',
   'subsidies.title': 'Coincidencias de Subsidios',
   'subsidies.subtitle': 'Subsidios disponibles que coinciden con el perfil de tu granja',
   'subsidies.matchConfidence': 'Confianza de Coincidencia',
@@ -112,6 +119,8 @@ export const esTranslations: Record<TranslationKey, string> = {
   'messages.saved': 'Tu solicitud ha sido guardada como borrador.',
   'messages.documentUploaded': 'Documento subido',
   'messages.documentUploadedDesc': 'ha sido subido correctamente.',
+  'messages.documentRemoved': 'Documento eliminado',
+  'messages.documentRemovedDesc': 'El documento ha sido eliminado de la bóveda',
   'messages.formGenerated': 'Formulario generado',
   'messages.formGeneratedDesc': 'ha sido generado y rellenado con los datos de tu granja.',
   'messages.documentDownloaded': 'Documento descargado',
@@ -180,4 +189,16 @@ export const esTranslations: Record<TranslationKey, string> = {
   'status.draft': 'Borrador',
   'status.inPreparation': 'En Preparación',
   'status.readyToSubmit': 'Listo para Enviar',
+  'features.digitalProfiles': 'Perfiles Digitales de Granjas',
+  'features.digitalProfilesDesc': 'Crea perfiles digitales completos para cada granja, con seguimiento de toda la información relevante en un solo lugar.',
+  'features.subsidyMatching': 'Correspondencia de Subsidios',
+  'features.subsidyMatchingDesc': 'Combina automáticamente granjas con subsidios y subvenciones disponibles según sus perfiles y actividades.',
+  'features.applicationTracking': 'Seguimiento de Solicitudes',
+  'features.applicationTrackingDesc': 'Gestiona todo el proceso de solicitud de subsidios desde la redacción hasta la presentación y aprobación.',
+  'footer.allRightsReserved': 'Todos los derechos reservados.',
+  'nav.home': 'Inicio',
+  'nav.profile': 'Perfil',
+  'nav.settings': 'Configuración',
+  'nav.logout': 'Cerrar sesión',
+  'errors.pageNotFound': '¡Ups! La página que buscas no existe.'
 };

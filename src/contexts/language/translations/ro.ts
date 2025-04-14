@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -36,6 +37,9 @@ export const roTranslations: Record<TranslationKey, string> = {
   'common.irrigationForm': 'Formular de Irigare',
   'common.uploadFromVault': 'Încarcă din Seif',
   'common.skipToEUPortal': 'Salt la Portalul UE',
+  'common.returnHome': 'Înapoi la Pagina Principală',
+  'common.delete': 'Șterge',
+  'common.send': 'Trimite',
   'home.title': 'AgriTool',
   'home.tagline': 'Gestionează întregul portofoliu agricol cu AgriTool.',
   'dashboard.title': 'Panou Consultant',
@@ -48,6 +52,7 @@ export const roTranslations: Record<TranslationKey, string> = {
   'farm.profileTitle': 'Profil Digital al Fermei',
   'farm.profileSubtitle': 'Profil digital cuprinzător pentru ferma ta',
   'farm.assistantTitle': 'Asistent AgriBot',
+  'farm.assistantDesc': 'Întreabă sau oferă informații suplimentare',
   'farm.assistantPlaceholder': 'Tastează informații suplimentare despre ferma ta...',
   'farm.assistantResponse': 'Mulțumesc! Această actualizare ajută la îmbunătățirea alinierii dvs. cu două programe de subvenții.',
   'farm.documentTitle': 'Seif de Documente',
@@ -57,6 +62,8 @@ export const roTranslations: Record<TranslationKey, string> = {
   'farm.emissionsScore': 'Scor de Emisii',
   'farm.ecoSchemeEligibility': 'Eligibil pentru Schemă Eco',
   'farm.aiUpdates': 'Actualizări Recente IA pentru Profil',
+  'farm.aiUpdateInitial': "Am actualizat profilul dvs. de sustenabilitate pentru a reflecta noile practici de compostare.",
+  'farm.aiUpdateResponse': 'Această informație a fost adăugată la profilul dvs.',
   'subsidies.title': 'Potriviri de Subvenții',
   'subsidies.subtitle': 'Subvenții disponibile care se potrivesc cu profilul fermei tale',
   'subsidies.matchConfidence': 'Încredere de Potrivire',
@@ -112,6 +119,8 @@ export const roTranslations: Record<TranslationKey, string> = {
   'messages.saved': 'Cererea ta a fost salvată ca schiță.',
   'messages.documentUploaded': 'Document încărcat',
   'messages.documentUploadedDesc': 'a fost încărcat cu succes.',
+  'messages.documentRemoved': 'Document eliminat',
+  'messages.documentRemovedDesc': 'Documentul a fost eliminat din seif',
   'messages.formGenerated': 'Formular generat',
   'messages.formGeneratedDesc': 'a fost generat și completat cu datele fermei tale.',
   'messages.documentDownloaded': 'Document descărcat',
@@ -180,4 +189,16 @@ export const roTranslations: Record<TranslationKey, string> = {
   'status.draft': 'Ciornă',
   'status.inPreparation': 'În Pregătire',
   'status.readyToSubmit': 'Gata de Trimis',
+  'features.digitalProfiles': 'Profile Digitale pentru Ferme',
+  'features.digitalProfilesDesc': 'Creează profile digitale cuprinzătoare pentru fiecare fermă, urmărind toate informațiile relevante într-un singur loc.',
+  'features.subsidyMatching': 'Potrivire de Subvenții',
+  'features.subsidyMatchingDesc': 'Potrivește automat fermele cu subvențiile și granturile disponibile pe baza profilurilor și activităților lor.',
+  'features.applicationTracking': 'Urmărirea Aplicațiilor',
+  'features.applicationTrackingDesc': 'Gestionează întregul proces de aplicare pentru subvenții, de la redactare la trimitere și aprobare.',
+  'footer.allRightsReserved': 'Toate drepturile rezervate.',
+  'nav.home': 'Acasă',
+  'nav.profile': 'Profil',
+  'nav.settings': 'Setări',
+  'nav.logout': 'Deconectare',
+  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.'
 };

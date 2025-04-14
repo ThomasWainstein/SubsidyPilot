@@ -45,8 +45,8 @@ const HomePage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Digital Farm Profiles</h3>
-                <p className="text-gray-600">Create comprehensive digital profiles for each farm, tracking all relevant information in one place.</p>
+                <h3 className="text-lg font-semibold mb-2">{t('features.digitalProfiles')}</h3>
+                <p className="text-gray-600">{t('features.digitalProfilesDesc')}</p>
               </div>
               
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -55,8 +55,8 @@ const HomePage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Subsidy Matching</h3>
-                <p className="text-gray-600">Automatically match farms with available subsidies and grants based on their profiles and activities.</p>
+                <h3 className="text-lg font-semibold mb-2">{t('features.subsidyMatching')}</h3>
+                <p className="text-gray-600">{t('features.subsidyMatchingDesc')}</p>
               </div>
               
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -65,8 +65,8 @@ const HomePage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Application Tracking</h3>
-                <p className="text-gray-600">Manage the entire subsidy application process from drafting to submission and approval.</p>
+                <h3 className="text-lg font-semibold mb-2">{t('features.applicationTracking')}</h3>
+                <p className="text-gray-600">{t('features.applicationTrackingDesc')}</p>
               </div>
             </div>
           </div>
@@ -75,7 +75,7 @@ const HomePage = () => {
       
       <footer className="bg-gray-50 py-8 border-t border-gray-200">
         <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-          &copy; 2025 AgriTool. All rights reserved.
+          &copy; 2025 AgriTool. {t('footer.allRightsReserved')}
         </div>
       </footer>
     </div>

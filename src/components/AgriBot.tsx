@@ -12,7 +12,7 @@ const AgriBot = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [response, setResponse] = useState('');
   const [aiUpdates, setAiUpdates] = useState<string[]>([
-    "We've updated your sustainability profile to reflect new composting practices."
+    t('farm.aiUpdateInitial')
   ]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,7 +34,7 @@ const AgriBot = () => {
       // Add to AI updates after a delay
       setTimeout(() => {
         setAiUpdates(prev => [
-          `${userInput} - This information has been added to your profile.`,
+          `${userInput} - ${t('farm.aiUpdateResponse')}`,
           ...prev
         ]);
         setResponse('');
@@ -47,7 +47,7 @@ const AgriBot = () => {
       <Card>
         <CardHeader>
           <CardTitle>{t('farm.assistantTitle')}</CardTitle>
-          <CardDescription>Ask questions or provide additional information</CardDescription>
+          <CardDescription>{t('farm.assistantDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex space-x-2">
@@ -59,7 +59,7 @@ const AgriBot = () => {
             />
             <Button type="submit" disabled={isTyping || !input.trim()}>
               <Send size={16} />
-              <span className="sr-only">Send</span>
+              <span className="sr-only">{t('common.send')}</span>
             </Button>
           </form>
           

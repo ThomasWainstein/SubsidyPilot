@@ -73,7 +73,7 @@ const Navbar = () => {
                 className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname === '/' ? 'border-green-600 text-gray-900' : ''}`}
               >
                 <Home size={18} className="mr-2" />
-                Home
+                {t('nav.home')}
               </Link>
               <Link
                 to="/dashboard"
@@ -136,12 +136,12 @@ const Navbar = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem>{t('nav.profile')}</DropdownMenuItem>
+                <DropdownMenuItem>{t('nav.settings')}</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <LogOut size={16} className="mr-2" />
-                  Logout
+                  {t('nav.logout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

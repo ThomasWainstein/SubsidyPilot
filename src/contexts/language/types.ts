@@ -1,8 +1,6 @@
 
-// Define all supported languages
 export type Language = 'en' | 'fr' | 'es' | 'ro';
 
-// Define the translation keys structure
 export type TranslationKey = 
   | 'common.getStarted'
   | 'common.viewFarm'
@@ -39,6 +37,9 @@ export type TranslationKey =
   | 'common.irrigationForm'
   | 'common.uploadFromVault'
   | 'common.skipToEUPortal'
+  | 'common.returnHome'
+  | 'common.delete'
+  | 'common.send'
   | 'home.title'
   | 'home.tagline'
   | 'dashboard.title'
@@ -51,6 +52,7 @@ export type TranslationKey =
   | 'farm.profileTitle'
   | 'farm.profileSubtitle'
   | 'farm.assistantTitle'
+  | 'farm.assistantDesc'
   | 'farm.assistantPlaceholder'
   | 'farm.assistantResponse'
   | 'farm.documentTitle'
@@ -60,6 +62,8 @@ export type TranslationKey =
   | 'farm.emissionsScore'
   | 'farm.ecoSchemeEligibility'
   | 'farm.aiUpdates'
+  | 'farm.aiUpdateInitial'
+  | 'farm.aiUpdateResponse'
   | 'subsidies.title'
   | 'subsidies.subtitle'
   | 'subsidies.matchConfidence'
@@ -115,6 +119,8 @@ export type TranslationKey =
   | 'messages.saved'
   | 'messages.documentUploaded'
   | 'messages.documentUploadedDesc'
+  | 'messages.documentRemoved'
+  | 'messages.documentRemovedDesc'
   | 'messages.formGenerated'
   | 'messages.formGeneratedDesc'
   | 'messages.documentDownloaded'
@@ -182,12 +188,16 @@ export type TranslationKey =
   | 'status.subsidyInProgress'
   | 'status.draft'
   | 'status.inPreparation'
-  | 'status.readyToSubmit';
-
-// Language context type
-export interface LanguageContextType {
-  language: Language;
-  setLanguage: (language: Language) => void;
-  t: (key: TranslationKey) => string;
-}
-
+  | 'status.readyToSubmit'
+  | 'features.digitalProfiles'
+  | 'features.digitalProfilesDesc'
+  | 'features.subsidyMatching'
+  | 'features.subsidyMatchingDesc'
+  | 'features.applicationTracking'
+  | 'features.applicationTrackingDesc'
+  | 'footer.allRightsReserved'
+  | 'nav.home'
+  | 'nav.profile'
+  | 'nav.settings'
+  | 'nav.logout'
+  | 'errors.pageNotFound';
