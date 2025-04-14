@@ -1,3 +1,4 @@
+import { Dispatch, SetStateAction } from 'react';
 
 export type Language = 'en' | 'fr' | 'es' | 'ro';
 
@@ -201,3 +202,9 @@ export type TranslationKey =
   | 'nav.settings'
   | 'nav.logout'
   | 'errors.pageNotFound';
+
+export type LanguageContextType = {
+  language: Language;
+  setLanguage: Dispatch<SetStateAction<Language>>;
+  t: (key: TranslationKey) => string;
+};
