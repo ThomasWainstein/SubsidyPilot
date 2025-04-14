@@ -1,25 +1,25 @@
 
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { SubsidyApplicationModal } from './SubsidyApplicationModal';
 
 interface FarmCardApplyButtonProps {
   farmId: string;
   subsidyId: string;
-  children: React.ReactNode;
 }
 
 const FarmCardApplyButton: React.FC<FarmCardApplyButtonProps> = ({
   farmId,
-  subsidyId,
-  children
+  subsidyId
 }) => {
+  const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <>
       <Button onClick={() => setIsModalOpen(true)}>
-        {children}
+        {t('common.applyNow')}
       </Button>
       
       <SubsidyApplicationModal

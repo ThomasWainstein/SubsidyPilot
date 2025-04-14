@@ -1,8 +1,19 @@
 
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, FileText, X, ChevronDown, ChevronUp, PlusCircle, ArrowRight, Clock } from 'lucide-react';
+import { 
+  Check, 
+  FileText, 
+  X, 
+  ChevronDown, 
+  ChevronUp, 
+  PlusCircle, 
+  ArrowRight, 
+  Clock, 
+  AlertCircle 
+} from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/use-toast';
 
@@ -47,9 +58,11 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
   uploadedDocs,
   setUploadedDocs
 }) => {
+  const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(true);
   const [completionPercent, setCompletionPercent] = useState(0);
   const [showAutofillAnimation, setShowAutofillAnimation] = useState(false);
+  const [showFieldNotification, setShowFieldNotification] = useState(false);
   const [farmProfileData, setFarmProfileData] = useState({
     farmName: 'GreenFields Cooperative',
     address: '123 Rural Road, Eco Valley, FR-75001',
@@ -60,9 +73,17 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
   });
 
   const [requiredDocs, setRequiredDocs] = useState<RequiredDocument[]>([
-    { name: 'Land Registry Certificate', uploaded: uploadedDocs.landOwnership, type: 'official' },
-    { name: 'Irrigation Declaration Form', uploaded: uploadedDocs.irrigationDeclaration, type: 'form' }
+    { name: t('common.landRegistryCertificate'), uploaded: uploadedDocs.landOwnership, type: 'official' },
+    { name: t('common.irrigationForm'), uploaded: uploadedDocs.irrigationDeclaration, type: 'form' }
   ]);
+
+  // Update translation of document names when language changes
+  useEffect(() => {
+    setRequiredDocs([
+      { name: t('common.landRegistryCertificate'), uploaded: uploadedDocs.landOwnership, type: 'official' },
+      { name: t('common.irrigationForm'), uploaded: uploadedDocs.irrigationDeclaration, type: 'form' }
+    ]);
+  }, [t, uploadedDocs]);
 
   // Update completion percentage based on form and document status
   useEffect(() => {
@@ -85,10 +106,21 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
     
     // Update required docs status
     setRequiredDocs([
-      { name: 'Land Registry Certificate', uploaded: uploadedDocs.landOwnership, type: 'official' },
-      { name: 'Irrigation Declaration Form', uploaded: uploadedDocs.irrigationDeclaration, type: 'form' }
+      { name: t('common.landRegistryCertificate'), uploaded: uploadedDocs.landOwnership, type: 'official' },
+      { name: t('common.irrigationForm'), uploaded: uploadedDocs.irrigationDeclaration, type: 'form' }
     ]);
-  }, [formData, uploadedDocs]);
+    
+    // If we've got 50% or more fields filled and the notification hasn't been shown yet, show it
+    if (filledFields >= 3 && !showFieldNotification) {
+      setTimeout(() => {
+        toast({
+          title: `17 ${t('messages.detectedFields')} | 11 ${t('messages.autoFilled')} | 6 ${t('messages.remaining')}`,
+          description: "",
+        });
+        setShowFieldNotification(true);
+      }, 1500);
+    }
+  }, [formData, uploadedDocs, t, showFieldNotification]);
 
   // Auto-fill form with farm profile data
   const handleAutofill = () => {
@@ -120,30 +152,56 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
       setShowAutofillAnimation(false);
       
       toast({
-        title: "Form autofilled",
-        description: "Your farm profile data has been used to fill the form.",
+        title: t('messages.formAutofilled'),
+        description: t('messages.formAutofilledDesc'),
       });
     }, 1800);
   };
 
   // Use completed PDF from AgriTool
   const handleUseCompletedPDF = () => {
-    setUploadedDocs(prev => ({ ...prev, irrigationDeclaration: true }));
-    
+    // Simulate loading
     toast({
-      title: "PDF form added",
-      description: "Your completed Irrigation Declaration Form has been uploaded.",
+      title: t('messages.uploading') + " irrigation_form.pdf...",
+      description: "",
     });
+    
+    setTimeout(() => {
+      setUploadedDocs(prev => ({ ...prev, irrigationDeclaration: true }));
+      
+      toast({
+        title: "✅ " + t('messages.complete'),
+        description: "",
+      });
+      
+      toast({
+        title: t('messages.pdfFormAdded'),
+        description: t('messages.pdfFormAddedDesc'),
+      });
+    }, 1500);
   };
 
   // Upload document from vault
   const handleUploadFromVault = (docType: 'landOwnership' | 'irrigationDeclaration') => {
-    setUploadedDocs(prev => ({ ...prev, [docType]: true }));
-    
+    // Simulate upload process
     toast({
-      title: "Document uploaded from vault",
-      description: `Your ${docType === 'landOwnership' ? 'Land Registry Certificate' : 'Irrigation Declaration Form'} has been uploaded from your document vault.`,
+      title: t('messages.uploading') + ` ${docType === 'landOwnership' ? 'land_registry.pdf' : 'irrigation_declaration.pdf'}...`,
+      description: "",
     });
+    
+    setTimeout(() => {
+      setUploadedDocs(prev => ({ ...prev, [docType]: true }));
+      
+      toast({
+        title: "✅ " + t('messages.complete'),
+        description: "",
+      });
+      
+      toast({
+        title: t('messages.docUploadedFromVault'),
+        description: `${docType === 'landOwnership' ? t('common.landRegistryCertificate') : t('common.irrigationForm')} ${t('messages.docUploadedFromVaultDesc')}`,
+      });
+    }, 1500);
   };
 
   return (
@@ -152,7 +210,7 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
       <div className="bg-white border border-gray-200 rounded-t-lg p-3 flex justify-between items-center shadow-sm">
         <div className="flex items-center">
           <div className="w-8 h-8 bg-green-600 rounded-md flex items-center justify-center text-white font-bold mr-2">A</div>
-          <span className="font-medium">AgriTool Assistant</span>
+          <span className="font-medium">{t('extension.assistant')}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
           {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
@@ -163,13 +221,13 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
         <Card className="mt-0 border-t-0 rounded-t-none shadow-md">
           <CardHeader className="bg-green-50 border-b pb-3">
             <CardTitle className="text-lg flex items-center">
-              <span className="text-green-700">Application Assistant</span>
+              <span className="text-green-700">{t('extension.appAssistant')}</span>
               {showAutofillAnimation && (
                 <span className="ml-2 inline-block h-2 w-2 rounded-full bg-green-500 animate-ping"></span>
               )}
             </CardTitle>
             <CardDescription>
-              We've detected you're filling out an EU subsidy application
+              {t('extension.appAssistantDesc')}
             </CardDescription>
           </CardHeader>
           
@@ -178,17 +236,17 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
               {/* Completion progress */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Application completion</span>
+                  <span className="text-sm font-medium">{t('extension.appCompletion')}</span>
                   <span className="text-sm font-medium">{completionPercent}%</span>
                 </div>
                 <Progress value={completionPercent} className="h-2" />
                 
                 <p className="text-sm mt-2 text-gray-600">
                   {completionPercent < 50 
-                    ? "Let's help you complete this application." 
+                    ? t('extension.letsHelp')
                     : completionPercent < 100 
-                      ? "Great! Your form is almost complete — let's finish it together." 
-                      : "Excellent! Your application is complete and ready to submit."}
+                      ? t('extension.almostComplete')
+                      : t('extension.excellent')}
                 </p>
               </div>
               
@@ -200,12 +258,12 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
                   disabled={showAutofillAnimation || completionPercent === 100}
                 >
                   <PlusCircle size={16} className="mr-2" />
-                  Autofill from Farm Profile
+                  {t('extension.autofillProfile')}
                 </Button>
                 
                 <div className="border rounded-md divide-y">
                   <div className="p-3">
-                    <h3 className="font-medium text-sm mb-2">Required Documents</h3>
+                    <h3 className="font-medium text-sm mb-2">{t('extension.requiredDocs')}</h3>
                     
                     <ul className="space-y-3">
                       {requiredDocs.map((doc, index) => (
@@ -225,7 +283,7 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
                                 onClick={() => handleUploadFromVault(index === 0 ? 'landOwnership' : 'irrigationDeclaration')}
                                 className="text-xs"
                               >
-                                Upload from Vault
+                                {t('common.uploadFromVault')}
                               </Button>
                               <X size={18} className="text-red-500 ml-1" />
                             </div>
@@ -244,7 +302,7 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
                         className="w-full text-sm"
                       >
                         <FileText size={14} className="mr-2" />
-                        Use Completed PDF from AgriTool
+                        {t('extension.useCompletedPDF')}
                       </Button>
                     </div>
                   )}
@@ -260,18 +318,18 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
                   <div>
                     <p className="text-sm text-gray-700">
                       {completionPercent === 0 
-                        ? "I can help you fill this form using data from your farm profile." 
+                        ? t('extension.fillFormHelp')
                         : completionPercent < 50
-                          ? "You've made a good start! I've suggested some text for the remaining fields."
+                          ? t('extension.goodStart')
                           : completionPercent < 100
-                            ? "Great progress! You still need to upload the irrigation declaration form before submitting."
-                            : "Perfect! Your application is complete. You can now submit it to the EU portal."}
+                            ? t('extension.greatProgress')
+                            : t('extension.perfect')}
                     </p>
                     
                     {completionPercent >= 50 && completionPercent < 100 && (
                       <div className="mt-2 flex items-center text-xs text-amber-700">
                         <Clock size={12} className="mr-1" />
-                        <span>Don't forget to review all details before final submission</span>
+                        <span>{t('extension.reviewReminder')}</span>
                       </div>
                     )}
                     
@@ -279,13 +337,26 @@ export const AgriToolExtensionSimulator: React.FC<ExtensionSimulatorProps> = ({
                       <div className="mt-2">
                         <Button className="w-full bg-green-600 hover:bg-green-700 text-sm h-8 mt-1">
                           <ArrowRight size={14} className="mr-1" />
-                          Ready to Submit
+                          {t('extension.readyToSubmit')}
                         </Button>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
+              
+              {/* Toast notification */}
+              {showFieldNotification && (
+                <div className="animate-fade-in bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
+                  <div className="flex items-start">
+                    <AlertCircle size={16} className="mr-2 text-blue-500 mt-0.5" />
+                    <div className="text-sm text-blue-700">
+                      <p className="font-medium">EU Portal Form Detection</p>
+                      <p className="mt-1">17 {t('messages.detectedFields')} | 11 {t('messages.autoFilled')} | 6 {t('messages.remaining')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
