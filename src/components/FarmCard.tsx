@@ -16,8 +16,10 @@ const FarmCard = ({ farm }: FarmCardProps) => {
   const { t } = useLanguage();
 
   // Randomly determine which farms have badges (in a real app this would be based on actual farm data)
-  const showNewSubsidyBadge = farm.id % 3 === 0;
-  const showDocumentsRequiredBadge = farm.id % 5 === 0;
+  // Convert id to number to ensure it works with modulo
+  const farmId = typeof farm.id === 'string' ? parseInt(farm.id, 10) : farm.id;
+  const showNewSubsidyBadge = farmId % 3 === 0;
+  const showDocumentsRequiredBadge = farmId % 5 === 0;
   const showInReviewBadge = farm.status === 'In Review';
   const showReadyToSubmitBadge = farm.status === 'Profile Complete';
 
