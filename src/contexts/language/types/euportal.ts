@@ -1,0 +1,23 @@
+
+export type EUPortalTranslationKey =
+  | 'euportal.title'
+  | 'euportal.subtitle'
+  | 'euportal.header'
+  | 'euportal.portalId'
+  | 'euportal.applicantInfo'
+  | 'euportal.applicantInfoDesc'
+  | 'euportal.requiredDocs'
+  | 'euportal.uploadLandProof'
+  | 'euportal.uploadIrrigationForm'
+  | 'euportal.dragDrop'
+  | 'euportal.fileTypes'
+  | 'euportal.pdfOnly'
+  | 'euportal.submitApp'
+  | 'euportal.disclaimer'
+  | 'euportal.privacy'
+  | 'euportal.terms'
+  | 'euportal.contact'
+  | 'euportal.accessibility'
+  | 'euportal.downloadCompleted'
+  | 'euportal.submitToPortal'
+  | 'euportal.appCompletedMessage';
