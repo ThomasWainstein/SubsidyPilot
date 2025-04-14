@@ -1,0 +1,7 @@
+
+export type NavigationTranslationKey =
+  | 'nav.home'
+  | 'nav.profile'
+  | 'nav.settings'
+  | 'nav.logout'
+  | 'errors.pageNotFound';
