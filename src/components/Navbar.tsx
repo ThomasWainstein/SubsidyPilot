@@ -1,5 +1,5 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage, Language } from '../contexts/LanguageContext';
 import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
 const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const languageNames: Record<Language, string> = {
     en: 'English',
@@ -32,6 +33,16 @@ const Navbar = () => {
   
   // Check if we're on the homepage
   const isHomePage = location.pathname === '/';
+  
+  const handleBack = () => {
+    if (location.pathname.includes('/farm/')) {
+      navigate('/dashboard');
+    } else if (location.pathname.includes('/eu-subsidy-portal')) {
+      navigate('/dashboard');
+    } else {
+      navigate(-1);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -39,10 +50,14 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             {!isHomePage && (
-              <Link to="/dashboard" className="mr-4 text-gray-500 hover:text-gray-700">
+              <button 
+                onClick={handleBack}
+                className="mr-4 text-gray-500 hover:text-gray-700 flex items-center"
+                aria-label={t('common.back')}
+              >
                 <ChevronLeft size={20} />
-                <span className="sr-only">{t('common.back')}</span>
-              </Link>
+                <span className="sr-only sm:not-sr-only sm:ml-1">{t('common.back')}</span>
+              </button>
             )}
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
@@ -55,14 +70,14 @@ const Navbar = () => {
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
                 to="/"
-                className={`border-transparent text-gray-500 hover:border-agri-green hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname === '/' ? 'border-green-600 text-gray-900' : ''}`}
+                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname === '/' ? 'border-green-600 text-gray-900' : ''}`}
               >
                 <Home size={18} className="mr-2" />
                 Home
               </Link>
               <Link
                 to="/dashboard"
-                className={`border-transparent text-gray-500 hover:border-agri-green hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/dashboard') ? 'border-green-600 text-gray-900' : ''}`}
+                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/dashboard') ? 'border-green-600 text-gray-900' : ''}`}
               >
                 <LayoutDashboard size={18} className="mr-2" />
                 {t('common.dashboard')}
