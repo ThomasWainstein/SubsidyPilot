@@ -1,4 +1,3 @@
-
 import { Dispatch, SetStateAction } from 'react';
 
 export type Language = 'en' | 'fr' | 'es' | 'ro';
@@ -234,7 +233,9 @@ export type TranslationKey =
   | 'nav.profile'
   | 'nav.settings'
   | 'nav.logout'
-  | 'errors.pageNotFound';
+  | 'errors.pageNotFound'
+  | 'common.deadlineApproaching'
+;
 
 export interface LanguageContextType {
   language: Language;

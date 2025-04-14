@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -231,5 +230,6 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profil',
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
-  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.'
+  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
+  'common.deadlineApproaching': 'Termen Limită Apropiat'
 };
