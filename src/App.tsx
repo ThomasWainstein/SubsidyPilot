@@ -9,6 +9,7 @@ import HomePage from "./pages/HomePage";
 import DashboardPage from "./pages/DashboardPage";
 import FarmProfilePage from "./pages/FarmProfilePage";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
+import EUSubsidyPortalPage from "./pages/EUSubsidyPortalPage";
 import NotFound from "./pages/NotFound";
 
 // Create a client for React Query
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/farm/:id" element={<FarmProfilePage />} />
             <Route path="/farm/:farmId/apply/:subsidyId" element={<ApplicationFormPage />} />
+            <Route path="/eu-subsidy-portal" element={<EUSubsidyPortalPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

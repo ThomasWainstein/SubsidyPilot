@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -43,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FarmCardApplyButton from '@/components/FarmCardApplyButton';
 
 const FarmProfilePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -433,11 +433,9 @@ const FarmProfilePage = () => {
                           </div>
                           
                           <div className="mt-4 flex justify-end">
-                            <Button asChild>
-                              <a href={`/farm/${farm.id}/apply/${subsidy.id}`}>
-                                Apply Now
-                              </a>
-                            </Button>
+                            <FarmCardApplyButton farmId={farm.id} subsidyId={subsidy.id}>
+                              Apply Now
+                            </FarmCardApplyButton>
                           </div>
                         </CardContent>
                       </Card>
