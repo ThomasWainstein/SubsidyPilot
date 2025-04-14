@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileWarning, Check, AlertTriangle } from 'lucide-react';
+import { Bell, FileWarning, Check, AlertTriangle, Clock } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { cn } from '@/lib/utils';
 
-type BadgeType = 'newSubsidy' | 'documentsRequired' | 'inReview' | 'readyToSubmit';
+type BadgeType = 'newSubsidy' | 'documentsRequired' | 'inReview' | 'readyToSubmit' | 'deadlineApproaching';
 
 interface FarmStatusBadgeProps {
   type: BadgeType;
@@ -22,7 +22,7 @@ const FarmStatusBadge: React.FC<FarmStatusBadgeProps> = ({ type, className, isNe
       icon: Bell,
       variant: 'success' as const,
       classes: cn(
-        'bg-emerald-100 text-emerald-800 hover:bg-emerald-200',
+        'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200',
         isNew && 'animate-pulse'
       )
     },
@@ -30,19 +30,25 @@ const FarmStatusBadge: React.FC<FarmStatusBadgeProps> = ({ type, className, isNe
       label: t('common.documentsRequired'),
       icon: FileWarning,
       variant: 'destructive' as const,
-      classes: 'bg-red-100 text-red-800 hover:bg-red-200'
+      classes: 'bg-red-100 text-red-800 hover:bg-red-200 border-red-200'
     },
     inReview: {
       label: t('common.inReview'),
       icon: AlertTriangle,
       variant: 'warning' as const,
-      classes: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+      classes: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
     },
     readyToSubmit: {
       label: t('common.readyToSubmit'),
       icon: Check,
       variant: 'default' as const,
-      classes: 'bg-green-100 text-green-800 hover:bg-green-200'
+      classes: 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200'
+    },
+    deadlineApproaching: {
+      label: t('common.deadlineApproaching'),
+      icon: Clock,
+      variant: 'warning' as const,
+      classes: 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-200'
     }
   };
 
@@ -53,7 +59,7 @@ const FarmStatusBadge: React.FC<FarmStatusBadgeProps> = ({ type, className, isNe
     <Badge 
       variant="outline" 
       className={cn(
-        'flex gap-1 items-center cursor-pointer transition-colors',
+        'flex gap-1 items-center cursor-pointer transition-colors border',
         config.classes,
         className
       )}

@@ -1,6 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,10 +14,10 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 122 48% 34%; /* Forest green */
+    --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 25 22% 47%; /* Earth tone */
+    --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
@@ -33,9 +31,9 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 122 48% 34%;
+    --ring: 222.2 84% 4.9%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 
   .dark {
@@ -48,10 +46,10 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 122 48% 34%;
+    --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 25 22% 47%;
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
@@ -73,36 +71,114 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground font-sans;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-jakarta font-medium;
+    @apply bg-background text-foreground;
   }
 }
 
+/* Glass card styling */
 .glass-card {
-  @apply bg-white/70 backdrop-blur-glass shadow-glass border border-white/20;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.glass-dark {
-  @apply bg-slate-900/70 backdrop-blur-glass shadow-glass border border-white/10;
+/* Alert card styling */
+.alert-card {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.tag {
-  @apply px-2 py-0.5 text-xs font-medium rounded-full text-white;
+.alert-card:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
 }
 
-@keyframes typing {
-  from { width: 0 }
-  to { width: 100% }
+.alert-card strong {
+  color: #111827;
 }
 
-.typing-animation {
-  overflow: hidden;
-  border-right: 2px solid;
-  white-space: nowrap;
-  animation: typing 3s steps(40, end), cursor-blink 0.75s step-end infinite;
+/* Subsidy highlight animation for when navigating directly to a subsidy */
+.highlight-subsidy {
+  animation: highlight-pulse 3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+  }
+  15% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.3);
+    transform: scale(1.02);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.2);
+    transform: scale(1.01);
+  }
+}
+
+/* Animations for alert badges */
+.badge-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Typing animation for assistant responses */
+.typing-animation span {
+  animation: blink 1.4s infinite both;
+}
+
+.typing-animation span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-animation span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0% { 
+    opacity: 0.1; 
+  }
+  20% { 
+    opacity: 1; 
+  }
+  100% { 
+    opacity: 0.1; 
+  }
+}
+
+/* Custom colors */
+:root {
+  --agri-green: #10B981;
+  --agri-blue: #3B82F6;
+  --agri-purple: #8B5CF6;
+  --agri-red: #EF4444;
+  --agri-yellow: #F59E0B;
+}
+
+/* General utility classes */
+.text-agri-green {
+  color: var(--agri-green);
+}
+
+.bg-agri-green {
+  background-color: var(--agri-green);
 }
