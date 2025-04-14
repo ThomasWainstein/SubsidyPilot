@@ -3,9 +3,10 @@ import React from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, AlertTriangle, AlertOctagon, Clock } from 'lucide-react';
+import { TranslationKey } from '@/contexts/language/types';
 
 interface StatusCount {
-  status: string;
+  status: TranslationKey; // Changed from string to TranslationKey
   count: number;
   icon: React.ElementType;
   color: string;
