@@ -27,31 +27,31 @@ const StatusBadge = ({ status, className, size = 'md' }: StatusBadgeProps) => {
     return statusMap[status] || ('status.inProgress' as TranslationKey);
   };
   
-  // Get color based on status
+  // Get color based on status - muted, elegant colors
   const getStatusColor = (status: string) => {
     const colorMap: Record<string, string> = {
-      'In Progress': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Submitted': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      'Approved': 'bg-green-100 text-green-800 border-green-200',
-      'In Review': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Needs Update': 'bg-red-100 text-red-800 border-red-200',
-      'Profile Complete': 'bg-green-100 text-green-800 border-green-200',
-      'Subsidy In Progress': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Draft': 'bg-gray-100 text-gray-800 border-gray-200',
+      'In Progress': 'bg-blue-50 text-blue-700 border-blue-100',
+      'Submitted': 'bg-indigo-50 text-indigo-700 border-indigo-100',
+      'Approved': 'bg-green-50 text-green-700 border-green-100',
+      'In Review': 'bg-amber-50 text-amber-700 border-amber-100',
+      'Needs Update': 'bg-red-50 text-red-700 border-red-100',
+      'Profile Complete': 'bg-emerald-50 text-emerald-700 border-emerald-100',
+      'Subsidy In Progress': 'bg-sky-50 text-sky-700 border-sky-100',
+      'Draft': 'bg-gray-50 text-gray-700 border-gray-100',
     };
     
-    return colorMap[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return colorMap[status] || 'bg-gray-50 text-gray-700 border-gray-100';
   };
 
   // Get size classes
   const getSizeClasses = (size: 'sm' | 'md' | 'lg') => {
     const sizeMap: Record<string, string> = {
       'sm': 'px-1.5 py-0.5 text-xs',
-      'md': 'px-2.5 py-0.5 text-xs',
-      'lg': 'px-3 py-1 text-sm',
+      'md': 'px-2 py-0.5 text-xs',
+      'lg': 'px-2.5 py-1 text-sm',
     };
     
-    return sizeMap[size] || 'px-2.5 py-0.5 text-xs';
+    return sizeMap[size] || 'px-2 py-0.5 text-xs';
   };
   
   const displayStatus = t(getStatusKey(status));

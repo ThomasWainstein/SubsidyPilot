@@ -11,6 +11,8 @@ import DashboardOnboarding from '@/components/DashboardOnboarding';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 import AddFarmModal from '@/components/dashboard/AddFarmModal';
 import FarmGrid from '@/components/dashboard/FarmGrid';
+import { Sun, Moon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const DashboardPage = () => {
   const { t } = useLanguage();
@@ -19,6 +21,7 @@ const DashboardPage = () => {
   const [sortOption, setSortOption] = useState('name');
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Get unique regions from farms
   const uniqueRegions = Array.from(new Set(farms.map(farm => farm.region)));
@@ -30,6 +33,13 @@ const DashboardPage = () => {
     } else {
       setRegionFilter([...regionFilter, region]);
     }
+  };
+
+  // Toggle dark mode (demo only)
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    // In a real implementation, we would apply a dark class to the html element
+    // document.documentElement.classList.toggle('dark');
   };
 
   // Filter farms based on search query, status, and region
@@ -60,18 +70,26 @@ const DashboardPage = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className={`min-h-screen flex flex-col ${isDarkMode ? 'dark' : ''}`}>
       <Navbar />
       
-      <main className="flex-grow py-8">
+      <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.clientFarmDashboard')}</h1>
-            <p className="text-gray-600">{t('dashboard.clientFarmSubtitle')}</p>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.clientFarmDashboard')}</h1>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleDarkMode}
+              className="theme-toggle"
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </Button>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-            <div className="lg:col-span-3">
+          <div className="grid grid-cols-12 gap-6">
+            <div className="col-span-12 lg:col-span-9 space-y-6">
               <DashboardFilters 
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -88,10 +106,10 @@ const DashboardPage = () => {
               <FarmGrid farms={sortedFarms} />
             </div>
             
-            <div className="space-y-6">
+            <div className="col-span-12 lg:col-span-3 space-y-6">
               <ConsultantMetrics />
-              <FarmStatusOverview />
               <AlertsActions />
+              <FarmStatusOverview />
               <RegionOverview />
             </div>
           </div>

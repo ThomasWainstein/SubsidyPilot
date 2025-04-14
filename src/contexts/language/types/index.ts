@@ -1,5 +1,4 @@
 
-import { Dispatch, SetStateAction } from 'react';
 import { CommonTranslationKey } from './common';
 import { DashboardTranslationKey } from './dashboard';
 import { FarmTranslationKey } from './farm';
@@ -12,6 +11,8 @@ import { StatusTranslationKey } from './status';
 import { EUPortalTranslationKey } from './euportal';
 import { ExtensionTranslationKey } from './extension';
 import { HomeTranslationKey } from './home';
+import { FeaturesTranslationKey } from './features';
+import { FooterTranslationKey } from './footer';
 
 export type Language = 'en' | 'fr' | 'es' | 'ro';
 
@@ -27,11 +28,13 @@ export type TranslationKey =
   | StatusTranslationKey
   | EUPortalTranslationKey
   | ExtensionTranslationKey
-  | HomeTranslationKey;
+  | HomeTranslationKey
+  | FeaturesTranslationKey
+  | FooterTranslationKey;
 
 export interface LanguageContextType {
   language: Language;
-  setLanguage: Dispatch<SetStateAction<Language>>;
+  setLanguage: (language: Language) => void;
   t: (key: TranslationKey) => string;
 }
 
@@ -47,3 +50,5 @@ export * from './status';
 export * from './euportal';
 export * from './extension';
 export * from './home';
+export * from './features';
+export * from './footer';
