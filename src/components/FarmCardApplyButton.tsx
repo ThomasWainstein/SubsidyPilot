@@ -7,11 +7,13 @@ import { SubsidyApplicationModal } from './SubsidyApplicationModal';
 interface FarmCardApplyButtonProps {
   farmId: string;
   subsidyId: string;
+  children?: React.ReactNode; // Add support for children
 }
 
 const FarmCardApplyButton: React.FC<FarmCardApplyButtonProps> = ({
   farmId,
-  subsidyId
+  subsidyId,
+  children
 }) => {
   const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +21,7 @@ const FarmCardApplyButton: React.FC<FarmCardApplyButtonProps> = ({
   return (
     <>
       <Button onClick={() => setIsModalOpen(true)}>
-        {t('common.applyNow')}
+        {children || t('common.applyNow')}
       </Button>
       
       <SubsidyApplicationModal

@@ -434,7 +434,7 @@ const FarmProfilePage = () => {
                           
                           <div className="mt-4 flex justify-end">
                             <FarmCardApplyButton farmId={farm.id} subsidyId={subsidy.id}>
-                              Apply Now
+                              {t('common.applyNow')}
                             </FarmCardApplyButton>
                           </div>
                         </CardContent>
