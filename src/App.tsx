@@ -11,7 +11,15 @@ import FarmProfilePage from "./pages/FarmProfilePage";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 60 * 1000, // 1 minute
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

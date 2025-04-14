@@ -23,10 +23,20 @@ export type TranslationKey =
   | 'common.subsidies'
   | 'common.applications'
   | 'common.dashboard'
+  | 'common.back'
+  | 'common.plan'
+  | 'common.free'
+  | 'common.consultantPro'
+  | 'common.coopEnterprise'
   | 'home.title'
   | 'home.tagline'
   | 'dashboard.title'
   | 'dashboard.subtitle'
+  | 'dashboard.metrics'
+  | 'dashboard.totalFarms'
+  | 'dashboard.totalSubmissions'
+  | 'dashboard.averageMatchScore'
+  | 'dashboard.sortBy'
   | 'farm.profileTitle'
   | 'farm.profileSubtitle'
   | 'farm.assistantTitle'
@@ -34,6 +44,11 @@ export type TranslationKey =
   | 'farm.assistantResponse'
   | 'farm.documentTitle'
   | 'farm.documentSubtitle'
+  | 'farm.regulatoryOverview'
+  | 'farm.capCompliance'
+  | 'farm.emissionsScore'
+  | 'farm.ecoSchemeEligibility'
+  | 'farm.aiUpdates'
   | 'subsidies.title'
   | 'subsidies.subtitle'
   | 'subsidies.matchConfidence'
@@ -41,6 +56,9 @@ export type TranslationKey =
   | 'subsidies.regionEligibility'
   | 'subsidies.grantCode'
   | 'subsidies.maxGrant'
+  | 'subsidies.draftDate'
+  | 'subsidies.status'
+  | 'subsidies.reminder'
   | 'application.title'
   | 'application.subtitle'
   | 'application.confirmationMessage'
@@ -51,13 +69,26 @@ export type TranslationKey =
   | 'application.section5'
   | 'application.section6'
   | 'application.formSaved'
+  | 'form.farmName'
+  | 'form.yearEstablished'
+  | 'form.carbonScore'
+  | 'form.irrigationMethod'
+  | 'form.certifications'
+  | 'form.staff'
+  | 'form.revenue'
+  | 'form.pastSubsidies'
+  | 'form.tooltip.carbonScore'
+  | 'form.tooltip.irrigationMethod'
+  | 'form.tooltip.certifications'
+  | 'messages.saved'
   | 'status.inProgress'
   | 'status.submitted'
   | 'status.approved'
   | 'status.inReview'
   | 'status.needsUpdate'
   | 'status.profileComplete'
-  | 'status.subsidyInProgress';
+  | 'status.subsidyInProgress'
+  | 'status.draft';
 
 // Define the translations
 const translations: Record<Language, Record<TranslationKey, string>> = {
@@ -79,17 +110,32 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.subsidies': 'Subsidies',
     'common.applications': 'Applications',
     'common.dashboard': 'Dashboard',
+    'common.back': 'Back',
+    'common.plan': 'Plan',
+    'common.free': 'Free',
+    'common.consultantPro': 'Consultant Pro',
+    'common.coopEnterprise': 'Co-op Enterprise',
     'home.title': 'AgriTool',
     'home.tagline': 'Manage your entire farm portfolio with AgriTool.',
     'dashboard.title': 'Consultant Dashboard',
     'dashboard.subtitle': 'Manage your farm portfolio and track subsidy applications',
+    'dashboard.metrics': 'Consultant Metrics',
+    'dashboard.totalFarms': 'Total Farms',
+    'dashboard.totalSubmissions': 'Total Submissions',
+    'dashboard.averageMatchScore': 'Average Match Score',
+    'dashboard.sortBy': 'Sort by',
     'farm.profileTitle': 'Digital Farm Profile',
     'farm.profileSubtitle': 'Comprehensive digital profile for your farm',
     'farm.assistantTitle': 'AgriBot Assistant',
     'farm.assistantPlaceholder': 'Type additional information about your farm...',
-    'farm.assistantResponse': 'Thanks! I\'ve added this to your digital profile.',
-    'farm.documentTitle': 'Documents',
+    'farm.assistantResponse': 'Thank you! This update helps improve your sustainability alignment for two subsidy programs.',
+    'farm.documentTitle': 'Document Vault',
     'farm.documentSubtitle': 'Upload and manage farm documents',
+    'farm.regulatoryOverview': 'Regulatory Overview',
+    'farm.capCompliance': 'Complies with CAP',
+    'farm.emissionsScore': 'Emissions Score',
+    'farm.ecoSchemeEligibility': 'Eligible for Eco-Scheme',
+    'farm.aiUpdates': 'Recent AI Input to Profile',
     'subsidies.title': 'Subsidy Matches',
     'subsidies.subtitle': 'Available subsidies matching your farm profile',
     'subsidies.matchConfidence': 'Match Confidence',
@@ -97,16 +143,31 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'subsidies.regionEligibility': 'Region Eligibility',
     'subsidies.grantCode': 'Grant Code',
     'subsidies.maxGrant': 'Maximum Grant',
+    'subsidies.draftDate': 'Draft Date',
+    'subsidies.status': 'Status',
+    'subsidies.reminder': 'Reminder',
     'application.title': 'Subsidy Application',
     'application.subtitle': 'Complete the form to apply for this subsidy',
     'application.confirmationMessage': 'Your application has been received',
-    'application.section1': 'Basic Information',
-    'application.section2': 'Farm Details',
-    'application.section3': 'Project Information',
-    'application.section4': 'Financial Information',
-    'application.section5': 'Sustainability',
+    'application.section1': 'Farm Identity',
+    'application.section2': 'Production',
+    'application.section3': 'Financials',
+    'application.section4': 'Technology',
+    'application.section5': 'Strategic Goals',
     'application.section6': 'Additional Documents',
     'application.formSaved': 'Your application draft has been saved.',
+    'form.farmName': 'Farm Name',
+    'form.yearEstablished': 'Year Established',
+    'form.carbonScore': 'Carbon Score',
+    'form.irrigationMethod': 'Irrigation Method',
+    'form.certifications': 'Certifications',
+    'form.staff': 'Staff',
+    'form.revenue': 'Revenue',
+    'form.pastSubsidies': 'Past Subsidies',
+    'form.tooltip.carbonScore': 'Measure of carbon emissions per hectare',
+    'form.tooltip.irrigationMethod': 'The method used to irrigate crops',
+    'form.tooltip.certifications': 'Official certifications held by the farm',
+    'messages.saved': 'Your application has been saved as a draft.',
     'status.inProgress': 'In Progress',
     'status.submitted': 'Submitted',
     'status.approved': 'Approved',
@@ -114,6 +175,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'status.needsUpdate': 'Needs Update',
     'status.profileComplete': 'Profile Complete',
     'status.subsidyInProgress': 'Subsidy In Progress',
+    'status.draft': 'Draft',
   },
   fr: {
     'common.getStarted': 'Commencer',
@@ -133,17 +195,32 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.subsidies': 'Subventions',
     'common.applications': 'Applications',
     'common.dashboard': 'Tableau de Bord',
+    'common.back': 'Retour',
+    'common.plan': 'Plan',
+    'common.free': 'Gratuit',
+    'common.consultantPro': 'Consultant Pro',
+    'common.coopEnterprise': 'Coopérative Entreprise',
     'home.title': 'AgriTool',
     'home.tagline': 'Gérez tout votre portefeuille agricole avec AgriTool.',
     'dashboard.title': 'Tableau de Bord du Consultant',
     'dashboard.subtitle': 'Gérez votre portefeuille agricole et suivez les demandes de subventions',
+    'dashboard.metrics': 'Métriques du Consultant',
+    'dashboard.totalFarms': 'Total des Fermes',
+    'dashboard.totalSubmissions': 'Total des Soumissions',
+    'dashboard.averageMatchScore': 'Score Moyen de Correspondance',
+    'dashboard.sortBy': 'Trier par',
     'farm.profileTitle': 'Profil Numérique de la Ferme',
     'farm.profileSubtitle': 'Profil numérique complet pour votre ferme',
     'farm.assistantTitle': 'Assistant AgriBot',
     'farm.assistantPlaceholder': 'Tapez des informations supplémentaires sur votre ferme...',
-    'farm.assistantResponse': 'Merci ! J\'ai ajouté cela à votre profil numérique.',
-    'farm.documentTitle': 'Documents',
+    'farm.assistantResponse': 'Merci ! Cette mise à jour aide à améliorer votre alignement avec deux programmes de subventions.',
+    'farm.documentTitle': 'Coffre-fort de Documents',
     'farm.documentSubtitle': 'Téléchargez et gérez les documents de la ferme',
+    'farm.regulatoryOverview': 'Aperçu Réglementaire',
+    'farm.capCompliance': 'Conforme à la PAC',
+    'farm.emissionsScore': 'Score d\'Émissions',
+    'farm.ecoSchemeEligibility': 'Éligible au Programme Éco',
+    'farm.aiUpdates': 'Récentes Mises à jour IA du Profil',
     'subsidies.title': 'Correspondances de Subventions',
     'subsidies.subtitle': 'Subventions disponibles correspondant au profil de votre ferme',
     'subsidies.matchConfidence': 'Confiance de Correspondance',
@@ -151,16 +228,31 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'subsidies.regionEligibility': 'Éligibilité Régionale',
     'subsidies.grantCode': 'Code de Subvention',
     'subsidies.maxGrant': 'Subvention Maximale',
+    'subsidies.draftDate': 'Date de Brouillon',
+    'subsidies.status': 'Statut',
+    'subsidies.reminder': 'Rappel',
     'application.title': 'Demande de Subvention',
     'application.subtitle': 'Remplissez le formulaire pour demander cette subvention',
     'application.confirmationMessage': 'Votre demande a été reçue',
-    'application.section1': 'Informations de Base',
-    'application.section2': 'Détails de la Ferme',
-    'application.section3': 'Informations sur le Projet',
-    'application.section4': 'Informations Financières',
-    'application.section5': 'Durabilité',
+    'application.section1': 'Identité de la Ferme',
+    'application.section2': 'Production',
+    'application.section3': 'Finances',
+    'application.section4': 'Technologie',
+    'application.section5': 'Objectifs Stratégiques',
     'application.section6': 'Documents Supplémentaires',
     'application.formSaved': 'Votre brouillon de demande a été enregistré.',
+    'form.farmName': 'Nom de la Ferme',
+    'form.yearEstablished': 'Année d\'Établissement',
+    'form.carbonScore': 'Score Carbone',
+    'form.irrigationMethod': 'Méthode d\'Irrigation',
+    'form.certifications': 'Certifications',
+    'form.staff': 'Personnel',
+    'form.revenue': 'Revenu',
+    'form.pastSubsidies': 'Subventions Passées',
+    'form.tooltip.carbonScore': 'Mesure des émissions de carbone par hectare',
+    'form.tooltip.irrigationMethod': 'La méthode utilisée pour irriguer les cultures',
+    'form.tooltip.certifications': 'Certifications officielles détenues par la ferme',
+    'messages.saved': 'Votre demande a été enregistrée en tant que brouillon.',
     'status.inProgress': 'En Cours',
     'status.submitted': 'Soumis',
     'status.approved': 'Approuvé',
@@ -168,6 +260,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'status.needsUpdate': 'Mise à Jour Nécessaire',
     'status.profileComplete': 'Profil Complet',
     'status.subsidyInProgress': 'Subvention En Cours',
+    'status.draft': 'Brouillon',
   },
   es: {
     'common.getStarted': 'Comenzar',
@@ -187,17 +280,32 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.subsidies': 'Subsidios',
     'common.applications': 'Aplicaciones',
     'common.dashboard': 'Panel',
+    'common.back': 'Atrás',
+    'common.plan': 'Plan',
+    'common.free': 'Gratuito',
+    'common.consultantPro': 'Consultor Pro',
+    'common.coopEnterprise': 'Cooperativa Empresarial',
     'home.title': 'AgriTool',
     'home.tagline': 'Gestiona toda tu cartera agrícola con AgriTool.',
     'dashboard.title': 'Panel del Consultor',
     'dashboard.subtitle': 'Gestiona tu cartera de granjas y haz seguimiento de las solicitudes de subsidios',
+    'dashboard.metrics': 'Métricas del Consultor',
+    'dashboard.totalFarms': 'Total de Granjas',
+    'dashboard.totalSubmissions': 'Total de Solicitudes',
+    'dashboard.averageMatchScore': 'Puntuación Media de Coincidencia',
+    'dashboard.sortBy': 'Ordenar por',
     'farm.profileTitle': 'Perfil Digital de la Granja',
     'farm.profileSubtitle': 'Perfil digital completo para tu granja',
     'farm.assistantTitle': 'Asistente AgriBot',
     'farm.assistantPlaceholder': 'Escribe información adicional sobre tu granja...',
-    'farm.assistantResponse': '¡Gracias! He añadido esto a tu perfil digital.',
-    'farm.documentTitle': 'Documentos',
+    'farm.assistantResponse': '¡Gracias! Esta actualización ayuda a mejorar tu alineación con dos programas de subsidios.',
+    'farm.documentTitle': 'Bóveda de Documentos',
     'farm.documentSubtitle': 'Sube y gestiona documentos de la granja',
+    'farm.regulatoryOverview': 'Resumen Regulatorio',
+    'farm.capCompliance': 'Cumple con la PAC',
+    'farm.emissionsScore': 'Puntuación de Emisiones',
+    'farm.ecoSchemeEligibility': 'Elegible para Eco-Esquema',
+    'farm.aiUpdates': 'Entrada Reciente de IA al Perfil',
     'subsidies.title': 'Coincidencias de Subsidios',
     'subsidies.subtitle': 'Subsidios disponibles que coinciden con el perfil de tu granja',
     'subsidies.matchConfidence': 'Confianza de Coincidencia',
@@ -205,16 +313,31 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'subsidies.regionEligibility': 'Elegibilidad Regional',
     'subsidies.grantCode': 'Código de Subsidio',
     'subsidies.maxGrant': 'Subsidio Máximo',
+    'subsidies.draftDate': 'Fecha de Borrador',
+    'subsidies.status': 'Estado',
+    'subsidies.reminder': 'Recordatorio',
     'application.title': 'Solicitud de Subsidio',
     'application.subtitle': 'Completa el formulario para solicitar este subsidio',
     'application.confirmationMessage': 'Tu solicitud ha sido recibida',
-    'application.section1': 'Información Básica',
-    'application.section2': 'Detalles de la Granja',
-    'application.section3': 'Información del Proyecto',
-    'application.section4': 'Información Financiera',
-    'application.section5': 'Sostenibilidad',
+    'application.section1': 'Identidad de la Granja',
+    'application.section2': 'Producción',
+    'application.section3': 'Información Financiera',
+    'application.section4': 'Tecnología',
+    'application.section5': 'Objetivos Estratégicos',
     'application.section6': 'Documentos Adicionales',
     'application.formSaved': 'El borrador de tu solicitud ha sido guardado.',
+    'form.farmName': 'Nombre de la Granja',
+    'form.yearEstablished': 'Año de Establecimiento',
+    'form.carbonScore': 'Puntuación de Carbono',
+    'form.irrigationMethod': 'Método de Riego',
+    'form.certifications': 'Certificaciones',
+    'form.staff': 'Personal',
+    'form.revenue': 'Ingresos',
+    'form.pastSubsidies': 'Subsidios Anteriores',
+    'form.tooltip.carbonScore': 'Medida de emisiones de carbono por hectárea',
+    'form.tooltip.irrigationMethod': 'El método utilizado para regar los cultivos',
+    'form.tooltip.certifications': 'Certificaciones oficiales que posee la granja',
+    'messages.saved': 'Tu solicitud ha sido guardada como borrador.',
     'status.inProgress': 'En Progreso',
     'status.submitted': 'Enviado',
     'status.approved': 'Aprobado',
@@ -222,6 +345,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'status.needsUpdate': 'Necesita Actualización',
     'status.profileComplete': 'Perfil Completo',
     'status.subsidyInProgress': 'Subsidio En Progreso',
+    'status.draft': 'Borrador',
   },
   ro: {
     'common.getStarted': 'Începe',
@@ -241,17 +365,32 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'common.subsidies': 'Subvenții',
     'common.applications': 'Aplicații',
     'common.dashboard': 'Panou',
+    'common.back': 'Înapoi',
+    'common.plan': 'Plan',
+    'common.free': 'Gratuit',
+    'common.consultantPro': 'Consultant Pro',
+    'common.coopEnterprise': 'Cooperativă Întreprindere',
     'home.title': 'AgriTool',
     'home.tagline': 'Gestionează întregul portofoliu agricol cu AgriTool.',
     'dashboard.title': 'Panou Consultant',
     'dashboard.subtitle': 'Gestionează portofoliul de ferme și urmărește aplicațiile pentru subvenții',
+    'dashboard.metrics': 'Metrici Consultant',
+    'dashboard.totalFarms': 'Total Ferme',
+    'dashboard.totalSubmissions': 'Total Cereri',
+    'dashboard.averageMatchScore': 'Scor Mediu de Potrivire',
+    'dashboard.sortBy': 'Sortează după',
     'farm.profileTitle': 'Profil Digital al Fermei',
     'farm.profileSubtitle': 'Profil digital cuprinzător pentru ferma ta',
     'farm.assistantTitle': 'Asistent AgriBot',
     'farm.assistantPlaceholder': 'Tastează informații suplimentare despre ferma ta...',
-    'farm.assistantResponse': 'Mulțumesc! Am adăugat acest lucru la profilul tău digital.',
-    'farm.documentTitle': 'Documente',
+    'farm.assistantResponse': 'Mulțumesc! Această actualizare ajută la îmbunătățirea alinierii dvs. cu două programe de subvenții.',
+    'farm.documentTitle': 'Seif de Documente',
     'farm.documentSubtitle': 'Încarcă și gestionează documentele fermei',
+    'farm.regulatoryOverview': 'Prezentare Generală Regulamentară',
+    'farm.capCompliance': 'Conform cu PAC',
+    'farm.emissionsScore': 'Scor de Emisii',
+    'farm.ecoSchemeEligibility': 'Eligibil pentru Eco-Schema',
+    'farm.aiUpdates': 'Actualizări Recente IA pentru Profil',
     'subsidies.title': 'Potriviri de Subvenții',
     'subsidies.subtitle': 'Subvenții disponibile care se potrivesc cu profilul fermei tale',
     'subsidies.matchConfidence': 'Încredere de Potrivire',
@@ -259,16 +398,31 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'subsidies.regionEligibility': 'Eligibilitate Regională',
     'subsidies.grantCode': 'Cod Subvenție',
     'subsidies.maxGrant': 'Subvenție Maximă',
+    'subsidies.draftDate': 'Data Ciornei',
+    'subsidies.status': 'Stare',
+    'subsidies.reminder': 'Memento',
     'application.title': 'Cerere de Subvenție',
     'application.subtitle': 'Completează formularul pentru a aplica pentru această subvenție',
     'application.confirmationMessage': 'Cererea ta a fost primită',
-    'application.section1': 'Informații de Bază',
-    'application.section2': 'Detalii Fermă',
-    'application.section3': 'Informații Proiect',
-    'application.section4': 'Informații Financiare',
-    'application.section5': 'Sustenabilitate',
+    'application.section1': 'Identitatea Fermei',
+    'application.section2': 'Producție',
+    'application.section3': 'Informații Financiare',
+    'application.section4': 'Tehnologie',
+    'application.section5': 'Obiective Strategice',
     'application.section6': 'Documente Adiționale',
     'application.formSaved': 'Schița cererii tale a fost salvată.',
+    'form.farmName': 'Numele Fermei',
+    'form.yearEstablished': 'Anul Înființării',
+    'form.carbonScore': 'Scor Carbon',
+    'form.irrigationMethod': 'Metodă de Irigare',
+    'form.certifications': 'Certificări',
+    'form.staff': 'Personal',
+    'form.revenue': 'Venit',
+    'form.pastSubsidies': 'Subvenții Anterioare',
+    'form.tooltip.carbonScore': 'Măsură a emisiilor de carbon pe hectar',
+    'form.tooltip.irrigationMethod': 'Metoda utilizată pentru irigarea culturilor',
+    'form.tooltip.certifications': 'Certificări oficiale deținute de fermă',
+    'messages.saved': 'Cererea ta a fost salvată ca schiță.',
     'status.inProgress': 'În Desfășurare',
     'status.submitted': 'Trimis',
     'status.approved': 'Aprobat',
@@ -276,6 +430,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'status.needsUpdate': 'Necesită Actualizare',
     'status.profileComplete': 'Profil Complet',
     'status.subsidyInProgress': 'Subvenție În Desfășurare',
+    'status.draft': 'Ciornă',
   }
 };
 

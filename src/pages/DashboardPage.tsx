@@ -4,17 +4,20 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
 import { farms } from '@/data/farms';
 import FarmCard from '@/components/FarmCard';
+import ConsultantMetrics from '@/components/ConsultantMetrics';
 import { Button } from '@/components/ui/button';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, SortAsc } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const DashboardPage = () => {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
+  const [sortOption, setSortOption] = useState('name');
 
   // Filter farms based on search query
   const filteredFarms = farms.filter(farm => 
@@ -22,6 +25,20 @@ const DashboardPage = () => {
     farm.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
     farm.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+  
+  // Sort farms based on sort option
+  const sortedFarms = [...filteredFarms].sort((a, b) => {
+    switch (sortOption) {
+      case 'status':
+        return a.status.localeCompare(b.status);
+      case 'region':
+        return a.region.localeCompare(b.region);
+      case 'updated':
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -34,30 +51,54 @@ const DashboardPage = () => {
             <p className="text-gray-600">{t('dashboard.subtitle')}</p>
           </div>
           
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="lg:col-span-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div className="flex items-center space-x-3 w-full md:w-auto">
+                  <div className="relative flex-1 md:w-80">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="Search farms..."
+                      className="pl-10 w-full md:w-80"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="w-40">
+                    <Select value={sortOption} onValueChange={setSortOption}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('dashboard.sortBy')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="region">Region</SelectItem>
+                        <SelectItem value="updated">Last Updated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <Button onClick={() => setIsAddFarmModalOpen(true)}>
+                  <Plus size={18} className="mr-2" />
+                  {t('common.addNewFarm')}
+                </Button>
               </div>
-              <Input
-                type="text"
-                placeholder="Search farms..."
-                className="pl-10 w-full md:w-80"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              
+              <div className="grid sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {sortedFarms.map(farm => (
+                  <FarmCard key={farm.id} farm={farm} />
+                ))}
+              </div>
             </div>
             
-            <Button onClick={() => setIsAddFarmModalOpen(true)}>
-              <Plus size={18} className="mr-2" />
-              {t('common.addNewFarm')}
-            </Button>
-          </div>
-          
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredFarms.map(farm => (
-              <FarmCard key={farm.id} farm={farm} />
-            ))}
+            <div>
+              <ConsultantMetrics />
+            </div>
           </div>
         </div>
       </main>
