@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,12 +62,36 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				agri: {
+					green: '#2E7D32',
+					earth: '#8D6E63',
+					blue: '#42A5F5',
+					gold: '#F9A825',
+				},
+                tag: {
+                    organic: '#4CAF50',
+                    biodiversity: '#81C784',
+                    vineyard: '#8D6E63',
+                    precision: '#42A5F5',
+                    carbon: '#607D8B',
+                    irrigation: '#00ACC1',
+                    solar: '#FFC107',
+                    livestock: '#FF9800',
+                    rotation: '#795548',
+                    composting: '#9E9D24',
+                    sustainability: '#388E3C',
+                    soil: '#5D4037',
+                }
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
+			},
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+				jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
 			},
 			keyframes: {
 				'accordion-down': {
@@ -84,12 +109,38 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' }
+				},
+				'slide-up': {
+					'0%': { transform: 'translateY(10px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' }
+				},
+				typing: {
+					'0%': { width: '0%' },
+					'100%': { width: '100%' }
+				},
+				'cursor-blink': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.5s ease-out',
+				'slide-up': 'slide-up 0.5s ease-out',
+				typing: 'typing 1.5s steps(40, end)',
+				'cursor-blink': 'cursor-blink 1s infinite'
+			},
+			boxShadow: {
+				'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+			},
+			backdropBlur: {
+				glass: '4px',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
