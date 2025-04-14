@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage, TranslationKey } from '@/contexts/LanguageContext';
 
 interface StatusBadgeProps {
   status: string;
@@ -11,8 +11,8 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   const { t } = useLanguage();
   
   // Get translation key for the status
-  const getStatusKey = (status: string) => {
-    const statusMap: Record<string, string> = {
+  const getStatusKey = (status: string): TranslationKey => {
+    const statusMap: Record<string, TranslationKey> = {
       'In Progress': 'status.inProgress',
       'Submitted': 'status.submitted',
       'Approved': 'status.approved',
@@ -22,7 +22,7 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
       'Subsidy In Progress': 'status.subsidyInProgress',
     };
     
-    return statusMap[status] || status;
+    return statusMap[status] || ('status.inProgress' as TranslationKey);
   };
   
   // Get color based on status

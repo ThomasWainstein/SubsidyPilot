@@ -1,3 +1,4 @@
+import { farms } from './farms';
 
 export interface Subsidy {
   id: string;
