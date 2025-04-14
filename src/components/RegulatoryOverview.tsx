@@ -1,5 +1,5 @@
 
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
