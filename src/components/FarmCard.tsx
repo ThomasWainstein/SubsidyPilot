@@ -7,6 +7,7 @@ import TagBadge from './TagBadge';
 import StatusBadge from './StatusBadge';
 import FarmStatusBadge from './FarmStatusBadge';
 import { CalendarDays } from 'lucide-react';
+import { getRandomSubsidies } from '@/data/subsidies';
 
 interface FarmCardProps {
   farm: Farm;
@@ -15,7 +16,6 @@ interface FarmCardProps {
 const FarmCard = ({ farm }: FarmCardProps) => {
   const { t } = useLanguage();
 
-  // Randomly determine which farms have badges (in a real app this would be based on actual farm data)
   // Convert id to number to ensure it works with modulo
   const farmId = typeof farm.id === 'string' ? parseInt(farm.id, 10) : farm.id;
   const showNewSubsidyBadge = farmId % 3 === 0;
@@ -23,8 +23,22 @@ const FarmCard = ({ farm }: FarmCardProps) => {
   const showInReviewBadge = farm.status === 'In Review';
   const showReadyToSubmitBadge = farm.status === 'Profile Complete';
 
+  // Get a random subsidy for the "New Subsidy" badge link
+  const randomSubsidies = getRandomSubsidies(farm.id.toString());
+  const newSubsidyLink = `/farm/${farm.id}/subsidies#${randomSubsidies[0]?.id}`;
+
   return (
-    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg">
+    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg relative">
+      {/* New Subsidy Badge - Positioned absolutely in top right */}
+      {showNewSubsidyBadge && (
+        <Link
+          to={newSubsidyLink}
+          className="absolute top-2 right-2 z-10 animate-pulse" // Initially pulsing
+        >
+          <FarmStatusBadge type="newSubsidy" />
+        </Link>
+      )}
+
       <div className="p-6">
         <div className="flex justify-between items-start">
           <h3 className="text-lg font-semibold text-gray-900 mb-1">{farm.name}</h3>
@@ -47,9 +61,8 @@ const FarmCard = ({ farm }: FarmCardProps) => {
         </div>
 
         {/* Alert badges */}
-        {(showNewSubsidyBadge || showDocumentsRequiredBadge || showInReviewBadge || showReadyToSubmitBadge) && (
+        {(showDocumentsRequiredBadge || showInReviewBadge || showReadyToSubmitBadge) && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {showNewSubsidyBadge && <FarmStatusBadge type="newSubsidy" />}
             {showDocumentsRequiredBadge && <FarmStatusBadge type="documentsRequired" />}
             {showInReviewBadge && <FarmStatusBadge type="inReview" />}
             {showReadyToSubmitBadge && <FarmStatusBadge type="readyToSubmit" />}

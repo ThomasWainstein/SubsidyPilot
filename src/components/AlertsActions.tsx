@@ -1,9 +1,9 @@
 
-import React from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, Calendar, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 const AlertsActions = () => {
   const { t } = useLanguage();
@@ -34,39 +34,60 @@ const AlertsActions = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="updates" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="updates" className="flex items-center gap-1">
+          <TabsList className="grid grid-cols-3 mb-4 bg-gray-100 p-1 gap-1">
+            <TabsTrigger 
+              value="updates" 
+              className={cn(
+                "flex items-center gap-1 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              )}
+            >
               <Bell size={14} />
-              <span className="hidden sm:inline">{t('dashboard.farmUpdateLog')}</span>
+              <span>{t('dashboard.farmUpdateLog')}</span>
             </TabsTrigger>
-            <TabsTrigger value="deadlines" className="flex items-center gap-1">
+            <TabsTrigger 
+              value="deadlines" 
+              className={cn(
+                "flex items-center gap-1 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              )}
+            >
               <Calendar size={14} />
-              <span className="hidden sm:inline">{t('dashboard.upcomingDeadlines')}</span>
+              <span>{t('dashboard.upcomingDeadlines')}</span>
             </TabsTrigger>
-            <TabsTrigger value="reminders" className="flex items-center gap-1">
+            <TabsTrigger 
+              value="reminders" 
+              className={cn(
+                "flex items-center gap-1 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              )}
+            >
               <MessageSquare size={14} />
-              <span className="hidden sm:inline">{t('dashboard.reminders')}</span>
+              <span>{t('dashboard.reminders')}</span>
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="updates" className="mt-0">
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {farmUpdates.map(update => (
-                <div key={update.id} className="p-2 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+                <div 
+                  key={update.id} 
+                  className="p-3 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors text-gray-900"
+                >
                   <p className="text-sm font-medium">{update.farm}</p>
-                  <p className="text-xs text-gray-600">{update.action}</p>
-                  <p className="text-xs text-gray-400 mt-1">{update.timestamp}</p>
+                  <p className="text-sm text-gray-600">{update.action}</p>
+                  <p className="text-xs text-gray-500 mt-1">{update.timestamp}</p>
                 </div>
               ))}
             </div>
           </TabsContent>
           
           <TabsContent value="deadlines" className="mt-0">
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {upcomingDeadlines.map(deadline => (
-                <div key={deadline.id} className="p-2 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
-                  <p className="text-sm font-medium">{deadline.name}</p>
-                  <div className="flex items-center mt-1">
+                <div 
+                  key={deadline.id} 
+                  className="p-3 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                >
+                  <p className="text-sm font-medium text-gray-900">{deadline.name}</p>
+                  <div className="flex items-center mt-2">
                     <div className={`h-2 rounded-full flex-grow ${
                       deadline.daysLeft < 20 ? 'bg-red-200' : 
                       deadline.daysLeft < 30 ? 'bg-yellow-200' : 'bg-green-200'
@@ -76,7 +97,7 @@ const AlertsActions = () => {
                         deadline.daysLeft < 30 ? 'bg-yellow-500' : 'bg-green-500'
                       }`} style={{ width: `${Math.min(100, 100 - (deadline.daysLeft * 2))}%` }}></div>
                     </div>
-                    <span className="text-xs ml-2 font-medium">
+                    <span className="text-xs ml-2 font-medium text-gray-700">
                       {deadline.daysLeft} {t('dashboard.daysLeft')}
                     </span>
                   </div>
@@ -86,10 +107,13 @@ const AlertsActions = () => {
           </TabsContent>
           
           <TabsContent value="reminders" className="mt-0">
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {reminders.map(reminder => (
-                <div key={reminder.id} className="p-2 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
-                  <p className="text-sm">{reminder.message}</p>
+                <div 
+                  key={reminder.id} 
+                  className="p-3 rounded-md bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                >
+                  <p className="text-sm text-gray-900">{reminder.message}</p>
                 </div>
               ))}
             </div>
