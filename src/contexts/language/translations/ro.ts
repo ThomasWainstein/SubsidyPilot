@@ -252,19 +252,5 @@ export const roTranslations: Record<TranslationKey, string> = {
   'common.noSubsidiesFound': 'Nu s-au găsit subvenții potrivite',
   'common.noSubsidiesFoundDesc': 'Nicio subvenție curentă nu se potrivește cu regiunea acestei ferme. Reveniți în curând sau actualizați-vă profilul.',
   'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.',
-  'common.addSubsidy': 'Adaugă Subvenție',
-  'common.importViaUrl': 'Importă prin URL',
-  'common.manualEntry': 'Introducere Manuală',
-  'common.subsidySourceUrl': 'URL Sursă Subvenție',
-  'common.fetchDetails': 'Preia Detalii',
-  'common.saveToFarm': 'Salvează pentru Această Fermă',
-  'common.subsidyName': 'Numele Subvenției',
-  'common.grantAmount': 'Suma Subvenției',
-  'common.matchConfidence': 'Încredere de Potrivire',
-  'common.addAnother': 'Adaugă Încă Unul',
-  'common.uploadSupportingDocument': 'Încarcă Document Justificativ',
-  'common.manuallyAdded': 'Adăugat Manual',
-  'common.fetchingSubsidyData': 'Se preiau datele subvenției...',
-  'common.requiredDocument': 'Document Necesar'
+  'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.'
 };

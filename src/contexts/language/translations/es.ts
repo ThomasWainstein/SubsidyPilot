@@ -252,19 +252,5 @@ export const esTranslations: Record<TranslationKey, string> = {
   'common.noSubsidiesFound': 'No se encontraron subsidios coincidentes',
   'common.noSubsidiesFoundDesc': 'No hay subsidios actuales que coincidan con la región de esta granja. Vuelva pronto o actualice su perfil.',
   'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.',
-  'common.addSubsidy': 'Añadir Subsidio',
-  'common.importViaUrl': 'Importar vía URL',
-  'common.manualEntry': 'Entrada Manual',
-  'common.subsidySourceUrl': 'URL de Fuente de Subsidio',
-  'common.fetchDetails': 'Obtener Detalles',
-  'common.saveToFarm': 'Guardar en Esta Granja',
-  'common.subsidyName': 'Nombre del Subsidio',
-  'common.grantAmount': 'Cantidad de Subsidio',
-  'common.matchConfidence': 'Confianza de Coincidencia',
-  'common.addAnother': 'Añadir Otro',
-  'common.uploadSupportingDocument': 'Subir Documento de Respaldo',
-  'common.manuallyAdded': 'Añadido Manualmente',
-  'common.fetchingSubsidyData': 'Obteniendo datos del subsidio...',
-  'common.requiredDocument': 'Documento Requerido'
+  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.'
 };

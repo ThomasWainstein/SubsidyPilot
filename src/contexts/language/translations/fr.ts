@@ -252,19 +252,5 @@ export const frTranslations: Record<TranslationKey, string> = {
   'common.noSubsidiesFound': 'Aucune subvention correspondante trouvée',
   'common.noSubsidiesFoundDesc': 'Aucune subvention actuelle ne correspond à la région de cette ferme. Revenez bientôt ou mettez à jour votre profil.',
   'common.demoLabel': 'DÉMO',
-  'common.demoDisclaimer': 'Ceci est une version de démonstration d\'AgriTool. Les données, subventions et profils de fermes sont simulés uniquement à des fins de test.',
-  'common.addSubsidy': 'Ajouter Subvention',
-  'common.importViaUrl': 'Importer via URL',
-  'common.manualEntry': 'Saisie Manuelle',
-  'common.subsidySourceUrl': 'URL Source de Subvention',
-  'common.fetchDetails': 'Récupérer Détails',
-  'common.saveToFarm': 'Enregistrer pour Cette Ferme',
-  'common.subsidyName': 'Nom de la Subvention',
-  'common.grantAmount': 'Montant de la Subvention',
-  'common.matchConfidence': 'Confiance de Correspondance',
-  'common.addAnother': 'Ajouter un Autre',
-  'common.uploadSupportingDocument': 'Télécharger Document Justificatif',
-  'common.manuallyAdded': 'Ajouté Manuellement',
-  'common.fetchingSubsidyData': 'Récupération des données de subvention...',
-  'common.requiredDocument': 'Document Requis'
+  'common.demoDisclaimer': 'Ceci est une version de démonstration d\'AgriTool. Les données, subventions et profils de fermes sont simulés uniquement à des fins de test.'
 };
