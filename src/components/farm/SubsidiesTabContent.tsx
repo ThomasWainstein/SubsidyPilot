@@ -1,11 +1,8 @@
-
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 import { getRandomSubsidies } from '@/data/subsidies';
-import FarmCardApplyButton from '@/components/FarmCardApplyButton';
-import { BarChart4, Clock, DollarSign, Globe, Hash, Percent, AlertTriangle } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { farms } from '@/data/farms';
 
 interface SubsidiesTabContentProps {
@@ -17,22 +14,15 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   const farmSubsidies = getRandomSubsidies(farmId);
   const farm = farms.find(f => f.id === farmId);
   
-  // Get farm's country
   const getFarmCountry = () => {
-    if (!farm) return "France"; // Default
-    
-    const region = farm.region;
-    if (region.includes(",")) {
-      return region.split(",")[1].trim();
-    }
-    return "France"; // Default to France for regions without explicit country
+    if (!farm?.region) return "France";
+    const parts = farm.region.split(",");
+    return parts.length > 1 ? parts[1].trim() : "France";
   };
   
-  // Filter subsidies that match the farm's country
   const matchedSubsidies = farmSubsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
     
-    // Check if subsidy is eligible for farm's country
     if (Array.isArray(subsidy.region)) {
       return subsidy.region.some(r => r.includes(farmCountry));
     }

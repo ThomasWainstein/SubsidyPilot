@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,31 +18,31 @@ const FarmProfilePage = () => {
   const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
 
-  // Find farm data
   const farm = farms.find(f => f.id === id);
   if (!farm) return <div>Farm not found</div>;
 
-  // Handle assistant input
+  const formatRegion = (region: string) => {
+    if (region.includes(',')) return region;
+    return `${region}, France`;
+  };
+
   const handleAssistantSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!assistantInput.trim()) return;
     
-    // Simulate typing animation
     setIsTyping(true);
     setAssistantResponse('');
     
-    // Simulate response after a delay
     setTimeout(() => {
       setAssistantResponse(t('farm.assistantResponse'));
       setIsTyping(false);
     }, 1500);
     
-    // Clear input
     setAssistantInput('');
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <Navbar />
       
       <main className="flex-grow py-8">
@@ -51,13 +50,16 @@ const FarmProfilePage = () => {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{farm.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{farm.name}</h1>
                 <div className="flex items-center mt-2 gap-2">
                   <StatusBadge status={farm.status} />
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     <CalendarDays size={14} className="inline mr-1" />
                     {t('common.lastUpdated')}: {farm.updatedAt}
                   </span>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  {formatRegion(farm.region)}
                 </div>
               </div>
             </div>

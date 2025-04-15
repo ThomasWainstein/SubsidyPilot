@@ -1,4 +1,3 @@
-
 import { Bell, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language';
@@ -36,7 +35,6 @@ const FarmAlertsDropdown = ({
   const isMobile = useIsMobile();
   const [position, setPosition] = useState({ top: true, right: true });
 
-  // Check if dropdown would go off-screen and adjust position
   useEffect(() => {
     if (isOpen && alertsRef.current) {
       const rect = alertsRef.current.getBoundingClientRect();
@@ -44,12 +42,10 @@ const FarmAlertsDropdown = ({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      // Check horizontal position
-      const dropdownWidth = 280; // Width of dropdown
-      const willOverflowRight = (parentRect.right + dropdownWidth) > viewportWidth;
-      
-      // Check vertical position
+      const dropdownWidth = 280;
       const dropdownHeight = rect.height;
+      
+      const willOverflowRight = (parentRect.right + dropdownWidth) > viewportWidth;
       const willOverflowBottom = (parentRect.bottom + dropdownHeight) > viewportHeight;
       
       setPosition({
@@ -74,17 +70,17 @@ const FarmAlertsDropdown = ({
 
   const getDropdownPositionClass = () => {
     if (isMobile) {
-      return 'left-0 top-full mt-2 w-full';
+      return 'fixed left-4 right-4 top-20';
     }
     
     if (position.top && position.right) {
-      return 'right-0 top-full mt-2';
+      return 'absolute right-0 top-full mt-2';
     } else if (position.top && !position.right) {
-      return 'left-0 top-full mt-2';
+      return 'absolute left-0 top-full mt-2';
     } else if (!position.top && position.right) {
-      return 'right-0 bottom-full mb-2';
+      return 'absolute right-0 bottom-full mb-2';
     } else {
-      return 'left-0 bottom-full mb-2';
+      return 'absolute left-0 bottom-full mb-2';
     }
   };
 
@@ -92,19 +88,20 @@ const FarmAlertsDropdown = ({
     <div className="relative" ref={alertsRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+        className="relative flex items-center text-gray-500 hover:text-gray-700 transition-colors"
         aria-label="Notifications"
       >
         <Bell size={18} className="text-gray-600" />
-        <div className={`absolute -top-2 -right-2 flex items-center justify-center w-4 h-4 bg-red-500 dark:bg-red-600 text-white text-xs font-bold rounded-full ${isNewAlert ? 'animate-pulse' : ''}`}>
-          {alertCount}
-        </div>
+        {alertCount > 0 && (
+          <div className={`absolute -top-2 -right-2 flex items-center justify-center w-4 h-4 bg-red-500 dark:bg-red-600 text-white text-xs font-bold rounded-full ${isNewAlert ? 'animate-pulse' : ''}`}>
+            {alertCount}
+          </div>
+        )}
       </button>
       
       {isOpen && (
         <Card 
-          className={`fixed sm:absolute ${getDropdownPositionClass()} z-[100] shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-slide-up w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white`}
-          style={{ transform: 'translateY(0)', transition: 'opacity 0.2s ease-out, transform 0.2s ease-out' }}
+          className={`${getDropdownPositionClass()} z-50 shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white before:content-[''] before:absolute before:w-3 before:h-3 before:rotate-45 before:bg-white dark:before:bg-slate-800 ${position.top ? 'before:-top-1.5' : 'before:-bottom-1.5'} ${position.right ? 'before:right-[18px]' : 'before:left-[18px]'}`}
         >
           <div className="flex justify-between items-center mb-2 px-3 pt-3">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('common.alerts')}</h4>

@@ -36,7 +36,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
     setIsProcessing(true);
     setUploadProgress(0);
 
-    // Simulate progress
+    // Simulate OCR progress
     for (let i = 0; i <= 100; i += 10) {
       await new Promise(resolve => setTimeout(resolve, 200));
       setUploadProgress(i);
@@ -55,10 +55,11 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
     }
 
     // Success case
+    await new Promise(resolve => setTimeout(resolve, 500));
     const newDoc = {
       id: `d${Date.now()}`,
       name: file.name,
-      type: 'PDF',
+      type: file.name.split('.').pop()?.toUpperCase() || 'PDF',
       tag: 'Land Certificate',
       uploadedAt: new Date().toISOString().split('T')[0],
     };
@@ -68,7 +69,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
     
     toast({
       title: t('messages.documentUploaded'),
-      description: t('messages.documentUploadedDesc'),
+      description: `${file.name} processed successfully`,
     });
     
     onUploadSuccess(newDoc);
