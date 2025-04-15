@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const enTranslations: Record<TranslationKey, string> = {
@@ -53,6 +52,7 @@ export const enTranslations: Record<TranslationKey, string> = {
   'common.software': 'Software Used',
   'common.deadlineApproaching': 'Deadline Approaching',
   'common.alerts': 'Alerts',
+  'common.noAlerts': 'No alerts at this time',
   'home.title': 'AgriTool',
   'home.tagline': 'Manage your entire farm portfolio with AgriTool.',
   'dashboard.title': 'Consultant Dashboard',

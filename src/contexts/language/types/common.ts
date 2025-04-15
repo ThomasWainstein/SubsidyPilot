@@ -50,4 +50,5 @@ export type CommonTranslationKey =
   | 'common.region'
   | 'common.size'
   | 'common.activities'
-  | 'common.software';
+  | 'common.software'
+  | 'common.noAlerts';
