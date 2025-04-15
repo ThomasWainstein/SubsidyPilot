@@ -1,4 +1,3 @@
-
 import { Farm } from '@/data/farms';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language';
@@ -22,7 +21,6 @@ const FarmCard = ({ farm }: FarmCardProps) => {
   const [areTagsCollapsed, setAreTagsCollapsed] = useState(true);
   const alertsRef = useRef<HTMLDivElement>(null);
   
-  // Handle clicks outside of the alerts dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (alertsRef.current && !alertsRef.current.contains(event.target as Node)) {
@@ -65,15 +63,12 @@ const FarmCard = ({ farm }: FarmCardProps) => {
   const showInReviewBadge = farm.status === 'In Review';
   const showReadyToSubmitBadge = farm.status === 'Profile Complete';
 
-  // Check if we need to collapse tags
   const shouldCollapseTags = farm.tags.length > 2;
   
-  // Get visible tags based on collapsed state
   const visibleTags = areTagsCollapsed && shouldCollapseTags 
     ? farm.tags.slice(0, 2) 
     : farm.tags;
   
-  // Get hidden tags count
   const hiddenTagsCount = shouldCollapseTags ? farm.tags.length - 2 : 0;
 
   return (
@@ -95,7 +90,7 @@ const FarmCard = ({ farm }: FarmCardProps) => {
                 </button>
                 
                 {isAlertsOpen && (
-                  <div className="alerts-dropdown">
+                  <div className="alerts-dropdown z-50 absolute right-0 top-full mt-2 shadow-lg">
                     <div className="flex justify-between items-center mb-2 px-2">
                       <h4 className="text-sm font-medium text-gray-900">{t('common.alerts')}</h4>
                       <button 
