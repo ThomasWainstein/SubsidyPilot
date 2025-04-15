@@ -1,3 +1,4 @@
+
 import { Bell, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language';
@@ -34,6 +35,19 @@ const FarmAlertsDropdown = ({
   const alertsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [position, setPosition] = useState({ top: true, right: true });
+  
+  // Auto-close dropdown after 10 seconds
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      timer = setTimeout(() => {
+        setIsOpen(false);
+      }, 10000); // 10 seconds
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isOpen, setIsOpen]);
 
   useEffect(() => {
     if (isOpen && alertsRef.current) {
@@ -91,7 +105,7 @@ const FarmAlertsDropdown = ({
         className="relative flex items-center text-gray-500 hover:text-gray-700 transition-colors"
         aria-label="Notifications"
       >
-        <Bell size={18} className="text-gray-600" />
+        <Bell size={18} className="text-gray-600 dark:text-gray-300" />
         {alertCount > 0 && (
           <div className={`absolute -top-2 -right-2 flex items-center justify-center w-4 h-4 bg-red-500 dark:bg-red-600 text-white text-xs font-bold rounded-full ${isNewAlert ? 'animate-pulse' : ''}`}>
             {alertCount}
@@ -101,7 +115,7 @@ const FarmAlertsDropdown = ({
       
       {isOpen && (
         <Card 
-          className={`${getDropdownPositionClass()} z-50 shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white before:content-[''] before:absolute before:w-3 before:h-3 before:rotate-45 before:bg-white dark:before:bg-slate-800 ${position.top ? 'before:-top-1.5' : 'before:-bottom-1.5'} ${position.right ? 'before:right-[18px]' : 'before:left-[18px]'}`}
+          className={`${getDropdownPositionClass()} z-50 shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white transition-all duration-200 before:content-[''] before:absolute before:w-3 before:h-3 before:rotate-45 before:bg-white dark:before:bg-slate-800 ${position.top ? 'before:-top-1.5' : 'before:-bottom-1.5'} ${position.right ? 'before:right-[18px]' : 'before:left-[18px]'}`}
         >
           <div className="flex justify-between items-center mb-2 px-3 pt-3">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('common.alerts')}</h4>
