@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText, PenTool } from 'lucide-react';
-import { getRandomSubsidies } from '@/data/subsidies';
+import { Subsidy, getRandomSubsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
 import FarmCardApplyButton from '@/components/FarmCardApplyButton';
