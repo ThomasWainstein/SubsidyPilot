@@ -69,12 +69,12 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1">
               <Plus size={16} />
-              Add New Subsidy
+              {t('common.addNewSubsidy')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Add New Subsidy</DialogTitle>
+              <DialogTitle>{t('common.addNewSubsidy')}</DialogTitle>
               <DialogDescription>
                 Add a new subsidy opportunity for this farm either by importing from a URL or entering details manually.
               </DialogDescription>

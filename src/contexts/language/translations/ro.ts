@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -53,6 +52,12 @@ export const roTranslations: Record<TranslationKey, string> = {
   'common.size': 'Mărime',
   'common.activities': 'Activități',
   'common.software': 'Software Utilizat',
+  'common.noAlerts': 'Nicio alertă momentan',
+  'common.noSubsidiesFound': 'Nu s-au găsit subvenții potrivite',
+  'common.noSubsidiesFoundDesc': 'Nicio subvenție curentă nu se potrivește cu regiunea acestei ferme. Reveniți în curând sau actualizați-vă profilul.',
+  'common.demoLabel': 'DEMO',
+  'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.',
+  'common.addNewSubsidy': 'Adaugă Subvenție Nouă',
   'home.title': 'AgriTool',
   'home.tagline': 'Gestionează întregul portofoliu agricol cu AgriTool.',
   'dashboard.title': 'Panou Consultant',
@@ -248,9 +253,6 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
   'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
-  'common.noAlerts': 'Nicio alertă momentan',
-  'common.noSubsidiesFound': 'Nu s-au găsit subvenții potrivite',
-  'common.noSubsidiesFoundDesc': 'Nicio subvenție curentă nu se potrivește cu regiunea acestei ferme. Reveniți în curând sau actualizați-vă profilul.',
   'common.demoLabel': 'DEMO',
   'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.'
 };

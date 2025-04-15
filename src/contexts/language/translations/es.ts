@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const esTranslations: Record<TranslationKey, string> = {
@@ -53,6 +52,12 @@ export const esTranslations: Record<TranslationKey, string> = {
   'common.size': 'Tamaño',
   'common.activities': 'Actividades',
   'common.software': 'Software Utilizado',
+  'common.noAlerts': 'Sin alertas en este momento',
+  'common.noSubsidiesFound': 'No se encontraron subsidios coincidentes',
+  'common.noSubsidiesFoundDesc': 'No hay subsidios actuales que coincidan con la región de esta granja. Vuelva pronto o actualice su perfil.',
+  'common.demoLabel': 'DEMO',
+  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.',
+  'common.addNewSubsidy': 'Añadir Nuevo Subsidio',
   'home.title': 'AgriTool',
   'home.tagline': 'Gestiona toda tu cartera agrícola con AgriTool.',
   'dashboard.title': 'Panel del Consultor',
@@ -248,9 +253,7 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
   'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
-  'common.noAlerts': 'Sin alertas en este momento',
-  'common.noSubsidiesFound': 'No se encontraron subsidios coincidentes',
-  'common.noSubsidiesFoundDesc': 'No hay subsidios actuales que coincidan con la región de esta granja. Vuelva pronto o actualice su perfil.',
   'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.'
+  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.',
+  'common.addNewSubsidy': 'Añadir Nuevo Subsidio',
 };
