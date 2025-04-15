@@ -45,4 +45,5 @@ export type CommonTranslationKey =
   | 'common.newSubsidyAvailable'
   | 'common.documentsRequired'
   | 'common.inReview'
-  | 'common.deadlineApproaching';
+  | 'common.deadlineApproaching'
+  | 'common.alerts';

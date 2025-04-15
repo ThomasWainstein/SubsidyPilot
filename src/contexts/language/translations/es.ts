@@ -231,5 +231,6 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
   'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
-  'common.deadlineApproaching': 'Fecha Límite Próxima'
+  'common.deadlineApproaching': 'Fecha Límite Próxima',
+  'common.alerts': 'Alertas'
 };

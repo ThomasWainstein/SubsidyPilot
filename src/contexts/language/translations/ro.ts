@@ -231,5 +231,6 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
   'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
-  'common.deadlineApproaching': 'Termen Limită Apropiat'
+  'common.deadlineApproaching': 'Termen Limită Apropiat',
+  'common.alerts': 'Alerte'
 };

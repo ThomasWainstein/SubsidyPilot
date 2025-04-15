@@ -231,5 +231,6 @@ export const frTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
   'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
-  'common.deadlineApproaching': 'Date Limite Approchante'
+  'common.deadlineApproaching': 'Date Limite Approchante',
+  'common.alerts': 'Alertes'
 };

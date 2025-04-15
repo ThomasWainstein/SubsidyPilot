@@ -231,5 +231,6 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Settings',
   'nav.logout': 'Logout',
   'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
-  'common.deadlineApproaching': 'Deadline Approaching'
+  'common.deadlineApproaching': 'Deadline Approaching',
+  'common.alerts': 'Alerts'
 };
