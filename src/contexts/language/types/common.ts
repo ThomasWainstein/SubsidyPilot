@@ -53,4 +53,7 @@ export type CommonTranslationKey =
   | 'common.software'
   | 'common.noAlerts'
   | 'common.noSubsidiesFound'
-  | 'common.noSubsidiesFoundDesc';
+  | 'common.noSubsidiesFoundDesc'
+  | 'common.demoLabel'
+  | 'common.demoDisclaimer';
+

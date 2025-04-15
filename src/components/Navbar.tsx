@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage, Language } from '../contexts/LanguageContext';
 import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User } from 'lucide-react';
@@ -11,6 +10,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -31,7 +36,6 @@ const Navbar = () => {
     ro: '🇷🇴',
   };
   
-  // Check if we're on the homepage
   const isHomePage = location.pathname === '/';
   
   const handleBack = () => {
@@ -66,6 +70,18 @@ const Navbar = () => {
                 </div>
                 <span className="text-xl font-bold text-gray-900">AgriTool</span>
               </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold uppercase">
+                      {t('common.demoLabel')}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>This version is for demonstration only</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
@@ -85,7 +101,6 @@ const Navbar = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            {/* Plan Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="hidden md:flex items-center">
@@ -102,7 +117,6 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="flex items-center">
@@ -128,7 +142,6 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="ml-2">
