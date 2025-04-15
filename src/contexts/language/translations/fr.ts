@@ -196,7 +196,7 @@ export const frTranslations: Record<TranslationKey, string> = {
   'messages.remaining': 'restants',
   'euportal.title': 'Subvention pour l\'Amélioration de l\'Irrigation Intelligente',
   'euportal.subtitle': 'Formulaire de Demande - Référence : EAGF/IRR/2024/03',
-  'euportal.header': 'Fonds Européen Agricole de Garantie',
+  'euportal.header': 'Fonds Europ��en Agricole de Garantie',
   'euportal.portalId': 'ID du Portail : EAGF-24-ONLINE',
   'euportal.applicantInfo': 'Informations sur le Demandeur',
   'euportal.applicantInfoDesc': 'Veuillez fournir des informations précises sur votre ferme.',

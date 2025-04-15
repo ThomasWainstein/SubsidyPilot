@@ -254,5 +254,6 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.logout': 'Logout',
   'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
   'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'This is a demonstration version of AgriTool. Data, subsidies, and farm profiles are simulated for testing purposes only.'
+  'common.demoDisclaimer': 'This is a demonstration version of AgriTool. Data, subsidies, and farm profiles are simulated for testing purposes only.',
+  'common.addNewSubsidy': 'Add New Subsidy'
 };
