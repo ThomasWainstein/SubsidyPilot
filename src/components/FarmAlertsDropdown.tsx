@@ -49,26 +49,39 @@ const FarmAlertsDropdown = ({
     };
   }, [isOpen, setIsOpen]);
 
+  // Check position on mount and resize
   useEffect(() => {
-    if (isOpen && alertsRef.current) {
-      const rect = alertsRef.current.getBoundingClientRect();
-      const parentRect = alertsRef.current.parentElement?.getBoundingClientRect() || new DOMRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      const dropdownWidth = 280;
-      const dropdownHeight = rect.height;
-      
-      const willOverflowRight = (parentRect.right + dropdownWidth) > viewportWidth;
-      const willOverflowBottom = (parentRect.bottom + dropdownHeight) > viewportHeight;
-      
-      setPosition({
-        right: !willOverflowRight,
-        top: !willOverflowBottom
-      });
-    }
+    const checkPosition = () => {
+      if (isOpen && alertsRef.current) {
+        const rect = alertsRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Width of the dropdown
+        const dropdownWidth = 280;
+        
+        // Estimate the dropdown height (it can vary)
+        const dropdownHeight = 300;
+        
+        const willOverflowRight = (rect.right + dropdownWidth - 40) > viewportWidth;
+        const willOverflowBottom = (rect.bottom + dropdownHeight) > viewportHeight;
+        
+        setPosition({
+          right: !willOverflowRight,
+          top: !willOverflowBottom
+        });
+      }
+    };
+    
+    checkPosition();
+    
+    window.addEventListener('resize', checkPosition);
+    return () => {
+      window.removeEventListener('resize', checkPosition);
+    };
   }, [isOpen]);
 
+  // Handle clicks outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (alertsRef.current && !alertsRef.current.contains(event.target as Node)) {
@@ -115,7 +128,7 @@ const FarmAlertsDropdown = ({
       
       {isOpen && (
         <Card 
-          className={`${getDropdownPositionClass()} z-50 shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white transition-all duration-200 before:content-[''] before:absolute before:w-3 before:h-3 before:rotate-45 before:bg-white dark:before:bg-slate-800 ${position.top ? 'before:-top-1.5' : 'before:-bottom-1.5'} ${position.right ? 'before:right-[18px]' : 'before:left-[18px]'}`}
+          className={`${getDropdownPositionClass()} z-50 shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white transition-all duration-200`}
         >
           <div className="flex justify-between items-center mb-2 px-3 pt-3">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('common.alerts')}</h4>
@@ -132,7 +145,7 @@ const FarmAlertsDropdown = ({
             {showNewSubsidyBadge && (
               <Link to={newSubsidyLink} className="block no-underline" onClick={() => setIsOpen(false)}>
                 <div className="p-3 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-emerald-700 dark:text-emerald-300 break-words whitespace-normal">{t('common.newSubsidyAvailable')}</span>
+                  <span className="font-medium text-emerald-700 dark:text-emerald-300 break-words whitespace-normal block">{t('common.newSubsidyAvailable')}</span>
                   <span className="block text-emerald-600 dark:text-emerald-400 mt-1 text-xs opacity-80">1 hour ago</span>
                 </div>
               </Link>
@@ -141,7 +154,7 @@ const FarmAlertsDropdown = ({
             {showDocumentsRequiredBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
                 <div className="p-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-red-700 dark:text-red-300 break-words whitespace-normal">{t('common.documentsRequired')}</span>
+                  <span className="font-medium text-red-700 dark:text-red-300 break-words whitespace-normal block">{t('common.documentsRequired')}</span>
                   <span className="block text-red-600 dark:text-red-400 mt-1 text-xs opacity-80">2 days ago</span>
                 </div>
               </Link>
@@ -150,7 +163,7 @@ const FarmAlertsDropdown = ({
             {showInReviewBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
                 <div className="p-3 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-yellow-700 dark:text-yellow-300 break-words whitespace-normal">{t('common.inReview')}</span>
+                  <span className="font-medium text-yellow-700 dark:text-yellow-300 break-words whitespace-normal block">{t('common.inReview')}</span>
                   <span className="block text-yellow-600 dark:text-yellow-400 mt-1 text-xs opacity-80">3 days ago</span>
                 </div>
               </Link>
@@ -159,7 +172,7 @@ const FarmAlertsDropdown = ({
             {showReadyToSubmitBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
                 <div className="p-3 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-green-700 dark:text-green-300 break-words whitespace-normal">{t('common.readyToSubmit')}</span>
+                  <span className="font-medium text-green-700 dark:text-green-300 break-words whitespace-normal block">{t('common.readyToSubmit')}</span>
                   <span className="block text-green-600 dark:text-green-400 mt-1 text-xs opacity-80">4 hours ago</span>
                 </div>
               </Link>
