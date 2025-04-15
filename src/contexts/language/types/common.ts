@@ -46,4 +46,8 @@ export type CommonTranslationKey =
   | 'common.documentsRequired'
   | 'common.inReview'
   | 'common.deadlineApproaching'
-  | 'common.alerts';
+  | 'common.alerts'
+  | 'common.region'
+  | 'common.size'
+  | 'common.activities'
+  | 'common.software';

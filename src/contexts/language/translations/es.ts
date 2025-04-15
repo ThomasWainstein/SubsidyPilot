@@ -232,5 +232,17 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.logout': 'Cerrar sesión',
   'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
   'common.deadlineApproaching': 'Fecha Límite Próxima',
-  'common.alerts': 'Alertas'
+  'common.alerts': 'Alertas',
+  'farm.regionOpportunityScore': 'Puntuación de Oportunidad Regional',
+  'farm.grantDensity': 'Densidad de Subvenciones',
+  'farm.politicalFriendliness': 'Amigabilidad Política',
+  'farm.recentApprovals': 'Aprobaciones Recientes',
+  'farm.high': 'Alto',
+  'farm.medium': 'Medio',
+  'farm.veryHigh': 'Muy Alto',
+  'farm.low': 'Bajo',
+  'farm.region': 'Región',
+  'farm.size': 'Tamaño',
+  'farm.activities': 'Actividades',
+  'farm.software': 'Software Utilizado'
 };

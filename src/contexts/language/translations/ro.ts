@@ -234,5 +234,17 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.logout': 'Deconectare',
   'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
   'common.deadlineApproaching': 'Termen Limită Apropiat',
-  'common.alerts': 'Alerte'
+  'common.alerts': 'Alerte',
+  'farm.regionOpportunityScore': 'Scor de Oportunitate Regională',
+  'farm.grantDensity': 'Densitate de Granturi',
+  'farm.politicalFriendliness': 'Prietenie Politică',
+  'farm.recentApprovals': 'Aprobări Recente',
+  'farm.high': 'Ridicat',
+  'farm.medium': 'Mediu',
+  'farm.veryHigh': 'Foarte Ridicat',
+  'farm.low': 'Scăzut',
+  'farm.region': 'Regiune',
+  'farm.size': 'Mărime',
+  'farm.activities': 'Activități',
+  'farm.software': 'Software Utilizat'
 };
