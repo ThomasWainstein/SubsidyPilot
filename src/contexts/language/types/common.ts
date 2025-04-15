@@ -51,4 +51,6 @@ export type CommonTranslationKey =
   | 'common.size'
   | 'common.activities'
   | 'common.software'
-  | 'common.noAlerts';
+  | 'common.noAlerts'
+  | 'common.noSubsidiesFound'
+  | 'common.noSubsidiesFoundDesc';

@@ -247,5 +247,7 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
   'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
-  'common.noAlerts': 'Nicio alertă momentan'
+  'common.noAlerts': 'Nicio alertă momentan',
+  'common.noSubsidiesFound': 'Nu s-au găsit subvenții potrivite',
+  'common.noSubsidiesFoundDesc': 'Nicio subvenție curentă nu se potrivește cu regiunea acestei ferme. Reveniți în curând sau actualizați-vă profilul.',
 };

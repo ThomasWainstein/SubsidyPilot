@@ -247,5 +247,7 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
   'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
-  'common.noAlerts': 'Sin alertas en este momento'
+  'common.noAlerts': 'Sin alertas en este momento',
+  'common.noSubsidiesFound': 'No se encontraron subsidios coincidentes',
+  'common.noSubsidiesFoundDesc': 'No hay subsidios actuales que coincidan con la región de esta granja. Vuelva pronto o actualice su perfil.',
 };

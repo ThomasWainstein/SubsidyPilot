@@ -247,5 +247,7 @@ export const frTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
   'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
-  'common.noAlerts': 'Aucune alerte pour le moment'
+  'common.noAlerts': 'Aucune alerte pour le moment',
+  'common.noSubsidiesFound': 'Aucune subvention correspondante trouvée',
+  'common.noSubsidiesFoundDesc': 'Aucune subvention actuelle ne correspond à la région de cette ferme. Revenez bientôt ou mettez à jour votre profil.'
 };
