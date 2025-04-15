@@ -2,7 +2,7 @@
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertTriangle, Percent, Clock, Globe, Hash, DollarSign } from 'lucide-react';
+import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent } from 'lucide-react';
 import { getRandomSubsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
@@ -39,10 +39,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     return subsidy.region.includes(farmCountry) || subsidy.region === "EU-wide";
   });
 
-  // Special case: If farm is "EcoHof Reinhardt", show no matching subsidies
-  if (farm?.name === "EcoHof Reinhardt") {
-    matchedSubsidies = [];
-  }
+  // Removed the special case for "EcoHof Reinhardt" to ensure all farms show subsidies
 
   return (
     <Card>
@@ -107,9 +104,9 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
         ) : (
           <div className="p-6 border rounded-lg border-dashed text-center bg-gray-50 dark:bg-gray-800">
             <AlertTriangle className="mx-auto mb-3 text-amber-500 h-8 w-8" />
-            <h3 className="text-lg font-medium mb-2 dark:text-white">{t('common.noSubsidiesFound') || 'No matching subsidies found'}</h3>
+            <h3 className="text-lg font-medium mb-2 dark:text-white">{t('common.noSubsidiesFound')}</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              {t('common.noSubsidiesFoundDesc') || 'No current subsidies match this farm\'s region. Check back soon or update your profile.'}
+              {t('common.noSubsidiesFoundDesc')}
             </p>
           </div>
         )}
