@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileUp, File, FileText, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { File, FileText, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { farmDocuments, FarmDocument } from '@/data/farms';
 import { toast } from '@/components/ui/use-toast';
+import { DropzoneUpload } from '@/components/document/DropzoneUpload';
 
 interface DocumentVaultProps {
   farmId: string;
@@ -29,24 +30,12 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
     }
   };
   
-  // Simulate document upload
-  const handleUpload = () => {
-    const newDoc: FarmDocument = {
-      id: `d${Date.now()}`,
-      name: 'NewDocument.pdf',
-      type: 'PDF',
-      tag: 'Sustainability',
-      uploadedAt: new Date().toISOString().split('T')[0],
-    };
-    
+  // Handle successful upload
+  const handleUploadSuccess = (newDoc: FarmDocument) => {
     setDocuments(prev => [...prev, newDoc]);
-    toast({
-      title: t('messages.documentUploaded'),
-      description: t('messages.documentUploadedDesc'),
-    });
   };
   
-  // Simulate document delete
+  // Handle document delete
   const handleDelete = (id: string) => {
     setDocuments(prev => prev.filter(doc => doc.id !== id));
     toast({
@@ -61,19 +50,14 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
         <CardTitle>{t('farm.documentTitle')}</CardTitle>
         <CardDescription>{t('farm.documentSubtitle')}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <Button onClick={handleUpload} className="w-full">
-            <FileUp size={16} className="mr-2" />
-            {t('common.upload')}
-          </Button>
-        </div>
+      <CardContent className="space-y-6">
+        <DropzoneUpload onUploadSuccess={handleUploadSuccess} />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {documents.map((doc) => (
             <div 
               key={doc.id} 
-              className="p-3 border rounded-lg bg-white shadow-sm flex items-center justify-between"
+              className="p-3 border rounded-lg bg-white shadow-sm flex items-center justify-between animate-fade-in"
             >
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded bg-gray-100">
