@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -250,4 +251,6 @@ export const roTranslations: Record<TranslationKey, string> = {
   'common.noAlerts': 'Nicio alertă momentan',
   'common.noSubsidiesFound': 'Nu s-au găsit subvenții potrivite',
   'common.noSubsidiesFoundDesc': 'Nicio subvenție curentă nu se potrivește cu regiunea acestei ferme. Reveniți în curând sau actualizați-vă profilul.',
+  'common.demoLabel': 'DEMO',
+  'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.'
 };

@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const frTranslations: Record<TranslationKey, string> = {
@@ -249,5 +250,7 @@ export const frTranslations: Record<TranslationKey, string> = {
   'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
   'common.noAlerts': 'Aucune alerte pour le moment',
   'common.noSubsidiesFound': 'Aucune subvention correspondante trouvée',
-  'common.noSubsidiesFoundDesc': 'Aucune subvention actuelle ne correspond à la région de cette ferme. Revenez bientôt ou mettez à jour votre profil.'
+  'common.noSubsidiesFoundDesc': 'Aucune subvention actuelle ne correspond à la région de cette ferme. Revenez bientôt ou mettez à jour votre profil.',
+  'common.demoLabel': 'DÉMO',
+  'common.demoDisclaimer': 'Ceci est une version de démonstration d\'AgriTool. Les données, subventions et profils de fermes sont simulés uniquement à des fins de test.'
 };
