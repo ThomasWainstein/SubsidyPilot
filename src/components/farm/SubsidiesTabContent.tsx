@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,6 +34,7 @@ interface RequiredDocument {
 
 interface SubsidyFormValues {
   name: string;
+  description: string;
   region: string;
   deadline: Date;
   grant: string;
@@ -70,6 +70,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   const form = useForm<SubsidyFormValues>({
     defaultValues: {
       name: '',
+      description: '',
       region: '',
       deadline: new Date(),
       grant: '',
@@ -83,19 +84,16 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   
   const getFarmCountry = () => {
     if (!farm?.region) return "France";
-    // If region already contains country (e.g., "Bayern, Germany"), extract it
     if (farm.region.includes(',')) {
       const parts = farm.region.split(",");
       return parts.length > 1 ? parts[1].trim() : "France";
     }
-    // Default to France for French regions without explicit country
     return "France";
   };
   
   let matchedSubsidies = farmSubsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
     
-    // Handle both string and array region fields
     if (Array.isArray(subsidy.region)) {
       return subsidy.region.some(r => r.includes(farmCountry));
     }
@@ -108,11 +106,11 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     
     setIsFetching(true);
     
-    // Simulate API call with timeout
     setTimeout(() => {
       const mockSubsidy = {
         id: uuidv4(),
         name: "Green Infrastructure Grant",
+        description: "Financial support for implementing green infrastructure projects on farms to enhance sustainability and reduce environmental impact.",
         region: "France",
         deadline: "2025-06-30",
         grant: "Up to €75,000",
@@ -163,6 +161,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     const newSubsidy = {
       id: uuidv4(),
       name: data.name,
+      description: data.description,
       region: data.region,
       deadline: format(data.deadline, 'yyyy-MM-dd'),
       grant: data.grant,
@@ -178,12 +177,10 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     setIsAddSubsidyOpen(false);
   };
 
-  // Recalculate matched subsidies when farmSubsidies change
   React.useEffect(() => {
     matchedSubsidies = farmSubsidies.filter(subsidy => {
       const farmCountry = getFarmCountry();
       
-      // Handle both string and array region fields
       if (Array.isArray(subsidy.region)) {
         return subsidy.region.some(r => r.includes(farmCountry));
       }
