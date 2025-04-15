@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -73,6 +72,7 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
                 {farm.size}
               </dd>
             </div>
+            
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900">{t('form.staff')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
@@ -91,12 +91,14 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
                 {farm.certifications.join(', ')}
               </dd>
             </div>
+            
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900">{t('common.activities')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.activities.join(', ')}
               </dd>
             </div>
+            
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900 flex items-center">
                 {t('form.carbonScore')}
@@ -124,6 +126,7 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
                 {farm.irrigationMethod}
               </dd>
             </div>
+            
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900">{t('common.software')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
