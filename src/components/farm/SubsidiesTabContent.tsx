@@ -249,6 +249,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                         {t('common.manuallyAdded')}
                       </Badge>
                     </div>
+                    <p className="text-sm text-gray-600">{fetchedSubsidy.description}</p>
                     <div className="text-sm grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-1">
                         <Globe size={14} className="text-gray-500" />
@@ -271,7 +272,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                     <div className="mt-2">
                       <p className="text-sm font-medium mb-1">{t('common.documentsRequired')}:</p>
                       <ul className="text-sm list-disc pl-5">
-                        {fetchedSubsidy.documentsRequired.map((doc: string, index: number) => (
+                        {fetchedSubsidy.documentsRequired?.map((doc: string, index: number) => (
                           <li key={index}>{doc}</li>
                         ))}
                       </ul>
@@ -294,6 +295,15 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                           id="subsidy-name" 
                           {...form.register('name')}
                           required
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="subsidy-description">Description</Label>
+                        <Input 
+                          id="subsidy-description" 
+                          {...form.register('description')}
+                          placeholder="Brief description of the subsidy"
                         />
                       </div>
                       
@@ -481,7 +491,9 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                     <div className="flex items-center">
                       <Globe size={16} className="mr-2 text-gray-500 dark:text-gray-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">{t('subsidies.regionEligibility')}:</span>
-                      <span className="text-sm font-medium ml-auto dark:text-white">{subsidy.region}</span>
+                      <span className="text-sm font-medium ml-auto dark:text-white">
+                        {Array.isArray(subsidy.region) ? subsidy.region.join(', ') : subsidy.region}
+                      </span>
                     </div>
                     
                     <div className="flex items-center">
