@@ -16,4 +16,11 @@ export type FarmTranslationKey =
   | 'farm.ecoSchemeEligibility'
   | 'farm.aiUpdates'
   | 'farm.aiUpdateInitial'
-  | 'farm.aiUpdateResponse';
+  | 'farm.aiUpdateResponse'
+  | 'farm.regionOpportunityScore'
+  | 'farm.grantDensity'
+  | 'farm.politicalFriendliness'
+  | 'farm.recentApprovals'
+  | 'farm.high'
+  | 'farm.medium'
+  | 'farm.veryHigh';

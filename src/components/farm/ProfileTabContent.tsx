@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -38,14 +39,14 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
           <dl className="divide-y divide-gray-100">
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900 flex items-center">
-                Region
+                {t('common.region')}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info size={14} className="ml-1 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Administrative region where the farm is located</p>
+                      <p>{t('form.tooltip.region')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -56,14 +57,14 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900 flex items-center">
-                Size
+                {t('common.size')}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info size={14} className="ml-1 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Total area of the farm in hectares</p>
+                      <p>{t('form.tooltip.size')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -73,39 +74,39 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Staff</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('form.staff')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.staff}
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Revenue</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('form.revenue')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.revenue}
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Certifications</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('form.certifications')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.certifications.join(', ')}
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Activities</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('common.activities')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.activities.join(', ')}
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-gray-900 flex items-center">
-                Carbon Score
+                {t('form.carbonScore')}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info size={14} className="ml-1 text-gray-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Measure of farm's carbon reduction practices (0-100)</p>
+                      <p>{t('form.tooltip.carbonScore')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -118,13 +119,13 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Irrigation Method</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('form.irrigationMethod')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.irrigationMethod}
               </dd>
             </div>
             <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-gray-900">Software Used</dt>
+              <dt className="text-sm font-medium leading-6 text-gray-900">{t('common.software')}</dt>
               <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 {farm.software.join(', ')}
               </dd>
@@ -169,7 +170,7 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
 
               <Button type="submit">
                 <Send size={16} className="mr-2" />
-                Send
+                {t('common.send')}
               </Button>
             </form>
           </CardContent>
@@ -177,30 +178,30 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
 
         <Card>
           <CardHeader>
-            <CardTitle>Region Opportunity Score</CardTitle>
+            <CardTitle>{t('farm.regionOpportunityScore')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Grant Density</span>
-                  <span className="font-medium">High</span>
+                  <span>{t('farm.grantDensity')}</span>
+                  <span className="font-medium">{t('farm.high')}</span>
                 </div>
                 <Progress value={85} className="h-2" />
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Political Friendliness</span>
-                  <span className="font-medium">Medium</span>
+                  <span>{t('farm.politicalFriendliness')}</span>
+                  <span className="font-medium">{t('farm.medium')}</span>
                 </div>
                 <Progress value={68} className="h-2" />
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Recent Approvals</span>
-                  <span className="font-medium">Very High</span>
+                  <span>{t('farm.recentApprovals')}</span>
+                  <span className="font-medium">{t('farm.veryHigh')}</span>
                 </div>
                 <Progress value={92} className="h-2" />
               </div>

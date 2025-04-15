@@ -14,4 +14,6 @@ export type FormTranslationKey =
   | 'form.description'
   | 'form.tooltip.carbonScore'
   | 'form.tooltip.irrigationMethod'
-  | 'form.tooltip.certifications';
+  | 'form.tooltip.certifications'
+  | 'form.tooltip.region'
+  | 'form.tooltip.size';

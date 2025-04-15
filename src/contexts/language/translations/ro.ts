@@ -146,6 +146,8 @@ export const roTranslations: Record<TranslationKey, string> = {
   'form.tooltip.carbonScore': 'Măsură a emisiilor de carbon pe hectar',
   'form.tooltip.irrigationMethod': 'Metoda utilizată pentru irigarea culturilor',
   'form.tooltip.certifications': 'Certificări oficiale deținute de fermă',
+  'form.tooltip.region': 'Regiunea administrativă unde se află ferma',
+  'form.tooltip.size': 'Suprafața totală a fermei în hectare',
   'messages.saved': 'Cererea ta a fost salvată ca schiță.',
   'messages.documentUploaded': 'Document încărcat',
   'messages.documentUploadedDesc': 'a fost încărcat cu succes.',
