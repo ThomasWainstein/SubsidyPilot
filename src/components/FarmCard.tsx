@@ -75,20 +75,22 @@ const FarmCard = ({ farm }: FarmCardProps) => {
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{farm.name}</h3>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 relative">
             {alertCount > 0 && (
-              <FarmAlertsDropdown
-                farmId={farm.id.toString()}
-                isOpen={isAlertsOpen}
-                setIsOpen={setIsAlertsOpen}
-                showNewSubsidyBadge={showNewSubsidyBadge}
-                showDocumentsRequiredBadge={showDocumentsRequiredBadge}
-                showInReviewBadge={showInReviewBadge}
-                showReadyToSubmitBadge={showReadyToSubmitBadge}
-                alertCount={alertCount}
-                isNewAlert={isNewAlert}
-                newSubsidyLink={newSubsidyLink}
-              />
+              <div className="relative">
+                <FarmAlertsDropdown
+                  farmId={farm.id.toString()}
+                  isOpen={isAlertsOpen}
+                  setIsOpen={setIsAlertsOpen}
+                  showNewSubsidyBadge={showNewSubsidyBadge}
+                  showDocumentsRequiredBadge={showDocumentsRequiredBadge}
+                  showInReviewBadge={showInReviewBadge}
+                  showReadyToSubmitBadge={showReadyToSubmitBadge}
+                  alertCount={alertCount}
+                  isNewAlert={isNewAlert}
+                  newSubsidyLink={newSubsidyLink}
+                />
+              </div>
             )}
             <StatusBadge status={farm.status} size="sm" />
           </div>
