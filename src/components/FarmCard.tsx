@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import TagBadge from './TagBadge';
 import StatusBadge from './StatusBadge';
 import FarmAlertsDropdown from './FarmAlertsDropdown';
-import { CalendarDays, ChevronDown } from 'lucide-react';
+import { CalendarDays, ChevronDown, MapPin } from 'lucide-react';
 import { getRandomSubsidies } from '@/data/subsidies';
 import { useState, useEffect } from 'react';
 
@@ -56,11 +56,25 @@ const FarmCard = ({ farm }: FarmCardProps) => {
     : farm.tags;
   const hiddenTagsCount = shouldCollapseTags ? farm.tags.length - 2 : 0;
 
+  // Format region and country display
+  const getLocationDisplay = () => {
+    // Extract region and country from farm.region
+    const parts = farm.region.split(',').map(part => part.trim());
+    
+    if (parts.length === 1) {
+      // If it's just a region without country (likely French region)
+      return `${parts[0]}, France`;
+    } else {
+      // It already has country information
+      return farm.region;
+    }
+  };
+
   return (
-    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md relative">
+    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md relative dark:bg-dark-card dark:hover:bg-dark-surface-hover">
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">{farm.name}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{farm.name}</h3>
           <div className="flex items-center space-x-2">
             {alertCount > 0 && (
               <FarmAlertsDropdown
@@ -80,13 +94,14 @@ const FarmCard = ({ farm }: FarmCardProps) => {
           </div>
         </div>
         
-        <div className="flex items-center text-sm text-gray-500 mb-4">
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
           <CalendarDays size={14} className="mr-1 flex-shrink-0" />
           <span className="text-xs">{t('common.lastUpdated')}: {farm.updatedAt}</span>
         </div>
         
-        <div className="mb-5">
-          <p className="text-sm text-gray-600">{farm.region}</p>
+        <div className="mb-5 flex items-center">
+          <MapPin size={14} className="mr-1 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+          <p className="text-sm text-gray-600 dark:text-gray-300">{getLocationDisplay()}</p>
         </div>
         
         {farm.tags.length > 0 && (
@@ -99,7 +114,7 @@ const FarmCard = ({ farm }: FarmCardProps) => {
               {shouldCollapseTags && (
                 <button 
                   onClick={() => setAreTagsCollapsed(!areTagsCollapsed)}
-                  className="tags-toggle flex items-center"
+                  className="tags-toggle flex items-center dark:bg-gray-700 dark:text-gray-300"
                 >
                   {areTagsCollapsed ? (
                     <>+{hiddenTagsCount} more <ChevronDown size={12} className="ml-1" /></>
@@ -121,7 +136,7 @@ const FarmCard = ({ farm }: FarmCardProps) => {
         )}
         
         <div className="flex justify-end">
-          <Button asChild variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800">
+          <Button asChild variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 dark:hover:text-emerald-200">
             <Link to={`/farm/${farm.id}`}>
               {t('common.openClientProfile')}
             </Link>

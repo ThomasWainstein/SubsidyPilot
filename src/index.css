@@ -191,6 +191,11 @@
   margin-left: 4px;
 }
 
+.dark .tags-container .tags-toggle {
+  background-color: #374151;
+  color: #D1D5DB;
+}
+
 .fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
@@ -228,6 +233,11 @@
   overflow-y: auto;
 }
 
+.dark .alerts-dropdown {
+  background: #1E293B;
+  border-color: #334155;
+}
+
 @keyframes scaleIn {
   from { 
     opacity: 0;
@@ -253,4 +263,20 @@
 
 .animate-slide-up {
   animation: slideUp 0.2s ease-out forwards;
+}
+
+/* Add animation for scale-in for checkmarks and icons */
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out forwards;
 }

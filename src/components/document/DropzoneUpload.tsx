@@ -113,7 +113,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
       <div
         className={cn(
           "border-2 border-dashed rounded-lg p-6 transition-all duration-200",
-          isDragging ? "border-primary bg-primary/5" : "border-gray-200",
+          isDragging ? "border-primary bg-primary/5" : "border-gray-200 dark:border-gray-700",
           isProcessing ? "pointer-events-none opacity-50" : "hover:border-primary"
         )}
         onDragOver={handleDragOver}
@@ -124,7 +124,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
           <FileUp 
             size={24} 
             className={cn(
-              "text-gray-400",
+              "text-gray-400 dark:text-gray-300",
               isDragging && "text-primary"
             )} 
           />
@@ -132,7 +132,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
             <p className="text-sm font-medium">
               {isDragging ? "Drop to Upload Document" : "Drag & Drop your document here"}
             </p>
-            <p className="text-xs text-gray-500">PDF, DOCX, JPG or PNG files</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, JPG or PNG files</p>
           </div>
           
           <div className="mt-2">
@@ -156,14 +156,14 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
       </div>
 
       {isProcessing && (
-        <div className="animate-fade-in rounded-lg border p-4 flex items-center gap-4 bg-gray-50">
+        <div className="animate-fade-in rounded-lg border dark:border-gray-700 p-4 flex items-center gap-4 bg-gray-50 dark:bg-gray-800">
           <div className="relative">
-            <FileText size={24} className="text-gray-400" />
+            <FileText size={24} className="text-gray-400 dark:text-gray-300" />
             <div className="absolute inset-0 bg-primary/10 animate-pulse rounded" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium">Processing with OCR...</p>
-            <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+            <p className="text-sm font-medium dark:text-white">Processing with OCR...</p>
+            <div className="mt-2 h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-primary transition-all duration-500 ease-out rounded-full"
                 style={{ width: `${uploadProgress}%` }}

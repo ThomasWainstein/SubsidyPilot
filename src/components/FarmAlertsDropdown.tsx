@@ -96,21 +96,21 @@ const FarmAlertsDropdown = ({
         aria-label="Notifications"
       >
         <Bell size={18} className="text-gray-600" />
-        <div className={`absolute -top-2 -right-2 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full ${isNewAlert ? 'animate-pulse' : ''}`}>
+        <div className={`absolute -top-2 -right-2 flex items-center justify-center w-4 h-4 bg-red-500 dark:bg-red-600 text-white text-xs font-bold rounded-full ${isNewAlert ? 'animate-pulse' : ''}`}>
           {alertCount}
         </div>
       </button>
       
       {isOpen && (
         <Card 
-          className={`fixed sm:absolute ${getDropdownPositionClass()} z-[100] shadow-xl backdrop-blur-sm border-gray-100 animate-fade-in w-[280px] max-h-[400px] overflow-y-auto`}
+          className={`fixed sm:absolute ${getDropdownPositionClass()} z-[100] shadow-xl backdrop-blur-sm border-gray-100 dark:border-gray-700 animate-slide-up w-[280px] max-h-[400px] overflow-y-auto dark:bg-slate-800 dark:text-white`}
           style={{ transform: 'translateY(0)', transition: 'opacity 0.2s ease-out, transform 0.2s ease-out' }}
         >
           <div className="flex justify-between items-center mb-2 px-3 pt-3">
-            <h4 className="text-sm font-medium text-gray-900">{t('common.alerts')}</h4>
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('common.alerts')}</h4>
             <button 
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Close alerts"
             >
               <X size={14} />
@@ -120,43 +120,43 @@ const FarmAlertsDropdown = ({
           <div className="space-y-2 p-3 pt-1">
             {showNewSubsidyBadge && (
               <Link to={newSubsidyLink} className="block no-underline" onClick={() => setIsOpen(false)}>
-                <div className="p-3 bg-emerald-50 hover:bg-emerald-100 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-emerald-700 break-words whitespace-normal">{t('common.newSubsidyAvailable')}</span>
-                  <span className="block text-emerald-600 mt-1 text-xs opacity-80">1 hour ago</span>
+                <div className="p-3 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 transition-colors rounded-md text-xs">
+                  <span className="font-medium text-emerald-700 dark:text-emerald-300 break-words whitespace-normal">{t('common.newSubsidyAvailable')}</span>
+                  <span className="block text-emerald-600 dark:text-emerald-400 mt-1 text-xs opacity-80">1 hour ago</span>
                 </div>
               </Link>
             )}
             
             {showDocumentsRequiredBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
-                <div className="p-3 bg-red-50 hover:bg-red-100 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-red-700 break-words whitespace-normal">{t('common.documentsRequired')}</span>
-                  <span className="block text-red-600 mt-1 text-xs opacity-80">2 days ago</span>
+                <div className="p-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors rounded-md text-xs">
+                  <span className="font-medium text-red-700 dark:text-red-300 break-words whitespace-normal">{t('common.documentsRequired')}</span>
+                  <span className="block text-red-600 dark:text-red-400 mt-1 text-xs opacity-80">2 days ago</span>
                 </div>
               </Link>
             )}
             
             {showInReviewBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
-                <div className="p-3 bg-yellow-50 hover:bg-yellow-100 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-yellow-700 break-words whitespace-normal">{t('common.inReview')}</span>
-                  <span className="block text-yellow-600 mt-1 text-xs opacity-80">3 days ago</span>
+                <div className="p-3 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50 transition-colors rounded-md text-xs">
+                  <span className="font-medium text-yellow-700 dark:text-yellow-300 break-words whitespace-normal">{t('common.inReview')}</span>
+                  <span className="block text-yellow-600 dark:text-yellow-400 mt-1 text-xs opacity-80">3 days ago</span>
                 </div>
               </Link>
             )}
             
             {showReadyToSubmitBadge && (
               <Link to={`/farm/${farmId}`} className="block no-underline" onClick={() => setIsOpen(false)}>
-                <div className="p-3 bg-green-50 hover:bg-green-100 transition-colors rounded-md text-xs">
-                  <span className="font-medium text-green-700 break-words whitespace-normal">{t('common.readyToSubmit')}</span>
-                  <span className="block text-green-600 mt-1 text-xs opacity-80">4 hours ago</span>
+                <div className="p-3 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 transition-colors rounded-md text-xs">
+                  <span className="font-medium text-green-700 dark:text-green-300 break-words whitespace-normal">{t('common.readyToSubmit')}</span>
+                  <span className="block text-green-600 dark:text-green-400 mt-1 text-xs opacity-80">4 hours ago</span>
                 </div>
               </Link>
             )}
 
             {!showNewSubsidyBadge && !showDocumentsRequiredBadge && !showInReviewBadge && !showReadyToSubmitBadge && (
-              <div className="p-3 bg-gray-50 rounded-md text-xs text-center">
-                <span className="text-gray-600">{t('common.noAlerts')}</span>
+              <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md text-xs text-center">
+                <span className="text-gray-600 dark:text-gray-300">{t('common.noAlerts')}</span>
               </div>
             )}
           </div>

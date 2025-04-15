@@ -12,10 +12,10 @@ export const DocumentsTabContent: React.FC<DocumentsTabContentProps> = ({ farmId
   const { t } = useLanguage();
 
   return (
-    <Card>
+    <Card className="dark:bg-dark-card">
       <CardHeader>
-        <CardTitle>{t('farm.documentTitle')}</CardTitle>
-        <CardDescription>{t('farm.documentSubtitle')}</CardDescription>
+        <CardTitle className="dark:text-white">{t('farm.documentTitle')}</CardTitle>
+        <CardDescription className="dark:text-gray-300">{t('farm.documentSubtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
         <DocumentVault farmId={farmId} />

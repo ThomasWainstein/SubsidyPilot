@@ -20,8 +20,30 @@ const DashboardPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
 
-  // Get unique regions from farms
-  const uniqueRegions = Array.from(new Set(farms.map(farm => farm.region)));
+  // Get unique regions and countries from farms
+  const getUniqueRegions = () => {
+    const uniqueRegions: string[] = [];
+    
+    farms.forEach(farm => {
+      // Extract country from region (after comma) or use France as default
+      let country: string;
+      
+      if (farm.region.includes(',')) {
+        country = farm.region.split(',')[1].trim();
+      } else {
+        country = 'France'; // Default for French regions that don't specify country
+      }
+      
+      // Add country if not already in the list
+      if (!uniqueRegions.includes(country)) {
+        uniqueRegions.push(country);
+      }
+    });
+    
+    return uniqueRegions;
+  };
+
+  const uniqueRegions = getUniqueRegions();
 
   // Toggle region in filter
   const toggleRegionFilter = (region: string) => {
@@ -40,9 +62,24 @@ const DashboardPage = () => {
       farm.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || farm.status === statusFilter;
-    const matchesRegion = regionFilter.length === 0 || regionFilter.includes(farm.region);
     
-    return matchesSearch && matchesStatus && matchesRegion;
+    // Check if farm's country/region matches filter
+    const matchesRegion = () => {
+      if (regionFilter.length === 0) return true;
+      
+      // Extract country from region string
+      let farmCountry: string;
+      
+      if (farm.region.includes(',')) {
+        farmCountry = farm.region.split(',')[1].trim();
+      } else {
+        farmCountry = 'France'; // Default for French regions
+      }
+      
+      return regionFilter.includes(farmCountry);
+    };
+    
+    return matchesSearch && matchesStatus && matchesRegion();
   });
   
   // Sort farms based on sort option
