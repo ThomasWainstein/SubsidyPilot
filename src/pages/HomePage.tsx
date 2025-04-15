@@ -1,5 +1,5 @@
 
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import { Link } from 'react-router-dom';

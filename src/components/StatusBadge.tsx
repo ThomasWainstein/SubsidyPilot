@@ -1,3 +1,4 @@
+
 import { cn } from '@/lib/utils';
 import { useLanguage, TranslationKey } from '@/contexts/language';
 
@@ -21,6 +22,8 @@ const StatusBadge = ({ status, className, size = 'md' }: StatusBadgeProps) => {
       'Profile Complete': 'status.profileComplete',
       'Subsidy In Progress': 'status.subsidyInProgress',
       'Draft': 'status.draft',
+      'In Preparation': 'status.inPreparation',
+      'Ready to Submit': 'status.readyToSubmit'
     };
     
     return statusMap[status] || ('status.inProgress' as TranslationKey);
