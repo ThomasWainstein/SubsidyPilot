@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -202,7 +203,7 @@ export const roTranslations: Record<TranslationKey, string> = {
   'euportal.applicantInfoDesc': 'Vă rugăm să furnizați informații exacte despre ferma dumneavoastră.',
   'euportal.requiredDocs': 'Documentație Necesară',
   'euportal.uploadLandProof': 'Încărcați Dovada Proprietății Terenului',
-  'euportal.uploadIrrigationForm': '���ncărcați Formularul de Declarație de Irigare (PDF semnat)',
+  'euportal.uploadIrrigationForm': 'Încărcați Formularul de Declarație de Irigare (PDF semnat)',
   'euportal.dragDrop': 'Faceți clic pentru a încărca sau trageți și plasați',
   'euportal.fileTypes': 'PDF, JPG sau PNG (max. 10MB)',
   'euportal.pdfOnly': 'Doar PDF (max. 5MB)',
@@ -252,8 +253,5 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profil',
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
-  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
-  'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'Aceasta este o versiune demonstrativă a AgriTool. Datele, subvențiile și profilurile fermelor sunt simulate doar în scopuri de testare.',
-  'common.addNewSubsidy': 'Adaugă Subvenție Nouă'
+  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.'
 };

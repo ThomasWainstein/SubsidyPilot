@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const esTranslations: Record<TranslationKey, string> = {
@@ -252,8 +253,5 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Perfil',
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
-  'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
-  'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'Esta es una versión de demostración de AgriTool. Los datos, subsidios y perfiles de granjas están simulados solo con fines de prueba.',
-  'common.addNewSubsidy': 'Añadir Nuevo Subsidio'
+  'errors.pageNotFound': '¡Ups! La página que buscas no existe.'
 };

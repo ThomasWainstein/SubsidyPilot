@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const enTranslations: Record<TranslationKey, string> = {
@@ -46,12 +47,12 @@ export const enTranslations: Record<TranslationKey, string> = {
   'common.newSubsidyAvailable': 'New Subsidy Available',
   'common.documentsRequired': 'Documents Required',
   'common.inReview': 'In Review',
+  'common.deadlineApproaching': 'Deadline Approaching',
+  'common.alerts': 'Alerts',
   'common.region': 'Region',
   'common.size': 'Size',
   'common.activities': 'Activities',
   'common.software': 'Software Used',
-  'common.deadlineApproaching': 'Deadline Approaching',
-  'common.alerts': 'Alerts',
   'common.noAlerts': 'No alerts at this time',
   'common.noSubsidiesFound': 'No matching subsidies found',
   'common.noSubsidiesFoundDesc': 'No current subsidies match this farm\'s region. Check back soon or update your profile.',
@@ -252,8 +253,5 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profile',
   'nav.settings': 'Settings',
   'nav.logout': 'Logout',
-  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
-  'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'This is a demonstration version of AgriTool. Data, subsidies, and farm profiles are simulated for testing purposes only.',
-  'common.addNewSubsidy': 'Add New Subsidy'
+  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.'
 };
