@@ -253,6 +253,4 @@ export const frTranslations: Record<TranslationKey, string> = {
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
   'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
-  'common.demoLabel': 'DÉMO',
-  'common.demoDisclaimer': 'Ceci est une version de démonstration d\'AgriTool. Les données, subventions et profils de fermes sont simulés uniquement à des fins de test.'
 };
