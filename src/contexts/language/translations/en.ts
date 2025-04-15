@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const enTranslations: Record<TranslationKey, string> = {
@@ -251,5 +252,19 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.logout': 'Logout',
   'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
   'common.demoLabel': 'DEMO',
-  'common.demoDisclaimer': 'This is a demonstration version of AgriTool. Data, subsidies, and farm profiles are simulated for testing purposes only.'
+  'common.demoDisclaimer': 'This is a demonstration version of AgriTool. Data, subsidies, and farm profiles are simulated for testing purposes only.',
+  'common.addSubsidy': 'Add Subsidy',
+  'common.importViaUrl': 'Import via URL',
+  'common.manualEntry': 'Manual Entry',
+  'common.subsidySourceUrl': 'Subsidy Source URL',
+  'common.fetchDetails': 'Fetch Details',
+  'common.saveToFarm': 'Save to This Farm',
+  'common.subsidyName': 'Subsidy Name',
+  'common.grantAmount': 'Grant Amount',
+  'common.matchConfidence': 'Match Confidence',
+  'common.addAnother': 'Add Another',
+  'common.uploadSupportingDocument': 'Upload Supporting Document',
+  'common.manuallyAdded': 'Manually Added',
+  'common.fetchingSubsidyData': 'Fetching subsidy data...',
+  'common.requiredDocument': 'Required Document'
 };
