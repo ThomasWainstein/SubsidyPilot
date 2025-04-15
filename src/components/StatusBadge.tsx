@@ -42,7 +42,7 @@ const StatusBadge = ({ status, className, size = 'md' }: StatusBadgeProps) => {
     return colorMap[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-50 border-gray-200 dark:border-gray-700';
   };
 
-  // Get size classes
+  // Get size classes with added centering and justification
   const getSizeClasses = (size: 'sm' | 'md' | 'lg') => {
     const sizeMap: Record<string, string> = {
       'sm': 'px-1.5 py-0.5 text-xs',
@@ -58,7 +58,7 @@ const StatusBadge = ({ status, className, size = 'md' }: StatusBadgeProps) => {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full font-medium border',
+        'inline-flex items-center justify-center text-center rounded-full font-medium border',
         getSizeClasses(size),
         getStatusColor(status),
         className
