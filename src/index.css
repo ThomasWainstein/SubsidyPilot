@@ -76,20 +76,20 @@
 }
 
 .glass-card {
-  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border;
+  @apply bg-white dark:bg-dark-card dark:border-dark-divider transition-colors duration-300;
 }
 
 .glass-card:hover {
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  @apply dark:bg-dark-surface-hover;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .alert-card {
-  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border;
+  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-divider transition-colors duration-300;
 }
 
 .alert-card:hover {
-  background: #F9FAFB;
-  border-color: #E5E7EB;
+  @apply dark:bg-dark-surface-hover;
 }
 
 .alert-card strong {

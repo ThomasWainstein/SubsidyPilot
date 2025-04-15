@@ -82,12 +82,22 @@ export default {
           sustainability: '#388E3C',
           soil: '#5D4037',
         },
-        'dark-bg': '#1A1F2C',
-        'dark-fg': '#E2E8F0',
-        'dark-muted': '#8E9196',
-        'dark-accent': '#8B5CF6',
-        'dark-surface': '#2D3748',
-        'dark-border': '#4A5568',
+        'dark-bg': '#0F172A',
+        'dark-card': '#1E293B',
+        'dark-tag': '#334155',
+        'dark-text': {
+          primary: '#F8FAFC',
+          secondary: '#CBD5E1',
+          metric: '#E2E8F0'
+        },
+        'dark-divider': '#334155',
+        'dark-surface': {
+          DEFAULT: '#1E293B',
+          hover: '#2D3748'
+        }
+      },
+      backgroundImage: {
+        'dark-card-gradient': 'linear-gradient(to bottom right, #1E293B, #1a2536, #162031)',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -142,6 +152,7 @@ export default {
       },
       boxShadow: {
         'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+        'dark': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.24)',
       },
       backdropBlur: {
         glass: '4px',
