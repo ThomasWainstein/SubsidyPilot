@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,8 +45,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -76,27 +75,16 @@
   }
 }
 
-/* Glass card styling - refined with softer shadows */
 .glass-card {
-  background: rgba(255, 255, 255, 1);
-  border: 1px solid rgba(235, 238, 240, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-  transition: all 0.2s ease-in-out;
+  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border;
 }
 
 .glass-card:hover {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* Alert card styling - refined for more breathing room */
 .alert-card {
-  background: #FFFFFF;
-  border: 1px solid #F1F3F5;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  font-size: 14px;
-  transition: all 0.2s ease-in-out;
+  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border;
 }
 
 .alert-card:hover {
@@ -105,10 +93,9 @@
 }
 
 .alert-card strong {
-  color: #111827;
+  @apply text-gray-900 dark:text-gray-100;
 }
 
-/* Subsidy highlight animation - softened */
 .highlight-subsidy {
   animation: highlight-pulse 2.5s ease;
   position: relative;
@@ -130,7 +117,6 @@
   }
 }
 
-/* Animations for alert badges - subtler */
 .badge-pulse {
   animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -144,7 +130,6 @@
   }
 }
 
-/* Typing animation for assistant responses */
 .typing-animation span {
   animation: blink 1.4s infinite both;
 }
@@ -169,7 +154,6 @@
   }
 }
 
-/* Custom colors */
 :root {
   --agri-green: #10B981;
   --agri-blue: #3B82F6;
@@ -178,7 +162,6 @@
   --agri-yellow: #F59E0B;
 }
 
-/* General utility classes */
 .text-agri-green {
   color: var(--agri-green);
 }
@@ -187,7 +170,6 @@
   background-color: var(--agri-green);
 }
 
-/* Collapsible tags container */
 .tags-container {
   position: relative;
 }
@@ -208,7 +190,6 @@
   margin-left: 4px;
 }
 
-/* Fade animations */
 .fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
@@ -218,7 +199,6 @@
   to { opacity: 1; }
 }
 
-/* Tag styling - more refined */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -232,7 +212,6 @@
   white-space: nowrap;
 }
 
-/* Alerts dropdown styling */
 .alerts-dropdown {
   position: absolute;
   z-index: 50;
@@ -259,7 +238,6 @@
   }
 }
 
-/* Theme toggle animation */
 .theme-toggle {
   transition: transform 0.5s ease;
 }
