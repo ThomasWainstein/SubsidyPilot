@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const esTranslations: Record<TranslationKey, string> = {
@@ -160,6 +161,8 @@ export const esTranslations: Record<TranslationKey, string> = {
   'form.tooltip.carbonScore': 'Medida de emisiones de carbono por hectárea',
   'form.tooltip.irrigationMethod': 'El método utilizado para regar los cultivos',
   'form.tooltip.certifications': 'Certificaciones oficiales que posee la granja',
+  'form.tooltip.region': 'Región administrativa donde se encuentra la granja',
+  'form.tooltip.size': 'Superficie total de la granja en hectáreas',
   'messages.saved': 'Tu solicitud ha sido guardada como borrador.',
   'messages.documentUploaded': 'Documento subido',
   'messages.documentUploadedDesc': 'ha sido subido correctamente.',
@@ -244,19 +247,5 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Perfil',
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
-  'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
-  'common.deadlineApproaching': 'Fecha Límite Próxima',
-  'common.alerts': 'Alertas',
-  'farm.regionOpportunityScore': 'Puntuación de Oportunidad Regional',
-  'farm.grantDensity': 'Densidad de Subvenciones',
-  'farm.politicalFriendliness': 'Amigabilidad Política',
-  'farm.recentApprovals': 'Aprobaciones Recientes',
-  'farm.high': 'Alto',
-  'farm.medium': 'Medio',
-  'farm.veryHigh': 'Muy Alto',
-  'farm.low': 'Bajo',
-  'farm.region': 'Región',
-  'farm.size': 'Tamaño',
-  'farm.activities': 'Actividades',
-  'farm.software': 'Software Utilizado'
+  'errors.pageNotFound': '¡Ups! La página que buscas no existe.'
 };

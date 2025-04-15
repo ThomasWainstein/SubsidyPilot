@@ -109,10 +109,6 @@ export const enTranslations: Record<TranslationKey, string> = {
   'farm.medium': 'Medium',
   'farm.veryHigh': 'Very High',
   'farm.low': 'Low',
-  'farm.region': 'Region',
-  'farm.size': 'Size',
-  'farm.activities': 'Activities',
-  'farm.software': 'Software Used',
   'subsidies.title': 'Subsidy Matches',
   'subsidies.subtitle': 'Available subsidies matching your farm profile',
   'subsidies.matchConfidence': 'Match Confidence',
@@ -251,7 +247,5 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profile',
   'nav.settings': 'Settings',
   'nav.logout': 'Logout',
-  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
-  'common.deadlineApproaching': 'Deadline Approaching',
-  'common.alerts': 'Alerts'
+  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.'
 };
