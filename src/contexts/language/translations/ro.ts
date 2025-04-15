@@ -202,7 +202,7 @@ export const roTranslations: Record<TranslationKey, string> = {
   'euportal.applicantInfoDesc': 'Vă rugăm să furnizați informații exacte despre ferma dumneavoastră.',
   'euportal.requiredDocs': 'Documentație Necesară',
   'euportal.uploadLandProof': 'Încărcați Dovada Proprietății Terenului',
-  'euportal.uploadIrrigationForm': '��ncărcați Formularul de Declarație de Irigare (PDF semnat)',
+  'euportal.uploadIrrigationForm': '���ncărcați Formularul de Declarație de Irigare (PDF semnat)',
   'euportal.dragDrop': 'Faceți clic pentru a încărca sau trageți și plasați',
   'euportal.fileTypes': 'PDF, JPG sau PNG (max. 10MB)',
   'euportal.pdfOnly': 'Doar PDF (max. 5MB)',
