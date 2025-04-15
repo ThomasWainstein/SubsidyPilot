@@ -11,8 +11,6 @@ import DashboardOnboarding from '@/components/DashboardOnboarding';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 import AddFarmModal from '@/components/dashboard/AddFarmModal';
 import FarmGrid from '@/components/dashboard/FarmGrid';
-import { Sun, Moon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const DashboardPage = () => {
   const { t } = useLanguage();
@@ -21,7 +19,6 @@ const DashboardPage = () => {
   const [sortOption, setSortOption] = useState('name');
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Get unique regions from farms
   const uniqueRegions = Array.from(new Set(farms.map(farm => farm.region)));
@@ -33,13 +30,6 @@ const DashboardPage = () => {
     } else {
       setRegionFilter([...regionFilter, region]);
     }
-  };
-
-  // Toggle dark mode (demo only)
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // In a real implementation, we would apply a dark class to the html element
-    // document.documentElement.classList.toggle('dark');
   };
 
   // Filter farms based on search query, status, and region
@@ -70,22 +60,13 @@ const DashboardPage = () => {
   });
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDarkMode ? 'dark' : ''}`}>
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.clientFarmDashboard')}</h1>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleDarkMode}
-              className="theme-toggle"
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </Button>
           </div>
           
           <div className="grid grid-cols-12 gap-6">
