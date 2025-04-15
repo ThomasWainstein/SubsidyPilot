@@ -1,12 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent } from 'lucide-react';
+import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText } from 'lucide-react';
 import { getRandomSubsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
 import FarmCardApplyButton from '@/components/FarmCardApplyButton';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ManualSubsidyForm } from './ManualSubsidyForm';
+import { ImportSubsidyForm } from './ImportSubsidyForm';
+import { Subsidy } from '@/data/subsidies';
+import { useToast } from '@/hooks/use-toast';
 
 interface SubsidiesTabContentProps {
   farmId: string;
@@ -14,7 +22,9 @@ interface SubsidiesTabContentProps {
 
 export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId }) => {
   const { t } = useLanguage();
-  const farmSubsidies = getRandomSubsidies(farmId);
+  const { toast } = useToast();
+  const [subsidies, setSubsidies] = useState(() => getRandomSubsidies(farmId));
+  const [dialogOpen, setDialogOpen] = useState(false);
   const farm = farms.find(f => f.id === farmId);
   
   const getFarmCountry = () => {
@@ -28,7 +38,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     return "France";
   };
   
-  let matchedSubsidies = farmSubsidies.filter(subsidy => {
+  let matchedSubsidies = subsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
     
     // Handle both string and array region fields
@@ -39,13 +49,64 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     return subsidy.region.includes(farmCountry) || subsidy.region === "EU-wide";
   });
 
-  // Removed the special case for "EcoHof Reinhardt" to ensure all farms show subsidies
+  const handleAddSubsidy = (newSubsidy: Subsidy) => {
+    setSubsidies(prev => [...prev, newSubsidy]);
+    setDialogOpen(false);
+    toast({
+      title: "Subsidy Added",
+      description: `${newSubsidy.name} has been added successfully.`,
+    });
+  };
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('subsidies.title')}</CardTitle>
-        <CardDescription>{t('subsidies.subtitle')}</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>{t('subsidies.title')}</CardTitle>
+          <CardDescription>{t('subsidies.subtitle')}</CardDescription>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1">
+              <Plus size={16} />
+              Add New Subsidy
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Add New Subsidy</DialogTitle>
+              <DialogDescription>
+                Add a new subsidy opportunity for this farm either by importing from a URL or entering details manually.
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="manual" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <FileText size={16} />
+                  Manual Entry
+                </TabsTrigger>
+                <TabsTrigger value="import" className="flex items-center gap-2">
+                  <Link size={16} />
+                  Import from URL
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="manual">
+                <ManualSubsidyForm 
+                  farmId={farmId} 
+                  farmRegion={farm?.region || ''} 
+                  onAddSubsidy={handleAddSubsidy} 
+                />
+              </TabsContent>
+              <TabsContent value="import">
+                <ImportSubsidyForm 
+                  farmId={farmId}
+                  farmRegion={farm?.region || ''}
+                  onAddSubsidy={handleAddSubsidy}
+                />
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </CardHeader>
       <CardContent>
         {matchedSubsidies.length > 0 ? (
@@ -53,7 +114,14 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
             {matchedSubsidies.map((subsidy) => (
               <Card key={subsidy.id} className="overflow-hidden border-2 border-transparent hover:border-primary/20 transition-colors dark:bg-dark-card">
                 <CardHeader className="bg-gray-50 dark:bg-gray-800">
-                  <CardTitle className="text-lg dark:text-white">{subsidy.name}</CardTitle>
+                  <div className="flex items-center">
+                    <CardTitle className="text-lg dark:text-white">{subsidy.name}</CardTitle>
+                    {subsidy.isManuallyAdded && (
+                      <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        Manual Entry
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription className="dark:text-gray-300">{subsidy.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
@@ -76,7 +144,11 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                     <div className="flex items-center">
                       <Globe size={16} className="mr-2 text-gray-500 dark:text-gray-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">{t('subsidies.regionEligibility')}:</span>
-                      <span className="text-sm font-medium ml-auto dark:text-white">{subsidy.region}</span>
+                      <span className="text-sm font-medium ml-auto dark:text-white">{
+                        Array.isArray(subsidy.region) 
+                          ? subsidy.region.join(', ')
+                          : subsidy.region
+                      }</span>
                     </div>
                     
                     <div className="flex items-center">

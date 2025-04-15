@@ -6,9 +6,11 @@ export interface Subsidy {
   name: string;
   description: string;
   grant: string;
-  region: string;
+  region: string | string[];
   matchConfidence: number;
   deadline: string;
+  documentsRequired?: string[];
+  isManuallyAdded?: boolean;
 }
 
 // Define predefined subsidies

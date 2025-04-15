@@ -55,5 +55,5 @@ export type CommonTranslationKey =
   | 'common.noSubsidiesFound'
   | 'common.noSubsidiesFoundDesc'
   | 'common.demoLabel'
-  | 'common.demoDisclaimer';
-
+  | 'common.demoDisclaimer'
+  | 'common.addNewSubsidy';
