@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useForm } from 'react-hook-form';
@@ -14,6 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Subsidy } from '@/types/subsidy';
+import { Textarea } from '@/components/ui/textarea';
 
 interface SubsidyFormValues {
   name: string;
@@ -116,10 +118,11 @@ export const ManualSubsidyForm: React.FC<ManualSubsidyFormProps> = ({ onAddSubsi
           
           <div className="space-y-2">
             <Label htmlFor="subsidy-description">Description</Label>
-            <Input 
+            <Textarea 
               id="subsidy-description" 
               {...form.register('description')}
               placeholder="Brief description of the subsidy"
+              required
             />
           </div>
           

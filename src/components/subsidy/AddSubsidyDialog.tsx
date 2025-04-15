@@ -24,7 +24,7 @@ export const AddSubsidyDialog: React.FC<AddSubsidyDialogProps> = ({ isOpen, onCl
         <DialogHeader>
           <DialogTitle>{t('common.addSubsidy')}</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="url" className="mt-4">
+        <Tabs defaultValue="url" className="mt-4" onValueChange={setActiveTab} value={activeTab}>
           <TabsList className="grid grid-cols-2 mb-4">
             <TabsTrigger value="url" className="flex items-center gap-1">
               <Link size={14} />
