@@ -39,4 +39,7 @@ export const subsidies = {
   'subsidies.fundingType.public': 'Public',
   'subsidies.fundingType.private': 'Privat',
   'subsidies.fundingType.mixed': 'Mixt',
+  'subsidies.fundingTypePublic': 'Public',
+  'subsidies.fundingTypePrivate': 'Privat',
+  'subsidies.fundingTypeMixed': 'Mixt',
 } as const;
