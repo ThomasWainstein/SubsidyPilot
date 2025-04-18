@@ -25,4 +25,17 @@ export type SubsidiesTranslationKey =
   | 'subsidies.noSubsidiesFoundDesc'
   | 'subsidies.attachToFarm'
   | 'subsidies.selectFarm'
-  | 'subsidies.filters';
+  | 'subsidies.filters'
+  | 'subsidies.matchConfidence'
+  | 'subsidies.regionEligibility'
+  | 'subsidies.grantCode'
+  | 'subsidies.maxGrant'
+  | 'subsidies.draftDate'
+  | 'subsidies.reminder'
+  | 'subsidies.searchEngine'
+  | 'subsidies.matchConfidenceSlider'
+  | 'subsidies.resultsFound'
+  | 'subsidies.noMatchCriteria'
+  | 'subsidies.public'
+  | 'subsidies.private'
+  | 'subsidies.mixed';
