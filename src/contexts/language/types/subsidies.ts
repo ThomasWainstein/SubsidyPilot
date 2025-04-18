@@ -38,4 +38,7 @@ export type SubsidiesTranslationKey =
   | 'subsidies.noMatchCriteria'
   | 'subsidies.public'
   | 'subsidies.private'
-  | 'subsidies.mixed';
+  | 'subsidies.mixed'
+  | 'subsidies.fundingType.public'
+  | 'subsidies.fundingType.private'
+  | 'subsidies.fundingType.mixed';
