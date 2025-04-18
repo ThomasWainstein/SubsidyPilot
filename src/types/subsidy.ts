@@ -1,5 +1,5 @@
 
-export interface MultilingualText {
+export interface MultilingualText extends Record<string, string> {
   en: string;
   fr: string;
   es: string;

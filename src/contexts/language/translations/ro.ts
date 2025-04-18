@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const roTranslations: Record<TranslationKey, string> = {
@@ -213,6 +212,7 @@ export const roTranslations: Record<TranslationKey, string> = {
   'messages.remaining': 'rămase',
   'messages.subsidyAttached': 'Subvenție atașată la fermă',
   'messages.subsidyAttachedDesc': 'Subvenția a fost adăugată la profilul fermei tale',
+  'common.search': 'Caută',
   'euportal.title': 'Grant pentru Îmbunătățirea Irigației Inteligente',
   'euportal.subtitle': 'Formular de Cerere - Referință: EAGF/IRR/2024/03',
   'euportal.header': 'Fondul European Agricol de Garantare',

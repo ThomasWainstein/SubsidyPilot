@@ -1,3 +1,4 @@
+
 export type CommonTranslationKey =
   | 'common.getStarted'
   | 'common.viewFarm'
@@ -56,4 +57,5 @@ export type CommonTranslationKey =
   | 'common.demoLabel'
   | 'common.demoDisclaimer'
   | 'common.addNewSubsidy'
-  | 'common.searchSubsidies';
+  | 'common.searchSubsidies'
+  | 'common.search';

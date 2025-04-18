@@ -25,4 +25,6 @@ export type MessagesTranslationKey =
   | 'messages.appSubmittedDesc'
   | 'messages.detectedFields'
   | 'messages.autoFilled'
-  | 'messages.remaining';
+  | 'messages.remaining'
+  | 'messages.subsidyAttached'
+  | 'messages.subsidyAttachedDesc';

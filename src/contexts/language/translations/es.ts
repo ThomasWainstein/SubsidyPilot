@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const esTranslations: Record<TranslationKey, string> = {
@@ -271,5 +270,6 @@ export const esTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Perfil',
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar sesión',
-  'errors.pageNotFound': '¡Ups! La página que buscas no existe.'
+  'errors.pageNotFound': '¡Ups! La página que buscas no existe.',
+  'common.search': 'Buscar',
 };

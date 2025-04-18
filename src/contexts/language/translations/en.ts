@@ -212,6 +212,7 @@ export const enTranslations: Record<TranslationKey, string> = {
   'messages.remaining': 'remaining',
   'messages.subsidyAttached': 'Subsidy attached to farm',
   'messages.subsidyAttachedDesc': 'The subsidy has been added to your farm profile',
+  'common.search': 'Search',
   'euportal.title': 'Smart Irrigation Upgrade Grant',
   'euportal.subtitle': 'Application Form - Reference: EAGF/IRR/2024/03',
   'euportal.header': 'European Agricultural Guarantee Fund',
