@@ -285,5 +285,11 @@ export const roTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profil',
   'nav.settings': 'Setări',
   'nav.logout': 'Deconectare',
-  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.'
+  'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
+  'subsidies.fundingTypePublic': 'Public',
+  'subsidies.fundingTypePrivate': 'Privat', 
+  'subsidies.fundingTypeMixed': 'Mixt',
+  'subsidies.fundingType.public': 'Public',
+  'subsidies.fundingType.private': 'Privat',
+  'subsidies.fundingType.mixed': 'Mixt',
 };

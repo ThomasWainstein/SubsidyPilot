@@ -285,5 +285,11 @@ export const enTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profile',
   'nav.settings': 'Settings',
   'nav.logout': 'Logout',
-  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.'
+  'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
+  'subsidies.fundingTypePublic': 'Public',
+  'subsidies.fundingTypePrivate': 'Private', 
+  'subsidies.fundingTypeMixed': 'Mixed',
+  'subsidies.fundingType.public': 'Public',
+  'subsidies.fundingType.private': 'Private',
+  'subsidies.fundingType.mixed': 'Mixed',
 };

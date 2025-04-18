@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
@@ -442,7 +441,9 @@ const SubsidySearchPage = () => {
                             checked={filters.fundingType.includes(type)}
                             onCheckedChange={() => handleFilterChange('fundingType', type)}
                           />
-                          <Label htmlFor={`funding-${type}`}>{t(`subsidies.${type}`)}</Label>
+                          <Label htmlFor={`funding-${type}`}>
+                            {t(`subsidies.fundingType.${type}` as TranslationKey)}
+                          </Label>
                         </div>
                       ))}
                     </AccordionContent>
