@@ -1,22 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
-import Navbar from '@/components/Navbar';
-import { 
-  Filter, Search, Sliders, ChevronDown, ChevronUp, 
-  MapPin, Calendar, DollarSign, Award, Percent, X, Check 
-} from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { farms } from '@/data/farms';
-import { getRandomSubsidies } from '@/data/subsidies';
-import { Subsidy } from '@/types/subsidy';
+import { TranslationKey } from '@/contexts/language/types';
 import { useToast } from '@/hooks/use-toast';
 
 // Mock subsidy data for search engine
