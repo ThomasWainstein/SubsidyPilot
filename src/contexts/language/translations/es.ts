@@ -289,7 +289,4 @@ export const esTranslations: Record<TranslationKey, string> = {
   'subsidies.fundingType.public': 'Público',
   'subsidies.fundingType.private': 'Privado',
   'subsidies.fundingType.mixed': 'Mixto',
-  'subsidies.fundingType.public': 'Público',
-  'subsidies.fundingType.private': 'Privado',
-  'subsidies.fundingType.mixed': 'Mixto',
 };

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { TranslationKey } from '@/contexts/language/types';
 import { useToast } from '@/hooks/use-toast';
-import { Subsidy } from '@/types/subsidy';
-import Navbar from '@/components/Navbar';
 import { 
   Filter, Search, ChevronDown, ChevronUp, 
   MapPin, Calendar, DollarSign, Award, Percent, X
@@ -22,6 +20,43 @@ import {
   Accordion, AccordionContent, 
   AccordionItem, AccordionTrigger 
 } from '@/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Navbar from '@/components/Navbar';
+
+// Define Subsidy type
+interface Subsidy {
+  id: string;
+  name: string | Record<string, string>;
+  description: string | Record<string, string>;
+  matchConfidence: number;
+  deadline: string;
+  region: string | string[];
+  code: string;
+  grant: string;
+  fundingType: string;
+  countryEligibility: string | string[];
+  agriculturalSector: string | string[];
+  farmingMethod: string | string[];
+  certifications: string[];
+  source: string;
+  isManuallyAdded?: boolean;
+}
+
+// Mock farms data for attaching subsidies
+const farms = [
+  { id: "farm1", name: "Green Valley Farm", region: "France" },
+  { id: "farm2", name: "Mountain View Organic", region: "Italy" },
+  { id: "farm3", name: "Sunflower Fields", region: "Spain" },
+  { id: "farm4", name: "Riverside Crops", region: "Portugal" },
+  { id: "farm5", name: "Alpine Meadows", region: "Austria" }
+];
 
 // Mock subsidy data for search engine
 const SEARCH_SUBSIDIES: Subsidy[] = [

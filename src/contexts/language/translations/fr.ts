@@ -148,6 +148,9 @@ export const frTranslations: Record<TranslationKey, string> = {
   'subsidies.importFromPortal': 'Importer du Portail',
   'subsidies.region': 'Région',
   'subsidies.matchScore': 'Score de Correspondance',
+  'subsidies.fundingTypePublic': 'Public',
+  'subsidies.fundingTypePrivate': 'Privé', 
+  'subsidies.fundingTypeMixed': 'Mixte',
   'subsidies.fundingType.public': 'Public',
   'subsidies.fundingType.private': 'Privé',
   'subsidies.fundingType.mixed': 'Mixte',
@@ -285,5 +288,11 @@ export const frTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profil',
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
-  'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.'
+  'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
+  'subsidies.fundingTypePublic': 'Public',
+  'subsidies.fundingTypePrivate': 'Privé', 
+  'subsidies.fundingTypeMixed': 'Mixte',
+  'subsidies.fundingType.public': 'Public',
+  'subsidies.fundingType.private': 'Privé',
+  'subsidies.fundingType.mixed': 'Mixte',
 };
