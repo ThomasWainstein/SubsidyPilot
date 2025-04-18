@@ -1,0 +1,20 @@
+
+export const forms = {
+  'form.farmName': 'Nombre de la Granja',
+  'form.yearEstablished': 'Año de Establecimiento',
+  'form.carbonScore': 'Puntuación de Carbono',
+  'form.irrigationMethod': 'Método de Irrigación',
+  'form.certifications': 'Certificaciones',
+  'form.staff': 'Personal',
+  'form.revenue': 'Ingresos',
+  'form.pastSubsidies': 'Subsidios Anteriores',
+  'form.address': 'Dirección Completa',
+  'form.registrationNumber': 'SIRET o Número de Registro',
+  'form.certificationStatus': 'Estado de Certificación',
+  'form.description': 'Describa cómo su sistema de irrigación mejorará la eficiencia',
+  'form.tooltip.carbonScore': 'Medida de emisiones de carbono por hectárea',
+  'form.tooltip.irrigationMethod': 'El método utilizado para irrigar cultivos',
+  'form.tooltip.certifications': 'Certificaciones oficiales en posesión de la granja',
+  'form.tooltip.region': 'Región administrativa donde se ubica la granja',
+  'form.tooltip.size': 'Área total de la granja en hectáreas',
+} as const;

@@ -1,0 +1,20 @@
+
+export const forms = {
+  'form.farmName': 'Farm Name',
+  'form.yearEstablished': 'Year Established',
+  'form.carbonScore': 'Carbon Score',
+  'form.irrigationMethod': 'Irrigation Method',
+  'form.certifications': 'Certifications',
+  'form.staff': 'Staff',
+  'form.revenue': 'Revenue',
+  'form.pastSubsidies': 'Past Subsidies',
+  'form.address': 'Complete Address',
+  'form.registrationNumber': 'SIRET or Registration Number',
+  'form.certificationStatus': 'Certification Status',
+  'form.description': 'Describe how your irrigation system will improve efficiency',
+  'form.tooltip.carbonScore': 'Measure of carbon emissions per hectare',
+  'form.tooltip.irrigationMethod': 'The method used to irrigate crops',
+  'form.tooltip.certifications': 'Official certifications held by the farm',
+  'form.tooltip.region': 'Administrative region where the farm is located',
+  'form.tooltip.size': 'Total area of the farm in hectares',
+} as const;

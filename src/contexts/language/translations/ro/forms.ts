@@ -1,0 +1,20 @@
+
+export const forms = {
+  'form.farmName': 'Numele Fermei',
+  'form.yearEstablished': 'Anul Înființării',
+  'form.carbonScore': 'Scor Carbon',
+  'form.irrigationMethod': 'Metodă de Irigare',
+  'form.certifications': 'Certificări',
+  'form.staff': 'Personal',
+  'form.revenue': 'Venit',
+  'form.pastSubsidies': 'Subvenții Anterioare',
+  'form.address': 'Adresă Completă',
+  'form.registrationNumber': 'Număr SIRET sau de Înregistrare',
+  'form.certificationStatus': 'Statut de Certificare',
+  'form.description': 'Descrieți cum va îmbunătăți sistemul dvs. de irigare eficiența',
+  'form.tooltip.carbonScore': 'Măsură a emisiilor de carbon pe hectar',
+  'form.tooltip.irrigationMethod': 'Metoda utilizată pentru irigarea culturilor',
+  'form.tooltip.certifications': 'Certificări oficiale deținute de fermă',
+  'form.tooltip.region': 'Regiunea administrativă unde se află ferma',
+  'form.tooltip.size': 'Suprafața totală a fermei în hectare',
+} as const;
