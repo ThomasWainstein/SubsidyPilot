@@ -2,6 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { TranslationKey } from '@/contexts/language/types';
 import { useToast } from '@/hooks/use-toast';
+import { Subsidy } from '@/types/subsidy';
+import Navbar from '@/components/Navbar';
+import { 
+  Filter, Search, ChevronDown, ChevronUp, 
+  MapPin, Calendar, DollarSign, Award, Percent, X
+} from 'lucide-react';
+import { 
+  Card, CardHeader, CardTitle, CardDescription, 
+  CardContent, CardFooter 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Accordion, AccordionContent, 
+  AccordionItem, AccordionTrigger 
+} from '@/components/ui/accordion';
 
 // Mock subsidy data for search engine
 const SEARCH_SUBSIDIES: Subsidy[] = [
@@ -510,113 +530,123 @@ const SubsidySearchPage = () => {
                   </AccordionItem>
                 </Accordion>
                 
-                {/* Match Confidence Slider */}
-                <div className="space-y-4">
-                  <Label>{t('subsidies.matchConfidenceSlider')}</Label>
-                  <div className="flex items-center space-x-2">
-                    <Slider
-                      min={0}
-                      max={100}
+                {/* Match Confidence Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="match-confidence">{t('subsidies.matchConfidence')} ({filters.minConfidence}%)</Label>
+                  <div className="pt-2">
+                    <Slider 
+                      id="match-confidence"
+                      defaultValue={[0]} 
+                      min={0} 
+                      max={100} 
                       step={5}
                       value={[filters.minConfidence]}
-                      onValueChange={(val) => setFilters(prev => ({...prev, minConfidence: val[0]}))}
+                      onValueChange={(value) => setFilters(prev => ({...prev, minConfidence: value[0]}))}
                     />
-                    <span className="min-w-[45px] text-center">{filters.minConfidence}%</span>
                   </div>
                 </div>
               </div>
+              
+              <div className="p-4 border-t">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={clearFilters}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
             </div>
             
-            {/* Mobile Filter Toggle Button */}
-            <div className="md:hidden mb-4 flex justify-between items-center">
+            {/* Mobile Filter Toggle */}
+            <div className="md:hidden mb-4">
               <Button 
                 variant="outline" 
-                size="sm" 
+                className="w-full flex items-center justify-between"
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center"
               >
-                <Filter size={16} className="mr-2" />
-                {t('dashboard.filterByStatus')}
-                {isFilterOpen ? <ChevronUp className="ml-2" size={16} /> : <ChevronDown className="ml-2" size={16} />}
+                <span className="flex items-center">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                </span>
+                {isFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </Button>
-              <span className="text-sm text-gray-500">
-                {filteredSubsidies.length} {t('subsidies.resultsFound')}
-              </span>
             </div>
             
             {/* Results */}
             <div className="flex-grow">
-              <div className="hidden md:flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">{t('subsidies.title')}</h2>
-                <span className="text-sm text-gray-500">
-                  {filteredSubsidies.length} {t('subsidies.resultsFound')}
-                </span>
+              <div className="mb-4">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white">{t('subsidies.searchResults')} ({filteredSubsidies.length})</h2>
               </div>
               
               {filteredSubsidies.length > 0 ? (
-                <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   {filteredSubsidies.map((subsidy) => (
-                    <Card key={subsidy.id} className="border-2 border-transparent hover:border-primary/20 transition-colors dark:bg-gray-800">
+                    <Card key={subsidy.id} className="overflow-hidden">
                       <CardHeader className="pb-2">
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {subsidy.fundingType && (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                              {t(`subsidies.${subsidy.fundingType}`)}
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                            {t(`subsidies.fundingType.${subsidy.fundingType}` as TranslationKey)}
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
+                            {subsidy.matchConfidence}% {t('subsidies.matchScore')}
+                          </Badge>
+                          {subsidy.deadline && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
+                              {t('subsidies.deadline')}: {subsidy.deadline}
                             </Badge>
                           )}
-                          {Array.isArray(subsidy.countryEligibility) ? (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              {subsidy.countryEligibility.length > 2 
-                                ? `${subsidy.countryEligibility[0]}, ${subsidy.countryEligibility[1]}...` 
-                                : subsidy.countryEligibility.join(', ')}
+                          {Array.isArray(subsidy.region) ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                              {subsidy.region.join(', ')}
                             </Badge>
                           ) : (
-                            subsidy.countryEligibility && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                {subsidy.countryEligibility}
-                              </Badge>
-                            )
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                              {subsidy.region}
+                            </Badge>
                           )}
                           {subsidy.certifications && subsidy.certifications.length > 0 && (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            <Badge variant="outline" className="bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200">
                               {subsidy.certifications.join(', ')}
                             </Badge>
                           )}
                         </div>
-                        <CardTitle className="text-lg">{getLocalizedContent(subsidy.name)}</CardTitle>
-                        <CardDescription className="line-clamp-2">
+                        <CardTitle className="text-xl">{getLocalizedContent(subsidy.name)}</CardTitle>
+                        <CardDescription className="mt-2 line-clamp-2">
                           {getLocalizedContent(subsidy.description)}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="flex items-center">
-                            <Percent size={16} className="mr-2 text-gray-500" />
-                            <span className="text-gray-700">{subsidy.matchConfidence}%</span>
+                      <CardContent className="pb-2 pt-0">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="flex items-center text-sm">
+                            <Percent className="h-4 w-4 mr-2 text-gray-500" />
+                            <span className="text-gray-600 dark:text-gray-400">{subsidy.matchConfidence}% {t('subsidies.matchScore')}</span>
                           </div>
-                          <div className="flex items-center">
-                            <Calendar size={16} className="mr-2 text-gray-500" />
-                            <span className="text-gray-700">{subsidy.deadline}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin size={16} className="mr-2 text-gray-500" />
-                            <span className="text-gray-700 truncate">
+                          {subsidy.deadline && (
+                            <div className="flex items-center text-sm">
+                              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                              <span className="text-gray-600 dark:text-gray-400">{subsidy.deadline}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center text-sm">
+                            <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                            <span className="text-gray-600 dark:text-gray-400">
                               {Array.isArray(subsidy.region) 
                                 ? subsidy.region.join(', ') 
                                 : subsidy.region}
                             </span>
                           </div>
-                          <div className="flex items-center">
-                            <Award size={16} className="mr-2 text-gray-500" />
-                            <span className="text-gray-700">{subsidy.code}</span>
+                          <div className="flex items-center text-sm">
+                            <Award className="h-4 w-4 mr-2 text-gray-500" />
+                            <span className="text-gray-600 dark:text-gray-400">{subsidy.code}</span>
                           </div>
-                          <div className="flex items-center col-span-2">
-                            <DollarSign size={16} className="mr-2 text-gray-500" />
-                            <span className="text-gray-700">{subsidy.grant}</span>
+                          <div className="flex items-center text-sm col-span-2">
+                            <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
+                            <span className="text-gray-600 dark:text-gray-400">{subsidy.grant}</span>
                           </div>
                         </div>
                       </CardContent>
-                      <CardFooter className="pt-2 flex justify-end">
+                      <CardFooter className="pt-2">
                         <Button onClick={() => handleAttachToFarm(subsidy)}>
                           {t('subsidies.attachToFarm')}
                         </Button>
