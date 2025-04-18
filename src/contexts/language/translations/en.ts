@@ -1,4 +1,3 @@
-
 import { TranslationKey } from '../types';
 
 export const enTranslations: Record<TranslationKey, string> = {
