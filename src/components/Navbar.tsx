@@ -1,6 +1,7 @@
+
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage, Language } from '../contexts/LanguageContext';
-import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User } from 'lucide-react';
+import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -101,6 +102,16 @@ const Navbar = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center" 
+              onClick={() => navigate('/subsidy-search')}
+            >
+              <Search size={16} className="mr-1" />
+              {t('common.searchSubsidies')}
+            </Button>
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="hidden md:flex items-center">

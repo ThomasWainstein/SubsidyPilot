@@ -1,3 +1,4 @@
+
 import { TranslationKey } from '../types';
 
 export const frTranslations: Record<TranslationKey, string> = {
@@ -58,6 +59,7 @@ export const frTranslations: Record<TranslationKey, string> = {
   'common.demoLabel': 'DÉMO',
   'common.demoDisclaimer': 'Ceci est une version de démonstration d\'AgriTool. Les données, subventions et profils de fermes sont simulés uniquement à des fins de test.',
   'common.addNewSubsidy': 'Ajouter Nouvelle Subvention',
+  'common.searchSubsidies': 'Rechercher des subventions',
   'home.title': 'AgriTool',
   'home.tagline': 'Gérez tout votre portefeuille agricole avec AgriTool.',
   'dashboard.title': 'Tableau de Bord du Consultant',
@@ -124,6 +126,21 @@ export const frTranslations: Record<TranslationKey, string> = {
   'subsidies.draftDate': 'Date de Brouillon',
   'subsidies.status': 'Statut',
   'subsidies.reminder': 'Rappel',
+  'subsidies.searchEngine': 'Moteur de Recherche de Subventions Européennes',
+  'subsidies.fundingType': 'Type de Financement',
+  'subsidies.countryEligibility': 'Éligibilité par Pays',
+  'subsidies.agriculturalSector': 'Secteur Agricole',
+  'subsidies.farmingMethod': 'Méthode d\'Agriculture',
+  'subsidies.grantValue': 'Valeur de Subvention',
+  'subsidies.certifications': 'Certifications',
+  'subsidies.matchConfidenceSlider': 'Confiance de Correspondance',
+  'subsidies.resultsFound': 'subventions trouvées pour vos critères',
+  'subsidies.noMatchCriteria': 'Aucune subvention ne correspond à vos critères.',
+  'subsidies.public': 'Public',
+  'subsidies.private': 'Privé',
+  'subsidies.mixed': 'Mixte',
+  'subsidies.attachToFarm': 'Attacher à une Ferme',
+  'subsidies.selectFarm': 'Sélectionnez une Ferme à Attacher',
   'application.title': 'Demande de Subvention',
   'application.subtitle': 'Remplissez le formulaire pour demander cette subvention',
   'application.confirmationMessage': 'Votre demande a été reçue',
@@ -194,9 +211,11 @@ export const frTranslations: Record<TranslationKey, string> = {
   'messages.detectedFields': 'Champs détectés',
   'messages.autoFilled': 'Remplis automatiquement',
   'messages.remaining': 'restants',
+  'messages.subsidyAttached': 'Subvention attachée à la ferme',
+  'messages.subsidyAttachedDesc': 'La subvention a été ajoutée au profil de votre ferme',
   'euportal.title': 'Subvention pour l\'Amélioration de l\'Irrigation Intelligente',
   'euportal.subtitle': 'Formulaire de Demande - Référence : EAGF/IRR/2024/03',
-  'euportal.header': 'Fonds Europ��en Agricole de Garantie',
+  'euportal.header': 'Fonds Européen Agricole de Garantie',
   'euportal.portalId': 'ID du Portail : EAGF-24-ONLINE',
   'euportal.applicantInfo': 'Informations sur le Demandeur',
   'euportal.applicantInfoDesc': 'Veuillez fournir des informations précises sur votre ferme.',
@@ -252,5 +271,5 @@ export const frTranslations: Record<TranslationKey, string> = {
   'nav.profile': 'Profil',
   'nav.settings': 'Paramètres',
   'nav.logout': 'Déconnexion',
-  'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
+  'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.'
 };

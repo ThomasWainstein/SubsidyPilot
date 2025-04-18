@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText } from 'lucide-react';
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ManualSubsidyForm } from './ManualSubsidyForm';
 import { ImportSubsidyForm } from './ImportSubsidyForm';
-import { Subsidy } from '@/data/subsidies';
+import { Subsidy } from '@/types/subsidy';
 import { useToast } from '@/hooks/use-toast';
 
 interface SubsidiesTabContentProps {
@@ -21,11 +21,31 @@ interface SubsidiesTabContentProps {
 }
 
 export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [subsidies, setSubsidies] = useState(() => getRandomSubsidies(farmId));
+  const [subsidies, setSubsidies] = useState<Subsidy[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const farm = farms.find(f => f.id === farmId);
+  
+  // Initialize subsidies, including those from the search engine
+  useEffect(() => {
+    // Get base subsidies
+    const baseSubsidies = getRandomSubsidies(farmId);
+    
+    // Get custom subsidies from localStorage
+    const customSubsidiesKey = `farm_${farmId}_custom_subsidies`;
+    const customSubsidiesStr = localStorage.getItem(customSubsidiesKey);
+    const customSubsidies = customSubsidiesStr ? JSON.parse(customSubsidiesStr) : [];
+    
+    // Combine both sets of subsidies
+    setSubsidies([...baseSubsidies, ...customSubsidies]);
+  }, [farmId]);
+  
+  // Helper function to get translated content
+  const getLocalizedContent = (content: string | Record<string, string>): string => {
+    if (typeof content === 'string') return content;
+    return content[language] || content['en'] || '';
+  };
   
   const getFarmCountry = () => {
     if (!farm?.region) return "France";
@@ -40,6 +60,11 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   
   let matchedSubsidies = subsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
+    
+    // For custom subsidies with source from search, always show them
+    if (subsidy.source === 'search' && subsidy.isManuallyAdded) {
+      return true;
+    }
     
     // Handle both string and array region fields
     if (Array.isArray(subsidy.region)) {
@@ -114,15 +139,19 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
             {matchedSubsidies.map((subsidy) => (
               <Card key={subsidy.id} className="overflow-hidden border-2 border-transparent hover:border-primary/20 transition-colors dark:bg-dark-card">
                 <CardHeader className="bg-gray-50 dark:bg-gray-800">
-                  <div className="flex items-center">
-                    <CardTitle className="text-lg dark:text-white">{subsidy.name}</CardTitle>
+                  <div className="flex items-center flex-wrap gap-2">
+                    <CardTitle className="text-lg dark:text-white">
+                      {getLocalizedContent(subsidy.name)}
+                    </CardTitle>
                     {subsidy.isManuallyAdded && (
                       <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        Manual Entry
+                        {subsidy.source === 'search' ? 'From Search' : 'Manual Entry'}
                       </Badge>
                     )}
                   </div>
-                  <CardDescription className="dark:text-gray-300">{subsidy.description}</CardDescription>
+                  <CardDescription className="dark:text-gray-300">
+                    {getLocalizedContent(subsidy.description)}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <div className="space-y-3">
