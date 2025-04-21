@@ -28,6 +28,7 @@ const Navbar = () => {
     fr: 'Français',
     es: 'Español',
     ro: 'Română',
+    pl: 'Polski',
   };
 
   const languageFlags: Record<Language, string> = {
@@ -35,6 +36,7 @@ const Navbar = () => {
     fr: '🇫🇷',
     es: '🇪🇸',
     ro: '🇷🇴',
+    pl: '🇵🇱',
   };
   
   const isHomePage = location.pathname === '/';
@@ -149,6 +151,9 @@ const Navbar = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLanguage('ro')}>
                   <span className="mr-2">🇷🇴</span> Română
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('pl')}>
+                  <span className="mr-2">🇵🇱</span> Polski
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

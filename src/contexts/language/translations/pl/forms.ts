@@ -1,0 +1,20 @@
+
+export const forms = {
+  'form.farmName': 'Nazwa Gospodarstwa',
+  'form.yearEstablished': 'Rok Założenia',
+  'form.carbonScore': 'Wynik Węglowy',
+  'form.irrigationMethod': 'Metoda Nawadniania',
+  'form.certifications': 'Certyfikaty',
+  'form.staff': 'Personel',
+  'form.revenue': 'Przychód',
+  'form.pastSubsidies': 'Poprzednie Dotacje',
+  'form.address': 'Pełny Adres',
+  'form.registrationNumber': 'Numer SIRET lub Rejestracyjny',
+  'form.certificationStatus': 'Status Certyfikacji',
+  'form.description': 'Opisz jak Twój system nawadniania poprawi efektywność',
+  'form.tooltip.carbonScore': 'Miara emisji dwutlenku węgla na hektar',
+  'form.tooltip.irrigationMethod': 'Metoda używana do nawadniania upraw',
+  'form.tooltip.certifications': 'Oficjalne certyfikaty posiadane przez gospodarstwo',
+  'form.tooltip.region': 'Region administracyjny, w którym znajduje się gospodarstwo',
+  'form.tooltip.size': 'Całkowita powierzchnia gospodarstwa w hektarach',
+} as const;

@@ -1,4 +1,3 @@
-
 import { CommonTranslationKey } from './common';
 import { DashboardTranslationKey } from './dashboard';
 import { FarmTranslationKey } from './farm';
@@ -14,7 +13,7 @@ import { HomeTranslationKey } from './home';
 import { FeaturesTranslationKey } from './features';
 import { FooterTranslationKey } from './footer';
 
-export type Language = 'en' | 'fr' | 'es' | 'ro';
+export type Language = 'en' | 'fr' | 'es' | 'ro' | 'pl';
 
 export type TranslationKey =
   | CommonTranslationKey
