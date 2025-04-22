@@ -35,6 +35,7 @@ export const DropzoneUpload = ({
   description
 }: DropzoneUploadProps) => {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);

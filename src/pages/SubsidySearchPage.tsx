@@ -256,9 +256,9 @@ const SubsidySearchPage = () => {
               <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
                 <TabsList className="grid grid-cols-4 mb-4">
                   <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
-                  <TabsTrigger value="public">{t('subsidies.fundingType.public')}</TabsTrigger>
-                  <TabsTrigger value="private">{t('subsidies.fundingType.private')}</TabsTrigger>
-                  <TabsTrigger value="mixed">{t('subsidies.fundingType.mixed')}</TabsTrigger>
+                  <TabsTrigger value="public">{t('subsidies.fundingTypePublic')}</TabsTrigger>
+                  <TabsTrigger value="private">{t('subsidies.fundingTypePrivate')}</TabsTrigger>
+                  <TabsTrigger value="mixed">{t('subsidies.fundingTypeMixed')}</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="all" className="mt-0">
@@ -300,7 +300,12 @@ const SubsidySearchPage = () => {
                                 {agriculturalSectors[subsidy.id.charCodeAt(2) % agriculturalSectors.length]}
                               </Badge>
                               <Badge variant="outline" className="bg-red-50">
-                                {t(`subsidies.fundingType.${fundingTypes[subsidy.id.charCodeAt(1) % 3]}`)}
+                                {fundingTypes[subsidy.id.charCodeAt(1) % 3] === 'public' ? 
+                                  t('subsidies.fundingTypePublic') :
+                                  fundingTypes[subsidy.id.charCodeAt(1) % 3] === 'private' ?
+                                  t('subsidies.fundingTypePrivate') :
+                                  t('subsidies.fundingTypeMixed')
+                                }
                               </Badge>
                             </div>
                           </CardContent>
@@ -328,7 +333,7 @@ const SubsidySearchPage = () => {
                         <h3 className="text-lg font-medium text-gray-900 mb-1">{t('subsidies.noSubsidiesFound')}</h3>
                         <p className="text-gray-500 text-center max-w-md">{t('subsidies.noSubsidiesFoundDesc')}</p>
                         <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                          {t('common.clearFilters')}
+                          {t('common.clear')}
                         </Button>
                       </CardContent>
                     </Card>
@@ -362,7 +367,7 @@ const SubsidySearchPage = () => {
           <div className="py-4">
             <Select onValueChange={handleConfirmAttach}>
               <SelectTrigger>
-                <SelectValue placeholder={t('common.selectFarm')} />
+                <SelectValue placeholder={t('common.select')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>

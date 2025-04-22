@@ -64,7 +64,6 @@ export const common = {
   'common.clear': 'Clear',
   'common.hideFilters': 'Hide Filters',
   'common.showFilters': 'Show Filters',
-  'common.all': 'All',
   'common.learn': 'Learn more',
   'common.view': 'View',
   'common.edit': 'Edit',
@@ -135,4 +134,8 @@ export const common = {
   'common.privacyPolicy': 'Privacy Policy',
   'common.cookiePolicy': 'Cookie Policy',
   'common.accessibilityStatement': 'Accessibility Statement',
+  'common.searchFarms': 'Search farms',
+  'common.status': 'Status',
+  'common.clearFilters': 'Clear Filters',
+  'common.selectFarm': 'Select a Farm'
 } as const;

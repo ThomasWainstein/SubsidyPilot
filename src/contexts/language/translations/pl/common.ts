@@ -64,7 +64,6 @@ export const common = {
   'common.clear': 'Wyczyść',
   'common.hideFilters': 'Ukryj Filtry',
   'common.showFilters': 'Pokaż Filtry',
-  'common.all': 'Wszystkie',
   'common.learn': 'Dowiedz się więcej',
   'common.view': 'Zobacz',
   'common.edit': 'Edytuj',
@@ -120,7 +119,6 @@ export const common = {
   'common.last': 'Ostatni',
   'common.more': 'Więcej',
   'common.less': 'Mniej',
-  'common.all': 'Wszystkie',
   'common.none': 'Żadne',
   'common.and': 'i',
   'common.or': 'lub',
@@ -135,4 +133,8 @@ export const common = {
   'common.privacyPolicy': 'Polityka prywatności',
   'common.cookiePolicy': 'Polityka plików cookie',
   'common.accessibilityStatement': 'Oświadczenie o dostępności',
+  'common.searchFarms': 'Szukaj gospodarstw',
+  'common.status': 'Status',
+  'common.clearFilters': 'Wyczyść Filtry',
+  'common.selectFarm': 'Wybierz Gospodarstwo'
 } as const;
