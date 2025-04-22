@@ -1,9 +1,9 @@
 
 import { useState } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Button } from '@/components/ui/button';
 import { FileUp, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface DropzoneUploadProps {
@@ -14,9 +14,26 @@ interface DropzoneUploadProps {
     tag: string;
     uploadedAt: string;
   }) => void;
+  onFilesSelected?: (files: File[]) => void;
+  maxFiles?: number;
+  accept?: Record<string, string[]>;
+  title?: string;
+  description?: string;
 }
 
-export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
+export const DropzoneUpload = ({ 
+  onUploadSuccess, 
+  onFilesSelected,
+  maxFiles = 1,
+  accept = {
+    'application/pdf': ['.pdf'],
+    'application/msword': ['.doc', '.docx'],
+    'image/jpeg': ['.jpg', '.jpeg'],
+    'image/png': ['.png']
+  },
+  title,
+  description
+}: DropzoneUploadProps) => {
   const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,19 +94,23 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
   };
 
   const processFile = async (file: File) => {
-    const allowedTypes = ['.pdf', '.docx', '.jpg', '.png'];
     const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
+    const allowedTypes = Object.values(accept).flat();
 
     if (!allowedTypes.includes(fileExt)) {
       toast({
         variant: "destructive",
         title: "Invalid file type",
-        description: "Please upload PDF, DOCX, JPG or PNG files only.",
+        description: "Please upload a valid file type.",
       });
       return;
     }
 
-    await simulateOCRProcess(file);
+    if (onFilesSelected) {
+      onFilesSelected([file]);
+    } else {
+      await simulateOCRProcess(file);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -131,9 +152,9 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
           />
           <div className="space-y-1">
             <p className="text-sm font-medium">
-              {isDragging ? "Drop to Upload Document" : "Drag & Drop your document here"}
+              {isDragging ? "Drop to Upload Document" : title || "Drag & Drop your document here"}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">PDF, DOCX, JPG or PNG files</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{description || "PDF, DOCX, JPG or PNG files"}</p>
           </div>
           
           <div className="mt-2">
@@ -149,7 +170,7 @@ export const DropzoneUpload = ({ onUploadSuccess }: DropzoneUploadProps) => {
               id="file-upload"
               type="file"
               className="hidden"
-              accept=".pdf,.docx,.jpg,.png"
+              accept={Object.values(accept).flat().join(',')}
               onChange={handleFileSelect}
             />
           </div>

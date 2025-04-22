@@ -32,4 +32,5 @@ export type TranslationKey =
   | StatusTranslationKey
   | SubsidiesTranslationKey;
 
-export type { Language } from '../';
+// Import the Language type from the parent file
+// Instead of exporting it here, which creates the circular reference

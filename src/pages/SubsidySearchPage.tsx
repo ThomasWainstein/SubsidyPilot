@@ -57,18 +57,14 @@ const SubsidySearchPage = () => {
   const [selectedSubsidy, setSelectedSubsidy] = useState<Subsidy | null>(null);
   const [isAttachDialogOpen, setIsAttachDialogOpen] = useState(false);
 
-  // Search and filter subsidies
   const filteredSubsidies = allSubsidies.filter(subsidy => {
-    // Basic search
     const matchesSearch = 
       subsidy.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       subsidy.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       subsidy.code.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Match confidence filter
     const matchesConfidence = subsidy.matchConfidence >= matchConfidence[0];
     
-    // Region filter
     const matchesCountry = selectedCountries.length === 0 || 
       selectedCountries.some(country => {
         if (typeof subsidy.region === 'string') {
@@ -78,12 +74,10 @@ const SubsidySearchPage = () => {
         }
       });
     
-    // Funding type filter - we'll just use a random selection since the data doesn't contain this info
     const subsidyFundingType = ['public', 'private', 'mixed'][subsidy.id.charCodeAt(1) % 3];
     const matchesFundingType = selectedFundingTypes.length === 0 || 
       selectedFundingTypes.includes(subsidyFundingType);
     
-    // Agricultural sector filter - we'll just use a random selection since the data doesn't contain this info
     const subsidySector = agriculturalSectors[subsidy.id.charCodeAt(2) % agriculturalSectors.length];
     const matchesSector = selectedSectors.length === 0 || 
       selectedSectors.includes(subsidySector);
@@ -91,10 +85,8 @@ const SubsidySearchPage = () => {
     return matchesSearch && matchesConfidence && matchesCountry && matchesFundingType && matchesSector;
   });
 
-  // Filter by tabs (All, Public, Private, Mixed)
   const tabFilteredSubsidies = filteredSubsidies.filter(subsidy => {
     if (activeTab === 'all') return true;
-    // Determine the funding type based on the subsidy ID (just for demo purposes)
     const fundingType = ['public', 'private', 'mixed'][subsidy.id.charCodeAt(1) % 3];
     return fundingType === activeTab;
   });
@@ -106,7 +98,6 @@ const SubsidySearchPage = () => {
 
   const handleConfirmAttach = (farmId: string) => {
     if (selectedSubsidy) {
-      // In a real app, we would update the database here
       const farm = farms.find(f => f.id === farmId);
       toast({
         title: t('messages.subsidyAttached'),
@@ -162,7 +153,6 @@ const SubsidySearchPage = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters sidebar */}
             <div className={`lg:col-span-1 ${showFilters ? 'block' : 'hidden lg:block'}`}>
               <Card>
                 <CardHeader>
@@ -174,7 +164,6 @@ const SubsidySearchPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Match confidence slider */}
                   <div className="space-y-2">
                     <Label>{t('subsidies.matchConfidenceSlider')}: {matchConfidence[0]}%</Label>
                     <Slider
@@ -186,7 +175,6 @@ const SubsidySearchPage = () => {
                     />
                   </div>
                   
-                  {/* Country/Region filter */}
                   <div className="space-y-2">
                     <Label>{t('subsidies.countryEligibility')}</Label>
                     <div className="space-y-2">
@@ -205,7 +193,6 @@ const SubsidySearchPage = () => {
                     </div>
                   </div>
                   
-                  {/* Funding Type filter */}
                   <div className="space-y-2">
                     <Label>{t('subsidies.fundingType')}</Label>
                     <div className="space-y-2">
@@ -224,7 +211,6 @@ const SubsidySearchPage = () => {
                     </div>
                   </div>
                   
-                  {/* Agricultural Sector filter */}
                   <div className="space-y-2">
                     <Label>{t('subsidies.agriculturalSector')}</Label>
                     <div className="space-y-2">
@@ -246,7 +232,6 @@ const SubsidySearchPage = () => {
               </Card>
             </div>
             
-            {/* Search results */}
             <div className="lg:col-span-3">
               <div className="mb-6 flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-grow">
@@ -295,7 +280,7 @@ const SubsidySearchPage = () => {
                                   {subsidy.code}
                                 </CardDescription>
                               </div>
-                              <MatchConfidenceBadge score={subsidy.matchConfidence} />
+                              <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
                             </div>
                           </CardHeader>
                           <CardContent className="py-2">
@@ -312,11 +297,9 @@ const SubsidySearchPage = () => {
                                 {typeof subsidy.region === 'string' ? subsidy.region : subsidy.region.join(', ')}
                               </Badge>
                               <Badge variant="outline" className="bg-yellow-50">
-                                {/* Random sector for demo */}
                                 {agriculturalSectors[subsidy.id.charCodeAt(2) % agriculturalSectors.length]}
                               </Badge>
                               <Badge variant="outline" className="bg-red-50">
-                                {/* Random funding type for demo */}
                                 {t(`subsidies.fundingType.${fundingTypes[subsidy.id.charCodeAt(1) % 3]}`)}
                               </Badge>
                             </div>
@@ -352,7 +335,6 @@ const SubsidySearchPage = () => {
                   )}
                 </TabsContent>
                 
-                {/* Other tabs have the same content structure */}
                 <TabsContent value="public" className="mt-0">
                   {/* Same structure as "all" tab */}
                 </TabsContent>
@@ -368,7 +350,6 @@ const SubsidySearchPage = () => {
         </div>
       </main>
       
-      {/* Attach to Farm Dialog */}
       <Dialog open={isAttachDialogOpen} onOpenChange={setIsAttachDialogOpen}>
         <DialogContent>
           <DialogHeader>

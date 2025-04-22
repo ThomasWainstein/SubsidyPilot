@@ -28,4 +28,12 @@ export const messages = {
   'messages.remaining': 'rămase',
   'messages.subsidyAttached': 'Subvenție atașată la fermă',
   'messages.subsidyAttachedDesc': 'Subvenția a fost adăugată la profilul fermei tale',
+  'messages.simulationComplete': 'Simulare completă',
+  'messages.simulationCompleteDesc': 'Simularea fermei tale a fost completată cu succes.',
+  'messages.simulationSaved': 'Simulare salvată',
+  'messages.simulationSavedDesc': 'Ferma ta simulată a fost salvată ca scenariu.',
+  'messages.documentAnalyzed': 'Document analizat',
+  'messages.documentAnalyzedDesc': 'Documentul a fost analizat pentru potențiale subvenții.',
+  'messages.chatAnalysisComplete': 'Analiza chat completă',
+  'messages.chatAnalysisCompleteDesc': 'S-au găsit potențiale potriviri de subvenții pe baza descrierii tale.',
 } as const;

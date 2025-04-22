@@ -28,4 +28,12 @@ export const messages = {
   'messages.remaining': 'remaining',
   'messages.subsidyAttached': 'Subsidy attached to farm',
   'messages.subsidyAttachedDesc': 'The subsidy has been added to your farm profile',
+  'messages.simulationComplete': 'Simulation complete',
+  'messages.simulationCompleteDesc': 'Your farm simulation has been completed successfully.',
+  'messages.simulationSaved': 'Simulation saved',
+  'messages.simulationSavedDesc': 'Your simulated farm has been saved as a scenario.',
+  'messages.documentAnalyzed': 'Document analyzed',
+  'messages.documentAnalyzedDesc': 'The document has been analyzed for potential subsidies.',
+  'messages.chatAnalysisComplete': 'Chat analysis complete',
+  'messages.chatAnalysisCompleteDesc': 'Potential subsidy matches found based on your description.',
 } as const;
