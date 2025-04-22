@@ -26,6 +26,5 @@ export interface Subsidy {
   farmingMethod?: string | string[];
   grantValue?: string;
   certifications?: string[];
-  title?: string;
   maxAmount?: string;
 }

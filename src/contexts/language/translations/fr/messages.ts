@@ -28,4 +28,12 @@ export const messages = {
   'messages.remaining': 'restants',
   'messages.subsidyAttached': 'Subvention attachée à la ferme',
   'messages.subsidyAttachedDesc': 'La subvention a été ajoutée au profil de votre ferme',
+  'messages.simulationComplete': 'Simulation terminée',
+  'messages.simulationCompleteDesc': 'Votre simulation a été complétée avec succès.',
+  'messages.simulationSaved': 'Simulation sauvegardée',
+  'messages.simulationSavedDesc': 'Votre simulation a été sauvegardée.',
+  'messages.documentAnalyzed': 'Document analysé',
+  'messages.documentAnalyzedDesc': 'Le document a été analysé pour des subventions potentielles.',
+  'messages.chatAnalysisComplete': 'Analyse du chat terminée',
+  'messages.chatAnalysisCompleteDesc': 'Des correspondances de subventions potentielles ont été trouvées basées sur votre description.'
 } as const;

@@ -31,4 +31,11 @@ export const status = {
   'status.unarchived': 'Unarchived',
   'status.published': 'Published',
   'status.unpublished': 'Unpublished',
+  'status.profileComplete': 'Profile Complete',
+  'status.inReview': 'In Review',
+  'status.needsUpdate': 'Needs Update',
+  'status.subsidyInProgress': 'Subsidy In Progress',
+  'status.inProgress': 'In Progress',
+  'status.inPreparation': 'In Preparation',
+  'status.readyToSubmit': 'Ready to Submit'
 } as const;
