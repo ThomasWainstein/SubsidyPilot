@@ -137,4 +137,5 @@ export type CommonTranslationKey =
   | 'common.searchFarms'
   | 'common.status'
   | 'common.clearFilters'
-  | 'common.selectFarm';
+  | 'common.selectFarm'
+  | 'common.select';

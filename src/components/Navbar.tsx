@@ -1,6 +1,6 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useLanguage, Language } from '../contexts/LanguageContext';
+import { useLanguage } from '../contexts/language';
 import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +23,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const languageNames: Record<Language, string> = {
+  const languageNames: Record<string, string> = {
     en: 'English',
     fr: 'Français',
     es: 'Español',
@@ -31,7 +31,7 @@ const Navbar = () => {
     pl: 'Polski',
   };
 
-  const languageFlags: Record<Language, string> = {
+  const languageFlags: Record<string, string> = {
     en: '🇬🇧',
     fr: '🇫🇷',
     es: '🇪🇸',

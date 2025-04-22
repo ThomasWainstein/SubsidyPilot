@@ -64,6 +64,7 @@ export const common = {
   'common.clear': 'Wyczyść',
   'common.hideFilters': 'Ukryj Filtry',
   'common.showFilters': 'Pokaż Filtry',
+  'common.all': 'Wszystkie',
   'common.learn': 'Dowiedz się więcej',
   'common.view': 'Zobacz',
   'common.edit': 'Edytuj',
@@ -136,5 +137,6 @@ export const common = {
   'common.searchFarms': 'Szukaj gospodarstw',
   'common.status': 'Status',
   'common.clearFilters': 'Wyczyść Filtry',
-  'common.selectFarm': 'Wybierz Gospodarstwo'
+  'common.selectFarm': 'Wybierz Gospodarstwo',
+  'common.select': 'Wybierz'
 } as const;

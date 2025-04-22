@@ -1,6 +1,6 @@
 
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { LanguageProvider } from './contexts/language/LanguageProvider';
+import { LanguageProvider } from './contexts/language';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "./components/theme-provider";
 

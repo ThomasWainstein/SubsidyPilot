@@ -1,200 +1,168 @@
 
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { Button } from "@/components/ui/button";
+import { X, Upload, File, CheckCircle2, Loader2 } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
 import { useLanguage } from '@/contexts/language';
-import { Button } from '@/components/ui/button';
-import { FileUp, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
-interface DropzoneUploadProps {
-  onUploadSuccess: (document: {
-    id: string;
-    name: string;
-    type: string;
-    tag: string;
-    uploadedAt: string;
-  }) => void;
-  onFilesSelected?: (files: File[]) => void;
-  maxFiles?: number;
+export interface DropzoneUploadProps {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
   accept?: Record<string, string[]>;
-  title?: string;
-  description?: string;
+  maxFiles?: number;
+  onUploadSuccess?: () => void;
 }
 
 export const DropzoneUpload = ({ 
-  onUploadSuccess, 
-  onFilesSelected,
-  maxFiles = 1,
-  accept = {
-    'application/pdf': ['.pdf'],
-    'application/msword': ['.doc', '.docx'],
-    'image/jpeg': ['.jpg', '.jpeg'],
-    'image/png': ['.png']
+  title, 
+  description, 
+  accept = { 
+    'application/pdf': ['.pdf'], 
+    'application/msword': ['.doc', '.docx'] 
   },
-  title,
-  description
+  maxFiles = 1,
+  onUploadSuccess
 }: DropzoneUploadProps) => {
   const { t } = useLanguage();
-  const { toast } = useToast();
-  const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const simulateOCRProcess = async (file: File) => {
-    setIsProcessing(true);
-    setUploadProgress(0);
-
-    // Simulate OCR progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      setUploadProgress(i);
-    }
-
-    // 10% chance of error for demo purposes
-    if (Math.random() < 0.1) {
-      setIsProcessing(false);
-      setUploadProgress(0);
+  
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    // Check if we already have maxFiles
+    if (files.length + acceptedFiles.length > maxFiles) {
       toast({
+        title: t('common.error'),
+        description: `You can upload a maximum of ${maxFiles} files.`,
         variant: "destructive",
-        title: t('messages.scanningDocument'),
-        description: "Unable to process document — please check format or reupload.",
-      });
-      return false;
-    }
-
-    // Success case
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newDoc = {
-      id: `d${Date.now()}`,
-      name: file.name,
-      type: file.name.split('.').pop()?.toUpperCase() || 'PDF',
-      tag: 'Land Certificate',
-      uploadedAt: new Date().toISOString().split('T')[0],
-    };
-
-    setIsProcessing(false);
-    setUploadProgress(0);
-    
-    toast({
-      title: t('messages.documentUploaded'),
-      description: `${file.name} processed successfully`,
-    });
-    
-    onUploadSuccess(newDoc);
-    return true;
-  };
-
-  const processFile = async (file: File) => {
-    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
-    const allowedTypes = Object.values(accept).flat();
-
-    if (!allowedTypes.includes(fileExt)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid file type",
-        description: "Please upload a valid file type.",
       });
       return;
     }
-
-    if (onFilesSelected) {
-      onFilesSelected([file]);
-    } else {
-      await simulateOCRProcess(file);
-    }
+    
+    setFiles(prev => [...prev, ...acceptedFiles]);
+  }, [files, maxFiles, t]);
+  
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept,
+    maxFiles: maxFiles - files.length,
+  });
+  
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
   };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      await processFile(file);
-    }
+  
+  const uploadFiles = async () => {
+    if (files.length === 0) return;
+    
+    setUploading(true);
+    setUploadProgress(0);
+    
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 150);
+    
+    // Simulate network request
+    setTimeout(() => {
+      clearInterval(interval);
+      setUploadProgress(100);
+      
+      setTimeout(() => {
+        setUploading(false);
+        setFiles([]);
+        
+        toast({
+          title: t('messages.documentUploaded'),
+          description: files.map(f => f.name).join(', ') + ' ' + t('messages.documentUploadedDesc'),
+        });
+        
+        if (onUploadSuccess) {
+          onUploadSuccess();
+        }
+      }, 500);
+    }, 3000);
   };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      await processFile(file);
-    }
-  };
-
+  
   return (
     <div className="space-y-4">
       <div
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 transition-all duration-200",
-          isDragging ? "border-primary bg-primary/5" : "border-gray-200 dark:border-gray-700",
-          isProcessing ? "pointer-events-none opacity-50" : "hover:border-primary"
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          isDragActive 
+            ? 'border-green-500 bg-green-50 dark:bg-green-950/20' 
+            : 'border-gray-300 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-600'
+        }`}
       >
-        <div className="flex flex-col items-center justify-center gap-2 text-center">
-          <FileUp 
-            size={24} 
-            className={cn(
-              "text-gray-400 dark:text-gray-300",
-              isDragging && "text-primary"
-            )} 
-          />
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center space-y-2">
+          <Upload className="h-10 w-10 text-gray-400" />
           <div className="space-y-1">
-            <p className="text-sm font-medium">
-              {isDragging ? "Drop to Upload Document" : title || "Drag & Drop your document here"}
+            <p className="text-base font-medium">{title || 'Upload Documents'}</p>
+            <p className="text-sm text-gray-500">
+              {description || 'Drag & drop files here, or click to select files'}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{description || "PDF, DOCX, JPG or PNG files"}</p>
           </div>
-          
-          <div className="mt-2">
-            <Button
-              variant="outline"
-              onClick={() => document.getElementById('file-upload')?.click()}
-              disabled={isProcessing}
-            >
-              <FileUp size={16} className="mr-2" />
-              {t('common.upload')}
-            </Button>
-            <input
-              id="file-upload"
-              type="file"
-              className="hidden"
-              accept={Object.values(accept).flat().join(',')}
-              onChange={handleFileSelect}
-            />
-          </div>
+          <Button type="button" size="sm" className="mt-2">
+            {t('common.upload')}
+          </Button>
         </div>
       </div>
-
-      {isProcessing && (
-        <div className="animate-fade-in rounded-lg border dark:border-gray-700 p-4 flex items-center gap-4 bg-gray-50 dark:bg-gray-800">
-          <div className="relative">
-            <FileText size={24} className="text-gray-400 dark:text-gray-300" />
-            <div className="absolute inset-0 bg-primary/10 animate-pulse rounded" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium dark:text-white">Processing with OCR...</p>
-            <div className="mt-2 h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+      
+      {files.length > 0 && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            {files.map((file, index) => (
               <div 
-                className="h-full bg-primary transition-all duration-500 ease-out rounded-full"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
+                key={index} 
+                className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-md"
+              >
+                <div className="flex items-center space-x-3">
+                  <File className="h-5 w-5 text-gray-500" />
+                  <span className="text-sm font-medium truncate max-w-[200px]">
+                    {file.name}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </span>
+                </div>
+                <button 
+                  onClick={() => removeFile(index)}
+                  className="text-gray-500 hover:text-red-500"
+                  disabled={uploading}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
-          {uploadProgress === 100 && (
-            <CheckCircle2 size={24} className="text-green-500 animate-scale-in" />
+          
+          {uploading ? (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {uploadProgress < 100 ? t('messages.uploading') : t('messages.complete')}
+                </span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} className="h-2" />
+            </div>
+          ) : (
+            <Button 
+              onClick={uploadFiles} 
+              className="w-full"
+            >
+              {t('common.uploadNow')}
+            </Button>
           )}
         </div>
       )}

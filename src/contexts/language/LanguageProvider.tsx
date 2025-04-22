@@ -1,7 +1,14 @@
 
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { Language, TranslationKey, LanguageContextType } from './types';
+import { Language, TranslationKey } from './types';
 import { translations } from './translations';
+
+// Define the LanguageContextType
+export interface LanguageContextType {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (key: TranslationKey) => string;
+}
 
 // Create the context
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
