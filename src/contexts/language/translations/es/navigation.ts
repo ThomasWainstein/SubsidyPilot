@@ -1,8 +1,9 @@
 
 export const navigation = {
-  'nav.home': 'Inicio',
+  'nav.home': 'Home',
   'nav.profile': 'Perfil',
   'nav.settings': 'Configuración',
-  'nav.logout': 'Cerrar Sesión',
-  'errors.pageNotFound': '¡Ups! La página que estás buscando no existe.',
+  'nav.logout': 'Cerrar sesión',
+  'errors.pageNotFound': 'Oops! La página que estás buscando no existe.',
+  'nav.searchSubsidies': 'Buscar subvenciones',
 } as const;

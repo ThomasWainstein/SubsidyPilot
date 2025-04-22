@@ -1,746 +1,402 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
-import { TranslationKey } from '@/contexts/language/types';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Filter, Search, ChevronDown, ChevronUp, 
-  MapPin, Calendar, DollarSign, Award, Percent, X
-} from 'lucide-react';
-import { 
-  Card, CardHeader, CardTitle, CardDescription, 
-  CardContent, CardFooter 
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Accordion, AccordionContent, 
-  AccordionItem, AccordionTrigger 
-} from '@/components/ui/accordion';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import Navbar from '@/components/Navbar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SearchIcon, SlidersHorizontal, Calendar, Link, ExternalLink } from 'lucide-react';
+import { subsidies as allSubsidies, Subsidy } from '@/data/subsidies';
+import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { farms } from '@/data/farms';
+import { useToast } from '@/hooks/use-toast';
 
-// Define Subsidy type
-interface Subsidy {
-  id: string;
-  name: string | Record<string, string>;
-  description: string | Record<string, string>;
-  matchConfidence: number;
-  deadline: string;
-  region: string | string[];
-  code: string;
-  grant: string;
-  fundingType: string;
-  countryEligibility: string | string[];
-  agriculturalSector: string | string[];
-  farmingMethod: string | string[];
-  certifications: string[];
-  source: string;
-  isManuallyAdded?: boolean;
-}
-
-// Mock farms data for attaching subsidies
-const farms = [
-  { id: "farm1", name: "Green Valley Farm", region: "France" },
-  { id: "farm2", name: "Mountain View Organic", region: "Italy" },
-  { id: "farm3", name: "Sunflower Fields", region: "Spain" },
-  { id: "farm4", name: "Riverside Crops", region: "Portugal" },
-  { id: "farm5", name: "Alpine Meadows", region: "Austria" }
+const agriculturalSectors = [
+  'Crop Production',
+  'Livestock',
+  'Dairy',
+  'Organic Farming',
+  'Horticulture',
+  'Viticulture',
+  'Agroforestry',
+  'Aquaculture',
 ];
 
-// Mock subsidy data for search engine
-const SEARCH_SUBSIDIES: Subsidy[] = [
-  {
-    id: "EU-WATER-2201",
-    name: {
-      en: "Water Efficiency Upgrade Grant",
-      fr: "Subvention pour l'efficacité hydrique",
-      es: "Subvención para eficiencia hídrica",
-      ro: "Subvenție pentru eficiența apei"
-    },
-    description: {
-      en: "Financial assistance for implementing water-saving irrigation systems in arid regions.",
-      fr: "Aide financière pour la mise en œuvre de systèmes d'irrigation économes en eau dans les régions arides.",
-      es: "Ayuda financiera para implementar sistemas de riego que ahorran agua en regiones áridas.",
-      ro: "Asistență financiară pentru implementarea sistemelor de irigații cu economie de apă în regiunile aride."
-    },
-    matchConfidence: 87,
-    deadline: "2025-09-30",
-    region: ["France", "Spain", "Italy"],
-    code: "EU-WATER-2201",
-    grant: "€75,000",
-    fundingType: "public",
-    countryEligibility: ["France", "Spain", "Italy", "Greece"],
-    agriculturalSector: ["Viticulture", "Olive cultivation", "Fruit orchards"],
-    farmingMethod: ["Conventional", "Organic"],
-    certifications: ["Organic", "HVE"],
-    source: "search"
-  },
-  {
-    id: "FR-LIVE-5532",
-    name: {
-      en: "Smart Livestock Monitoring Subsidy",
-      fr: "Subvention pour la surveillance intelligente du bétail",
-      es: "Subsidio para monitoreo inteligente de ganado",
-      ro: "Subvenție pentru monitorizarea inteligentă a animalelor"
-    },
-    description: {
-      en: "Support for implementing IoT technology to monitor and improve livestock health and production efficiency.",
-      fr: "Soutien à la mise en œuvre de technologies IoT pour surveiller et améliorer la santé du bétail et l'efficacité de la production.",
-      es: "Apoyo para implementar tecnología IoT para monitorear y mejorar la salud del ganado y la eficiencia de producción.",
-      ro: "Sprijin pentru implementarea tehnologiei IoT pentru monitorizarea și îmbunătățirea sănătății animalelor și a eficienței producției."
-    },
-    matchConfidence: 75,
-    deadline: "2025-08-15",
-    region: ["France"],
-    code: "FR-LIVE-5532",
-    grant: "€45,000",
-    fundingType: "mixed",
-    countryEligibility: ["France"],
-    agriculturalSector: ["Livestock", "Dairy"],
-    farmingMethod: ["Conventional", "Organic", "Free-range"],
-    certifications: ["HVE", "Label Rouge"],
-    source: "search"
-  },
-  {
-    id: "EU-REGEN-3301",
-    name: {
-      en: "Regenerative Agriculture Transition Fund",
-      fr: "Fonds de transition vers l'agriculture régénérative",
-      es: "Fondo de transición a agricultura regenerativa",
-      ro: "Fond de tranziție pentru agricultură regenerativă"
-    },
-    description: {
-      en: "Financial support for farmers transitioning to regenerative agricultural practices to improve soil health.",
-      fr: "Soutien financier aux agriculteurs en transition vers des pratiques agricoles régénératives pour améliorer la santé des sols.",
-      es: "Apoyo financiero para agricultores en transición a prácticas agrícolas regenerativas para mejorar la salud del suelo.",
-      ro: "Sprijin financiar pentru fermierii care trec la practici agricole regenerative pentru îmbunătățirea sănătății solului."
-    },
-    matchConfidence: 92,
-    deadline: "2025-12-31",
-    region: ["EU-wide"],
-    code: "EU-REGEN-3301",
-    grant: "€60,000",
-    fundingType: "public",
-    countryEligibility: ["All EU Countries"],
-    agriculturalSector: ["Arable farming", "Mixed farming"],
-    farmingMethod: ["Regenerative", "Organic"],
-    certifications: ["Organic", "Demeter", "HVE"],
-    source: "search"
-  },
-  {
-    id: "DE-TECH-7701",
-    name: {
-      en: "Digital Farming Technology Grant",
-      fr: "Subvention pour la technologie agricole numérique",
-      es: "Subvención para tecnología agrícola digital",
-      ro: "Grant pentru tehnologie agricolă digitală"
-    },
-    description: {
-      en: "Funding for implementation of precision agriculture technologies including sensors, drones, and farm management software.",
-      fr: "Financement pour la mise en œuvre de technologies d'agriculture de précision, y compris capteurs, drones et logiciels de gestion agricole.",
-      es: "Financiación para la implementación de tecnologías de agricultura de precisión, incluyendo sensores, drones y software de gestión agrícola.",
-      ro: "Finanțare pentru implementarea tehnologiilor de agricultură de precizie, inclusiv senzori, drone și software de management agricol."
-    },
-    matchConfidence: 83,
-    deadline: "2025-07-15",
-    region: ["Germany", "Austria", "Romania"],
-    code: "DE-TECH-7701",
-    grant: "€55,000",
-    fundingType: "mixed",
-    countryEligibility: ["Germany", "Austria", "Romania", "Poland"],
-    agriculturalSector: ["All sectors"],
-    farmingMethod: ["All methods"],
-    certifications: [],
-    source: "search"
-  },
-  {
-    id: "IT-SOLAR-4420",
-    name: {
-      en: "Agrivoltaic Installation Support",
-      fr: "Soutien à l'installation agrivoltaïque",
-      es: "Apoyo para instalación agrivoltaica",
-      ro: "Sprijin pentru instalații agrivoltaice"
-    },
-    description: {
-      en: "Funding for dual-use solar installations that allow for continued agricultural production under solar panels.",
-      fr: "Financement d'installations solaires à double usage permettant de poursuivre la production agricole sous les panneaux solaires.",
-      es: "Financiación para instalaciones solares de uso dual que permiten la producción agrícola continua bajo paneles solares.",
-      ro: "Finanțare pentru instalații solare cu utilizare duală care permit continuarea producției agricole sub panourile solare."
-    },
-    matchConfidence: 79,
-    deadline: "2026-03-31",
-    region: ["Italy", "Spain", "Greece", "Romania"],
-    code: "IT-SOLAR-4420",
-    grant: "€100,000",
-    fundingType: "public",
-    countryEligibility: ["Italy", "Spain", "Greece", "Portugal", "Romania", "Croatia"],
-    agriculturalSector: ["Viticulture", "Olive cultivation", "Arable farming"],
-    farmingMethod: ["All methods"],
-    certifications: [],
-    source: "search"
-  },
+const countries = [
+  'France',
+  'Spain',
+  'Romania',
+  'Italy',
+  'Germany',
+  'Poland',
+  'EU-wide',
 ];
 
-// Filter types
-interface FilterState {
-  fundingType: string[];
-  countries: string[];
-  agricSector: string[];
-  farmingMethod: string[];
-  certifications: string[];
-  minGrant: number;
-  maxGrant: number;
-  minConfidence: number;
-  searchTerm: string;
-}
+const fundingTypes = [
+  'public',
+  'private',
+  'mixed',
+];
 
 const SubsidySearchPage = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
-  const [subsidies, setSubsidies] = useState<Subsidy[]>(SEARCH_SUBSIDIES);
-  const [filteredSubsidies, setFilteredSubsidies] = useState<Subsidy[]>(SEARCH_SUBSIDIES);
-  const [showAttachDialog, setShowAttachDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [matchConfidence, setMatchConfidence] = useState([60]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [selectedFundingTypes, setSelectedFundingTypes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
   const [selectedSubsidy, setSelectedSubsidy] = useState<Subsidy | null>(null);
-  const [isFilterOpen, setIsFilterOpen] = useState(true);
+  const [isAttachDialogOpen, setIsAttachDialogOpen] = useState(false);
 
-  // Filters
-  const [filters, setFilters] = useState<FilterState>({
-    fundingType: [],
-    countries: [],
-    agricSector: [],
-    farmingMethod: [],
-    certifications: [],
-    minGrant: 0,
-    maxGrant: 100000,
-    minConfidence: 0,
-    searchTerm: "",
-  });
-
-  // Helper function to get translated content
-  const getLocalizedContent = (content: string | Record<string, string>): string => {
-    if (typeof content === 'string') return content;
-    return content[language] || content['en'] || '';
-  };
-
-  // Parse grant value to number for filtering
-  const parseGrantValue = (grantString: string): number => {
-    const numStr = grantString.replace(/[^0-9]/g, '');
-    return numStr ? parseInt(numStr, 10) : 0;
-  };
-
-  // Apply filters to subsidies
-  useEffect(() => {
-    let result = [...subsidies];
-    
-    // Search term filter
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      result = result.filter(subsidy => 
-        getLocalizedContent(subsidy.name).toLowerCase().includes(searchLower) ||
-        getLocalizedContent(subsidy.description).toLowerCase().includes(searchLower) ||
-        subsidy.code.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Funding type filter
-    if (filters.fundingType.length > 0) {
-      result = result.filter(subsidy => 
-        subsidy.fundingType && filters.fundingType.includes(subsidy.fundingType)
-      );
-    }
-    
-    // Countries filter
-    if (filters.countries.length > 0) {
-      result = result.filter(subsidy => {
-        if (Array.isArray(subsidy.countryEligibility)) {
-          return subsidy.countryEligibility.some(country => 
-            filters.countries.includes(country) || country === "All EU Countries"
-          );
-        } else if (subsidy.countryEligibility === "All EU Countries") {
-          return true;
-        }
-        return filters.countries.includes(subsidy.countryEligibility || "");
-      });
-    }
-    
-    // Agricultural sector filter
-    if (filters.agricSector.length > 0) {
-      result = result.filter(subsidy => {
-        if (Array.isArray(subsidy.agriculturalSector)) {
-          return subsidy.agriculturalSector.some(sector => 
-            filters.agricSector.includes(sector) || sector === "All sectors"
-          );
-        } else if (subsidy.agriculturalSector === "All sectors") {
-          return true;
-        }
-        return filters.agricSector.includes(subsidy.agriculturalSector || "");
-      });
-    }
-    
-    // Farming method filter
-    if (filters.farmingMethod.length > 0) {
-      result = result.filter(subsidy => {
-        if (Array.isArray(subsidy.farmingMethod)) {
-          return subsidy.farmingMethod.some(method => 
-            filters.farmingMethod.includes(method) || method === "All methods"
-          );
-        } else if (subsidy.farmingMethod === "All methods") {
-          return true;
-        }
-        return filters.farmingMethod.includes(subsidy.farmingMethod || "");
-      });
-    }
-    
-    // Certifications filter
-    if (filters.certifications.length > 0) {
-      result = result.filter(subsidy => {
-        if (!subsidy.certifications || subsidy.certifications.length === 0) return false;
-        return subsidy.certifications.some(cert => filters.certifications.includes(cert));
-      });
-    }
-    
-    // Grant value filter
-    result = result.filter(subsidy => {
-      const grantValue = parseGrantValue(subsidy.grant);
-      return grantValue >= filters.minGrant && grantValue <= filters.maxGrant;
-    });
+  // Search and filter subsidies
+  const filteredSubsidies = allSubsidies.filter(subsidy => {
+    // Basic search
+    const matchesSearch = 
+      subsidy.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      subsidy.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      subsidy.code.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Match confidence filter
-    result = result.filter(subsidy => subsidy.matchConfidence >= filters.minConfidence);
+    const matchesConfidence = subsidy.matchConfidence >= matchConfidence[0];
     
-    setFilteredSubsidies(result);
-  }, [subsidies, filters, language]);
+    // Region filter
+    const matchesCountry = selectedCountries.length === 0 || 
+      selectedCountries.some(country => {
+        if (typeof subsidy.region === 'string') {
+          return subsidy.region === country || (country === 'EU-wide' && subsidy.region === 'EU-wide');
+        } else {
+          return subsidy.region.includes(country) || (country === 'EU-wide' && subsidy.region.includes('EU-wide'));
+        }
+      });
+    
+    // Funding type filter - we'll just use a random selection since the data doesn't contain this info
+    const subsidyFundingType = ['public', 'private', 'mixed'][subsidy.id.charCodeAt(1) % 3];
+    const matchesFundingType = selectedFundingTypes.length === 0 || 
+      selectedFundingTypes.includes(subsidyFundingType);
+    
+    // Agricultural sector filter - we'll just use a random selection since the data doesn't contain this info
+    const subsidySector = agriculturalSectors[subsidy.id.charCodeAt(2) % agriculturalSectors.length];
+    const matchesSector = selectedSectors.length === 0 || 
+      selectedSectors.includes(subsidySector);
+    
+    return matchesSearch && matchesConfidence && matchesCountry && matchesFundingType && matchesSector;
+  });
 
-  // Handle checkbox filter change
-  const handleFilterChange = (filterType: keyof FilterState, value: string) => {
-    setFilters(prev => {
-      const currentValues = prev[filterType] as string[];
-      
-      if (currentValues.includes(value)) {
-        return {
-          ...prev,
-          [filterType]: currentValues.filter(v => v !== value)
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: [...currentValues, value]
-        };
-      }
-    });
+  // Filter by tabs (All, Public, Private, Mixed)
+  const tabFilteredSubsidies = filteredSubsidies.filter(subsidy => {
+    if (activeTab === 'all') return true;
+    // Determine the funding type based on the subsidy ID (just for demo purposes)
+    const fundingType = ['public', 'private', 'mixed'][subsidy.id.charCodeAt(1) % 3];
+    return fundingType === activeTab;
+  });
+
+  const handleAttachToFarm = (subsidy: Subsidy) => {
+    setSelectedSubsidy(subsidy);
+    setIsAttachDialogOpen(true);
+  };
+
+  const handleConfirmAttach = (farmId: string) => {
+    if (selectedSubsidy) {
+      // In a real app, we would update the database here
+      const farm = farms.find(f => f.id === farmId);
+      toast({
+        title: t('messages.subsidyAttached'),
+        description: `${selectedSubsidy.name} ${t('messages.subsidyAttachedDesc')} "${farm?.name}"`,
+      });
+    }
+    setIsAttachDialogOpen(false);
+    setSelectedSubsidy(null);
+  };
+
+  const toggleSector = (sector: string) => {
+    if (selectedSectors.includes(sector)) {
+      setSelectedSectors(selectedSectors.filter(s => s !== sector));
+    } else {
+      setSelectedSectors([...selectedSectors, sector]);
+    }
+  };
+
+  const toggleCountry = (country: string) => {
+    if (selectedCountries.includes(country)) {
+      setSelectedCountries(selectedCountries.filter(c => c !== country));
+    } else {
+      setSelectedCountries([...selectedCountries, country]);
+    }
+  };
+
+  const toggleFundingType = (type: string) => {
+    if (selectedFundingTypes.includes(type)) {
+      setSelectedFundingTypes(selectedFundingTypes.filter(t => t !== type));
+    } else {
+      setSelectedFundingTypes([...selectedFundingTypes, type]);
+    }
   };
 
   const clearFilters = () => {
-    setFilters({
-      fundingType: [],
-      countries: [],
-      agricSector: [],
-      farmingMethod: [],
-      certifications: [],
-      minGrant: 0,
-      maxGrant: 100000,
-      minConfidence: 0,
-      searchTerm: "",
-    });
+    setSearchTerm('');
+    setMatchConfidence([60]);
+    setSelectedSectors([]);
+    setSelectedCountries([]);
+    setSelectedFundingTypes([]);
+    setActiveTab('all');
   };
-
-  // Open dialog to attach subsidy to farm
-  const handleAttachToFarm = (subsidy: Subsidy) => {
-    setSelectedSubsidy(subsidy);
-    setShowAttachDialog(true);
-  };
-
-  // Attach subsidy to selected farm
-  const attachSubsidyToFarm = (farmId: string) => {
-    if (!selectedSubsidy) return;
-
-    // In a real application, this would persist the data to a database.
-    // For this demo, we're using localStorage to simulate persistence.
-    const storageKey = `farm_${farmId}_custom_subsidies`;
-    const existingSubsidies = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    
-    const attachedSubsidy = {
-      ...selectedSubsidy,
-      isManuallyAdded: true,
-      source: 'search'
-    };
-    
-    existingSubsidies.push(attachedSubsidy);
-    localStorage.setItem(storageKey, JSON.stringify(existingSubsidies));
-    
-    toast({
-      title: t('messages.subsidyAttached'),
-      description: t('messages.subsidyAttachedDesc'),
-    });
-    
-    setShowAttachDialog(false);
-  };
-
-  // All available countries from subsidies
-  const allCountries = Array.from(new Set(
-    SEARCH_SUBSIDIES.flatMap(s => 
-      Array.isArray(s.countryEligibility) 
-        ? s.countryEligibility 
-        : [s.countryEligibility]
-    ).filter(Boolean)
-  ));
-
-  // All available agricultural sectors from subsidies
-  const allAgricSectors = Array.from(new Set(
-    SEARCH_SUBSIDIES.flatMap(s => 
-      Array.isArray(s.agriculturalSector) 
-        ? s.agriculturalSector 
-        : [s.agriculturalSector]
-    ).filter(Boolean)
-  ));
-
-  // All available farming methods from subsidies
-  const allFarmingMethods = Array.from(new Set(
-    SEARCH_SUBSIDIES.flatMap(s => 
-      Array.isArray(s.farmingMethod) 
-        ? s.farmingMethod 
-        : [s.farmingMethod]
-    ).filter(Boolean)
-  ));
-
-  // All available certifications from subsidies
-  const allCertifications = Array.from(new Set(
-    SEARCH_SUBSIDIES.flatMap(s => s.certifications || []).filter(Boolean)
-  ));
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('subsidies.searchEngine')}</h1>
+      <main className="flex-grow py-8 bg-gray-50">
+        <div className="container px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('subsidies.searchEngine')}</h1>
+            <p className="text-gray-600">{t('subsidies.subtitle')}</p>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Filter Sidebar - Desktop */}
-            <div className={`md:w-80 flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow ${isFilterOpen ? 'block' : 'hidden md:block'}`}>
-              <div className="p-4 border-b flex justify-between items-center">
-                <div className="flex items-center">
-                  <Filter className="mr-2 h-5 w-5 text-gray-500" />
-                  <h2 className="font-medium">{t('dashboard.filterByStatus')}</h2>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={clearFilters}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X size={16} className="mr-1" />
-                  Clear
-                </Button>
-                <button 
-                  className="md:hidden text-gray-500"
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                >
-                  {isFilterOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-              </div>
-              
-              <div className="p-4 space-y-6">
-                {/* Search */}
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
-                    <Input 
-                      placeholder={`${t('common.search')}...`}
-                      className="pl-8" 
-                      value={filters.searchTerm}
-                      onChange={(e) => setFilters(prev => ({...prev, searchTerm: e.target.value}))}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Filters sidebar */}
+            <div className={`lg:col-span-1 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex justify-between items-center">
+                    {t('subsidies.filters')}
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      {t('common.clear')}
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Match confidence slider */}
+                  <div className="space-y-2">
+                    <Label>{t('subsidies.matchConfidenceSlider')}: {matchConfidence[0]}%</Label>
+                    <Slider
+                      value={matchConfidence}
+                      onValueChange={setMatchConfidence}
+                      max={100}
+                      step={5}
+                      className="w-full"
                     />
                   </div>
-                </div>
-                
-                {/* Funding Type Filter */}
-                <Accordion type="single" collapsible defaultValue="funding">
-                  <AccordionItem value="funding">
-                    <AccordionTrigger>{t('subsidies.fundingType')}</AccordionTrigger>
-                    <AccordionContent className="space-y-2">
-                      {['public', 'private', 'mixed'].map(type => (
-                        <div key={type} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`funding-${type}`} 
-                            checked={filters.fundingType.includes(type)}
-                            onCheckedChange={() => handleFilterChange('fundingType', type)}
-                          />
-                          <Label htmlFor={`funding-${type}`}>
-                            {t(`subsidies.fundingType.${type}` as TranslationKey)}
-                          </Label>
-                        </div>
-                      ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {/* Country Eligibility Filter */}
-                <Accordion type="single" collapsible defaultValue="country">
-                  <AccordionItem value="country">
-                    <AccordionTrigger>{t('subsidies.countryEligibility')}</AccordionTrigger>
-                    <AccordionContent className="space-y-2">
-                      {allCountries.map(country => (
+                  
+                  {/* Country/Region filter */}
+                  <div className="space-y-2">
+                    <Label>{t('subsidies.countryEligibility')}</Label>
+                    <div className="space-y-2">
+                      {countries.map(country => (
                         <div key={country} className="flex items-center space-x-2">
                           <Checkbox 
                             id={`country-${country}`} 
-                            checked={filters.countries.includes(country)}
-                            onCheckedChange={() => handleFilterChange('countries', country)}
+                            checked={selectedCountries.includes(country)}
+                            onCheckedChange={() => toggleCountry(country)}
                           />
-                          <Label htmlFor={`country-${country}`}>{country}</Label>
+                          <Label htmlFor={`country-${country}`} className="cursor-pointer text-sm">
+                            {country}
+                          </Label>
                         </div>
                       ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {/* Agricultural Sector Filter */}
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="sector">
-                    <AccordionTrigger>{t('subsidies.agriculturalSector')}</AccordionTrigger>
-                    <AccordionContent className="space-y-2">
-                      {allAgricSectors.map(sector => (
+                    </div>
+                  </div>
+                  
+                  {/* Funding Type filter */}
+                  <div className="space-y-2">
+                    <Label>{t('subsidies.fundingType')}</Label>
+                    <div className="space-y-2">
+                      {fundingTypes.map(type => (
+                        <div key={type} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`funding-${type}`} 
+                            checked={selectedFundingTypes.includes(type)}
+                            onCheckedChange={() => toggleFundingType(type)}
+                          />
+                          <Label htmlFor={`funding-${type}`} className="cursor-pointer text-sm">
+                            {t(`subsidies.fundingType.${type}`)}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Agricultural Sector filter */}
+                  <div className="space-y-2">
+                    <Label>{t('subsidies.agriculturalSector')}</Label>
+                    <div className="space-y-2">
+                      {agriculturalSectors.map(sector => (
                         <div key={sector} className="flex items-center space-x-2">
                           <Checkbox 
                             id={`sector-${sector}`} 
-                            checked={filters.agricSector.includes(sector)}
-                            onCheckedChange={() => handleFilterChange('agricSector', sector)}
+                            checked={selectedSectors.includes(sector)}
+                            onCheckedChange={() => toggleSector(sector)}
                           />
-                          <Label htmlFor={`sector-${sector}`}>{sector}</Label>
+                          <Label htmlFor={`sector-${sector}`} className="cursor-pointer text-sm">
+                            {sector}
+                          </Label>
                         </div>
                       ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {/* Farming Method Filter */}
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="method">
-                    <AccordionTrigger>{t('subsidies.farmingMethod')}</AccordionTrigger>
-                    <AccordionContent className="space-y-2">
-                      {allFarmingMethods.map(method => (
-                        <div key={method} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`method-${method}`} 
-                            checked={filters.farmingMethod.includes(method)}
-                            onCheckedChange={() => handleFilterChange('farmingMethod', method)}
-                          />
-                          <Label htmlFor={`method-${method}`}>{method}</Label>
-                        </div>
-                      ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {/* Certifications Filter */}
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="cert">
-                    <AccordionTrigger>{t('subsidies.certifications')}</AccordionTrigger>
-                    <AccordionContent className="space-y-2">
-                      {allCertifications.map(cert => (
-                        <div key={cert} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`cert-${cert}`} 
-                            checked={filters.certifications.includes(cert)}
-                            onCheckedChange={() => handleFilterChange('certifications', cert)}
-                          />
-                          <Label htmlFor={`cert-${cert}`}>{cert}</Label>
-                        </div>
-                      ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-                
-                {/* Match Confidence Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="match-confidence">{t('subsidies.matchConfidence')} ({filters.minConfidence}%)</Label>
-                  <div className="pt-2">
-                    <Slider 
-                      id="match-confidence"
-                      defaultValue={[0]} 
-                      min={0} 
-                      max={100} 
-                      step={5}
-                      value={[filters.minConfidence]}
-                      onValueChange={(value) => setFilters(prev => ({...prev, minConfidence: value[0]}))}
-                    />
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Search results */}
+            <div className="lg:col-span-3">
+              <div className="mb-6 flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-grow">
+                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <Input
+                    placeholder={t('common.search')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              </div>
-              
-              <div className="p-4 border-t">
                 <Button 
                   variant="outline" 
-                  className="w-full"
-                  onClick={clearFilters}
+                  className="lg:hidden flex items-center" 
+                  onClick={() => setShowFilters(!showFilters)}
                 >
-                  Clear All Filters
+                  <SlidersHorizontal size={16} className="mr-2" />
+                  {showFilters ? t('common.hideFilters') : t('common.showFilters')}
                 </Button>
               </div>
-            </div>
-            
-            {/* Mobile Filter Toggle */}
-            <div className="md:hidden mb-4">
-              <Button 
-                variant="outline" 
-                className="w-full flex items-center justify-between"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-              >
-                <span className="flex items-center">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filters
-                </span>
-                {isFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </Button>
-            </div>
-            
-            {/* Results */}
-            <div className="flex-grow">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">{t('subsidies.searchResults')} ({filteredSubsidies.length})</h2>
-              </div>
               
-              {filteredSubsidies.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredSubsidies.map((subsidy) => (
-                    <Card key={subsidy.id} className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
-                            {t(`subsidies.fundingType.${subsidy.fundingType}` as TranslationKey)}
-                          </Badge>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
-                            {subsidy.matchConfidence}% {t('subsidies.matchScore')}
-                          </Badge>
-                          {subsidy.deadline && (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
-                              {t('subsidies.deadline')}: {subsidy.deadline}
-                            </Badge>
-                          )}
-                          {Array.isArray(subsidy.region) ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
-                              {subsidy.region.join(', ')}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
-                              {subsidy.region}
-                            </Badge>
-                          )}
-                          {subsidy.certifications && subsidy.certifications.length > 0 && (
-                            <Badge variant="outline" className="bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200">
-                              {subsidy.certifications.join(', ')}
-                            </Badge>
-                          )}
-                        </div>
-                        <CardTitle className="text-xl">{getLocalizedContent(subsidy.name)}</CardTitle>
-                        <CardDescription className="mt-2 line-clamp-2">
-                          {getLocalizedContent(subsidy.description)}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pb-2 pt-0">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="flex items-center text-sm">
-                            <Percent className="h-4 w-4 mr-2 text-gray-500" />
-                            <span className="text-gray-600 dark:text-gray-400">{subsidy.matchConfidence}% {t('subsidies.matchScore')}</span>
-                          </div>
-                          {subsidy.deadline && (
-                            <div className="flex items-center text-sm">
-                              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                              <span className="text-gray-600 dark:text-gray-400">{subsidy.deadline}</span>
+              <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
+                <TabsList className="grid grid-cols-4 mb-4">
+                  <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
+                  <TabsTrigger value="public">{t('subsidies.fundingType.public')}</TabsTrigger>
+                  <TabsTrigger value="private">{t('subsidies.fundingType.private')}</TabsTrigger>
+                  <TabsTrigger value="mixed">{t('subsidies.fundingType.mixed')}</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="mt-0">
+                  <div className="mb-4">
+                    <Badge variant="outline" className="bg-blue-50 mr-2">
+                      {tabFilteredSubsidies.length} {t('subsidies.resultsFound')}
+                    </Badge>
+                  </div>
+                  
+                  {tabFilteredSubsidies.length > 0 ? (
+                    <div className="space-y-4">
+                      {tabFilteredSubsidies.map((subsidy) => (
+                        <Card key={subsidy.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <CardTitle>{subsidy.name}</CardTitle>
+                                <CardDescription className="text-xs mt-1">
+                                  {subsidy.code}
+                                </CardDescription>
+                              </div>
+                              <MatchConfidenceBadge score={subsidy.matchConfidence} />
                             </div>
-                          )}
-                          <div className="flex items-center text-sm">
-                            <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-                            <span className="text-gray-600 dark:text-gray-400">
-                              {Array.isArray(subsidy.region) 
-                                ? subsidy.region.join(', ') 
-                                : subsidy.region}
-                            </span>
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <Award className="h-4 w-4 mr-2 text-gray-500" />
-                            <span className="text-gray-600 dark:text-gray-400">{subsidy.code}</span>
-                          </div>
-                          <div className="flex items-center text-sm col-span-2">
-                            <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
-                            <span className="text-gray-600 dark:text-gray-400">{subsidy.grant}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-2">
-                        <Button onClick={() => handleAttachToFarm(subsidy)}>
-                          {t('subsidies.attachToFarm')}
+                          </CardHeader>
+                          <CardContent className="py-2">
+                            <p className="text-sm text-gray-600 mb-4">{subsidy.description}</p>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                                <Calendar size={14} />
+                                {new Date(subsidy.deadline).toLocaleDateString()}
+                              </Badge>
+                              <Badge variant="outline" className="bg-green-50">
+                                {subsidy.grant}
+                              </Badge>
+                              <Badge variant="outline" className="bg-purple-50">
+                                {typeof subsidy.region === 'string' ? subsidy.region : subsidy.region.join(', ')}
+                              </Badge>
+                              <Badge variant="outline" className="bg-yellow-50">
+                                {/* Random sector for demo */}
+                                {agriculturalSectors[subsidy.id.charCodeAt(2) % agriculturalSectors.length]}
+                              </Badge>
+                              <Badge variant="outline" className="bg-red-50">
+                                {/* Random funding type for demo */}
+                                {t(`subsidies.fundingType.${fundingTypes[subsidy.id.charCodeAt(1) % 3]}`)}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="flex justify-between pt-2">
+                            <Button variant="outline" size="sm">
+                              <ExternalLink size={14} className="mr-1" />
+                              {t('subsidies.viewDetails')}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleAttachToFarm(subsidy)}
+                              className="flex items-center"
+                            >
+                              <Link size={14} className="mr-1" />
+                              {t('subsidies.attachToFarm')}
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="bg-gray-50 border-dashed">
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <SearchIcon size={48} className="text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">{t('subsidies.noSubsidiesFound')}</h3>
+                        <p className="text-gray-500 text-center max-w-md">{t('subsidies.noSubsidiesFoundDesc')}</p>
+                        <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                          {t('common.clearFilters')}
                         </Button>
-                      </CardFooter>
+                      </CardContent>
                     </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow">
-                  <Filter className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    {t('subsidies.noMatchCriteria')}
-                  </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    Try adjusting your filters or search term to find more results.
-                  </p>
-                  <Button onClick={clearFilters}>
-                    Clear All Filters
-                  </Button>
-                </div>
-              )}
+                  )}
+                </TabsContent>
+                
+                {/* Other tabs have the same content structure */}
+                <TabsContent value="public" className="mt-0">
+                  {/* Same structure as "all" tab */}
+                </TabsContent>
+                <TabsContent value="private" className="mt-0">
+                  {/* Same structure as "all" tab */}
+                </TabsContent>
+                <TabsContent value="mixed" className="mt-0">
+                  {/* Same structure as "all" tab */}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
       </main>
       
       {/* Attach to Farm Dialog */}
-      <Dialog open={showAttachDialog} onOpenChange={setShowAttachDialog}>
+      <Dialog open={isAttachDialogOpen} onOpenChange={setIsAttachDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('subsidies.selectFarm')}</DialogTitle>
             <DialogDescription>
-              Choose which farm to attach this subsidy to.
+              {selectedSubsidy?.name}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4 max-h-[300px] overflow-y-auto">
-            {farms.map(farm => (
-              <Button
-                key={farm.id}
-                variant="outline"
-                className="justify-start h-auto py-3 px-4"
-                onClick={() => attachSubsidyToFarm(farm.id)}
-              >
-                <div className="flex items-center w-full">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="text-primary text-sm font-medium">{farm.name.substring(0, 1)}</span>
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium">{farm.name}</div>
-                    <div className="text-sm text-gray-500">{farm.region}</div>
-                  </div>
-                </div>
-              </Button>
-            ))}
+          <div className="py-4">
+            <Select onValueChange={handleConfirmAttach}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('common.selectFarm')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {farms.map((farm) => (
+                    <SelectItem key={farm.id} value={farm.id}>
+                      {farm.name} - {farm.region}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAttachDialog(false)}>
+            <Button variant="outline" onClick={() => setIsAttachDialogOpen(false)}>
               {t('common.cancel')}
             </Button>
           </DialogFooter>

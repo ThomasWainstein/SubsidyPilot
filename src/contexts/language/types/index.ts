@@ -1,3 +1,4 @@
+
 import { CommonTranslationKey } from './common';
 import { DashboardTranslationKey } from './dashboard';
 import { FarmTranslationKey } from './farm';
@@ -12,6 +13,7 @@ import { ExtensionTranslationKey } from './extension';
 import { HomeTranslationKey } from './home';
 import { FeaturesTranslationKey } from './features';
 import { FooterTranslationKey } from './footer';
+import { SimulationTranslationKey } from './simulation';
 
 export type Language = 'en' | 'fr' | 'es' | 'ro' | 'pl';
 
@@ -29,7 +31,8 @@ export type TranslationKey =
   | ExtensionTranslationKey
   | HomeTranslationKey
   | FeaturesTranslationKey
-  | FooterTranslationKey;
+  | FooterTranslationKey
+  | SimulationTranslationKey;
 
 export interface LanguageContextType {
   language: Language;
@@ -51,3 +54,4 @@ export * from './extension';
 export * from './home';
 export * from './features';
 export * from './footer';
+export * from './simulation';

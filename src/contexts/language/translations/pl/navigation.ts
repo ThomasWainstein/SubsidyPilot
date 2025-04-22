@@ -5,4 +5,5 @@ export const navigation = {
   'nav.settings': 'Ustawienia',
   'nav.logout': 'Wyloguj',
   'errors.pageNotFound': 'Strona nie została znaleziona',
+  'nav.searchSubsidies': 'Wyszukaj dotacje',
 } as const;

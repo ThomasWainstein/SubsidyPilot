@@ -111,7 +111,7 @@ const Navbar = () => {
               onClick={() => navigate('/subsidy-search')}
             >
               <Search size={16} className="mr-1" />
-              {t('common.searchSubsidies')}
+              {t('nav.searchSubsidies')}
             </Button>
             
             <DropdownMenu>

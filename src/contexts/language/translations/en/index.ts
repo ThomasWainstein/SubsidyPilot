@@ -13,6 +13,7 @@ import { status } from './status';
 import { navigation } from './navigation';
 import { home } from './home';
 import { footer } from './footer';
+import { simulation } from './simulation';
 
 export const enTranslations = {
   ...common,
@@ -29,4 +30,5 @@ export const enTranslations = {
   ...navigation,
   ...home,
   ...footer,
+  ...simulation,
 };

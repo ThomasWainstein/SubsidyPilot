@@ -78,4 +78,12 @@ export const messages = {
   'messages.remaining': 'pozostałe',
   'messages.subsidyAttached': 'Dotacja dodana do gospodarstwa',
   'messages.subsidyAttachedDesc': 'Dotacja została dodana do profilu Twojego gospodarstwa',
+  'messages.simulationComplete': 'Symulacja zakończona',
+  'messages.simulationCompleteDesc': 'Twoja symulacja subsydiów została zakończona.',
+  'messages.simulationSaved': 'Symulacja zapisana',
+  'messages.simulationSavedDesc': 'Twoja symulacja została zapisana do przyszłego odniesienia.',
+  'messages.documentAnalyzed': 'Dokument przeanalizowany',
+  'messages.documentAnalyzedDesc': 'Algorytm OCR przeanalizował Twój dokument i znalazł kwalifikujące się dotacje.',
+  'messages.chatAnalysisComplete': 'Analiza czatu zakończona',
+  'messages.chatAnalysisCompleteDesc': 'Na podstawie Twojego opisu, znaleźliśmy potencjalne dotacje.',
 } as const;
