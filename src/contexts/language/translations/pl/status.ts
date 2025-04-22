@@ -38,4 +38,7 @@ export const status = {
   'status.eligible': 'Kwalifikujący się',
   'status.notEligible': 'Niekwalifikujący się',
   'status.potentiallyEligible': 'Potencjalnie Kwalifikujący się',
+  'status.needsUpdate': 'Wymaga Aktualizacji',
+  'status.subsidyInProgress': 'Dotacja W Toku',
+  'status.inPreparation': 'W Przygotowaniu',
 } as const;
