@@ -58,4 +58,10 @@ export type CommonTranslationKey =
   | 'common.demoDisclaimer'
   | 'common.addNewSubsidy'
   | 'common.searchSubsidies'
-  | 'common.search';
+  | 'common.search'
+  | 'common.close'
+  | 'common.loading'
+  | 'common.clear'
+  | 'common.hideFilters'
+  | 'common.showFilters'
+  | 'common.all';

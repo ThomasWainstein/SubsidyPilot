@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { subsidies, Subsidy } from '@/data/subsidies';
-import DropzoneUpload from '@/components/document/DropzoneUpload';
+import { DropzoneUpload } from '@/components/document/DropzoneUpload';
 
 interface SimulationUploadProps {
   onShowResults: (subsidies: Subsidy[]) => void;
@@ -86,6 +86,7 @@ const SimulationUpload = ({ onShowResults }: SimulationUploadProps) => {
           accept={{ 'application/pdf': ['.pdf'], 'application/msword': ['.doc', '.docx'] }}
           title={t('simulation.upload.heading')}
           description={t('simulation.upload.dragDrop')}
+          onUploadSuccess={() => {}}
         />
       )}
       

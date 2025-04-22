@@ -27,4 +27,12 @@ export type MessagesTranslationKey =
   | 'messages.autoFilled'
   | 'messages.remaining'
   | 'messages.subsidyAttached'
-  | 'messages.subsidyAttachedDesc';
+  | 'messages.subsidyAttachedDesc'
+  | 'messages.simulationComplete'
+  | 'messages.simulationCompleteDesc'
+  | 'messages.simulationSaved'
+  | 'messages.simulationSavedDesc'
+  | 'messages.documentAnalyzed'
+  | 'messages.documentAnalyzedDesc'
+  | 'messages.chatAnalysisComplete'
+  | 'messages.chatAnalysisCompleteDesc';

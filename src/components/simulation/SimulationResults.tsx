@@ -48,7 +48,7 @@ const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsPro
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">{subsidy.name}</CardTitle>
-                <MatchConfidenceBadge score={subsidy.matchConfidence} />
+                <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
               </div>
             </CardHeader>
             <CardContent className="pb-2">
