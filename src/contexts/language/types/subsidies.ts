@@ -41,4 +41,5 @@ export type SubsidiesTranslationKey =
   | 'subsidies.fundingType.mixed'
   | 'subsidies.fundingTypePublic'
   | 'subsidies.fundingTypePrivate'
-  | 'subsidies.fundingTypeMixed';
+  | 'subsidies.fundingTypeMixed'
+  | 'subsidies.searchSubsidies';

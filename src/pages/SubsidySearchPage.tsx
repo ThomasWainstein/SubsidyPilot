@@ -155,7 +155,7 @@ const SubsidySearchPage = () => {
                               className="w-full justify-start"
                               onClick={() => toggleFundingTypeFilter(type)}
                             >
-                              {t(`subsidies.fundingType${type.charAt(0).toUpperCase() + type.slice(1)}`)}
+                              {t(`subsidies.fundingType.${type}`)}
                             </Button>
                           </div>
                         ))}
@@ -189,7 +189,7 @@ const SubsidySearchPage = () => {
                     <div className="relative w-full sm:w-96">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                       <Input
-                        placeholder={t('common.searchSubsidies')}
+                        placeholder={t('subsidies.searchSubsidies')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-8"

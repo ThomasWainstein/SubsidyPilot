@@ -42,4 +42,10 @@ export const subsidies = {
   'subsidies.fundingTypePublic': 'Public',
   'subsidies.fundingTypePrivate': 'Privat',
   'subsidies.fundingTypeMixed': 'Mixt',
+  'subsidies.searchSubsidies': 'Caută Subvenții',
+  'common.close': 'Închide',
+  'common.loading': 'Se încarcă...',
+  'common.clear': 'Curăță',
+  'common.hideFilters': 'Ascunde Filtrele',
+  'common.showFilters': 'Arată Filtrele',
 } as const;
