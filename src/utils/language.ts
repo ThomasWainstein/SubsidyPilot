@@ -1,5 +1,5 @@
 
-import { Language } from '@/contexts/language';
+import { Language } from '@/contexts/language/types';
 import { MultilingualText } from '@/types/subsidy';
 
 export const getLocalizedContent = (

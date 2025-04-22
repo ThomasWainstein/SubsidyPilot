@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
@@ -67,17 +66,13 @@ const SubsidySearchPage = () => {
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const [attachDialogOpen, setAttachDialogOpen] = useState(false);
   
-  // Filter subsidies based on search query and filters
   const filteredSubsidies = subsidies.filter(subsidy => {
-    // Search query filter
     const nameMatches = getLocalizedContent(subsidy.name, language).toLowerCase().includes(searchQuery.toLowerCase());
     const descriptionMatches = getLocalizedContent(subsidy.description, language).toLowerCase().includes(searchQuery.toLowerCase());
     const searchMatches = searchQuery === '' || nameMatches || descriptionMatches;
     
-    // Confidence filter
     const confidenceMatches = subsidy.matchConfidence >= confidenceFilter[0] / 100;
     
-    // Funding type filter
     const fundingTypeMatches = fundingTypeFilter.length === 0 || 
       (subsidy.fundingType && fundingTypeFilter.includes(subsidy.fundingType));
     
@@ -107,7 +102,6 @@ const SubsidySearchPage = () => {
   
   const confirmAttachToFarm = () => {
     if (selectedSubsidy && selectedFarmId) {
-      // In a real application, this would make an API call to associate the subsidy with the farm
       toast({
         title: t('messages.subsidyAttached'),
         description: t('messages.subsidyAttachedDesc'),

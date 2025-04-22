@@ -30,4 +30,11 @@ export type StatusTranslationKey =
   | 'status.archived'
   | 'status.unarchived'
   | 'status.published'
-  | 'status.unpublished';
+  | 'status.unpublished'
+  | 'status.profileComplete'
+  | 'status.inReview'
+  | 'status.needsUpdate'
+  | 'status.subsidyInProgress'
+  | 'status.inProgress'
+  | 'status.inPreparation'
+  | 'status.readyToSubmit';

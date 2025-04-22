@@ -1,6 +1,7 @@
 
 import { cn } from '@/lib/utils';
-import { useLanguage, TranslationKey } from '@/contexts/language';
+import { useLanguage } from '@/contexts/language';
+import { TranslationKey } from '@/contexts/language/types';
 
 interface StatusBadgeProps {
   status: string;
