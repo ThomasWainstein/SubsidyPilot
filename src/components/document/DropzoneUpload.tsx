@@ -12,7 +12,7 @@ export interface DropzoneUploadProps {
   description?: React.ReactNode;
   accept?: Record<string, string[]>;
   maxFiles?: number;
-  onUploadSuccess?: () => void;
+  onUploadSuccess?: (file?: any) => void;
 }
 
 export const DropzoneUpload = ({ 
@@ -78,7 +78,6 @@ export const DropzoneUpload = ({
       
       setTimeout(() => {
         setUploading(false);
-        setFiles([]);
         
         toast({
           title: t('messages.documentUploaded'),
@@ -86,8 +85,18 @@ export const DropzoneUpload = ({
         });
         
         if (onUploadSuccess) {
-          onUploadSuccess();
+          // Call with mock document data
+          const mockDoc = {
+            id: `doc-${Date.now()}`,
+            name: files[0].name,
+            type: files[0].name.endsWith('.pdf') ? 'PDF' : 'DOC',
+            tag: 'Farm Document',
+            uploadedAt: new Date().toLocaleDateString()
+          };
+          onUploadSuccess(mockDoc);
         }
+        
+        setFiles([]);
       }, 500);
     }, 3000);
   };

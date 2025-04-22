@@ -70,16 +70,16 @@ const SubsidySearchPage = () => {
   // Filter subsidies based on search query and filters
   const filteredSubsidies = subsidies.filter(subsidy => {
     // Search query filter
-    const titleMatches = getLocalizedContent(subsidy.title, language).toLowerCase().includes(searchQuery.toLowerCase());
+    const nameMatches = getLocalizedContent(subsidy.name, language).toLowerCase().includes(searchQuery.toLowerCase());
     const descriptionMatches = getLocalizedContent(subsidy.description, language).toLowerCase().includes(searchQuery.toLowerCase());
-    const searchMatches = searchQuery === '' || titleMatches || descriptionMatches;
+    const searchMatches = searchQuery === '' || nameMatches || descriptionMatches;
     
     // Confidence filter
     const confidenceMatches = subsidy.matchConfidence >= confidenceFilter[0] / 100;
     
     // Funding type filter
     const fundingTypeMatches = fundingTypeFilter.length === 0 || 
-      fundingTypeFilter.includes(subsidy.fundingType);
+      (subsidy.fundingType && fundingTypeFilter.includes(subsidy.fundingType));
     
     return searchMatches && confidenceMatches && fundingTypeMatches;
   });
@@ -142,7 +142,7 @@ const SubsidySearchPage = () => {
                         size="sm" 
                         onClick={clearFilters}
                       >
-                        {t('common.clearFilters')}
+                        {t('common.clear')}
                       </Button>
                     </div>
                   </CardHeader>
@@ -194,7 +194,7 @@ const SubsidySearchPage = () => {
                     <div className="relative w-full sm:w-96">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                       <Input
-                        placeholder={t('subsidies.searchSubsidies')}
+                        placeholder={t('common.searchSubsidies')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-8"
@@ -227,11 +227,11 @@ const SubsidySearchPage = () => {
                       {filteredSubsidies.map(subsidy => (
                         <Card key={subsidy.id} className="border border-gray-200 dark:border-gray-700 h-full">
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{getLocalizedContent(subsidy.title, language)}</CardTitle>
+                            <CardTitle className="text-lg">{getLocalizedContent(subsidy.name, language)}</CardTitle>
                             <div className="flex justify-between items-center mt-1">
                               <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
                               <div className="flex items-center text-sm text-gray-500">
-                                <Euro className="h-4 w-4 mr-1" /> {subsidy.maxAmount}€
+                                <Euro className="h-4 w-4 mr-1" /> {subsidy.grant}
                               </div>
                             </div>
                           </CardHeader>

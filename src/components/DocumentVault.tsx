@@ -1,12 +1,20 @@
 
 import { useState } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { File, FileText, FileSpreadsheet, Trash2 } from 'lucide-react';
-import { farmDocuments, FarmDocument } from '@/data/farms';
+import { farmDocuments } from '@/data/farms';
 import { toast } from '@/components/ui/use-toast';
 import { DropzoneUpload } from '@/components/document/DropzoneUpload';
+
+interface FarmDocument {
+  id: string;
+  name: string;
+  type: string;
+  tag: string;
+  uploadedAt: string;
+}
 
 interface DocumentVaultProps {
   farmId: string;
@@ -32,7 +40,9 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
   
   // Handle successful upload
   const handleUploadSuccess = (newDoc: FarmDocument) => {
-    setDocuments(prev => [...prev, newDoc]);
+    if (newDoc) {
+      setDocuments(prev => [...prev, newDoc]);
+    }
   };
   
   // Handle document delete

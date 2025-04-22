@@ -28,4 +28,12 @@ export const messages = {
   'messages.remaining': 'restantes',
   'messages.subsidyAttached': 'Subsidio adjuntado a granja',
   'messages.subsidyAttachedDesc': 'El subsidio ha sido añadido al perfil de su granja',
+  'messages.simulationComplete': 'Simulación completa',
+  'messages.simulationCompleteDesc': 'La simulación de su granja ha sido completada con éxito.',
+  'messages.simulationSaved': 'Simulación guardada',
+  'messages.simulationSavedDesc': 'Su granja simulada ha sido guardada como escenario.',
+  'messages.documentAnalyzed': 'Documento analizado',
+  'messages.documentAnalyzedDesc': 'El documento ha sido analizado para detectar posibles subsidios.',
+  'messages.chatAnalysisComplete': 'Análisis de chat completo',
+  'messages.chatAnalysisCompleteDesc': 'Se han encontrado posibles coincidencias de subsidios basadas en su descripción.',
 } as const;

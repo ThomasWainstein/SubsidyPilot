@@ -21,10 +21,7 @@ const SimulationUpload = ({ onShowResults }: SimulationUploadProps) => {
   const [progress, setProgress] = useState(0);
   const [extractedData, setExtractedData] = useState<Record<string, string> | null>(null);
   
-  const handleUpload = (files: File[]) => {
-    if (files.length === 0) return;
-    
-    const file = files[0];
+  const handleUploadSuccess = () => {
     setIsUploading(true);
     
     // Simulate upload progress
@@ -81,12 +78,11 @@ const SimulationUpload = ({ onShowResults }: SimulationUploadProps) => {
     <div className="space-y-6">
       {!isUploading && !isAnalyzing && !extractedData && (
         <DropzoneUpload 
-          onFilesSelected={handleUpload}
           maxFiles={1}
           accept={{ 'application/pdf': ['.pdf'], 'application/msword': ['.doc', '.docx'] }}
           title={t('simulation.upload.heading')}
           description={t('simulation.upload.dragDrop')}
-          onUploadSuccess={() => {}}
+          onUploadSuccess={handleUploadSuccess}
         />
       )}
       
