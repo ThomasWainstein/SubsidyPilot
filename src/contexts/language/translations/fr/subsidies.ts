@@ -42,4 +42,5 @@ export const subsidies = {
   'subsidies.fundingTypePublic': 'Public',
   'subsidies.fundingTypePrivate': 'Privé',
   'subsidies.fundingTypeMixed': 'Mixte',
+  'subsidies.searchSubsidies': 'Rechercher des Subventions',
 } as const;

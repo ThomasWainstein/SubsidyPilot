@@ -48,4 +48,8 @@ export const subsidies = {
   'common.clear': 'Curăță',
   'common.hideFilters': 'Ascunde Filtrele',
   'common.showFilters': 'Arată Filtrele',
+  'common.all': 'Toate',
+  'common.learn': 'Învață',
+  'common.view': 'Vezi',
+  'common.edit': 'Editează',
 } as const;

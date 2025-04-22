@@ -155,7 +155,9 @@ const SubsidySearchPage = () => {
                               className="w-full justify-start"
                               onClick={() => toggleFundingTypeFilter(type)}
                             >
-                              {t(`subsidies.fundingType.${type}`)}
+                              {t(`subsidies.fundingTypePublic` === `subsidies.fundingType${type.charAt(0).toUpperCase() + type.slice(1)}` 
+                                ? `subsidies.fundingType${type.charAt(0).toUpperCase() + type.slice(1)}`
+                                : `subsidies.fundingType.${type}`)}
                             </Button>
                           </div>
                         ))}

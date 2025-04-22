@@ -1,3 +1,4 @@
+
 import { farms } from './farms';
 
 export interface Subsidy {
@@ -11,6 +12,7 @@ export interface Subsidy {
   deadline: string;
   documentsRequired?: string[];
   isManuallyAdded?: boolean;
+  fundingType?: 'public' | 'private' | 'mixed';
 }
 
 // Define predefined subsidies
@@ -24,6 +26,7 @@ export const subsidies: Subsidy[] = [
     region: 'France',
     matchConfidence: 87,
     deadline: '2025-05-15',
+    fundingType: 'public',
   },
   {
     id: 's2',
@@ -34,6 +37,7 @@ export const subsidies: Subsidy[] = [
     region: 'EU-wide',
     matchConfidence: 92,
     deadline: '2025-06-30',
+    fundingType: 'private',
   },
   {
     id: 's3',
@@ -44,6 +48,7 @@ export const subsidies: Subsidy[] = [
     region: 'France',
     matchConfidence: 78,
     deadline: '2025-04-30',
+    fundingType: 'mixed',
   },
   {
     id: 's4',
@@ -54,6 +59,7 @@ export const subsidies: Subsidy[] = [
     region: 'Spain',
     matchConfidence: 85,
     deadline: '2025-05-31',
+    fundingType: 'public',
   },
   {
     id: 's5',
@@ -64,6 +70,7 @@ export const subsidies: Subsidy[] = [
     region: 'EU-wide',
     matchConfidence: 81,
     deadline: '2025-07-15',
+    fundingType: 'private',
   },
   {
     id: 's6',
@@ -74,6 +81,7 @@ export const subsidies: Subsidy[] = [
     region: 'Romania',
     matchConfidence: 73,
     deadline: '2025-06-15',
+    fundingType: 'public',
   },
   {
     id: 's7',
@@ -84,6 +92,7 @@ export const subsidies: Subsidy[] = [
     region: 'Spain',
     matchConfidence: 94,
     deadline: '2025-05-01',
+    fundingType: 'mixed',
   },
   {
     id: 's8',
@@ -94,6 +103,7 @@ export const subsidies: Subsidy[] = [
     region: 'France',
     matchConfidence: 76,
     deadline: '2025-08-15',
+    fundingType: 'public',
   },
   {
     id: 's9',
@@ -104,6 +114,7 @@ export const subsidies: Subsidy[] = [
     region: 'EU-wide',
     matchConfidence: 89,
     deadline: '2025-04-10',
+    fundingType: 'private',
   },
   {
     id: 's10',
@@ -114,6 +125,7 @@ export const subsidies: Subsidy[] = [
     region: 'EU-wide',
     matchConfidence: 67,
     deadline: '2025-07-30',
+    fundingType: 'mixed',
   },
   {
     id: 's11',
@@ -124,6 +136,7 @@ export const subsidies: Subsidy[] = [
     region: 'France',
     matchConfidence: 82,
     deadline: '2025-06-01',
+    fundingType: 'public',
   },
   {
     id: 's12',
@@ -134,6 +147,7 @@ export const subsidies: Subsidy[] = [
     region: 'Romania',
     matchConfidence: 79,
     deadline: '2025-05-20',
+    fundingType: 'private',
   },
 ];
 
