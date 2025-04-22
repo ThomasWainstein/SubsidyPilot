@@ -112,6 +112,13 @@ const SubsidySearchPage = () => {
     }
   };
   
+  const getFundingTypeTranslationKey = (type: string) => {
+    if (type === 'public') return 'subsidies.fundingTypePublic';
+    if (type === 'private') return 'subsidies.fundingTypePrivate';
+    if (type === 'mixed') return 'subsidies.fundingTypeMixed';
+    return 'subsidies.fundingTypePublic'; // default fallback
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -154,7 +161,7 @@ const SubsidySearchPage = () => {
                               className="w-full justify-start"
                               onClick={() => toggleFundingTypeFilter(type)}
                             >
-                              {t(`subsidies.fundingType.${type}`)}
+                              {t(getFundingTypeTranslationKey(type))}
                             </Button>
                           </div>
                         ))}
