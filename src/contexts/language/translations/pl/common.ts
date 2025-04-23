@@ -33,6 +33,28 @@ export const common = {
   'common.error': 'Błąd',
   'common.warning': 'Ostrzeżenie',
   'common.info': 'Informacja',
-  'common.applied': 'Zastosowano',   // Add this line
-  'common.saved': 'Zapisano'         // Add this line
+  'common.applied': 'Zastosowano',
+  'common.saved': 'Zapisano',
+  // Adding the missing translations
+  'common.send': 'Wyślij',
+  'common.landRegistryCertificate': 'Certyfikat Rejestru Gruntów',
+  'common.irrigationForm': 'Formularz Nawadniania',
+  'common.uploadFromVault': 'Prześlij z Sejfu',
+  'common.demoDisclaimer': 'To jest demonstracja AgriTool Advisor. Nie do rzeczywistych wniosków o dotacje.',
+  'common.lastUpdated': 'Ostatnia Aktualizacja',
+  'common.openClientProfile': 'Otwórz Profil Klienta',
+  'common.applyNow': 'Aplikuj Teraz',
+  'common.newSubsidyAvailable': 'Nowa Dotacja Dostępna',
+  'common.documentsRequired': 'Wymagane Dokumenty',
+  'common.inReview': 'W Trakcie Przeglądu',
+  'common.readyToSubmit': 'Gotowy do Złożenia',
+  'common.deadlineApproaching': 'Termin się Zbliża',
+  'common.demoLabel': 'Demo',
+  'common.dashboard': 'Panel',
+  'common.plan': 'Plan',
+  'common.consultantPro': 'Konsultant Pro',
+  'common.free': 'Darmowy',
+  'common.coopEnterprise': 'Przedsiębiorstwo Spółdzielcze',
+  'common.documents': 'Dokumenty',
+  'common.skipToEUPortal': 'Przejdź do Portalu UE'
 } as const;

@@ -33,6 +33,28 @@ export const common = {
   'common.error': 'Error',
   'common.warning': 'Warning',
   'common.info': 'Info',
-  'common.applied': 'Applied',  // Add this line
-  'common.saved': 'Saved'       // Add this line
+  'common.applied': 'Applied',
+  'common.saved': 'Saved',
+  // Adding the missing translations
+  'common.send': 'Send',
+  'common.landRegistryCertificate': 'Land Registry Certificate',
+  'common.irrigationForm': 'Irrigation Form',
+  'common.uploadFromVault': 'Upload from Vault',
+  'common.demoDisclaimer': 'This is a demonstration of AgriTool Advisor. Not for actual subsidy applications.',
+  'common.lastUpdated': 'Last Updated',
+  'common.openClientProfile': 'Open Client Profile',
+  'common.applyNow': 'Apply Now',
+  'common.newSubsidyAvailable': 'New Subsidy Available',
+  'common.documentsRequired': 'Documents Required',
+  'common.inReview': 'In Review',
+  'common.readyToSubmit': 'Ready to Submit',
+  'common.deadlineApproaching': 'Deadline Approaching',
+  'common.demoLabel': 'Demo',
+  'common.dashboard': 'Dashboard',
+  'common.plan': 'Plan',
+  'common.consultantPro': 'Consultant Pro',
+  'common.free': 'Free',
+  'common.coopEnterprise': 'Coop Enterprise',
+  'common.documents': 'Documents',
+  'common.skipToEUPortal': 'Skip to EU Portal'
 } as const;

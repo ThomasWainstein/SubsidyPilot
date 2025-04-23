@@ -33,5 +33,28 @@ export type CommonTranslationKey =
   | 'common.error'
   | 'common.warning'
   | 'common.info'
-  | 'common.applied'  // Add this line
-  | 'common.saved';   // Add this line
+  | 'common.applied'
+  | 'common.saved'
+  // Adding all the missing keys here
+  | 'common.send'
+  | 'common.landRegistryCertificate'
+  | 'common.irrigationForm'
+  | 'common.uploadFromVault'
+  | 'common.demoDisclaimer'
+  | 'common.lastUpdated'
+  | 'common.openClientProfile'
+  | 'common.applyNow'
+  | 'common.newSubsidyAvailable'
+  | 'common.documentsRequired'
+  | 'common.inReview'
+  | 'common.readyToSubmit'
+  | 'common.deadlineApproaching'
+  | 'common.demoLabel'
+  | 'common.dashboard'
+  | 'common.plan'
+  | 'common.consultantPro'
+  | 'common.free'
+  | 'common.coopEnterprise'
+  | 'common.documents'
+  | 'common.skipToEUPortal';
+
