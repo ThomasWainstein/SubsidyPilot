@@ -21,8 +21,8 @@ export interface Subsidy {
   source?: 'search' | 'static';
   isManuallyAdded?: boolean;
   fundingType?: 'public' | 'private' | 'mixed';
-  countryEligibility?: string | string[];
-  agriculturalSector?: string | string[];
+  countryEligibility?: string | string[]; // Added missing property
+  agriculturalSector?: string | string[]; // Added missing property
   farmingMethod?: string | string[];
   grantValue?: string;
   certifications?: string[];
