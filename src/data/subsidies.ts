@@ -1,21 +1,8 @@
-
 import { farms } from './farms';
+import { Subsidy as SubsidyType } from '@/types/subsidy';
 
-export interface Subsidy {
-  id: string;
-  code: string;
-  name: string;
-  description: string;
-  grant: string;
-  region: string | string[];
-  matchConfidence: number;
-  deadline: string;
-  documentsRequired?: string[];
-  isManuallyAdded?: boolean;
-  fundingType?: 'public' | 'private' | 'mixed';
-}
+export type Subsidy = SubsidyType;
 
-// Define predefined subsidies
 export const subsidies: Subsidy[] = [
   {
     id: 's1',
@@ -27,6 +14,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 87,
     deadline: '2025-05-15',
     fundingType: 'public',
+    status: 'open',
+    agriculturalSector: ['organic', 'crops'],
+    countryEligibility: 'France',
   },
   {
     id: 's2',
@@ -38,6 +28,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 92,
     deadline: '2025-06-30',
     fundingType: 'private',
+    status: 'open',
+    agriculturalSector: ['irrigation', 'technology'],
+    countryEligibility: ['France', 'Spain', 'Romania'],
   },
   {
     id: 's3',
@@ -49,6 +42,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 78,
     deadline: '2025-04-30',
     fundingType: 'mixed',
+    status: 'open',
+    agriculturalSector: ['soil health', 'sustainable farming'],
+    countryEligibility: 'France',
   },
   {
     id: 's4',
@@ -60,6 +56,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 85,
     deadline: '2025-05-31',
     fundingType: 'public',
+    status: 'open',
+    agriculturalSector: ['biodiversity', 'conservation'],
+    countryEligibility: 'Spain',
   },
   {
     id: 's5',
@@ -71,6 +70,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 81,
     deadline: '2025-07-15',
     fundingType: 'private',
+    status: 'open',
+    agriculturalSector: ['carbon credits', 'sustainability'],
+    countryEligibility: ['France', 'Spain', 'Romania'],
   },
   {
     id: 's6',
@@ -82,6 +84,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 73,
     deadline: '2025-06-15',
     fundingType: 'public',
+    status: 'open',
+    agriculturalSector: ['youth', 'innovation'],
+    countryEligibility: 'Romania',
   },
   {
     id: 's7',
@@ -93,6 +98,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 94,
     deadline: '2025-05-01',
     fundingType: 'mixed',
+    status: 'open',
+    agriculturalSector: ['solar', 'energy'],
+    countryEligibility: 'Spain',
   },
   {
     id: 's8',
@@ -104,6 +112,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 76,
     deadline: '2025-08-15',
     fundingType: 'public',
+    status: 'open',
+    agriculturalSector: ['agroforestry', 'sustainability'],
+    countryEligibility: 'France',
   },
   {
     id: 's9',
@@ -115,6 +126,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 89,
     deadline: '2025-04-10',
     fundingType: 'private',
+    status: 'open',
+    agriculturalSector: ['digital', 'technology'],
+    countryEligibility: 'EU-wide',
   },
   {
     id: 's10',
@@ -126,6 +140,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 67,
     deadline: '2025-07-30',
     fundingType: 'mixed',
+    status: 'open',
+    agriculturalSector: ['logistics', 'sustainability'],
+    countryEligibility: 'EU-wide',
   },
   {
     id: 's11',
@@ -137,6 +154,9 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 82,
     deadline: '2025-06-01',
     fundingType: 'public',
+    status: 'open',
+    agriculturalSector: ['fertilizer', 'precision'],
+    countryEligibility: 'France',
   },
   {
     id: 's12',
@@ -148,14 +168,15 @@ export const subsidies: Subsidy[] = [
     matchConfidence: 79,
     deadline: '2025-05-20',
     fundingType: 'private',
+    status: 'open',
+    agriculturalSector: ['waste', 'sustainability'],
+    countryEligibility: 'Romania',
   },
 ];
 
-// Function to get random subsidy matches for a farm (2-4 subsidies)
 export const getRandomSubsidies = (farmId: string): Subsidy[] => {
-  // Shuffle the subsidies array and pick 2-4 elements
   const shuffled = [...subsidies].sort(() => 0.5 - Math.random());
-  const count = Math.floor(Math.random() * 3) + 2; // 2 to 4 subsidies
+  const count = Math.floor(Math.random() * 3) + 2;
   return shuffled.slice(0, count);
 };
 
@@ -169,7 +190,6 @@ export interface Application {
   grantAmount: string;
 }
 
-// Define fake applications
 export const applications: Record<string, Application[]> = {
   '1': [
     {
@@ -309,9 +329,7 @@ export interface FormSection {
   fields: FormField[];
 }
 
-// Define form structure
 export const getApplicationForm = (farmId: string, subsidyId: string): FormSection[] => {
-  // Get farm and subsidy info to prefill some fields
   const farm = farms.find(f => f.id === farmId);
   const subsidy = subsidies.find(s => s.id === subsidyId);
 
