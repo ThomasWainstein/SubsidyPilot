@@ -50,5 +50,11 @@ export const search = {
   'search.filters.deadline.closingSoon': 'Closing Soon (30 days)',
   'search.filters.deadline.closed': 'Closed (archive)',
   'search.noResults': 'No subsidies found',
-  'search.noResultsDesc': 'No subsidies match your filters. Try broadening your criteria.'
+  'search.noResultsDesc': 'No subsidies match your filters. Try broadening your criteria.',
+  'search.filters.noMatches': 'No saved filter sets yet',
+  'search.filters.saveFilterSet': 'Save Filter Set',
+  'search.filters.savedFilters': 'Saved Filters',
+  'search.filters.enterFilterSetName': 'Enter filter set name',
+  'search.filters.save': 'Save',
+  'search.filters.cancel': 'Cancel'
 } as const;

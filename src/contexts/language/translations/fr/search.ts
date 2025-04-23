@@ -50,5 +50,11 @@ export const search = {
   'search.filters.deadline.closingSoon': 'Ferme Bientôt (30 jours)',
   'search.filters.deadline.closed': 'Fermé (archive)',
   'search.noResults': 'Aucune subvention trouvée',
-  'search.noResultsDesc': 'Aucune subvention ne correspond à vos filtres. Essayez d\'élargir vos critères.'
+  'search.noResultsDesc': 'Aucune subvention ne correspond à vos filtres. Essayez d\'élargir vos critères.',
+  'search.filters.noMatches': 'Pas encore d\'ensembles de filtres enregistrés',
+  'search.filters.saveFilterSet': 'Enregistrer l\'ensemble de filtres',
+  'search.filters.savedFilters': 'Filtres Enregistrés',
+  'search.filters.enterFilterSetName': 'Entrez le nom de l\'ensemble de filtres',
+  'search.filters.save': 'Enregistrer',
+  'search.filters.cancel': 'Annuler'
 } as const;

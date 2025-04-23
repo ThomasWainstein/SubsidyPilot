@@ -50,5 +50,11 @@ export const search = {
   'search.filters.deadline.closingSoon': 'Se Închide Curând (30 zile)',
   'search.filters.deadline.closed': 'Închis (arhivă)',
   'search.noResults': 'Nu s-au găsit subvenții',
-  'search.noResultsDesc': 'Nicio subvenție nu corespunde filtrelor tale. Încearcă să lărgești criteriile.'
+  'search.noResultsDesc': 'Nicio subvenție nu corespunde filtrelor tale. Încearcă să lărgești criteriile.',
+  'search.filters.noMatches': 'Încă nu există seturi de filtre salvate',
+  'search.filters.saveFilterSet': 'Salvează Setul de Filtre',
+  'search.filters.savedFilters': 'Filtre Salvate',
+  'search.filters.enterFilterSetName': 'Introduceți numele setului de filtre',
+  'search.filters.save': 'Salvează',
+  'search.filters.cancel': 'Anulează'
 } as const;

@@ -50,4 +50,10 @@ export type SearchTranslationKey =
   | 'search.filters.deadline.closingSoon'
   | 'search.filters.deadline.closed'
   | 'search.noResults'
-  | 'search.noResultsDesc';
+  | 'search.noResultsDesc'
+  | 'search.filters.noMatches'
+  | 'search.filters.saveFilterSet'
+  | 'search.filters.savedFilters'
+  | 'search.filters.enterFilterSetName'
+  | 'search.filters.save'
+  | 'search.filters.cancel';

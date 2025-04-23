@@ -50,5 +50,11 @@ export const search = {
   'search.filters.deadline.closingSoon': 'Zamyka Się Wkrótce (30 dni)',
   'search.filters.deadline.closed': 'Zamknięty (archiwum)',
   'search.noResults': 'Nie znaleziono dotacji',
-  'search.noResultsDesc': 'Żadne dotacje nie spełniają twoich kryteriów. Spróbuj rozszerzyć kryteria wyszukiwania.'
+  'search.noResultsDesc': 'Żadne dotacje nie spełniają twoich kryteriów. Spróbuj rozszerzyć kryteria wyszukiwania.',
+  'search.filters.noMatches': 'Brak zapisanych zestawów filtrów',
+  'search.filters.saveFilterSet': 'Zapisz Zestaw Filtrów',
+  'search.filters.savedFilters': 'Zapisane Filtry',
+  'search.filters.enterFilterSetName': 'Wprowadź nazwę zestawu filtrów',
+  'search.filters.save': 'Zapisz',
+  'search.filters.cancel': 'Anuluj'
 } as const;

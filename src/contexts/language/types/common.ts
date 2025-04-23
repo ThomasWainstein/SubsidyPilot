@@ -73,4 +73,11 @@ export type CommonTranslationKey =
   | 'common.continueToEUPortal'
   | 'common.generateForm'
   | 'common.uploadNow'
-  | 'common.viewDetails';
+  | 'common.viewDetails'
+  | 'common.profile'
+  | 'common.applications'
+  | 'common.subsidies'
+  | 'common.getStarted'
+  | 'common.returnHome'
+  | 'common.backToDashboard'
+  | 'common.explainThis';

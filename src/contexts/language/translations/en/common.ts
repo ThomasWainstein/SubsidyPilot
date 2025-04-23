@@ -73,5 +73,13 @@ export const common = {
   'common.continueToEUPortal': 'Continue to EU Portal',
   'common.generateForm': 'Generate Form',
   'common.uploadNow': 'Upload Now',
-  'common.viewDetails': 'View Details'
+  'common.viewDetails': 'View Details',
+  // Add more missing keys
+  'common.profile': 'Profile',
+  'common.subsidies': 'Subsidies',
+  'common.applications': 'Applications',
+  'common.getStarted': 'Get Started',
+  'common.returnHome': 'Return to Homepage',
+  'common.backToDashboard': 'Back to Dashboard',
+  'common.explainThis': 'Explain This'
 } as const;

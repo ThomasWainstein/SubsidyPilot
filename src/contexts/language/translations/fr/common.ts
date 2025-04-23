@@ -73,5 +73,13 @@ export const common = {
   'common.continueToEUPortal': 'Continuer vers le Portail UE',
   'common.generateForm': 'Générer le Formulaire',
   'common.uploadNow': 'Télécharger Maintenant',
-  'common.viewDetails': 'Voir les Détails'
+  'common.viewDetails': 'Voir les Détails',
+  // Add more missing keys
+  'common.profile': 'Profil',
+  'common.subsidies': 'Subventions',
+  'common.applications': 'Applications',
+  'common.getStarted': 'Commencer',
+  'common.returnHome': 'Retour à la Page d\'Accueil',
+  'common.backToDashboard': 'Retour au Tableau de Bord',
+  'common.explainThis': 'Expliquer Ceci'
 } as const;
