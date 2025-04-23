@@ -1,96 +1,118 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Slider 
-} from '@/components/ui/slider';
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from '@/components/ui/accordion';
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Euro, 
-  Filter, 
-  Search, 
-  Sliders, 
-  X 
-} from 'lucide-react';
+import { Euro, Filter, Search, X } from 'lucide-react';
 import { getLocalizedContent } from '@/utils/language';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { farms } from '@/data/farms';
 import { subsidies } from '@/data/subsidies';
 import { toast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SubsidyFilters from '@/components/subsidy/SubsidyFilters';
+import SavedFilterSets, { FilterSet } from '@/components/subsidy/SavedFilterSets';
+import { v4 as uuidv4 } from '@/lib/utils';
 
 const SubsidySearchPage = () => {
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const [confidenceFilter, setConfidenceFilter] = useState([0]);
   const [showFilters, setShowFilters] = useState(true);
-  const [fundingTypeFilter, setFundingTypeFilter] = useState<string[]>([]);
   const [selectedSubsidy, setSelectedSubsidy] = useState<typeof subsidies[0] | null>(null);
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const [attachDialogOpen, setAttachDialogOpen] = useState(false);
+  const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
   
+  // New expanded filters
+  const [filters, setFilters] = useState({
+    confidenceFilter: [0], // Keep existing confidence filter
+    regions: [] as string[],
+    eligibleCountry: '',
+    farmingTypes: [] as string[],
+    fundingSources: [] as string[],
+    fundingInstruments: [] as string[],
+    documentsRequired: [] as string[],
+    applicationFormats: [] as string[],
+    sustainabilityGoals: [] as string[],
+    deadlineStatuses: [] as string[],
+  });
+  
+  const clearFilters = () => {
+    setFilters({
+      confidenceFilter: [0],
+      regions: [],
+      eligibleCountry: '',
+      farmingTypes: [],
+      fundingSources: [],
+      fundingInstruments: [],
+      documentsRequired: [],
+      applicationFormats: [],
+      sustainabilityGoals: [],
+      deadlineStatuses: [],
+    });
+  };
+  
+  // Modified filter logic to work with the expanded filters
   const filteredSubsidies = subsidies.filter(subsidy => {
+    // Name and description search
     const nameMatches = getLocalizedContent(subsidy.name, language).toLowerCase().includes(searchQuery.toLowerCase());
     const descriptionMatches = getLocalizedContent(subsidy.description, language).toLowerCase().includes(searchQuery.toLowerCase());
     const searchMatches = searchQuery === '' || nameMatches || descriptionMatches;
     
-    const confidenceMatches = subsidy.matchConfidence >= confidenceFilter[0] / 100;
+    // Confidence filter
+    const confidenceMatches = subsidy.matchConfidence >= filters.confidenceFilter[0] / 100;
     
-    const fundingTypeMatches = fundingTypeFilter.length === 0 || 
-      (subsidy.fundingType && fundingTypeFilter.includes(subsidy.fundingType));
+    // Region filter
+    const regionMatches = filters.regions.length === 0 || 
+      (Array.isArray(subsidy.region) 
+        ? subsidy.region.some(r => filters.regions.includes(r))
+        : filters.regions.includes(subsidy.region as string));
     
-    return searchMatches && confidenceMatches && fundingTypeMatches;
+    // Country eligibility filter
+    const countryMatches = !filters.eligibleCountry ||
+      (subsidy.countryEligibility && 
+        (Array.isArray(subsidy.countryEligibility)
+          ? subsidy.countryEligibility.some(c => c.toLowerCase().includes(filters.eligibleCountry.toLowerCase()))
+          : (subsidy.countryEligibility as string).toLowerCase().includes(filters.eligibleCountry.toLowerCase())));
+    
+    // Farming type filter
+    const farmingTypeMatches = filters.farmingTypes.length === 0 ||
+      (subsidy.agriculturalSector &&
+        (Array.isArray(subsidy.agriculturalSector)
+          ? subsidy.agriculturalSector.some(s => filters.farmingTypes.includes(s))
+          : filters.farmingTypes.includes(subsidy.agriculturalSector as string)));
+    
+    // Funding source filter (type)
+    const fundingSourceMatches = filters.fundingSources.length === 0 ||
+      (subsidy.fundingType && filters.fundingSources.includes(subsidy.fundingType));
+    
+    // We don't have detailed data for all filters in the demo data, so some will just return true
+    // In a real app, these would check against actual subsidy properties
+    const fundingInstrumentMatches = filters.fundingInstruments.length === 0;
+    const documentsRequiredMatches = filters.documentsRequired.length === 0;
+    const applicationFormatMatches = filters.applicationFormats.length === 0;
+    const sustainabilityGoalsMatches = filters.sustainabilityGoals.length === 0;
+    
+    // Deadline status filter
+    const deadlineStatusMatches = filters.deadlineStatuses.length === 0 ||
+      (subsidy.status && filters.deadlineStatuses.includes(subsidy.status));
+    
+    return searchMatches && 
+           confidenceMatches && 
+           regionMatches && 
+           countryMatches && 
+           farmingTypeMatches && 
+           fundingSourceMatches &&
+           fundingInstrumentMatches &&
+           documentsRequiredMatches &&
+           applicationFormatMatches &&
+           sustainabilityGoalsMatches &&
+           deadlineStatusMatches;
   });
-  
-  const toggleFundingTypeFilter = (type: string) => {
-    if (fundingTypeFilter.includes(type)) {
-      setFundingTypeFilter(fundingTypeFilter.filter(t => t !== type));
-    } else {
-      setFundingTypeFilter([...fundingTypeFilter, type]);
-    }
-  };
-  
-  const clearFilters = () => {
-    setConfidenceFilter([0]);
-    setFundingTypeFilter([]);
-  };
   
   const handleAttachToFarm = (subsidyId: string) => {
     const subsidy = subsidies.find(s => s.id === subsidyId);
@@ -112,11 +134,33 @@ const SubsidySearchPage = () => {
     }
   };
   
-  const getFundingTypeTranslationKey = (type: string) => {
-    if (type === 'public') return 'subsidies.fundingTypePublic';
-    if (type === 'private') return 'subsidies.fundingTypePrivate';
-    if (type === 'mixed') return 'subsidies.fundingTypeMixed';
-    return 'subsidies.fundingTypePublic'; // default fallback
+  // Save current filter set
+  const saveCurrentFilterSet = (name: string) => {
+    const newSet: FilterSet = {
+      id: uuidv4(),
+      name,
+      filters: { ...filters }
+    };
+    
+    setSavedFilterSets([...savedFilterSets, newSet]);
+    toast({
+      title: t('common.saved'),
+      description: `${name} ${t('search.filters.saveFilterSet')}`,
+    });
+  };
+  
+  // Apply a saved filter set
+  const applyFilterSet = (set: FilterSet) => {
+    setFilters(set.filters);
+    toast({
+      title: t('common.applied'),
+      description: `${set.name} ${t('search.filters.saveFilterSet')}`,
+    });
+  };
+  
+  // Remove a saved filter set
+  const removeFilterSet = (id: string) => {
+    setSavedFilterSets(savedFilterSets.filter(set => set.id !== id));
   };
   
   return (
@@ -138,50 +182,34 @@ const SubsidySearchPage = () => {
                   <CardHeader className="py-4">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg">{t('subsidies.filters')}</CardTitle>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={clearFilters}
-                      >
-                        {t('common.clear')}
-                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Saved Filter Sets */}
+                    <SavedFilterSets 
+                      filterSets={savedFilterSets}
+                      onApplyFilterSet={applyFilterSet}
+                      onRemoveFilterSet={removeFilterSet}
+                      currentFilters={filters}
+                      onSaveCurrentFilters={saveCurrentFilterSet}
+                    />
                     
-                    {/* Funding Type Filter */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">{t('subsidies.fundingType')}</h3>
-                      <div className="space-y-1">
-                        {['public', 'private', 'mixed'].map(type => (
-                          <div key={type} className="flex items-center">
-                            <Button
-                              variant={fundingTypeFilter.includes(type) ? "default" : "outline"}
-                              size="sm"
-                              className="w-full justify-start"
-                              onClick={() => toggleFundingTypeFilter(type)}
-                            >
-                              {t(getFundingTypeTranslationKey(type))}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Match Confidence Filter */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-sm font-medium">{t('subsidies.matchConfidence')}</h3>
-                        <span className="text-sm text-gray-500">{confidenceFilter[0]}%</span>
-                      </div>
-                      <Slider
-                        defaultValue={[0]}
-                        value={confidenceFilter}
-                        max={100}
-                        step={5}
-                        onValueChange={setConfidenceFilter}
-                      />
-                    </div>
+                    {/* Filter Components */}
+                    <SubsidyFilters 
+                      filters={{
+                        regions: filters.regions,
+                        eligibleCountry: filters.eligibleCountry,
+                        farmingTypes: filters.farmingTypes,
+                        fundingSources: filters.fundingSources,
+                        fundingInstruments: filters.fundingInstruments,
+                        documentsRequired: filters.documentsRequired,
+                        applicationFormats: filters.applicationFormats,
+                        sustainabilityGoals: filters.sustainabilityGoals,
+                        deadlineStatuses: filters.deadlineStatuses,
+                      }}
+                      setFilters={setFilters}
+                      onClearFilters={clearFilters}
+                    />
                   </CardContent>
                 </Card>
               </div>
@@ -241,21 +269,28 @@ const SubsidySearchPage = () => {
                               {getLocalizedContent(subsidy.description, language)}
                             </p>
                           </CardContent>
-                          <CardFooter className="flex justify-between pt-2">
+                          <div className="flex justify-between p-4 pt-0">
                             <Button variant="outline" size="sm">
                               {t('subsidies.viewDetails')}
                             </Button>
                             <Button variant="default" size="sm" onClick={() => handleAttachToFarm(subsidy.id)}>
                               {t('subsidies.attachToFarm')}
                             </Button>
-                          </CardFooter>
+                          </div>
                         </Card>
                       ))}
                     </div>
                   ) : (
                     <div className="text-center py-12">
                       <h3 className="text-lg font-medium mb-2">{t('subsidies.noSubsidiesFound')}</h3>
-                      <p className="text-gray-500">{t('subsidies.noSubsidiesFoundDesc')}</p>
+                      <p className="text-gray-500">{t('search.filters.noMatches')}</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={clearFilters}
+                      >
+                        {t('common.clear')}
+                      </Button>
                     </div>
                   )}
                 </CardContent>
