@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Download, FilePlus, Save } from 'lucide-react';
-import { Subsidy } from '@/data/subsidies';
+import { Subsidy } from '@/types/subsidy';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { useToast } from '@/hooks/use-toast';
-import { MultilingualText } from '@/types/subsidy';
+import { getLocalizedContent } from '@/utils/language';
 
 interface SimulationResultsProps {
   subsidies: Subsidy[];
@@ -15,16 +15,8 @@ interface SimulationResultsProps {
   onClose: () => void;
 }
 
-// Helper function to handle multilingual text
-const getLocalizedText = (text: string | MultilingualText): string => {
-  if (typeof text === 'string') {
-    return text;
-  }
-  return text.en; // Default to English
-};
-
 const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   
   const handleSaveHypothetical = () => {
@@ -57,14 +49,14 @@ const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsPro
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">
-                  {getLocalizedText(subsidy.name)}
+                  {getLocalizedContent(subsidy.name, language)}
                 </CardTitle>
                 <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
               </div>
             </CardHeader>
             <CardContent className="pb-2">
               <p className="text-sm text-gray-600 mb-2">
-                {getLocalizedText(subsidy.description)}
+                {getLocalizedContent(subsidy.description, language)}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge variant="outline" className="bg-blue-50">

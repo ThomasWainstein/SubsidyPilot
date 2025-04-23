@@ -24,4 +24,7 @@ export type FarmTranslationKey =
   | 'farm.high'
   | 'farm.medium'
   | 'farm.veryHigh'
-  | 'farm.low';
+  | 'farm.low'
+  | 'farm.attachedSubsidies'
+  | 'farm.manuallyAttached'
+  | 'farm.automaticallyMatched';

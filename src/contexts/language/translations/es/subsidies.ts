@@ -24,6 +24,7 @@ export const subsidies = {
   'subsidies.private': 'Privado',
   'subsidies.mixed': 'Mixto',
   'subsidies.attachToFarm': 'Adjuntar a Granja',
+  'subsidies.viewAttached': 'Ver Adjuntos',
   'subsidies.selectFarm': 'Selecciona una Granja para Adjuntar',
   'subsidies.noSubsidies': 'No Hay Subsidios Disponibles',
   'subsidies.viewDetails': 'Ver Detalles',
@@ -52,4 +53,5 @@ export const subsidies = {
   'common.learn': 'Aprender',
   'common.view': 'Ver',
   'common.edit': 'Editar',
+  'common.attach': 'Adjuntar',
 } as const;

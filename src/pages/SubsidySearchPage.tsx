@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Euro, Filter, Search, X } from 'lucide-react';
+import { Euro, Filter, Lightning, Pin, Search, X } from 'lucide-react';
 import { getLocalizedContent } from '@/utils/language';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { farms } from '@/data/farms';
@@ -16,17 +16,26 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SubsidyFilters from '@/components/subsidy/SubsidyFilters';
 import SavedFilterSets, { FilterSet } from '@/components/subsidy/SavedFilterSets';
-import { uuidv4 } from '@/lib/utils'; // Fixed import to use the renamed function
+import { uuidv4 } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import AttachSubsidyModal from '@/components/subsidy/AttachSubsidyModal';
+import { attachSubsidyToFarm, updateSubsidiesWithAttachmentInfo } from '@/utils/subsidyAttachment';
 
 const SubsidySearchPage = () => {
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedSubsidy, setSelectedSubsidy] = useState<typeof subsidies[0] | null>(null);
-  const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const [attachDialogOpen, setAttachDialogOpen] = useState(false);
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
+  const [subsidiesWithAttachmentInfo, setSubsidiesWithAttachmentInfo] = useState(subsidies);
   
+  // Effect to update subsidies with attachment information
+  useEffect(() => {
+    const updatedSubsidies = updateSubsidiesWithAttachmentInfo(subsidies);
+    setSubsidiesWithAttachmentInfo(updatedSubsidies);
+  }, []);
+
   // New expanded filters
   const [filters, setFilters] = useState({
     confidenceFilter: [0], // Keep existing confidence filter
@@ -57,7 +66,7 @@ const SubsidySearchPage = () => {
   };
   
   // Modified filter logic to work with the expanded filters
-  const filteredSubsidies = subsidies.filter(subsidy => {
+  const filteredSubsidies = subsidiesWithAttachmentInfo.filter(subsidy => {
     // Name and description search
     const nameMatches = getLocalizedContent(subsidy.name, language).toLowerCase().includes(searchQuery.toLowerCase());
     const descriptionMatches = getLocalizedContent(subsidy.description, language).toLowerCase().includes(searchQuery.toLowerCase());
@@ -93,7 +102,10 @@ const SubsidySearchPage = () => {
     // We don't have detailed data for all filters in the demo data, so some will just return true
     // In a real app, these would check against actual subsidy properties
     const fundingInstrumentMatches = filters.fundingInstruments.length === 0;
-    const documentsRequiredMatches = filters.documentsRequired.length === 0;
+    const documentsRequiredMatches = filters.documentsRequired.length === 0 ||
+      (subsidy.documentsRequired && 
+       filters.documentsRequired.some(doc => subsidy.documentsRequired?.includes(doc)));
+    
     const applicationFormatMatches = filters.applicationFormats.length === 0;
     const sustainabilityGoalsMatches = filters.sustainabilityGoals.length === 0;
     
@@ -115,23 +127,20 @@ const SubsidySearchPage = () => {
   });
   
   const handleAttachToFarm = (subsidyId: string) => {
-    const subsidy = subsidies.find(s => s.id === subsidyId);
+    const subsidy = subsidiesWithAttachmentInfo.find(s => s.id === subsidyId);
     if (subsidy) {
       setSelectedSubsidy(subsidy);
       setAttachDialogOpen(true);
     }
   };
   
-  const confirmAttachToFarm = () => {
-    if (selectedSubsidy && selectedFarmId) {
-      toast({
-        title: t('messages.subsidyAttached'),
-        description: t('messages.subsidyAttachedDesc'),
-        variant: "default",
-      });
-      setAttachDialogOpen(false);
-      setSelectedFarmId('');
-    }
+  const handleConfirmAttach = (subsidyId: string, farmId: string) => {
+    // Attach the subsidy to the farm
+    attachSubsidyToFarm(subsidyId, farmId);
+    
+    // Update the subsidies list with attachment info
+    const updatedSubsidies = updateSubsidiesWithAttachmentInfo(subsidiesWithAttachmentInfo);
+    setSubsidiesWithAttachmentInfo(updatedSubsidies);
   };
   
   // Save current filter set
@@ -254,11 +263,21 @@ const SubsidySearchPage = () => {
                   {filteredSubsidies.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredSubsidies.map(subsidy => (
-                        <Card key={subsidy.id} className="border border-gray-200 dark:border-gray-700 h-full">
+                        <Card key={subsidy.id} className={`border ${subsidy.isAttached ? 'border-primary/50' : 'border-gray-200'} dark:border-gray-700 h-full`}>
                           <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{getLocalizedContent(subsidy.name, language)}</CardTitle>
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-lg">{getLocalizedContent(subsidy.name, language)}</CardTitle>
+                              <div className="flex items-center gap-2">
+                                {subsidy.isAttached && (
+                                  <Badge className="bg-primary/10 text-primary">
+                                    {subsidy.source === 'search' ? <Lightning size={12} className="mr-1" /> : <Pin size={12} className="mr-1" />}
+                                    {t('search.actions.attached')}
+                                  </Badge>
+                                )}
+                                <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
+                              </div>
+                            </div>
                             <div className="flex justify-between items-center mt-1">
-                              <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
                               <div className="flex items-center text-sm text-gray-500">
                                 <Euro className="h-4 w-4 mr-1" /> {subsidy.grant}
                               </div>
@@ -268,13 +287,31 @@ const SubsidySearchPage = () => {
                             <p className="text-sm text-gray-500 line-clamp-3">
                               {getLocalizedContent(subsidy.description, language)}
                             </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                {subsidy.code}
+                              </Badge>
+                              {subsidy.fundingType && (
+                                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                                  {t(`subsidies.fundingType${subsidy.fundingType.charAt(0).toUpperCase() + subsidy.fundingType.slice(1)}`)}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                {Array.isArray(subsidy.region) ? subsidy.region.join(', ') : subsidy.region}
+                              </Badge>
+                            </div>
                           </CardContent>
                           <div className="flex justify-between p-4 pt-0">
                             <Button variant="outline" size="sm">
                               {t('subsidies.viewDetails')}
                             </Button>
-                            <Button variant="default" size="sm" onClick={() => handleAttachToFarm(subsidy.id)}>
-                              {t('subsidies.attachToFarm')}
+                            <Button 
+                              variant={subsidy.isAttached ? "outline" : "default"}
+                              size="sm" 
+                              onClick={() => handleAttachToFarm(subsidy.id)}
+                              disabled={false} // Allow re-attaching to different farms
+                            >
+                              {subsidy.isAttached ? t('subsidies.viewAttached') : t('subsidies.attachToFarm')}
                             </Button>
                           </div>
                         </Card>
@@ -282,7 +319,7 @@ const SubsidySearchPage = () => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <h3 className="text-lg font-medium mb-2">{t('subsidies.noSubsidiesFound')}</h3>
+                      <h3 className="text-lg font-medium mb-2">{t('search.noResults')}</h3>
                       <p className="text-gray-500">{t('search.filters.noMatches')}</p>
                       <Button 
                         variant="outline" 
@@ -300,31 +337,13 @@ const SubsidySearchPage = () => {
         </div>
       </main>
       
-      {/* Attach to Farm Dialog */}
-      <Dialog open={attachDialogOpen} onOpenChange={setAttachDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('subsidies.selectFarm')}</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="farm-select">{t('common.select')}</Label>
-            <Select value={selectedFarmId} onValueChange={setSelectedFarmId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('common.selectFarm')} />
-              </SelectTrigger>
-              <SelectContent>
-                {farms.map(farm => (
-                  <SelectItem key={farm.id} value={farm.id}>{farm.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAttachDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button disabled={!selectedFarmId} onClick={confirmAttachToFarm}>{t('common.save')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Attach to Farm Modal */}
+      <AttachSubsidyModal 
+        isOpen={attachDialogOpen}
+        onClose={() => setAttachDialogOpen(false)}
+        subsidy={selectedSubsidy}
+        onAttach={handleConfirmAttach}
+      />
     </div>
   );
 };

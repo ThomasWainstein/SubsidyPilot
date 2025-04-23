@@ -56,5 +56,10 @@ export const search = {
   'search.filters.savedFilters': 'Saved Filters',
   'search.filters.enterFilterSetName': 'Enter filter set name',
   'search.filters.save': 'Save',
-  'search.filters.cancel': 'Cancel'
+  'search.filters.cancel': 'Cancel',
+  'search.filters.sourceType': 'Source Type',
+  'search.filters.matchConfidence': 'Match Confidence',
+  'search.actions.attach': 'Attach to Farm',
+  'search.actions.attached': 'Subsidy Attached',
+  'search.status.noMatches': 'No subsidies match your criteria.'
 } as const;

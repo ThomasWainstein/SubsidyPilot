@@ -4,6 +4,7 @@ export interface MultilingualText extends Record<string, string> {
   fr: string;
   es: string;
   ro: string;
+  pl: string;
 }
 
 export interface Subsidy {
@@ -28,4 +29,6 @@ export interface Subsidy {
   certifications?: string[];
   maxAmount?: string;
   documentsRequired?: string[];
+  isAttached?: boolean;
+  attachedFarms?: string[];
 }

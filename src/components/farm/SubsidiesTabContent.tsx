@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText } from 'lucide-react';
-import { getRandomSubsidies } from '@/data/subsidies';
+import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText, Lightning, Pin } from 'lucide-react';
+import { getRandomSubsidies, subsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
 import FarmCardApplyButton from '@/components/FarmCardApplyButton';
@@ -15,6 +15,8 @@ import { ManualSubsidyForm } from './ManualSubsidyForm';
 import { ImportSubsidyForm } from './ImportSubsidyForm';
 import { Subsidy } from '@/types/subsidy';
 import { useToast } from '@/hooks/use-toast';
+import { getSubsidiesForFarm } from '@/utils/subsidyAttachment';
+import { getLocalizedContent } from '@/utils/language';
 
 interface SubsidiesTabContentProps {
   farmId: string;
@@ -23,7 +25,7 @@ interface SubsidiesTabContentProps {
 export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId }) => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [subsidies, setSubsidies] = useState<Subsidy[]>([]);
+  const [allSubsidies, setAllSubsidies] = useState<Subsidy[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const farm = farms.find(f => f.id === farmId);
   
@@ -37,15 +39,20 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     const customSubsidiesStr = localStorage.getItem(customSubsidiesKey);
     const customSubsidies = customSubsidiesStr ? JSON.parse(customSubsidiesStr) : [];
     
-    // Combine both sets of subsidies
-    setSubsidies([...baseSubsidies, ...customSubsidies]);
+    // Get subsidies attached from the search page
+    const attachedSubsidyIds = getSubsidiesForFarm(farmId);
+    const attachedSubsidies = subsidies.filter(subsidy => 
+      attachedSubsidyIds.includes(subsidy.id) && 
+      !baseSubsidies.some(s => s.id === subsidy.id)
+    ).map(subsidy => ({
+      ...subsidy,
+      source: 'search',
+      isManuallyAdded: true
+    }));
+    
+    // Combine all subsidies
+    setAllSubsidies([...baseSubsidies, ...customSubsidies, ...attachedSubsidies]);
   }, [farmId]);
-  
-  // Helper function to get translated content
-  const getLocalizedContent = (content: string | Record<string, string>): string => {
-    if (typeof content === 'string') return content;
-    return content[language] || content['en'] || '';
-  };
   
   const getFarmCountry = () => {
     if (!farm?.region) return "France";
@@ -58,7 +65,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     return "France";
   };
   
-  let matchedSubsidies = subsidies.filter(subsidy => {
+  let matchedSubsidies = allSubsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
     
     // For custom subsidies with source from search, always show them
@@ -75,7 +82,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   });
 
   const handleAddSubsidy = (newSubsidy: Subsidy) => {
-    setSubsidies(prev => [...prev, newSubsidy]);
+    setAllSubsidies(prev => [...prev, newSubsidy]);
     setDialogOpen(false);
     toast({
       title: "Subsidy Added",
@@ -134,6 +141,20 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
         </Dialog>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <h3 className="text-lg font-medium mb-2">{t('farm.attachedSubsidies')}</h3>
+          <div className="flex gap-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Lightning size={14} />
+              {t('farm.automaticallyMatched')}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Pin size={14} />
+              {t('farm.manuallyAttached')}
+            </Badge>
+          </div>
+        </div>
+
         {matchedSubsidies.length > 0 ? (
           <div className="grid md:grid-cols-2 gap-4">
             {matchedSubsidies.map((subsidy) => (
@@ -141,16 +162,17 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                 <CardHeader className="bg-gray-50 dark:bg-gray-800">
                   <div className="flex items-center flex-wrap gap-2">
                     <CardTitle className="text-lg dark:text-white">
-                      {getLocalizedContent(subsidy.name)}
+                      {getLocalizedContent(subsidy.name, language)}
                     </CardTitle>
-                    {subsidy.isManuallyAdded && (
+                    {(subsidy.isManuallyAdded || subsidy.source === 'search') && (
                       <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        {subsidy.source === 'search' ? <Pin size={12} className="mr-1" /> : <Lightning size={12} className="mr-1" />}
                         {subsidy.source === 'search' ? 'From Search' : 'Manual Entry'}
                       </Badge>
                     )}
                   </div>
                   <CardDescription className="dark:text-gray-300">
-                    {getLocalizedContent(subsidy.description)}
+                    {getLocalizedContent(subsidy.description, language)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
