@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -12,13 +13,13 @@ import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
 
 const FarmProfilePage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { farmId } = useParams<{ farmId: string }>();
   const { t } = useLanguage();
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
 
-  const farm = farms.find(f => f.id === id);
+  const farm = farms.find(f => f.id === farmId);
   if (!farm) return <div>Farm not found</div>;
 
   const formatRegion = (region: string) => {
