@@ -23,6 +23,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/farm/:farmId" element={<FarmProfilePage />} />
           <Route path="/farm/:farmId/apply/:subsidyId" element={<ApplicationFormPage />} />
+          <Route path="/eu-subsidy-portal" element={<EUSubsidyPortalPage />} />
           <Route path="/eu-subsidy-portal/:farmId/:subsidyId" element={<EUSubsidyPortalPage />} />
           <Route path="/subsidy-search" element={<SubsidySearchPage />} />
           <Route path="*" element={<NotFound />} />

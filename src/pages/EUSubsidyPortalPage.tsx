@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,17 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Check, ChevronLeft, Download, FileText, Upload, X } from 'lucide-react';
 import { AgriToolExtensionSimulator } from '@/components/AgriToolExtensionSimulator';
 import { toast } from '@/components/ui/use-toast';
+import { farms } from '@/data/farms';
+import { subsidies } from '@/data/subsidies';
 
 const EUSubsidyPortalPage = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { farmId, subsidyId } = useParams<{ farmId?: string; subsidyId?: string }>();
+  
+  const farm = farmId ? farms.find(f => f.id === farmId) : null;
+  const subsidy = subsidyId ? subsidies.find(s => s.id === subsidyId) : null;
   
   const [formData, setFormData] = useState({
-    farmName: '',
+    farmName: farm?.name || '',
     address: '',
     registrationNumber: '',
-    irrigationType: '',
-    certificationStatus: '',
+    irrigationType: farm?.irrigationMethod || '',
+    certificationStatus: farm?.certifications?.[0] || '',
     description: '',
   });
   
@@ -43,7 +48,6 @@ const EUSubsidyPortalPage = () => {
   };
 
   const handleUpload = (docType: 'landOwnership' | 'irrigationDeclaration') => {
-    // Show upload animation
     toast({
       title: `${t('messages.uploading')} ${docType === 'landOwnership' ? 'land_registry_certificate.pdf' : 'irrigation_form_signed.pdf'}...`,
       description: "",
@@ -61,7 +65,6 @@ const EUSubsidyPortalPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Only show success if all docs are uploaded
     if (uploadedDocs.landOwnership && uploadedDocs.irrigationDeclaration) {
       setIsSubmitted(true);
       toast({
@@ -77,7 +80,6 @@ const EUSubsidyPortalPage = () => {
     }
   };
   
-  // If the application is successfully submitted, show confirmation
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -149,7 +151,6 @@ const EUSubsidyPortalPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
       <header className="bg-[#004494] text-white py-4 px-6 border-b border-[#FFCC00] sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -162,7 +163,6 @@ const EUSubsidyPortalPage = () => {
         </div>
       </header>
 
-      {/* Back to Dashboard button (sticky) */}
       <div className="sticky top-[65px] z-10 bg-white shadow-sm border-b p-2">
         <div className="container mx-auto">
           <Button 
@@ -177,11 +177,9 @@ const EUSubsidyPortalPage = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <main className="flex-grow py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left side - EU Form */}
             <div className={`${showExtension ? 'lg:w-1/2' : 'w-full'}`}>
               <div className="mb-6">
                 <h1 className="text-2xl font-serif text-[#004494]">{t('euportal.title')}</h1>
@@ -344,7 +342,6 @@ const EUSubsidyPortalPage = () => {
               </Card>
             </div>
 
-            {/* Right side - Extension Simulator */}
             {showExtension && (
               <div className="lg:w-1/2">
                 <AgriToolExtensionSimulator 
@@ -369,7 +366,6 @@ const EUSubsidyPortalPage = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="bg-gray-100 border-t py-6 mt-12">
         <div className="container mx-auto px-4">
           <div className="text-center text-sm text-gray-500 font-medium">

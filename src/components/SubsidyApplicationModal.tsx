@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -94,7 +95,7 @@ export const SubsidyApplicationModal: React.FC<SubsidyApplicationModalProps> = (
   
   const handleRedirectToEUPortal = () => {
     onClose();
-    navigate('/eu-subsidy-portal');
+    navigate(`/eu-subsidy-portal/${farmId}/${subsidyId}`);
   };
 
   return (
