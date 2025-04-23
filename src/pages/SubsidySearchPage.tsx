@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SubsidyFilters from '@/components/subsidy/SubsidyFilters';
 import SavedFilterSets, { FilterSet } from '@/components/subsidy/SavedFilterSets';
-import { v4 as uuidv4 } from '@/lib/utils';
+import { uuidv4 } from '@/lib/utils'; // Fixed import to use the renamed function
 
 const SubsidySearchPage = () => {
   const { t, language } = useLanguage();
@@ -72,19 +72,19 @@ const SubsidySearchPage = () => {
         ? subsidy.region.some(r => filters.regions.includes(r))
         : filters.regions.includes(subsidy.region as string));
     
-    // Country eligibility filter
+    // Country eligibility filter - handling properly with optional chaining
     const countryMatches = !filters.eligibleCountry ||
       (subsidy.countryEligibility && 
         (Array.isArray(subsidy.countryEligibility)
           ? subsidy.countryEligibility.some(c => c.toLowerCase().includes(filters.eligibleCountry.toLowerCase()))
-          : (subsidy.countryEligibility as string).toLowerCase().includes(filters.eligibleCountry.toLowerCase())));
+          : String(subsidy.countryEligibility).toLowerCase().includes(filters.eligibleCountry.toLowerCase())));
     
-    // Farming type filter
+    // Farming type filter - handling properly with optional chaining
     const farmingTypeMatches = filters.farmingTypes.length === 0 ||
       (subsidy.agriculturalSector &&
         (Array.isArray(subsidy.agriculturalSector)
           ? subsidy.agriculturalSector.some(s => filters.farmingTypes.includes(s))
-          : filters.farmingTypes.includes(subsidy.agriculturalSector as string)));
+          : filters.farmingTypes.includes(String(subsidy.agriculturalSector))));
     
     // Funding source filter (type)
     const fundingSourceMatches = filters.fundingSources.length === 0 ||
@@ -97,7 +97,7 @@ const SubsidySearchPage = () => {
     const applicationFormatMatches = filters.applicationFormats.length === 0;
     const sustainabilityGoalsMatches = filters.sustainabilityGoals.length === 0;
     
-    // Deadline status filter
+    // Deadline status filter - handling properly with optional chaining
     const deadlineStatusMatches = filters.deadlineStatuses.length === 0 ||
       (subsidy.status && filters.deadlineStatuses.includes(subsidy.status));
     

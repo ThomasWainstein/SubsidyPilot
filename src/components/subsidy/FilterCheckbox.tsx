@@ -2,13 +2,14 @@
 import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLanguage } from '@/contexts/language';
+import { TranslationKey } from '@/contexts/language/types';
 
 interface FilterCheckboxProps {
   id: string;
   value: string;
   checked: boolean;
   onChange: () => void;
-  translationKey: string;
+  translationKey: TranslationKey | string;
 }
 
 const FilterCheckbox: React.FC<FilterCheckboxProps> = ({ id, value, checked, onChange, translationKey }) => {
@@ -21,7 +22,7 @@ const FilterCheckbox: React.FC<FilterCheckboxProps> = ({ id, value, checked, onC
         htmlFor={id} 
         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
       >
-        {t(translationKey)}
+        {translationKey.startsWith('search.filters.') ? t(translationKey as TranslationKey) : translationKey}
       </label>
     </div>
   );
