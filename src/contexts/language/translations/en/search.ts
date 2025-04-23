@@ -35,7 +35,7 @@ export const search = {
   'search.filters.applicationFormat.online': 'Online',
   'search.filters.applicationFormat.pdf': 'PDF',
   'search.filters.applicationFormat.portal': 'Via Portal',
-  'search.filters.applicationFormat.consultant': 'With Consultant Only',
+  'search.filters.applicationFormat.consultant': 'Consultant Only',
   'search.filters.strategicAlignment': 'Strategic Alignment',
   'search.filters.sustainabilityGoals': 'Sustainability Goals',
   'search.filters.sustainabilityGoals.organicTransition': 'Organic Transition',
@@ -57,9 +57,6 @@ export const search = {
   'search.filters.enterFilterSetName': 'Enter filter set name',
   'search.filters.save': 'Save',
   'search.filters.cancel': 'Cancel',
-  'search.filters.sourceType': 'Source Type',
-  'search.filters.matchConfidence': 'Match Confidence',
-  'search.actions.attach': 'Attach to Farm',
-  'search.actions.attached': 'Subsidy Attached',
-  'search.status.noMatches': 'No subsidies match your criteria.'
+  'search.actions.attached': 'Attached',
+  'search.actions.attach': 'Attach to Farm'
 } as const;

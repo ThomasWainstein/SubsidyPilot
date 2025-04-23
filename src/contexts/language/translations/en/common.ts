@@ -1,4 +1,3 @@
-
 export const common = {
   'common.yes': 'Yes',
   'common.no': 'No',
@@ -35,7 +34,6 @@ export const common = {
   'common.info': 'Info',
   'common.applied': 'Applied',
   'common.saved': 'Saved',
-  // Adding the missing translations
   'common.send': 'Send',
   'common.landRegistryCertificate': 'Land Registry Certificate',
   'common.irrigationForm': 'Irrigation Form',
@@ -74,12 +72,12 @@ export const common = {
   'common.generateForm': 'Generate Form',
   'common.uploadNow': 'Upload Now',
   'common.viewDetails': 'View Details',
-  // Add more missing keys
   'common.profile': 'Profile',
   'common.subsidies': 'Subsidies',
   'common.applications': 'Applications',
   'common.getStarted': 'Get Started',
   'common.returnHome': 'Return to Homepage',
   'common.backToDashboard': 'Back to Dashboard',
-  'common.explainThis': 'Explain This'
+  'common.explainThis': 'Explain This',
+  'common.attach': 'Attach'
 } as const;

@@ -43,6 +43,7 @@ export type SubsidiesTranslationKey =
   | 'subsidies.fundingType.private'
   | 'subsidies.fundingType.mixed'
   | 'subsidies.searchSubsidies'
+  | 'subsidies.viewAttached'
   // New filter keys
   | 'search.filters.title'
   | 'search.filters.geographicEligibility'

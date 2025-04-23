@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText, Lightning, Pin } from 'lucide-react';
+import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText, Zap, Pin } from 'lucide-react';
 import { getRandomSubsidies, subsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
@@ -145,7 +144,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
           <h3 className="text-lg font-medium mb-2">{t('farm.attachedSubsidies')}</h3>
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
-              <Lightning size={14} />
+              <Zap size={14} />
               {t('farm.automaticallyMatched')}
             </Badge>
             <Badge variant="outline" className="flex items-center gap-1">
@@ -166,7 +165,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                     </CardTitle>
                     {(subsidy.isManuallyAdded || subsidy.source === 'search') && (
                       <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        {subsidy.source === 'search' ? <Pin size={12} className="mr-1" /> : <Lightning size={12} className="mr-1" />}
+                        {subsidy.source === 'search' ? <Pin size={12} className="mr-1" /> : <Zap size={12} className="mr-1" />}
                         {subsidy.source === 'search' ? 'From Search' : 'Manual Entry'}
                       </Badge>
                     )}

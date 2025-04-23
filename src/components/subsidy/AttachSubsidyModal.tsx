@@ -32,7 +32,7 @@ const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
     onAttach(subsidy.id, selectedFarmId);
     
     toast({
-      title: t('search.actions.attached'),
+      title: t('common.saved'),
       description: `${t('messages.subsidyAttachedDesc')}`,
     });
     
@@ -66,7 +66,7 @@ const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
             {t('common.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={!selectedFarmId}>
-            {t('common.attach')}
+            {t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

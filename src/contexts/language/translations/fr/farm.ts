@@ -25,4 +25,7 @@ export const farm = {
   'farm.medium': 'Moyen',
   'farm.veryHigh': 'Très Élevé',
   'farm.low': 'Bas',
+  'farm.attachedSubsidies': 'Subventions Attachées',
+  'farm.manuallyAttached': 'Attachées Manuellement',
+  'farm.automaticallyMatched': 'Jumelées Automatiquement'
 } as const;

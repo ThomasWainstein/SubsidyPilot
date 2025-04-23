@@ -1,4 +1,3 @@
-
 export const farm = {
   'farm.profileTitle': 'Profil Digital al Fermei',
   'farm.profileSubtitle': 'Profil digital cuprinzător pentru ferma ta',
@@ -25,4 +24,7 @@ export const farm = {
   'farm.medium': 'Mediu',
   'farm.veryHigh': 'Foarte Ridicat',
   'farm.low': 'Scăzut',
+  'farm.attachedSubsidies': 'Subvenții Atașate',
+  'farm.manuallyAttached': 'Atașate Manual',
+  'farm.automaticallyMatched': 'Potrivite Automat'
 } as const;

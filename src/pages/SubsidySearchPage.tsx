@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Euro, Filter, Lightning, Pin, Search, X } from 'lucide-react';
+import { Euro, Filter, Zap, Pin, Search, X } from 'lucide-react';
 import { getLocalizedContent } from '@/utils/language';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { farms } from '@/data/farms';
@@ -30,15 +29,13 @@ const SubsidySearchPage = () => {
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
   const [subsidiesWithAttachmentInfo, setSubsidiesWithAttachmentInfo] = useState(subsidies);
   
-  // Effect to update subsidies with attachment information
   useEffect(() => {
     const updatedSubsidies = updateSubsidiesWithAttachmentInfo(subsidies);
     setSubsidiesWithAttachmentInfo(updatedSubsidies);
   }, []);
 
-  // New expanded filters
   const [filters, setFilters] = useState({
-    confidenceFilter: [0], // Keep existing confidence filter
+    confidenceFilter: [0],
     regions: [] as string[],
     eligibleCountry: '',
     farmingTypes: [] as string[],
@@ -65,42 +62,33 @@ const SubsidySearchPage = () => {
     });
   };
   
-  // Modified filter logic to work with the expanded filters
   const filteredSubsidies = subsidiesWithAttachmentInfo.filter(subsidy => {
-    // Name and description search
     const nameMatches = getLocalizedContent(subsidy.name, language).toLowerCase().includes(searchQuery.toLowerCase());
     const descriptionMatches = getLocalizedContent(subsidy.description, language).toLowerCase().includes(searchQuery.toLowerCase());
     const searchMatches = searchQuery === '' || nameMatches || descriptionMatches;
     
-    // Confidence filter
     const confidenceMatches = subsidy.matchConfidence >= filters.confidenceFilter[0] / 100;
     
-    // Region filter
     const regionMatches = filters.regions.length === 0 || 
       (Array.isArray(subsidy.region) 
         ? subsidy.region.some(r => filters.regions.includes(r))
         : filters.regions.includes(subsidy.region as string));
     
-    // Country eligibility filter - handling properly with optional chaining
     const countryMatches = !filters.eligibleCountry ||
       (subsidy.countryEligibility && 
         (Array.isArray(subsidy.countryEligibility)
           ? subsidy.countryEligibility.some(c => c.toLowerCase().includes(filters.eligibleCountry.toLowerCase()))
           : String(subsidy.countryEligibility).toLowerCase().includes(filters.eligibleCountry.toLowerCase())));
     
-    // Farming type filter - handling properly with optional chaining
     const farmingTypeMatches = filters.farmingTypes.length === 0 ||
       (subsidy.agriculturalSector &&
         (Array.isArray(subsidy.agriculturalSector)
           ? subsidy.agriculturalSector.some(s => filters.farmingTypes.includes(s))
           : filters.farmingTypes.includes(String(subsidy.agriculturalSector))));
     
-    // Funding source filter (type)
     const fundingSourceMatches = filters.fundingSources.length === 0 ||
       (subsidy.fundingType && filters.fundingSources.includes(subsidy.fundingType));
     
-    // We don't have detailed data for all filters in the demo data, so some will just return true
-    // In a real app, these would check against actual subsidy properties
     const fundingInstrumentMatches = filters.fundingInstruments.length === 0;
     const documentsRequiredMatches = filters.documentsRequired.length === 0 ||
       (subsidy.documentsRequired && 
@@ -109,7 +97,6 @@ const SubsidySearchPage = () => {
     const applicationFormatMatches = filters.applicationFormats.length === 0;
     const sustainabilityGoalsMatches = filters.sustainabilityGoals.length === 0;
     
-    // Deadline status filter - handling properly with optional chaining
     const deadlineStatusMatches = filters.deadlineStatuses.length === 0 ||
       (subsidy.status && filters.deadlineStatuses.includes(subsidy.status));
     
@@ -135,15 +122,12 @@ const SubsidySearchPage = () => {
   };
   
   const handleConfirmAttach = (subsidyId: string, farmId: string) => {
-    // Attach the subsidy to the farm
     attachSubsidyToFarm(subsidyId, farmId);
     
-    // Update the subsidies list with attachment info
     const updatedSubsidies = updateSubsidiesWithAttachmentInfo(subsidiesWithAttachmentInfo);
     setSubsidiesWithAttachmentInfo(updatedSubsidies);
   };
   
-  // Save current filter set
   const saveCurrentFilterSet = (name: string) => {
     const newSet: FilterSet = {
       id: uuidv4(),
@@ -158,7 +142,6 @@ const SubsidySearchPage = () => {
     });
   };
   
-  // Apply a saved filter set
   const applyFilterSet = (set: FilterSet) => {
     setFilters(set.filters);
     toast({
@@ -167,7 +150,6 @@ const SubsidySearchPage = () => {
     });
   };
   
-  // Remove a saved filter set
   const removeFilterSet = (id: string) => {
     setSavedFilterSets(savedFilterSets.filter(set => set.id !== id));
   };
@@ -184,7 +166,6 @@ const SubsidySearchPage = () => {
           
           <div className="grid grid-cols-12 gap-6">
             
-            {/* Filters Sidebar */}
             {showFilters && (
               <div className="col-span-12 lg:col-span-3 space-y-6">
                 <Card>
@@ -194,7 +175,6 @@ const SubsidySearchPage = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Saved Filter Sets */}
                     <SavedFilterSets 
                       filterSets={savedFilterSets}
                       onApplyFilterSet={applyFilterSet}
@@ -203,7 +183,6 @@ const SubsidySearchPage = () => {
                       onSaveCurrentFilters={saveCurrentFilterSet}
                     />
                     
-                    {/* Filter Components */}
                     <SubsidyFilters 
                       filters={{
                         regions: filters.regions,
@@ -224,7 +203,6 @@ const SubsidySearchPage = () => {
               </div>
             )}
             
-            {/* Main Content */}
             <div className={`col-span-12 ${showFilters ? 'lg:col-span-9' : 'lg:col-span-12'}`}>
               <Card>
                 <CardHeader className="py-4">
@@ -270,8 +248,8 @@ const SubsidySearchPage = () => {
                               <div className="flex items-center gap-2">
                                 {subsidy.isAttached && (
                                   <Badge className="bg-primary/10 text-primary">
-                                    {subsidy.source === 'search' ? <Lightning size={12} className="mr-1" /> : <Pin size={12} className="mr-1" />}
-                                    {t('search.actions.attached')}
+                                    {subsidy.source === 'search' ? <Zap size={12} className="mr-1" /> : <Pin size={12} className="mr-1" />}
+                                    {t('common.saved')}
                                   </Badge>
                                 )}
                                 <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
@@ -293,7 +271,7 @@ const SubsidySearchPage = () => {
                               </Badge>
                               {subsidy.fundingType && (
                                 <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
-                                  {t(`subsidies.fundingType${subsidy.fundingType.charAt(0).toUpperCase() + subsidy.fundingType.slice(1)}`)}
+                                  {t(`subsidies.fundingType.${subsidy.fundingType}`)}
                                 </Badge>
                               )}
                               <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
@@ -309,9 +287,9 @@ const SubsidySearchPage = () => {
                               variant={subsidy.isAttached ? "outline" : "default"}
                               size="sm" 
                               onClick={() => handleAttachToFarm(subsidy.id)}
-                              disabled={false} // Allow re-attaching to different farms
+                              disabled={false}
                             >
-                              {subsidy.isAttached ? t('subsidies.viewAttached') : t('subsidies.attachToFarm')}
+                              {subsidy.isAttached ? t('common.saved') : t('subsidies.attachToFarm')}
                             </Button>
                           </div>
                         </Card>
@@ -337,7 +315,6 @@ const SubsidySearchPage = () => {
         </div>
       </main>
       
-      {/* Attach to Farm Modal */}
       <AttachSubsidyModal 
         isOpen={attachDialogOpen}
         onClose={() => setAttachDialogOpen(false)}

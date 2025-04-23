@@ -1,4 +1,3 @@
-
 export const farm = {
   'farm.profileTitle': 'Perfil Digital de Granja',
   'farm.profileSubtitle': 'Perfil digital completo para su granja',
@@ -25,4 +24,7 @@ export const farm = {
   'farm.medium': 'Medio',
   'farm.veryHigh': 'Muy Alto',
   'farm.low': 'Bajo',
+  'farm.attachedSubsidies': 'Subsidios Adjuntos',
+  'farm.manuallyAttached': 'Adjuntados Manualmente',
+  'farm.automaticallyMatched': 'Emparejados Automáticamente'
 } as const;
