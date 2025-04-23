@@ -1,5 +1,5 @@
 import { farms } from './farms';
-import { Subsidy as SubsidyType } from '@/types/subsidy';
+import { Subsidy as SubsidyType, MultilingualText } from '@/types/subsidy';
 
 export type Subsidy = SubsidyType;
 
@@ -329,6 +329,14 @@ export interface FormSection {
   fields: FormField[];
 }
 
+// Helper function to get localized text
+const getLocalizedText = (text: string | MultilingualText): string => {
+  if (typeof text === 'string') {
+    return text;
+  }
+  return text.en; // Default to English
+};
+
 export const getApplicationForm = (farmId: string, subsidyId: string): FormSection[] => {
   const farm = farms.find(f => f.id === farmId);
   const subsidy = subsidies.find(s => s.id === subsidyId);
@@ -439,7 +447,7 @@ export const getApplicationForm = (farmId: string, subsidyId: string): FormSecti
           id: 'projectTitle',
           label: 'Project Title',
           type: 'text',
-          value: subsidy?.name || 'Sustainable Farming Initiative',
+          value: subsidy ? getLocalizedText(subsidy.name) : 'Sustainable Farming Initiative',
         },
         {
           id: 'projectDescription',

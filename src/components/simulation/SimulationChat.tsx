@@ -69,9 +69,20 @@ const SimulationChat = ({ onShowResults }: SimulationChatProps) => {
         const matchingSubsidies = shuffled.slice(0, Math.floor(Math.random() * 2) + 2); // 2 to 3 subsidies
         
         // Convert subsidies to text result
-        const subsidyText = matchingSubsidies.map(subsidy => 
-          `- **${subsidy.name}**: ${subsidy.description.substring(0, 100)}...`
-        ).join('\n\n');
+        const subsidyText = matchingSubsidies.map(subsidy => {
+          // Safely handle different types of description
+          let description = "";
+          if (typeof subsidy.description === 'string') {
+            description = subsidy.description.substring(0, 100);
+          } else {
+            description = subsidy.description.en.substring(0, 100);
+          }
+          
+          // Safely handle different types of name
+          let name = typeof subsidy.name === 'string' ? subsidy.name : subsidy.name.en;
+          
+          return `- **${name}**: ${description}...`;
+        }).join('\n\n');
         
         const finalResponse: Message = {
           id: (Date.now() + 2).toString(),

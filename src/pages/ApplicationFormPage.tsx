@@ -21,6 +21,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MultilingualText } from '@/types/subsidy';
+
+// Helper function to handle multilingual text
+const getLocalizedText = (text: string | MultilingualText | undefined): string => {
+  if (!text) return '';
+  if (typeof text === 'string') {
+    return text;
+  }
+  return text.en; // Default to English
+};
 
 const ApplicationFormPage = () => {
   const { farmId, subsidyId } = useParams<{ farmId: string; subsidyId: string }>();
@@ -118,14 +128,14 @@ const ApplicationFormPage = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{t('application.title')}</h1>
-                <p className="text-gray-600">{subsidy.name} - {farm.name}</p>
+                <p className="text-gray-600">{getLocalizedText(subsidy.name)} - {farm.name}</p>
               </div>
             </div>
           </div>
           
           <Card>
             <CardHeader>
-              <CardTitle>{subsidy.name}</CardTitle>
+              <CardTitle>{getLocalizedText(subsidy.name)}</CardTitle>
               <CardDescription>{t('application.subtitle')}</CardDescription>
             </CardHeader>
             <CardContent>

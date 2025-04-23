@@ -21,10 +21,11 @@ export interface Subsidy {
   source?: 'search' | 'static';
   isManuallyAdded?: boolean;
   fundingType?: 'public' | 'private' | 'mixed';
-  countryEligibility?: string | string[]; // Added missing property
-  agriculturalSector?: string | string[]; // Added missing property
+  countryEligibility?: string | string[]; 
+  agriculturalSector?: string | string[];
   farmingMethod?: string | string[];
   grantValue?: string;
   certifications?: string[];
   maxAmount?: string;
+  documentsRequired?: string[];
 }

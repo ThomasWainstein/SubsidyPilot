@@ -7,12 +7,21 @@ import { ArrowLeft, Download, FilePlus, Save } from 'lucide-react';
 import { Subsidy } from '@/data/subsidies';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { useToast } from '@/hooks/use-toast';
+import { MultilingualText } from '@/types/subsidy';
 
 interface SimulationResultsProps {
   subsidies: Subsidy[];
   onReset: () => void;
   onClose: () => void;
 }
+
+// Helper function to handle multilingual text
+const getLocalizedText = (text: string | MultilingualText): string => {
+  if (typeof text === 'string') {
+    return text;
+  }
+  return text.en; // Default to English
+};
 
 const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsProps) => {
   const { t } = useLanguage();
@@ -47,12 +56,16 @@ const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsPro
           <Card key={subsidy.id} className="overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
-                <CardTitle className="text-lg font-medium">{subsidy.name}</CardTitle>
+                <CardTitle className="text-lg font-medium">
+                  {getLocalizedText(subsidy.name)}
+                </CardTitle>
                 <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
               </div>
             </CardHeader>
             <CardContent className="pb-2">
-              <p className="text-sm text-gray-600 mb-2">{subsidy.description}</p>
+              <p className="text-sm text-gray-600 mb-2">
+                {getLocalizedText(subsidy.description)}
+              </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge variant="outline" className="bg-blue-50">
                   {subsidy.code}
