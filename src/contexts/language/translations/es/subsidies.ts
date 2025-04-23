@@ -53,7 +53,6 @@ export const subsidies = {
   'common.view': 'Ver',
   'common.edit': 'Editar',
   'common.attach': 'Adjuntar',
-  'subsidies.viewAttached': 'Ver Adjuntos',
   'search.actions.attached': 'Adjuntado',
   'search.actions.attach': 'Adjuntar a Granja',
 } as const;
