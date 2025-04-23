@@ -1,4 +1,3 @@
-
 export const subsidies = {
   'subsidies.title': 'Coincidencias de Subsidios',
   'subsidies.subtitle': 'Subsidios disponibles que coinciden con el perfil de tu granja',
@@ -54,4 +53,7 @@ export const subsidies = {
   'common.view': 'Ver',
   'common.edit': 'Editar',
   'common.attach': 'Adjuntar',
+  'subsidies.viewAttached': 'Ver Adjuntos',
+  'search.actions.attached': 'Adjuntado',
+  'search.actions.attach': 'Adjuntar a Granja',
 } as const;

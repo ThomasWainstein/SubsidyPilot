@@ -1,4 +1,3 @@
-
 export const subsidies = {
   'subsidies.title': 'Subsidy Matches',
   'subsidies.subtitle': 'Available subsidies that match your farm profile',
@@ -106,4 +105,8 @@ export const subsidies = {
   'search.filters.enterFilterSetName': 'Enter a name for this filter set',
   'search.filters.save': 'Save',
   'search.filters.cancel': 'Cancel',
+  
+  'subsidies.viewAttached': 'View Attached',
+  'search.actions.attached': 'Attached',
+  'search.actions.attach': 'Attach to Farm',
 } as const;

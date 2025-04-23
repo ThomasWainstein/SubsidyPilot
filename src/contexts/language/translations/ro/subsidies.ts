@@ -1,4 +1,3 @@
-
 export const subsidies = {
   'subsidies.title': 'Potriviri de Subvenții',
   'subsidies.subtitle': 'Subvenții disponibile care se potrivesc cu profilul fermei tale',
@@ -106,4 +105,8 @@ export const subsidies = {
   'search.filters.enterFilterSetName': 'Introduceți un nume pentru acest set de filtre',
   'search.filters.save': 'Salvează',
   'search.filters.cancel': 'Anulează',
+  
+  'subsidies.viewAttached': 'Vizualizează Atașate',
+  'search.actions.attached': 'Atașat',
+  'search.actions.attach': 'Atașează la Fermă',
 } as const;

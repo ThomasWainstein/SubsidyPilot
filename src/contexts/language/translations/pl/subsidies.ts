@@ -1,4 +1,3 @@
-
 export const subsidies = {
   'subsidies.title': 'Dopasowane Dotacje',
   'subsidies.subtitle': 'Dostępne dotacje dopasowane do profilu Twojego gospodarstwa',
@@ -27,6 +26,7 @@ export const subsidies = {
   'subsidies.selectFarm': 'Wybierz Gospodarstwo do Dołączenia',
   'subsidies.noSubsidies': 'Brak Dostępnych Dotacji',
   'subsidies.viewDetails': 'Zobacz Szczegóły',
+  'subsidies.viewAttached': 'Wyświetl Dołączone',
   'subsidies.eligibilityCriteria': 'Kryteria Kwalifikowalności',
   'subsidies.apply': 'Aplikuj',
   'subsidies.importFromPortal': 'Importuj z Portalu',
@@ -43,4 +43,6 @@ export const subsidies = {
   'subsidies.fundingTypePrivate': 'Prywatne',
   'subsidies.fundingTypeMixed': 'Mieszane',
   'subsidies.searchSubsidies': 'Wyszukaj Dotacje',
+  'search.actions.attached': 'Dołączono',
+  'search.actions.attach': 'Dołącz do Gospodarstwa',
 } as const;

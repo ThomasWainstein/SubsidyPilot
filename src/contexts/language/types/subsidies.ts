@@ -1,4 +1,3 @@
-
 export type SubsidiesTranslationKey =
   | 'subsidies.title'
   | 'subsidies.subtitle'
@@ -44,7 +43,8 @@ export type SubsidiesTranslationKey =
   | 'subsidies.fundingType.mixed'
   | 'subsidies.searchSubsidies'
   | 'subsidies.viewAttached'
-  // New filter keys
+  | 'search.actions.attached'
+  | 'search.actions.attach'
   | 'search.filters.title'
   | 'search.filters.geographicEligibility'
   | 'search.filters.region'
