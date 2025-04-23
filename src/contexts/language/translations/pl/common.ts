@@ -56,5 +56,22 @@ export const common = {
   'common.free': 'Darmowy',
   'common.coopEnterprise': 'Przedsiębiorstwo Spółdzielcze',
   'common.documents': 'Dokumenty',
-  'common.skipToEUPortal': 'Przejdź do Portalu UE'
+  'common.skipToEUPortal': 'Przejdź do Portalu UE',
+  'common.addNewClientFarm': 'Dodaj Nowe Gospodarstwo Klienta',
+  'common.searchFarms': 'Szukaj gospodarstw...',
+  'common.name': 'Nazwa',
+  'common.region': 'Region',
+  'common.status': 'Status',
+  'common.size': 'Rozmiar',
+  'common.activities': 'Działania',
+  'common.software': 'Oprogramowanie',
+  'common.addNewSubsidy': 'Dodaj Nową Dotację',
+  'common.noSubsidiesFound': 'Nie Znaleziono Dotacji',
+  'common.noSubsidiesFoundDesc': 'Żadne dotacje nie spełniają obecnych kryteriów. Spróbuj dostosować filtry.',
+  'common.loading': 'Ładowanie',
+  'common.close': 'Zamknij',
+  'common.continueToEUPortal': 'Kontynuuj do Portalu UE',
+  'common.generateForm': 'Generuj Formularz',
+  'common.uploadNow': 'Prześlij Teraz',
+  'common.viewDetails': 'Zobacz Szczegóły'
 } as const;

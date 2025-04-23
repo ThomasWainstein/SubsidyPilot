@@ -56,5 +56,22 @@ export const common = {
   'common.free': 'Free',
   'common.coopEnterprise': 'Coop Enterprise',
   'common.documents': 'Documents',
-  'common.skipToEUPortal': 'Skip to EU Portal'
+  'common.skipToEUPortal': 'Skip to EU Portal',
+  'common.addNewClientFarm': 'Add New Client Farm',
+  'common.searchFarms': 'Search farms...',
+  'common.name': 'Name',
+  'common.region': 'Region',
+  'common.status': 'Status',
+  'common.size': 'Size',
+  'common.activities': 'Activities',
+  'common.software': 'Software',
+  'common.addNewSubsidy': 'Add New Subsidy',
+  'common.noSubsidiesFound': 'No Subsidies Found',
+  'common.noSubsidiesFoundDesc': 'No subsidies match the current criteria. Try adjusting your filters.',
+  'common.loading': 'Loading',
+  'common.close': 'Close',
+  'common.continueToEUPortal': 'Continue to EU Portal',
+  'common.generateForm': 'Generate Form',
+  'common.uploadNow': 'Upload Now',
+  'common.viewDetails': 'View Details'
 } as const;

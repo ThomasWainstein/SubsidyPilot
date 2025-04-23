@@ -14,6 +14,7 @@ import { navigation } from './navigation';
 import { home } from './home';
 import { footer } from './footer';
 import { simulation } from './simulation';
+import { search } from './search';
 
 export const plTranslations = {
   ...common,
@@ -31,4 +32,5 @@ export const plTranslations = {
   ...home,
   ...footer,
   ...simulation,
+  ...search,
 };

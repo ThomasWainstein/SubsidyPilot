@@ -14,6 +14,7 @@ import { navigation } from './navigation';
 import { home } from './home';
 import { footer } from './footer';
 import { simulation } from './simulation';
+import { search } from './search';
 
 export const esTranslations = {
   ...common,
@@ -31,4 +32,5 @@ export const esTranslations = {
   ...home,
   ...footer,
   ...simulation,
+  ...search,
 };

@@ -14,6 +14,7 @@ import { NavigationTranslationKey } from './navigation';
 import { HomeTranslationKey } from './home';
 import { FooterTranslationKey } from './footer';
 import { SimulationTranslationKey } from './simulation';
+import { SearchTranslationKey } from './search';
 
 export type TranslationKey =
   | CommonTranslationKey
@@ -30,4 +31,5 @@ export type TranslationKey =
   | NavigationTranslationKey
   | HomeTranslationKey
   | FooterTranslationKey
-  | SimulationTranslationKey;
+  | SimulationTranslationKey
+  | SearchTranslationKey;

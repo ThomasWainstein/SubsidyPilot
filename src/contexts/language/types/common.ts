@@ -56,5 +56,21 @@ export type CommonTranslationKey =
   | 'common.free'
   | 'common.coopEnterprise'
   | 'common.documents'
-  | 'common.skipToEUPortal';
-
+  | 'common.skipToEUPortal'
+  | 'common.addNewClientFarm'
+  | 'common.searchFarms'
+  | 'common.name'
+  | 'common.region'
+  | 'common.status'
+  | 'common.size'
+  | 'common.activities'
+  | 'common.software'
+  | 'common.addNewSubsidy'
+  | 'common.noSubsidiesFound'
+  | 'common.noSubsidiesFoundDesc'
+  | 'common.loading'
+  | 'common.close'
+  | 'common.continueToEUPortal'
+  | 'common.generateForm'
+  | 'common.uploadNow'
+  | 'common.viewDetails';
