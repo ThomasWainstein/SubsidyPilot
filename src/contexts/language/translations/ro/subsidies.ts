@@ -1,3 +1,4 @@
+
 export const subsidies = {
   'subsidies.title': 'Potriviri de Subvenții',
   'subsidies.subtitle': 'Subvenții disponibile care se potrivesc cu profilul fermei tale',
@@ -42,6 +43,7 @@ export const subsidies = {
   'subsidies.fundingTypePrivate': 'Privat',
   'subsidies.fundingTypeMixed': 'Mixt',
   'subsidies.searchSubsidies': 'Caută Subvenții',
+  'subsidies.findAvailableSubsidies': 'Găsește subvenții disponibile pentru fermele tale',
   
   // New filter translations for search
   'search.filters.title': 'Rafinează Rezultatele',

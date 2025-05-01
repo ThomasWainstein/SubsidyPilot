@@ -1,3 +1,4 @@
+
 export const subsidies = {
   'subsidies.title': 'Correspondances de Subventions',
   'subsidies.subtitle': 'Subventions disponibles correspondant au profil de votre ferme',
@@ -42,6 +43,7 @@ export const subsidies = {
   'subsidies.fundingTypePrivate': 'Privé',
   'subsidies.fundingTypeMixed': 'Mixte',
   'subsidies.searchSubsidies': 'Rechercher des Subventions',
+  'subsidies.findAvailableSubsidies': 'Trouvez des subventions disponibles pour vos fermes',
   'subsidies.viewAttached': 'Voir les Subventions Attachées',
   'search.actions.attached': 'Attaché',
   'search.actions.attach': 'Attacher à une Ferme',

@@ -1,3 +1,4 @@
+
 export const subsidies = {
   'subsidies.title': 'Subsidy Matches',
   'subsidies.subtitle': 'Available subsidies that match your farm profile',
@@ -42,6 +43,7 @@ export const subsidies = {
   'subsidies.fundingTypePrivate': 'Private',
   'subsidies.fundingTypeMixed': 'Mixed',
   'subsidies.searchSubsidies': 'Search Subsidies',
+  'subsidies.findAvailableSubsidies': 'Find available subsidies for your farms',
   
   // New filter translations for search
   'search.filters.title': 'Refine Results',

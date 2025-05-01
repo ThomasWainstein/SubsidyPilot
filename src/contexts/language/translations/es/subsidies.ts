@@ -1,3 +1,4 @@
+
 export const subsidies = {
   'subsidies.title': 'Coincidencias de Subsidios',
   'subsidies.subtitle': 'Subsidios disponibles que coinciden con el perfil de tu granja',
@@ -43,6 +44,7 @@ export const subsidies = {
   'subsidies.fundingTypePrivate': 'Privado',
   'subsidies.fundingTypeMixed': 'Mixto',
   'subsidies.searchSubsidies': 'Buscar Subsidios',
+  'subsidies.findAvailableSubsidies': 'Encuentra subsidios disponibles para tus granjas',
   'common.close': 'Cerrar',
   'common.loading': 'Cargando...',
   'common.clear': 'Limpiar',
