@@ -1,36 +1,38 @@
 
+import { application } from './application';
 import { common } from './common';
 import { dashboard } from './dashboard';
-import { subsidies } from './subsidies';
-import { farm } from './farm';
-import { application } from './application';
-import { forms } from './forms';
-import { messages } from './messages';
 import { euportal } from './euportal';
 import { extension } from './extension';
+import { farm } from './farm';
 import { features } from './features';
-import { status } from './status';
-import { navigation } from './navigation';
-import { home } from './home';
 import { footer } from './footer';
-import { simulation } from './simulation';
+import { form } from './forms';
+import { home } from './home';
+import { messages } from './messages';
+import { navigation } from './navigation';
 import { search } from './search';
+import { simulation } from './simulation';
+import { status } from './status';
+import { subsidies } from './subsidies';
+import { calendar } from './calendar';
 
-export const enTranslations = {
+export const en = {
+  ...application,
   ...common,
   ...dashboard,
-  ...subsidies,
-  ...farm,
-  ...application,
-  ...forms,
-  ...messages,
   ...euportal,
   ...extension,
+  ...farm,
   ...features,
-  ...status,
-  ...navigation,
-  ...home,
   ...footer,
-  ...simulation,
+  ...form,
+  ...home,
+  ...messages,
+  ...navigation,
   ...search,
-};
+  ...simulation,
+  ...status,
+  ...subsidies,
+  ...calendar,
+} as const;

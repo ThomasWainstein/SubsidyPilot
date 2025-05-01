@@ -6,4 +6,5 @@ export const navigation = {
   'nav.logout': 'Deconectare',
   'errors.pageNotFound': 'Ups! Pagina pe care o cauți nu există.',
   'nav.searchSubsidies': 'Caută subvenții',
+  'nav.calendar': 'Calendar',
 } as const;

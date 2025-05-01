@@ -6,4 +6,5 @@ export const navigation = {
   'nav.logout': 'Cerrar sesión',
   'errors.pageNotFound': 'Oops! La página que estás buscando no existe.',
   'nav.searchSubsidies': 'Buscar subvenciones',
+  'nav.calendar': 'Calendario',
 } as const;

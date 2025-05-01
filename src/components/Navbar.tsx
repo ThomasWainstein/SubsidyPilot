@@ -1,7 +1,7 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/language';
-import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search } from 'lucide-react';
+import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -100,6 +100,13 @@ const Navbar = () => {
               >
                 <LayoutDashboard size={18} className="mr-2" />
                 {t('common.dashboard')}
+              </Link>
+              <Link
+                to="/calendar"
+                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/calendar') ? 'border-green-600 text-gray-900' : ''}`}
+              >
+                <Calendar size={18} className="mr-2" />
+                {t('nav.calendar')}
               </Link>
             </div>
           </div>

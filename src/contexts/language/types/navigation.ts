@@ -5,4 +5,5 @@ export type NavigationTranslationKey =
   | 'nav.settings'
   | 'nav.logout'
   | 'errors.pageNotFound'
-  | 'nav.searchSubsidies';
+  | 'nav.searchSubsidies'
+  | 'nav.calendar';

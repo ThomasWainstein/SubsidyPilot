@@ -1,35 +1,37 @@
 
-import { CommonTranslationKey } from './common';
-import { DashboardTranslationKey } from './dashboard';
-import { SubsidiesTranslationKey } from './subsidies';
-import { FarmTranslationKey } from './farm';
-import { ApplicationTranslationKey } from './application';
-import { FormTranslationKey } from './form';
-import { MessagesTranslationKey } from './messages';
-import { EUPortalTranslationKey } from './euportal';
-import { ExtensionTranslationKey } from './extension';
-import { FeaturesTranslationKey } from './features';
-import { StatusTranslationKey } from './status';
-import { NavigationTranslationKey } from './navigation';
-import { HomeTranslationKey } from './home';
-import { FooterTranslationKey } from './footer';
-import { SimulationTranslationKey } from './simulation';
-import { SearchTranslationKey } from './search';
+import type { ApplicationTranslationKey } from './application';
+import type { CommonTranslationKey } from './common';
+import type { DashboardTranslationKey } from './dashboard';
+import type { EUPortalTranslationKey } from './euportal';
+import type { ExtensionTranslationKey } from './extension';
+import type { FarmTranslationKey } from './farm';
+import type { FeaturesTranslationKey } from './features';
+import type { FooterTranslationKey } from './footer';
+import type { FormTranslationKey } from './form';
+import type { HomeTranslationKey } from './home';
+import type { MessagesTranslationKey } from './messages';
+import type { NavigationTranslationKey } from './navigation';
+import type { SearchTranslationKey } from './search';
+import type { SimulationTranslationKey } from './simulation';
+import type { StatusTranslationKey } from './status';
+import type { SubsidiesTranslationKey } from './subsidies';
+import type { CalendarTranslationKey } from './calendar';
 
 export type TranslationKey =
+  | ApplicationTranslationKey
   | CommonTranslationKey
   | DashboardTranslationKey
-  | SubsidiesTranslationKey
-  | FarmTranslationKey
-  | ApplicationTranslationKey
-  | FormTranslationKey
-  | MessagesTranslationKey
   | EUPortalTranslationKey
   | ExtensionTranslationKey
+  | FarmTranslationKey
   | FeaturesTranslationKey
-  | StatusTranslationKey
-  | NavigationTranslationKey
-  | HomeTranslationKey
   | FooterTranslationKey
+  | FormTranslationKey
+  | HomeTranslationKey
+  | MessagesTranslationKey
+  | NavigationTranslationKey
+  | SearchTranslationKey
   | SimulationTranslationKey
-  | SearchTranslationKey;
+  | StatusTranslationKey
+  | SubsidiesTranslationKey
+  | CalendarTranslationKey;

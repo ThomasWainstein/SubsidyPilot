@@ -6,4 +6,5 @@ export const navigation = {
   'nav.logout': 'Déconnexion',
   'errors.pageNotFound': 'Oups ! La page que vous recherchez n\'existe pas.',
   'nav.searchSubsidies': 'Rechercher des subventions',
+  'nav.calendar': 'Calendrier',
 } as const;

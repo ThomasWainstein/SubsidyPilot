@@ -1,0 +1,20 @@
+
+export type CalendarTranslationKey = 
+  | 'calendar.globalCalendar'
+  | 'calendar.globalDescription'
+  | 'calendar.view'
+  | 'calendar.month'
+  | 'calendar.week'
+  | 'calendar.agenda'
+  | 'calendar.farms'
+  | 'calendar.subsidyPrograms'
+  | 'calendar.regulationTypes'
+  | 'calendar.eventTypes'
+  | 'calendar.eventDetails'
+  | 'calendar.farm'
+  | 'calendar.viewFarm'
+  | 'calendar.subsidyProgram'
+  | 'calendar.regulationType'
+  | 'calendar.description'
+  | 'calendar.farmCalendar'
+  | 'calendar.emailReminders';
