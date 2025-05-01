@@ -14,6 +14,10 @@ export interface Farm {
   carbonScore: number;
   irrigationMethod: string;
   software: string[];
+  // New fields for French registry imports
+  idType?: 'SIRET' | 'SIREN' | 'PACAGE';
+  registryId?: string;
+  isImportedFromRegistry?: boolean;
 }
 
 // Define fake farm data
