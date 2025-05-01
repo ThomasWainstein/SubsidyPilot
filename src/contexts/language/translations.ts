@@ -1,16 +1,16 @@
 
 import { Language, TranslationKey } from './types';
-import { enTranslations } from './translations/en';
-import { frTranslations } from './translations/fr';
-import { esTranslations } from './translations/es';
-import { roTranslations } from './translations/ro';
-import { plTranslations } from './translations/pl';
+import { en } from './translations/en';
+import { fr } from './translations/fr';
+import { es } from './translations/es';
+import { ro } from './translations/ro';
+import { pl } from './translations/pl';
 
 // Define the translations
 export const translations: Record<Language, Record<TranslationKey, string>> = {
-  en: enTranslations,
-  fr: frTranslations,
-  es: esTranslations,
-  ro: roTranslations,
-  pl: plTranslations
+  en,
+  fr,
+  es,
+  ro,
+  pl
 };

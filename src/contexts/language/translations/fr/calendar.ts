@@ -1,14 +1,14 @@
 
 export const calendar = {
   'calendar.globalCalendar': 'Calendrier Global',
-  'calendar.globalDescription': 'Visualisez et gérez toutes les échéances et événements de vos exploitations',
+  'calendar.globalDescription': 'Consultez et gérez tous les délais et événements de vos exploitations',
   'calendar.view': 'Vue',
   'calendar.month': 'Mois',
   'calendar.week': 'Semaine',
   'calendar.agenda': 'Agenda',
   'calendar.farms': 'Exploitations',
-  'calendar.subsidyPrograms': 'Programmes de Subventions',
-  'calendar.regulationTypes': 'Types de Réglementations',
+  'calendar.subsidyPrograms': 'Programmes de Subvention',
+  'calendar.regulationTypes': 'Types de Réglementation',
   'calendar.eventTypes': 'Types d\'Événements',
   'calendar.eventDetails': 'Détails de l\'Événement',
   'calendar.farm': 'Exploitation',

@@ -7,7 +7,7 @@ import { extension } from './extension';
 import { farm } from './farm';
 import { features } from './features';
 import { footer } from './footer';
-import { form } from './forms';
+import { forms } from './forms';
 import { home } from './home';
 import { messages } from './messages';
 import { navigation } from './navigation';
@@ -26,7 +26,7 @@ export const es = {
   ...farm,
   ...features,
   ...footer,
-  ...form,
+  ...forms,
   ...home,
   ...messages,
   ...navigation,

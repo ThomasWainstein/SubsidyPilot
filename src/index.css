@@ -1,6 +1,3 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,277 +5,94 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+ 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-
+ 
     --radius: 0.5rem;
   }
-
+ 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
+ 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
+ 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+ 
+    --ring: 217.2 32.6% 23.5%;
+ 
+    --radius: 0.5rem;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 }
 
-.glass-card {
-  @apply bg-white dark:bg-dark-card dark:border-dark-divider transition-colors duration-300;
-}
-
-.glass-card:hover {
-  @apply dark:bg-dark-surface-hover;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.alert-card {
-  @apply bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-divider transition-colors duration-300;
-}
-
-.alert-card:hover {
-  @apply dark:bg-dark-surface-hover;
-}
-
-.alert-card strong {
-  @apply text-gray-900 dark:text-gray-100;
-}
-
-.highlight-subsidy {
-  animation: highlight-pulse 2.5s ease;
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes highlight-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-    transform: scale(1);
-  }
-  15% {
-    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.15);
-    transform: scale(1.01);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-    transform: scale(1.005);
-  }
-}
-
-.badge-pulse {
-  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-.typing-animation span {
-  animation: blink 1.4s infinite both;
-}
-
-.typing-animation span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-animation span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes blink {
-  0% { 
-    opacity: 0.1; 
-  }
-  20% { 
-    opacity: 1; 
-  }
-  100% { 
-    opacity: 0.1; 
-  }
-}
-
-:root {
-  --agri-green: #10B981;
-  --agri-blue: #3B82F6;
-  --agri-purple: #8B5CF6;
-  --agri-red: #EF4444;
-  --agri-yellow: #F59E0B;
-}
-
-.text-agri-green {
-  color: var(--agri-green);
-}
-
-.bg-agri-green {
-  background-color: var(--agri-green);
-}
-
-.tags-container {
-  position: relative;
-}
-
-.tags-container.collapsed .tags-overflow {
-  display: none;
-}
-
-.tags-container .tags-toggle {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  color: #6B7280;
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 9999px;
-  background-color: #F3F4F6;
-  margin-left: 4px;
-}
-
-.dark .tags-container .tags-toggle {
-  background-color: #374151;
-  color: #D1D5DB;
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: white;
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
-  white-space: nowrap;
-}
-
-.alerts-dropdown {
-  position: absolute;
-  z-index: 100;
-  width: 280px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  border: 1px solid #E5E7EB;
-  padding: 12px;
-  transform-origin: top right;
-  animation: scaleIn 0.2s ease-in-out;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.dark .alerts-dropdown {
-  background: #1E293B;
-  border-color: #334155;
-}
-
-@keyframes scaleIn {
-  from { 
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to { 
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Add a new animation for the alert dropdown */
-@keyframes slideUp {
+@keyframes slide-up {
   from {
+    transform: translateX(100%);
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
+    transform: translateX(0);
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-slide-up {
-  animation: slideUp 0.2s ease-out forwards;
-}
-
-/* Add animation for scale-in for checkmarks and icons */
-@keyframes scaleIn {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.3s ease-out forwards;
+  animation: slide-up 0.3s ease-out forwards;
 }

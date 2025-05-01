@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
@@ -147,10 +146,12 @@ const CalendarPage: React.FC = () => {
     const currentPrograms = filters.subsidyProgram;
     if (currentPrograms.includes(program)) {
       setFilters({
+        ...filters,
         subsidyProgram: currentPrograms.filter(p => p !== program)
       });
     } else {
       setFilters({
+        ...filters,
         subsidyProgram: [...currentPrograms, program]
       });
     }
@@ -160,10 +161,12 @@ const CalendarPage: React.FC = () => {
     const currentTypes = filters.regulationType;
     if (currentTypes.includes(type)) {
       setFilters({
+        ...filters,
         regulationType: currentTypes.filter(t => t !== type)
       });
     } else {
       setFilters({
+        ...filters,
         regulationType: [...currentTypes, type]
       });
     }
