@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Original HTML select component
 const Select = React.forwardRef<
   HTMLSelectElement, 
   React.SelectHTMLAttributes<HTMLSelectElement>
@@ -24,7 +25,7 @@ const Select = React.forwardRef<
 })
 Select.displayName = "Select"
 
-// Add Radix UI Select components
+// Radix UI Select components
 const SelectRoot = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
 const SelectValue = SelectPrimitive.Value
@@ -157,8 +158,8 @@ SelectSeparator.displayName = SelectPrimitive.Separator.displayName
 
 export {
   Select,
-  SelectRoot as Root,
-  SelectGroup as Group,
+  SelectRoot,
+  SelectGroup,
   SelectValue,
   SelectTrigger,
   SelectContent,
