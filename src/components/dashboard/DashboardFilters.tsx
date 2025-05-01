@@ -84,12 +84,12 @@ const DashboardFilters = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={() => setIsSimulationModalOpen(true)} className="flex items-center">
+          <Button onClick={() => setIsSimulationModalOpen(true)} className="flex items-center bg-purple-600 hover:bg-purple-700">
             <FlaskConical size={16} className="mr-2" />
             {t('simulation.title')}
           </Button>
           
-          <Button onClick={onAddFarm} className="flex items-center">
+          <Button onClick={onAddFarm} className="flex items-center bg-purple-600 hover:bg-purple-700">
             <Plus size={16} className="mr-2" />
             {t('common.addNewClientFarm')}
           </Button>

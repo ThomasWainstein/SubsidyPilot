@@ -26,7 +26,7 @@ const HomePage = () => {
               <p className="text-xl md:text-2xl text-gray-600 mb-10 animate-slide-up">
                 {t('home.tagline')}
               </p>
-              <Button asChild size="lg" className="animate-slide-up">
+              <Button asChild size="lg" className="animate-slide-up bg-purple-600 hover:bg-purple-700">
                 <Link to="/dashboard">
                   {t('common.getStarted')}
                 </Link>
