@@ -98,12 +98,10 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('simulation.form.country')}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select country" />
-                    </SelectTrigger>
-                  </FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="France">France</SelectItem>
                     <SelectItem value="Spain">Spain</SelectItem>
@@ -140,12 +138,10 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('simulation.form.irrigation')}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                  </FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Drip Irrigation">Drip Irrigation</SelectItem>
                     <SelectItem value="Sprinkler">Sprinkler</SelectItem>

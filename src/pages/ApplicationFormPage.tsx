@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -89,10 +88,7 @@ const ApplicationFormPage = () => {
         return <Textarea {...commonProps} rows={3} />;
       case 'select':
         return (
-          <Select 
-            defaultValue={field.value} 
-            onValueChange={(value) => updateFieldValue(section.id, field.id, value)}
-          >
+          <Select value={field.value} onValueChange={(value) => updateFieldValue(section.id, field.id, value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
