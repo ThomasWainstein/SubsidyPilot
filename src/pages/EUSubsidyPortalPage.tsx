@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, ChevronLeft, Download, FileText, Upload, X } from 'lucide-react';
 import { AgriToolExtensionSimulator } from '@/components/AgriToolExtensionSimulator';
 import { toast } from '@/components/ui/use-toast';
@@ -239,7 +240,7 @@ const EUSubsidyPortalPage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="certificationStatus">{t('form.certificationStatus')}</Label>
-                      <Select 
+                      <SelectRoot 
                         value={formData.certificationStatus} 
                         onValueChange={(value) => handleSelectChange('certificationStatus', value)}
                       >
@@ -251,7 +252,7 @@ const EUSubsidyPortalPage = () => {
                           <SelectItem value="conventional">Conventional</SelectItem>
                           <SelectItem value="carbon">Carbon+</SelectItem>
                         </SelectContent>
-                      </Select>
+                      </SelectRoot>
                     </div>
 
                     <div className="space-y-2">
