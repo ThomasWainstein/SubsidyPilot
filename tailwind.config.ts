@@ -54,6 +54,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Adding dark mode specific colors
+        dark: {
+          card: "#1E293B",
+          surface: "#0F172A", 
+          "surface-hover": "#1E293B",
+          divider: "#334155"
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
