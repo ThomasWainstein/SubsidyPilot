@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -90,6 +89,11 @@ const FarmCalendarSection: React.FC<FarmCalendarSectionProps> = ({ farmId, farmN
     setSelectedEvent(null);
   };
 
+  // Define accessor functions for the calendar
+  const eventStartAccessor = (event: CalendarEvent) => event.start;
+  const eventEndAccessor = (event: CalendarEvent) => event.end;
+  const eventTitleAccessor = (event: CalendarEvent) => event.title;
+
   return (
     <Card className="mt-6">
       <CardHeader className="pb-2">
@@ -116,8 +120,8 @@ const FarmCalendarSection: React.FC<FarmCalendarSectionProps> = ({ farmId, farmN
             <Calendar
               localizer={localizer}
               events={events}
-              startAccessor="start"
-              endAccessor="end"
+              startAccessor={eventStartAccessor}
+              endAccessor={eventEndAccessor}
               style={{ height: '100%' }}
               views={{
                 month: true,
@@ -125,7 +129,7 @@ const FarmCalendarSection: React.FC<FarmCalendarSectionProps> = ({ farmId, farmN
               }}
               view={view}
               onView={(v: any) => setView(v)}
-              titleAccessor="title"
+              titleAccessor={eventTitleAccessor}
               onSelectEvent={handleEventSelect}
               eventPropGetter={eventStyleGetter}
               popup

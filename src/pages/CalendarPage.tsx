@@ -102,6 +102,10 @@ const CalendarPage: React.FC = () => {
     return true;
   });
 
+  const eventStartAccessor = (event: CalendarEvent) => event.start;
+  const eventEndAccessor = (event: CalendarEvent) => event.end;
+  const eventTitleAccessor = (event: CalendarEvent) => event.title;
+
   const handleEventSelect = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setShowEventSidebar(true);
@@ -287,8 +291,8 @@ const CalendarPage: React.FC = () => {
               <DragAndDropCalendar
                 localizer={localizer}
                 events={filteredEvents}
-                startAccessor="start"
-                endAccessor="end"
+                startAccessor={eventStartAccessor}
+                endAccessor={eventEndAccessor}
                 style={{ height: '100%' }}
                 views={{
                   month: true,
@@ -296,7 +300,7 @@ const CalendarPage: React.FC = () => {
                 }}
                 view={view}
                 onView={(v: any) => setView(v)}
-                titleAccessor="title"
+                titleAccessor={eventTitleAccessor}
                 tooltipAccessor={(event: CalendarEvent) => `${event.title} - ${event.farmName}`}
                 onSelectEvent={(event: CalendarEvent) => handleEventSelect(event)}
                 eventPropGetter={eventStyleGetter}
