@@ -108,19 +108,16 @@ const Navbar = () => {
                 <Calendar size={18} className="mr-2" />
                 {t('nav.calendar')}
               </Link>
+              <Link
+                to="/subsidy-search"
+                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/subsidy-search') ? 'border-green-600 text-gray-900' : ''}`}
+              >
+                <Search size={18} className="mr-2" />
+                {t('nav.searchSubsidies')}
+              </Link>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center" 
-              onClick={() => navigate('/subsidy-search')}
-            >
-              <Search size={16} className="mr-1" />
-              {t('nav.searchSubsidies')}
-            </Button>
-            
+          <div className="flex items-center space-x-2">            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="flex items-center">
