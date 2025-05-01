@@ -123,22 +123,6 @@ const Navbar = () => {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="hidden md:flex items-center">
-                  {t('common.plan')}: {t('common.consultantPro')}
-                  <ChevronDown size={16} className="ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{t('common.plan')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>{t('common.free')}</DropdownMenuItem>
-                <DropdownMenuItem className="bg-gray-100">{t('common.consultantPro')}</DropdownMenuItem>
-                <DropdownMenuItem>{t('common.coopEnterprise')}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="flex items-center">
                   <Globe size={18} className="mr-2" />
                   <span className="mr-1">{languageFlags[language]}</span>

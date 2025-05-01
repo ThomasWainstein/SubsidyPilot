@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
@@ -155,19 +156,23 @@ const SubsidySearchPage = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <Navbar />
       
-      <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('subsidies.searchEngine')}</h1>
+      <main className="flex-grow py-6 px-4">
+        <div className="container mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {t('subsidies.searchEngine')}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              {t('subsidies.findAvailableSubsidies')}
+            </p>
           </div>
           
-          <div className="grid grid-cols-12 gap-6">
-            
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {showFilters && (
-              <div className="col-span-12 lg:col-span-3 space-y-6">
+              <div className="lg:col-span-1">
                 <Card>
                   <CardHeader className="py-4">
                     <div className="flex justify-between items-center">
@@ -203,7 +208,7 @@ const SubsidySearchPage = () => {
               </div>
             )}
             
-            <div className={`col-span-12 ${showFilters ? 'lg:col-span-9' : 'lg:col-span-12'}`}>
+            <div className={`${showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
               <Card>
                 <CardHeader className="py-4">
                   <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
