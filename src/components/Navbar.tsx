@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/language';
 import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, Calendar } from 'lucide-react';
@@ -17,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -68,9 +68,13 @@ const Navbar = () => {
             )}
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center mr-2">
-                  <span className="text-white text-sm font-bold">A</span>
-                </div>
+                <Avatar className="h-8 w-8 mr-2 border border-gray-200">
+                  <AvatarImage 
+                    src="/lovable-uploads/6420707f-94bc-4e54-952d-b4af86a4eef4.png"
+                    alt="AgriTool Logo" 
+                  />
+                  <AvatarFallback className="bg-green-600 text-white">A</AvatarFallback>
+                </Avatar>
                 <span className="text-xl font-bold text-gray-900">AgriTool</span>
               </Link>
               <TooltipProvider>
