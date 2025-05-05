@@ -8,4 +8,5 @@ export const navigation = {
   'nav.searchSubsidies': 'Search Subsidies',
   'nav.calendar': 'Calendar',
   'nav.regulations': 'Regulations',
+  'nav.backToOverview': 'Back to Overview',
 } as const;

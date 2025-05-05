@@ -8,4 +8,5 @@ export const navigation = {
   'nav.searchSubsidies': 'Buscar subvenciones',
   'nav.calendar': 'Calendario',
   'nav.regulations': 'Normativas',
+  'nav.backToOverview': 'Volver a la descripción general',
 } as const;
