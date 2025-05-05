@@ -8,4 +8,5 @@ export const navigation = {
   'nav.searchSubsidies': 'Caută subvenții',
   'nav.calendar': 'Calendar',
   'nav.regulations': 'Reglementări',
+  'nav.backToOverview': 'Înapoi la prezentare generală',
 } as const;

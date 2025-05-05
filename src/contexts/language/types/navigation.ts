@@ -7,4 +7,5 @@ export type NavigationTranslationKey =
   | 'errors.pageNotFound'
   | 'nav.searchSubsidies'
   | 'nav.calendar'
-  | 'nav.regulations';
+  | 'nav.regulations'
+  | 'nav.backToOverview';

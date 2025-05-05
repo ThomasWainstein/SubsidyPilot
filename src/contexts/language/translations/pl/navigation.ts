@@ -8,4 +8,5 @@ export const navigation = {
   'nav.searchSubsidies': 'Wyszukaj dotacje',
   'nav.calendar': 'Kalendarz',
   'nav.regulations': 'Przepisy',
+  'nav.backToOverview': 'Powrót do przeglądu',
 } as const;
