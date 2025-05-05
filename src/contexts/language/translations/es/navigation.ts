@@ -7,4 +7,5 @@ export const navigation = {
   'errors.pageNotFound': 'Oops! La página que estás buscando no existe.',
   'nav.searchSubsidies': 'Buscar subvenciones',
   'nav.calendar': 'Calendario',
+  'nav.regulations': 'Normativas',
 } as const;

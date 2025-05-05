@@ -6,4 +6,5 @@ export type NavigationTranslationKey =
   | 'nav.logout'
   | 'errors.pageNotFound'
   | 'nav.searchSubsidies'
-  | 'nav.calendar';
+  | 'nav.calendar'
+  | 'nav.regulations';

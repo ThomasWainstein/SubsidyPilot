@@ -1,6 +1,7 @@
+
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/language';
-import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, Calendar } from 'lucide-react';
+import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, Calendar, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -118,6 +119,13 @@ const Navbar = () => {
               >
                 <Search size={18} className="mr-2" />
                 {t('nav.searchSubsidies')}
+              </Link>
+              <Link
+                to="/regulations"
+                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/regulations') ? 'border-green-600 text-gray-900' : ''}`}
+              >
+                <BookOpen size={18} className="mr-2" />
+                {t('nav.regulations')}
               </Link>
             </div>
           </div>

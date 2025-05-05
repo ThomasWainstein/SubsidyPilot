@@ -7,4 +7,5 @@ export const navigation = {
   'errors.pageNotFound': 'Strona nie została znaleziona',
   'nav.searchSubsidies': 'Wyszukaj dotacje',
   'nav.calendar': 'Kalendarz',
+  'nav.regulations': 'Przepisy',
 } as const;

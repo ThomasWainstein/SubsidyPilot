@@ -7,4 +7,5 @@ export const navigation = {
   'errors.pageNotFound': 'Oops! The page you\'re looking for doesn\'t exist.',
   'nav.searchSubsidies': 'Search Subsidies',
   'nav.calendar': 'Calendar',
+  'nav.regulations': 'Regulations',
 } as const;
