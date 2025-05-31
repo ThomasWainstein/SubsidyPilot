@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from "@/components/ui/input";
@@ -12,12 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Plus, SearchIcon, SlidersHorizontal, FlaskConical } from "lucide-react";
+import { ChevronDown, Plus, SearchIcon, SlidersHorizontal } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import SimulationModal from "../simulation/SimulationModal";
 
 interface DashboardFiltersProps {
   searchQuery: string;
@@ -46,7 +44,6 @@ const DashboardFilters = ({
 }: DashboardFiltersProps) => {
   const { t } = useLanguage();
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isSimulationModalOpen, setIsSimulationModalOpen] = useState(false);
 
   return (
     <>
@@ -83,11 +80,6 @@ const DashboardFilters = ({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button onClick={() => setIsSimulationModalOpen(true)} className="flex items-center bg-purple-600 hover:bg-purple-700">
-            <FlaskConical size={16} className="mr-2" />
-            {t('simulation.title')}
-          </Button>
           
           <Button onClick={onAddFarm} className="flex items-center bg-purple-600 hover:bg-purple-700">
             <Plus size={16} className="mr-2" />
@@ -169,11 +161,6 @@ const DashboardFilters = ({
           <Separator className="my-4" />
         </CollapsibleContent>
       </Collapsible>
-
-      <SimulationModal 
-        isOpen={isSimulationModalOpen}
-        onClose={() => setIsSimulationModalOpen(false)}
-      />
     </>
   );
 };
