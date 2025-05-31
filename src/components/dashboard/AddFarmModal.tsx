@@ -6,13 +6,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select } from '@/components/ui/select';
 import { Building, Loader2 } from 'lucide-react';
 import { Farm, farms } from '@/data/farms';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/components/ui/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
 
 interface AddFarmModalProps {
   isOpen: boolean;
@@ -28,6 +28,7 @@ interface FrenchRegistryForm {
 
 const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isSearching, setIsSearching] = useState(false);
   const [foundFarm, setFoundFarm] = useState<Farm | null>(null);
   const [selectedIdType, setSelectedIdType] = useState<IdType>('SIRET');
@@ -49,6 +50,11 @@ const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
       default:
         return false;
     }
+  };
+
+  const handleManualEntry = () => {
+    onClose();
+    navigate('/new-farm');
   };
 
   const handleSearchFarm = () => {
@@ -128,9 +134,8 @@ const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
         </DialogHeader>
         
         <Tabs defaultValue="manual" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="manual">{t('addFarm.manualEntry')}</TabsTrigger>
-            <TabsTrigger value="document">{t('addFarm.documentUpload')}</TabsTrigger>
             <TabsTrigger value="french" className="flex items-center">
               <Building className="mr-2 h-4 w-4" />
               🇫🇷 {t('addFarm.frenchRegistry')}
@@ -138,31 +143,12 @@ const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
           </TabsList>
           
           <TabsContent value="manual" className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="farm-name">{t('form.farmName')}</Label>
-              <Input id="farm-name" placeholder={t('addFarm.enterFarmName')} />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="farm-region">{t('subsidies.region')}</Label>
-              <Input id="farm-region" placeholder={t('addFarm.enterRegion')} />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="farm-tags">{t('addFarm.tagsLabel')}</Label>
-              <Input id="farm-tags" placeholder={t('addFarm.tagsPlaceholder')} />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="document" className="space-y-4 py-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              <p className="mt-2 text-sm text-gray-600">{t('addFarm.dragAndDrop')}</p>
-              <p className="mt-1 text-xs text-gray-500">{t('addFarm.supportedDocuments')}</p>
-              <Button variant="outline" className="mt-4">
-                {t('addFarm.selectFiles')}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-4">
+                Create a comprehensive farm profile with all required information
+              </p>
+              <Button onClick={handleManualEntry} className="w-full">
+                {t('addFarm.startFarmCreation')}
               </Button>
             </div>
           </TabsContent>
@@ -276,11 +262,6 @@ const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          {!foundFarm && (
-            <Button onClick={onClose}>
-              {t('common.save')}
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
