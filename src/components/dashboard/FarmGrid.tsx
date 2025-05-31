@@ -34,7 +34,11 @@ const FarmGrid = ({ farms }: FarmGridProps) => {
     tags: [],
     certifications: [],
     irrigationMethod: 'Unknown',
-    crops: []
+    crops: [],
+    revenue: '€0',
+    activities: [],
+    carbonScore: 0,
+    software: []
   }));
 
   return (
