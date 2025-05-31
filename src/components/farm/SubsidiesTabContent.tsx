@@ -1,25 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/language';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { farms } from '@/data/farms';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ManualSubsidyForm } from './ManualSubsidyForm';
-import { ImportSubsidyForm } from './ImportSubsidyForm';
 import { Subsidy } from '@/types/subsidy';
 import { useToast } from '@/hooks/use-toast';
 import { getSubsidiesForFarm } from '@/utils/subsidyAttachment';
 import { supabase } from '@/integrations/supabase/client';
+import SubsidyHeader from './subsidy/SubsidyHeader';
+import SubsidyEmptyState from './subsidy/SubsidyEmptyState';
+import SubsidyAddDialog from './subsidy/SubsidyAddDialog';
+import SubsidyLoadingState from './subsidy/SubsidyLoadingState';
 
 interface SubsidiesTabContentProps {
   farmId: string;
 }
 
 export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId }) => {
-  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [allSubsidies, setAllSubsidies] = useState<Subsidy[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,7 +36,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
         if (error) {
           console.error('Error fetching subsidies:', error);
           toast({
-            title: t('common.error'),
+            title: 'Error',
             description: 'Failed to fetch subsidies from database',
             variant: 'destructive',
           });
@@ -56,7 +52,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
             ? `€${dbSubsidy.amount_min || 0} - €${dbSubsidy.amount_max}`
             : `€${dbSubsidy.amount_min || 0}`,
           region: dbSubsidy.region || [],
-          matchConfidence: Math.floor(Math.random() * 30) + 70, // Random confidence for now
+          matchConfidence: Math.floor(Math.random() * 30) + 70,
           deadline: dbSubsidy.deadline || '2025-12-31',
           fundingType: dbSubsidy.funding_type as 'public' | 'private' | 'mixed',
           status: dbSubsidy.status,
@@ -90,7 +86,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
       } catch (error) {
         console.error('Error in fetchSubsidies:', error);
         toast({
-          title: t('common.error'),
+          title: 'Error',
           description: 'Failed to load subsidies',
           variant: 'destructive',
         });
@@ -100,7 +96,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     };
 
     fetchSubsidies();
-  }, [farmId, t, toast]);
+  }, [farmId, toast]);
   
   const handleAddSubsidy = (newSubsidy: Subsidy) => {
     setAllSubsidies(prev => [...prev, newSubsidy]);
@@ -112,78 +108,23 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('subsidies.title')}</CardTitle>
-          <CardDescription>{t('subsidies.subtitle')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span className="ml-2">{t('common.loading')}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <SubsidyLoadingState />;
   }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>{t('subsidies.title')}</CardTitle>
-          <CardDescription>{t('subsidies.subtitle')}</CardDescription>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1">
-              <Plus size={16} />
-              {t('common.addNewSubsidy')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>{t('common.addNewSubsidy')}</DialogTitle>
-              <DialogDescription>
-                Add a new subsidy opportunity for this farm either by importing from a URL or entering details manually.
-              </DialogDescription>
-            </DialogHeader>
-            <Tabs defaultValue="manual" className="mt-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                <TabsTrigger value="import">Import from URL</TabsTrigger>
-              </TabsList>
-              <TabsContent value="manual">
-                <ManualSubsidyForm 
-                  farmId={farmId} 
-                  farmRegion={farm?.region || ''} 
-                  onAddSubsidy={handleAddSubsidy} 
-                />
-              </TabsContent>
-              <TabsContent value="import">
-                <ImportSubsidyForm 
-                  farmId={farmId}
-                  farmRegion={farm?.region || ''}
-                  onAddSubsidy={handleAddSubsidy}
-                />
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
+      <SubsidyHeader onAddSubsidy={() => setDialogOpen(true)} />
       <CardContent>
-        <div className="p-6 border rounded-lg border-dashed text-center bg-gray-50 dark:bg-gray-800">
-          <AlertTriangle className="mx-auto mb-3 text-amber-500 h-8 w-8" />
-          <h3 className="text-lg font-medium mb-2 dark:text-white">{t('common.noSubsidiesFound')}</h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            {t('common.noSubsidiesFoundDesc')}
-          </p>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Click the "Add New Subsidy" button to add your first subsidy manually or import one from a URL.
-          </p>
-        </div>
+        <SubsidyEmptyState />
       </CardContent>
+      
+      <SubsidyAddDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        farmId={farmId}
+        farmRegion={farm?.region || ''}
+        onAddSubsidy={handleAddSubsidy}
+      />
     </Card>
   );
 };

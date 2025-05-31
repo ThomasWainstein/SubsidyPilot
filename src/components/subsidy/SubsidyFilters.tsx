@@ -1,12 +1,13 @@
 
 import React from 'react';
 import { useLanguage } from '@/contexts/language';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, X } from 'lucide-react';
-import FilterSection from './FilterSection';
-import FilterCheckbox from './FilterCheckbox';
-import FilterTagButton from './FilterTagButton';
+import GeographicEligibilityFilter from './filters/GeographicEligibilityFilter';
+import AgriculturalSectorFilter from './filters/AgriculturalSectorFilter';
+import FundingTypeFilter from './filters/FundingTypeFilter';
+import ApplicationRequirementsFilter from './filters/ApplicationRequirementsFilter';
+import StrategicAlignmentFilter from './filters/StrategicAlignmentFilter';
+import DeadlineStatusFilter from './filters/DeadlineStatusFilter';
 
 interface FilterState {
   regions: string[];
@@ -85,199 +86,44 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
         </div>
       )}
 
-      {/* Geographic Eligibility */}
-      <FilterSection title="search.filters.geographicEligibility">
-        <div className="mb-4">
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.region')}</h4>
-          <div className="flex flex-wrap">
-            {availableRegions.map(region => (
-              <FilterTagButton
-                key={region}
-                value={region}
-                active={filters.regions.includes(region)}
-                onClick={() => toggleArrayFilter('regions', region)}
-                translationKey={region}
-              />
-            ))}
-            {availableRegions.length === 0 && (
-              <p className="text-sm text-gray-400">No regions available</p>
-            )}
-          </div>
-        </div>
-        <div>
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.eligibleCountry')}</h4>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder={t('search.filters.eligibleCountry')}
-              className="pl-8"
-              value={filters.eligibleCountry}
-              onChange={(e) => setFilters((prev: any) => ({ ...prev, eligibleCountry: e.target.value }))}
-            />
-            {filters.eligibleCountry && (
-              <button 
-                className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                onClick={() => setFilters((prev: any) => ({ ...prev, eligibleCountry: '' }))}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </FilterSection>
+      <GeographicEligibilityFilter
+        regions={filters.regions}
+        eligibleCountry={filters.eligibleCountry}
+        availableRegions={availableRegions}
+        onRegionToggle={(region) => toggleArrayFilter('regions', region)}
+        onCountryChange={(country) => setFilters((prev: any) => ({ ...prev, eligibleCountry: country }))}
+      />
 
-      {/* Agricultural Sector */}
-      <FilterSection title="search.filters.agriculturalSector">
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.farmingType')}</h4>
-        <div className="flex flex-wrap">
-          {availableCategories.map(category => (
-            <FilterTagButton
-              key={category}
-              value={category}
-              active={filters.farmingTypes.includes(category)}
-              onClick={() => toggleArrayFilter('farmingTypes', category)}
-              translationKey={category}
-            />
-          ))}
-          {availableCategories.length === 0 && (
-            <p className="text-sm text-gray-400">No categories available</p>
-          )}
-        </div>
-      </FilterSection>
+      <AgriculturalSectorFilter
+        farmingTypes={filters.farmingTypes}
+        availableCategories={availableCategories}
+        onFarmingTypeToggle={(type) => toggleArrayFilter('farmingTypes', type)}
+      />
 
-      {/* Funding Type */}
-      <FilterSection title="search.filters.fundingType">
-        <div className="mb-4">
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.fundingSource')}</h4>
-          <div>
-            {availableFundingTypes.map(fundingType => (
-              <FilterCheckbox
-                key={fundingType}
-                id={`funding-source-${fundingType}`}
-                value={fundingType}
-                checked={filters.fundingSources.includes(fundingType)}
-                onChange={() => toggleArrayFilter('fundingSources', fundingType)}
-                translationKey={`search.filters.fundingSource.${fundingType}`}
-              />
-            ))}
-            {availableFundingTypes.length === 0 && (
-              <p className="text-sm text-gray-400">No funding types available</p>
-            )}
-          </div>
-        </div>
+      <FundingTypeFilter
+        fundingSources={filters.fundingSources}
+        fundingInstruments={filters.fundingInstruments}
+        availableFundingTypes={availableFundingTypes}
+        onFundingSourceToggle={(source) => toggleArrayFilter('fundingSources', source)}
+        onFundingInstrumentToggle={(instrument) => toggleArrayFilter('fundingInstruments', instrument)}
+      />
 
-        <div>
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.fundingInstrument')}</h4>
-          <div className="flex flex-wrap">
-            {[
-              { value: 'grant', key: 'search.filters.fundingInstrument.grant' },
-              { value: 'subsidy', key: 'search.filters.fundingInstrument.subsidy' },
-              { value: 'taxCredit', key: 'search.filters.fundingInstrument.taxCredit' },
-              { value: 'loan', key: 'search.filters.fundingInstrument.loan' },
-              { value: 'technicalAssistance', key: 'search.filters.fundingInstrument.technicalAssistance' },
-            ].map(instrument => (
-              <FilterTagButton
-                key={instrument.value}
-                value={instrument.value}
-                active={filters.fundingInstruments.includes(instrument.value)}
-                onClick={() => toggleArrayFilter('fundingInstruments', instrument.value)}
-                translationKey={instrument.key}
-              />
-            ))}
-          </div>
-        </div>
-      </FilterSection>
+      <ApplicationRequirementsFilter
+        documentsRequired={filters.documentsRequired}
+        applicationFormats={filters.applicationFormats}
+        onDocumentRequiredToggle={(doc) => toggleArrayFilter('documentsRequired', doc)}
+        onApplicationFormatToggle={(format) => toggleArrayFilter('applicationFormats', format)}
+      />
 
-      {/* Application Requirements */}
-      <FilterSection title="search.filters.applicationRequirements">
-        <div className="mb-4">
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.documentsRequired')}</h4>
-          <div className="flex flex-wrap">
-            {[
-              { value: 'businessPlan', key: 'search.filters.documentsRequired.businessPlan' },
-              { value: 'sustainabilityReport', key: 'search.filters.documentsRequired.sustainabilityReport' },
-              { value: 'carbonAssessment', key: 'search.filters.documentsRequired.carbonAssessment' },
-              { value: 'euFarmId', key: 'search.filters.documentsRequired.euFarmId' },
-              { value: 'digitalCertification', key: 'search.filters.documentsRequired.digitalCertification' },
-              { value: 'previousGrantRecord', key: 'search.filters.documentsRequired.previousGrantRecord' },
-            ].map(doc => (
-              <FilterTagButton
-                key={doc.value}
-                value={doc.value}
-                active={filters.documentsRequired.includes(doc.value)}
-                onClick={() => toggleArrayFilter('documentsRequired', doc.value)}
-                translationKey={doc.key}
-              />
-            ))}
-          </div>
-        </div>
+      <StrategicAlignmentFilter
+        sustainabilityGoals={filters.sustainabilityGoals}
+        onSustainabilityGoalToggle={(goal) => toggleArrayFilter('sustainabilityGoals', goal)}
+      />
 
-        <div>
-          <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.applicationFormat')}</h4>
-          <div>
-            {[
-              { value: 'online', key: 'search.filters.applicationFormat.online' },
-              { value: 'pdf', key: 'search.filters.applicationFormat.pdf' },
-              { value: 'portal', key: 'search.filters.applicationFormat.portal' },
-              { value: 'consultant', key: 'search.filters.applicationFormat.consultant' },
-            ].map(format => (
-              <FilterCheckbox
-                key={format.value}
-                id={`application-format-${format.value}`}
-                value={format.value}
-                checked={filters.applicationFormats.includes(format.value)}
-                onChange={() => toggleArrayFilter('applicationFormats', format.value)}
-                translationKey={format.key}
-              />
-            ))}
-          </div>
-        </div>
-      </FilterSection>
-
-      {/* Strategic Alignment */}
-      <FilterSection title="search.filters.strategicAlignment">
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.sustainabilityGoals')}</h4>
-        <div>
-          {[
-            { value: 'organicTransition', key: 'search.filters.sustainabilityGoals.organicTransition' },
-            { value: 'waterEfficiency', key: 'search.filters.sustainabilityGoals.waterEfficiency' },
-            { value: 'emissionReduction', key: 'search.filters.sustainabilityGoals.emissionReduction' },
-            { value: 'soilHealth', key: 'search.filters.sustainabilityGoals.soilHealth' },
-            { value: 'biodiversity', key: 'search.filters.sustainabilityGoals.biodiversity' },
-            { value: 'climateAdaptation', key: 'search.filters.sustainabilityGoals.climateAdaptation' },
-          ].map(goal => (
-            <FilterCheckbox
-              key={goal.value}
-              id={`sustainability-goal-${goal.value}`}
-              value={goal.value}
-              checked={filters.sustainabilityGoals.includes(goal.value)}
-              onChange={() => toggleArrayFilter('sustainabilityGoals', goal.value)}
-              translationKey={goal.key}
-            />
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Deadline Status */}
-      <FilterSection title="search.filters.deadlineStatus">
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.deadline')}</h4>
-        <div>
-          {[
-            { value: 'open', key: 'search.filters.deadline.open' },
-            { value: 'closingSoon', key: 'search.filters.deadline.closingSoon' },
-            { value: 'closed', key: 'search.filters.deadline.closed' },
-          ].map(status => (
-            <FilterCheckbox
-              key={status.value}
-              id={`deadline-status-${status.value}`}
-              value={status.value}
-              checked={filters.deadlineStatuses.includes(status.value)}
-              onChange={() => toggleArrayFilter('deadlineStatuses', status.value)}
-              translationKey={status.key}
-            />
-          ))}
-        </div>
-      </FilterSection>
+      <DeadlineStatusFilter
+        deadlineStatuses={filters.deadlineStatuses}
+        onDeadlineStatusToggle={(status) => toggleArrayFilter('deadlineStatuses', status)}
+      />
     </div>
   );
 };
