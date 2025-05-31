@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     // Section 1: Farm Identity
@@ -51,9 +55,18 @@ const FarmCreationForm = () => {
     notificationConsent: false
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: t('common.error'),
+        description: 'You must be logged in to create a farm',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.farmName || !formData.farmAddress || !formData.legalStatus || !formData.cnpOrCui) {
       toast({
         title: t('common.error'),
@@ -72,11 +85,54 @@ const FarmCreationForm = () => {
       return;
     }
 
-    toast({
-      title: t('common.success'),
-      description: 'Farm profile created successfully',
-    });
-    navigate('/dashboard');
+    setLoading(true);
+
+    try {
+      const farmData = {
+        user_id: user.id,
+        name: formData.farmName,
+        address: formData.farmAddress,
+        legal_status: formData.legalStatus,
+        cnp_or_cui: formData.cnpOrCui,
+        department: formData.department,
+        locality: formData.locality,
+        apia_region: formData.apiaRegions,
+        own_or_lease: formData.landOwnership === 'own',
+        total_hectares: formData.totalArea ? parseFloat(formData.totalArea) : null,
+        land_use_types: formData.landUseTypes,
+        livestock_present: formData.hasLivestock,
+        livestock: formData.hasLivestock ? formData.animalTypes : null,
+        environmental_permit: formData.hasEnvironmentalPermits,
+        subsidy_interest: [...formData.subsidyInterests, formData.otherSubsidyInterest].filter(Boolean),
+        phone: formData.mobileNumber,
+        preferred_language: formData.preferredLanguage,
+        gdpr_consent: formData.gdprConsent,
+        notify_consent: formData.notificationConsent
+      };
+
+      const { data, error } = await supabase
+        .from('farms')
+        .insert(farmData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: t('common.success'),
+        description: 'Farm profile created successfully',
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: t('common.error'),
+        description: 'Failed to create farm: ' + error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileUpload = (fieldName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,7 +140,7 @@ const FarmCreationForm = () => {
     if (file) {
       toast({
         title: t('common.success'),
-        description: `File ${file.name} uploaded successfully`,
+        description: `File ${file.name} selected (upload functionality will be added)`,
       });
     }
   };
@@ -526,8 +582,8 @@ const FarmCreationForm = () => {
             <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
               Cancel
             </Button>
-            <Button type="submit">
-              Create Farm Profile
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Farm Profile'}
             </Button>
           </div>
         </form>

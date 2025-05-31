@@ -1,173 +1,217 @@
 
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useLanguage } from '../contexts/language';
-import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, BookOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLanguage } from '@/contexts/language';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  NavigationMenu, 
+  NavigationMenuContent, 
+  NavigationMenuItem, 
+  NavigationMenuLink, 
+  NavigationMenuList, 
+  NavigationMenuTrigger 
+} from '@/components/ui/navigation-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, User, LogOut, Settings } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
-  const { language, setLanguage, t } = useLanguage();
-  const location = useLocation();
+  const { t, language, setLanguage } = useLanguage();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  
-  const languageNames: Record<string, string> = {
-    en: 'English',
-    fr: 'Français',
-    es: 'Español',
-    ro: 'Română',
-    pl: 'Polski',
+  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
-  const languageFlags: Record<string, string> = {
-    en: '🇬🇧',
-    fr: '🇫🇷',
-    es: '🇪🇸',
-    ro: '🇷🇴',
-    pl: '🇵🇱',
+  const isActivePath = (path: string) => {
+    return location.pathname === path;
   };
-  
-  const isHomePage = location.pathname === '/';
-  const isAuthenticated = !isHomePage; // Simple auth check - in production this would be more sophisticated
-  
-  const handleBack = () => {
-    if (location.pathname.includes('/farm/')) {
-      navigate('/dashboard');
-    } else if (location.pathname.includes('/eu-subsidy-portal')) {
-      navigate('/dashboard');
-    } else {
-      navigate(-1);
-    }
-  };
+
+  const navigationItems = [
+    { href: '/dashboard', label: t('navigation.dashboard') },
+    { href: '/subsidies', label: t('navigation.subsidies') },
+    { href: '/calendar', label: t('navigation.calendar') },
+    { href: '/eu-portal', label: t('navigation.euPortal') },
+    { href: '/regulations', label: t('navigation.regulations') },
+  ];
 
   return (
-    <nav className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            {!isHomePage && (
-              <button 
-                onClick={handleBack}
-                className="mr-4 text-gray-500 hover:text-gray-700 flex items-center"
-                aria-label={t('common.back')}
-              >
-                <ChevronLeft size={20} />
-                <span className="sr-only sm:not-sr-only sm:ml-1">{t('common.back')}</span>
-              </button>
-            )}
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="flex items-center">
-                <Avatar className="h-8 w-8 mr-2 border border-gray-200">
-                  <AvatarImage 
-                    src="/lovable-uploads/6420707f-94bc-4e54-952d-b4af86a4eef4.png"
-                    alt="AgriTool Logo" 
-                  />
-                  <AvatarFallback className="bg-green-600 text-white">A</AvatarFallback>
-                </Avatar>
-                <span className="text-xl font-bold text-gray-900">AgriTool</span>
-              </Link>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold uppercase">
-                      {t('common.demoLabel')}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This version is for demonstration only</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            
-            {/* Only show navigation if authenticated (not on homepage) */}
-            {isAuthenticated && (
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link
-                  to="/dashboard"
-                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/dashboard') ? 'border-green-600 text-gray-900' : ''}`}
-                >
-                  <LayoutDashboard size={18} className="mr-2" />
-                  {t('common.dashboard')}
-                </Link>
-                <Link
-                  to="/subsidy-search"
-                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/subsidy-search') ? 'border-green-600 text-gray-900' : ''}`}
-                >
-                  <Search size={18} className="mr-2" />
-                  {t('nav.searchSubsidies')}
-                </Link>
-                <Link
-                  to="/regulations"
-                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/regulations') ? 'border-green-600 text-gray-900' : ''}`}
-                >
-                  <BookOpen size={18} className="mr-2" />
-                  {t('nav.regulations')}
-                </Link>
-              </div>
-            )}
+            <Link to="/dashboard" className="flex items-center space-x-2">
+              <span className="text-2xl font-bold text-green-600">🌾</span>
+              <span className="text-xl font-bold text-gray-900">AgriTool</span>
+            </Link>
           </div>
-          <div className="flex items-center space-x-2">            
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user && (
+              <NavigationMenu>
+                <NavigationMenuList>
+                  {navigationItems.map((item) => (
+                    <NavigationMenuItem key={item.href}>
+                      <NavigationMenuLink
+                        className={cn(
+                          "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50",
+                          isActivePath(item.href) && "bg-accent text-accent-foreground"
+                        )}
+                        asChild
+                      >
+                        <Link to={item.href}>{item.label}</Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                  ))}
+                </NavigationMenuList>
+              </NavigationMenu>
+            )}
+
+            {/* Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center">
-                  <Globe size={18} className="mr-2" />
-                  <span className="mr-1">{languageFlags[language]}</span>
-                  <span className="hidden md:inline">{languageNames[language]}</span>
-                  <ChevronDown size={16} className="ml-1" />
+                <Button variant="outline" size="sm">
+                  {language.toUpperCase()}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => setLanguage('en')}>
-                  <span className="mr-2">🇬🇧</span> English
+                  🇬🇧 English
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLanguage('fr')}>
-                  <span className="mr-2">🇫🇷</span> Français
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('es')}>
-                  <span className="mr-2">🇪🇸</span> Español
+                  🇫🇷 Français
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLanguage('ro')}>
-                  <span className="mr-2">🇷🇴</span> Română
+                  🇷🇴 Română
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('es')}>
+                  🇪🇸 Español
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLanguage('pl')}>
-                  <span className="mr-2">🇵🇱</span> Polski
+                  🇵🇱 Polski
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
-            {/* Only show user menu if authenticated */}
-            {isAuthenticated && (
+
+            {/* User Menu */}
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="ml-2">
-                    <User size={18} />
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    <User size={16} />
+                    <span className="hidden lg:inline">{user.email}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>{t('nav.profile')}</DropdownMenuItem>
-                  <DropdownMenuItem>{t('nav.settings')}</DropdownMenuItem>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/')}>
-                    <LogOut size={16} className="mr-2" />
-                    {t('nav.logout')}
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : (
+              <Button onClick={() => navigate('/auth')}>
+                Login
+              </Button>
             )}
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden flex items-center space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {language.toUpperCase()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setLanguage('en')}>
+                  🇬🇧 English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('fr')}>
+                  🇫🇷 Français
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('ro')}>
+                  🇷🇴 Română
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('es')}>
+                  🇪🇸 Español
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('pl')}>
+                  🇵🇱 Polski
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Menu size={20} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <div className="flex flex-col space-y-4 mt-4">
+                  {user && navigationItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        "block px-3 py-2 rounded-md text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                        isActivePath(item.href) && "bg-accent text-accent-foreground"
+                      )}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  
+                  {user ? (
+                    <>
+                      <div className="border-t pt-4">
+                        <div className="px-3 py-2 text-sm text-gray-500">{user.email}</div>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            handleSignOut();
+                            setIsOpen(false);
+                          }}
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Sign out
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={() => {
+                        navigate('/auth');
+                        setIsOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Login
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>

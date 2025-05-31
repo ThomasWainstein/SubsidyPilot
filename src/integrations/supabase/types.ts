@@ -9,7 +9,269 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      applications: {
+        Row: {
+          created_at: string | null
+          farm_id: string
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          submitted_at: string | null
+          subsidy_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          farm_id: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          submitted_at?: string | null
+          subsidy_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          farm_id?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          submitted_at?: string | null
+          subsidy_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farm_documents: {
+        Row: {
+          category: Database["public"]["Enums"]["document_category"]
+          farm_id: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["document_category"]
+          farm_id: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["document_category"]
+          farm_id?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_documents_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farms: {
+        Row: {
+          address: string
+          apia_region: string[] | null
+          cnp_or_cui: string | null
+          created_at: string | null
+          department: string | null
+          environmental_permit: boolean | null
+          gdpr_consent: boolean
+          id: string
+          land_use_types: string[] | null
+          legal_status: string | null
+          livestock: Json | null
+          livestock_present: boolean | null
+          locality: string | null
+          name: string
+          notify_consent: boolean | null
+          own_or_lease: boolean | null
+          phone: string | null
+          preferred_language: string | null
+          subsidy_interest: string[] | null
+          tech_docs: boolean | null
+          total_hectares: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address: string
+          apia_region?: string[] | null
+          cnp_or_cui?: string | null
+          created_at?: string | null
+          department?: string | null
+          environmental_permit?: boolean | null
+          gdpr_consent?: boolean
+          id?: string
+          land_use_types?: string[] | null
+          legal_status?: string | null
+          livestock?: Json | null
+          livestock_present?: boolean | null
+          locality?: string | null
+          name: string
+          notify_consent?: boolean | null
+          own_or_lease?: boolean | null
+          phone?: string | null
+          preferred_language?: string | null
+          subsidy_interest?: string[] | null
+          tech_docs?: boolean | null
+          total_hectares?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string
+          apia_region?: string[] | null
+          cnp_or_cui?: string | null
+          created_at?: string | null
+          department?: string | null
+          environmental_permit?: boolean | null
+          gdpr_consent?: boolean
+          id?: string
+          land_use_types?: string[] | null
+          legal_status?: string | null
+          livestock?: Json | null
+          livestock_present?: boolean | null
+          locality?: string | null
+          name?: string
+          notify_consent?: boolean | null
+          own_or_lease?: boolean | null
+          phone?: string | null
+          preferred_language?: string | null
+          subsidy_interest?: string[] | null
+          tech_docs?: boolean | null
+          total_hectares?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subsidies: {
+        Row: {
+          amount_max: number | null
+          amount_min: number | null
+          categories: string[] | null
+          code: string
+          created_at: string | null
+          deadline: string | null
+          description: Json
+          eligibility_criteria: Json | null
+          funding_type: string | null
+          id: string
+          language: string[] | null
+          legal_entities: string[] | null
+          region: string[] | null
+          status: string | null
+          tags: string[] | null
+          title: Json
+          updated_at: string | null
+        }
+        Insert: {
+          amount_max?: number | null
+          amount_min?: number | null
+          categories?: string[] | null
+          code: string
+          created_at?: string | null
+          deadline?: string | null
+          description: Json
+          eligibility_criteria?: Json | null
+          funding_type?: string | null
+          id?: string
+          language?: string[] | null
+          legal_entities?: string[] | null
+          region?: string[] | null
+          status?: string | null
+          tags?: string[] | null
+          title: Json
+          updated_at?: string | null
+        }
+        Update: {
+          amount_max?: number | null
+          amount_min?: number | null
+          categories?: string[] | null
+          code?: string
+          created_at?: string | null
+          deadline?: string | null
+          description?: Json
+          eligibility_criteria?: Json | null
+          funding_type?: string | null
+          id?: string
+          language?: string[] | null
+          legal_entities?: string[] | null
+          region?: string[] | null
+          status?: string | null
+          tags?: string[] | null
+          title?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          cui: string | null
+          email: string
+          full_name: string
+          id: string
+          registration_doc_url: string | null
+          updated_at: string | null
+          user_type: Database["public"]["Enums"]["user_type"]
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          cui?: string | null
+          email: string
+          full_name: string
+          id: string
+          registration_doc_url?: string | null
+          updated_at?: string | null
+          user_type: Database["public"]["Enums"]["user_type"]
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          cui?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          registration_doc_url?: string | null
+          updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["user_type"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +280,22 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      application_status:
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+      document_category:
+        | "ownership_proof"
+        | "lease_agreement"
+        | "environmental_permit"
+        | "technical_docs"
+        | "animal_registration"
+        | "id_document"
+        | "company_certificate"
+        | "lpis_maps"
+      user_type: "farmer" | "consultant" | "organization"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +410,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      application_status: [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+      ],
+      document_category: [
+        "ownership_proof",
+        "lease_agreement",
+        "environmental_permit",
+        "technical_docs",
+        "animal_registration",
+        "id_document",
+        "company_certificate",
+        "lpis_maps",
+      ],
+      user_type: ["farmer", "consultant", "organization"],
+    },
   },
 } as const

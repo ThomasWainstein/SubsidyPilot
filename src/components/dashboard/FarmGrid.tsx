@@ -1,26 +1,25 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import FarmCard from '@/components/FarmCard';
-import { Farm } from '@/data/farms';
-import { useAlertSystem } from '@/hooks/useAlertSystem';
+
+interface Farm {
+  id: string;
+  name: string;
+  address: string;
+  department: string | null;
+  total_hectares: number | null;
+  created_at: string;
+  updated_at: string;
+  status?: string;
+  region?: string;
+  tags?: string[];
+}
 
 interface FarmGridProps {
   farms: Farm[];
 }
 
 const FarmGrid = ({ farms }: FarmGridProps) => {
-  const alertSystem = useAlertSystem();
-  
-  // Demo: Add a random alert after component mounts
-  useEffect(() => {
-    // Simulate a new alert coming in after 15 seconds
-    const timer = setTimeout(() => {
-      alertSystem.addRandomAlert();
-    }, 15000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {farms.map(farm => (
