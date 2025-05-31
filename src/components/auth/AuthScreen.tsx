@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { Upload } from 'lucide-react';
 
 const AuthScreen = () => {
   const { t } = useLanguage();
@@ -16,12 +19,16 @@ const AuthScreen = () => {
     name: '', 
     email: '', 
     password: '', 
-    confirmPassword: '' 
+    confirmPassword: '',
+    userType: '',
+    companyName: '',
+    cui: '',
+    organizationName: '',
+    legalForm: ''
   });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - in production this would connect to authentication service
     if (loginData.email && loginData.password) {
       toast({
         title: t('common.success'),
@@ -48,7 +55,7 @@ const AuthScreen = () => {
       return;
     }
     
-    if (registerData.name && registerData.email && registerData.password) {
+    if (registerData.name && registerData.email && registerData.password && registerData.userType) {
       toast({
         title: t('common.success'),
         description: 'Registration successful',
@@ -61,6 +68,111 @@ const AuthScreen = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: t('common.success'),
+        description: `File ${file.name} uploaded successfully`,
+      });
+    }
+  };
+
+  const renderConditionalFields = () => {
+    if (registerData.userType === 'consultant') {
+      return (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="company-name">Company Name</Label>
+            <Input
+              id="company-name"
+              type="text"
+              placeholder="Enter company name"
+              value={registerData.companyName}
+              onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cui">CUI (Company Registration Number)</Label>
+            <Input
+              id="cui"
+              type="text"
+              placeholder="Enter CUI"
+              value={registerData.cui}
+              onChange={(e) => setRegisterData({ ...registerData, cui: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="company-cert">Company Registration Certificate</Label>
+            <div className="flex items-center justify-center w-full">
+              <label htmlFor="company-cert" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Click to upload</span> company certificate
+                  </p>
+                  <p className="text-xs text-gray-500">PDF files only</p>
+                </div>
+                <input id="company-cert" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+              </label>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (registerData.userType === 'organization') {
+      return (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="org-name">Organization Name</Label>
+            <Input
+              id="org-name"
+              type="text"
+              placeholder="Enter organization name"
+              value={registerData.organizationName}
+              onChange={(e) => setRegisterData({ ...registerData, organizationName: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="legal-form">Legal Form</Label>
+            <Select onValueChange={(value) => setRegisterData({ ...registerData, legalForm: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select legal form" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="srl">SRL</SelectItem>
+                <SelectItem value="cooperative">Cooperative</SelectItem>
+                <SelectItem value="ngo">NGO</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="org-cert">Organization Registration Certificate</Label>
+            <div className="flex items-center justify-center w-full">
+              <label htmlFor="org-cert" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 mb-4 text-gray-500" />
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Click to upload</span> organization certificate
+                  </p>
+                  <p className="text-xs text-gray-500">PDF files only</p>
+                </div>
+                <input id="org-cert" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+              </label>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -127,7 +239,7 @@ const AuthScreen = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
+                    <Label htmlFor="register-email">Email Address</Label>
                     <Input
                       id="register-email"
                       type="email"
@@ -159,6 +271,22 @@ const AuthScreen = () => {
                       required
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user-type">User Type</Label>
+                    <Select onValueChange={(value) => setRegisterData({ ...registerData, userType: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="farmer">Farmer</SelectItem>
+                        <SelectItem value="consultant">Independent Consultant / Contractor</SelectItem>
+                        <SelectItem value="organization">Team / Organization</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {renderConditionalFields()}
+                  
                   <Button type="submit" className="w-full">
                     Register
                   </Button>
@@ -168,7 +296,7 @@ const AuthScreen = () => {
           </CardContent>
         </Card>
 
-        {/* Features Section - Keep as requested */}
+        {/* Features Section */}
         <div className="mt-12">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">

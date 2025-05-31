@@ -12,6 +12,7 @@ import EUSubsidyPortalPage from './pages/EUSubsidyPortalPage';
 import NotFound from './pages/NotFound';
 import SubsidySearchPage from './pages/SubsidySearchPage';
 import RegulationsPage from './pages/RegulationsPage';
+import NewFarmPage from './pages/NewFarmPage';
 
 function App() {
   const location = useLocation();
@@ -22,6 +23,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/new-farm" element={<NewFarmPage />} />
           <Route path="/farm/:farmId" element={<FarmProfilePage />} />
           <Route path="/farm/:farmId/apply/:subsidyId" element={<ApplicationFormPage />} />
           <Route path="/eu-subsidy-portal" element={<EUSubsidyPortalPage />} />
