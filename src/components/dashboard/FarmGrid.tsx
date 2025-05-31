@@ -10,9 +10,6 @@ interface Farm {
   total_hectares: number | null;
   created_at: string;
   updated_at: string;
-  status?: string;
-  region?: string;
-  tags?: string[];
 }
 
 interface FarmGridProps {
@@ -20,9 +17,29 @@ interface FarmGridProps {
 }
 
 const FarmGrid = ({ farms }: FarmGridProps) => {
+  // Transform farms to match FarmCard interface
+  const transformedFarms = farms.map(farm => ({
+    id: farm.id,
+    name: farm.name,
+    address: farm.address,
+    department: farm.department,
+    total_hectares: farm.total_hectares,
+    created_at: farm.created_at,
+    updated_at: farm.updated_at,
+    updatedAt: farm.updated_at,
+    size: farm.total_hectares ? `${farm.total_hectares} ha` : 'Unknown',
+    staff: 0,
+    status: 'active' as const,
+    region: farm.department || 'Unknown',
+    tags: [],
+    certifications: [],
+    irrigationMethod: 'Unknown',
+    crops: []
+  }));
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {farms.map(farm => (
+      {transformedFarms.map(farm => (
         <FarmCard key={farm.id} farm={farm} />
       ))}
     </div>

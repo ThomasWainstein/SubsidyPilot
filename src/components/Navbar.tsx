@@ -41,11 +41,11 @@ const Navbar = () => {
   };
 
   const navigationItems = [
-    { href: '/dashboard', label: t('navigation.dashboard') },
-    { href: '/subsidies', label: t('navigation.subsidies') },
-    { href: '/calendar', label: t('navigation.calendar') },
-    { href: '/eu-portal', label: t('navigation.euPortal') },
-    { href: '/regulations', label: t('navigation.regulations') },
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/subsidies', label: 'Subsidies' },
+    { href: '/calendar', label: 'Calendar' },
+    { href: '/eu-portal', label: 'EU Portal' },
+    { href: '/regulations', label: 'Regulations' },
   ];
 
   return (
