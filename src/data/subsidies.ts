@@ -3,181 +3,12 @@ import { Subsidy as SubsidyType, MultilingualText } from '@/types/subsidy';
 
 export type Subsidy = SubsidyType;
 
-export const subsidies: Subsidy[] = [
-  {
-    id: 's1',
-    code: 'FR-ORG-TG-2034',
-    name: 'Organic Transition Grant',
-    description: 'Financial support for farms transitioning to organic certification practices, covering certification costs and revenue gaps during the transition period.',
-    grant: '€30,000',
-    region: 'France',
-    matchConfidence: 87,
-    deadline: '2025-05-15',
-    fundingType: 'public',
-    status: 'open',
-    agriculturalSector: ['organic', 'crops'],
-    countryEligibility: 'France',
-  },
-  {
-    id: 's2',
-    code: 'EU-SMART-WAT-8811',
-    name: 'Smart Irrigation Upgrade',
-    description: 'Funding for installation of water-efficient irrigation systems including drip irrigation, soil moisture sensors, and automated controls.',
-    grant: '€15,000',
-    region: 'EU-wide',
-    matchConfidence: 92,
-    deadline: '2025-06-30',
-    fundingType: 'private',
-    status: 'open',
-    agriculturalSector: ['irrigation', 'technology'],
-    countryEligibility: ['France', 'Spain', 'Romania'],
-  },
-  {
-    id: 's3',
-    code: 'FR-SOIL-2251',
-    name: 'Soil Health Innovation Fund',
-    description: 'Grants for implementing advanced soil health practices including microbial treatments, low-tillage systems, and cover crop techniques.',
-    grant: '€12,000',
-    region: 'France',
-    matchConfidence: 78,
-    deadline: '2025-04-30',
-    fundingType: 'mixed',
-    status: 'open',
-    agriculturalSector: ['soil health', 'sustainable farming'],
-    countryEligibility: 'France',
-  },
-  {
-    id: 's4',
-    code: 'ES-BIO-9332',
-    name: 'Biodiversity Boost Grant',
-    description: 'Funding for measures that enhance on-farm biodiversity, including hedgerow planting, native habitat restoration, and pollinator corridors.',
-    grant: '€9,500',
-    region: 'Spain',
-    matchConfidence: 85,
-    deadline: '2025-05-31',
-    fundingType: 'public',
-    status: 'open',
-    agriculturalSector: ['biodiversity', 'conservation'],
-    countryEligibility: 'Spain',
-  },
-  {
-    id: 's5',
-    code: 'EU-CARB-CR-5400',
-    name: 'Carbon Credit Readiness Aid',
-    description: 'Support for implementing carbon measurement, reporting and verification systems to prepare farms for participation in carbon credit markets.',
-    grant: '€18,000',
-    region: 'EU-wide',
-    matchConfidence: 81,
-    deadline: '2025-07-15',
-    fundingType: 'private',
-    status: 'open',
-    agriculturalSector: ['carbon credits', 'sustainability'],
-    countryEligibility: ['France', 'Spain', 'Romania'],
-  },
-  {
-    id: 's6',
-    code: 'RO-YOUTH-AG-3100',
-    name: 'Youth Agripreneur Subsidy',
-    description: 'Financial aid for young farmers (under 35) implementing innovative agricultural technologies and sustainable farming approaches.',
-    grant: '€20,000',
-    region: 'Romania',
-    matchConfidence: 73,
-    deadline: '2025-06-15',
-    fundingType: 'public',
-    status: 'open',
-    agriculturalSector: ['youth', 'innovation'],
-    countryEligibility: 'Romania',
-  },
-  {
-    id: 's7',
-    code: 'ES-SOLAR-7810',
-    name: 'On-Farm Solar Grant',
-    description: 'Funding for installation of solar PV systems for agricultural operations, including irrigation pumps and barn/facility power.',
-    grant: '€25,000',
-    region: 'Spain',
-    matchConfidence: 94,
-    deadline: '2025-05-01',
-    fundingType: 'mixed',
-    status: 'open',
-    agriculturalSector: ['solar', 'energy'],
-    countryEligibility: 'Spain',
-  },
-  {
-    id: 's8',
-    code: 'FR-AGROF-4040',
-    name: 'Agroforestry Development',
-    description: 'Support for establishing mixed tree-crop-livestock farming models that enhance carbon sequestration and ecosystem services.',
-    grant: '€14,500',
-    region: 'France',
-    matchConfidence: 76,
-    deadline: '2025-08-15',
-    fundingType: 'public',
-    status: 'open',
-    agriculturalSector: ['agroforestry', 'sustainability'],
-    countryEligibility: 'France',
-  },
-  {
-    id: 's9',
-    code: 'EU-DIGI-TRANS-5531',
-    name: 'Digital Transition Voucher',
-    description: 'Vouchers for implementing digital farm management tools, precision agriculture GPS systems, and farm data platforms.',
-    grant: '€8,000',
-    region: 'EU-wide',
-    matchConfidence: 89,
-    deadline: '2025-04-10',
-    fundingType: 'private',
-    status: 'open',
-    agriculturalSector: ['digital', 'technology'],
-    countryEligibility: 'EU-wide',
-  },
-  {
-    id: 's10',
-    code: 'EU-GREEN-LOG-8892',
-    name: 'Green Logistics Support',
-    description: 'Funding for upgrading farm logistics to more sustainable models, including electric farm vehicles and energy-efficient cold storage.',
-    grant: '€16,000',
-    region: 'EU-wide',
-    matchConfidence: 67,
-    deadline: '2025-07-30',
-    fundingType: 'mixed',
-    status: 'open',
-    agriculturalSector: ['logistics', 'sustainability'],
-    countryEligibility: 'EU-wide',
-  },
-  {
-    id: 's11',
-    code: 'FR-FERT-7712',
-    name: 'Precision Fertilizer Grant',
-    description: 'Support for adopting variable-rate fertilizer application technology and other precision nutrient management systems.',
-    grant: '€10,500',
-    region: 'France',
-    matchConfidence: 82,
-    deadline: '2025-06-01',
-    fundingType: 'public',
-    status: 'open',
-    agriculturalSector: ['fertilizer', 'precision'],
-    countryEligibility: 'France',
-  },
-  {
-    id: 's12',
-    code: 'RO-CIRC-6120',
-    name: 'Circular Waste Incentive',
-    description: 'Funding for on-farm waste management solutions including composting systems, material reuse programs, and biogas digesters.',
-    grant: '€11,000',
-    region: 'Romania',
-    matchConfidence: 79,
-    deadline: '2025-05-20',
-    fundingType: 'private',
-    status: 'open',
-    agriculturalSector: ['waste', 'sustainability'],
-    countryEligibility: 'Romania',
-  },
-];
+// Remove hardcoded subsidies array - will be fetched from database
+export const subsidies: Subsidy[] = [];
 
+// Keep getRandomSubsidies for backward compatibility but return empty array
 export const getRandomSubsidies = (farmId: string): Subsidy[] => {
-  const shuffled = [...subsidies].sort(() => 0.5 - Math.random());
-  const count = Math.floor(Math.random() * 3) + 2;
-  return shuffled.slice(0, count);
+  return [];
 };
 
 export interface Application {
@@ -190,6 +21,7 @@ export interface Application {
   grantAmount: string;
 }
 
+// Keep applications for backward compatibility (can be migrated to database later)
 export const applications: Record<string, Application[]> = {
   '1': [
     {
@@ -337,9 +169,9 @@ const getLocalizedText = (text: string | MultilingualText): string => {
   return text.en; // Default to English
 };
 
+// Keep getApplicationForm function for backward compatibility
 export const getApplicationForm = (farmId: string, subsidyId: string): FormSection[] => {
   const farm = farms.find(f => f.id === farmId);
-  const subsidy = subsidies.find(s => s.id === subsidyId);
 
   return [
     {
@@ -447,7 +279,7 @@ export const getApplicationForm = (farmId: string, subsidyId: string): FormSecti
           id: 'projectTitle',
           label: 'Project Title',
           type: 'text',
-          value: subsidy ? getLocalizedText(subsidy.name) : 'Sustainable Farming Initiative',
+          value: 'Sustainable Farming Initiative',
         },
         {
           id: 'projectDescription',
@@ -489,7 +321,7 @@ export const getApplicationForm = (farmId: string, subsidyId: string): FormSecti
           id: 'requestedAmount',
           label: 'Requested Grant Amount',
           type: 'text',
-          value: subsidy?.grant || '€15,000',
+          value: '€15,000',
         },
         {
           id: 'totalProjectCost',

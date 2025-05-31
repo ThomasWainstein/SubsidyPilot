@@ -22,20 +22,28 @@ interface FilterState {
 
 interface SubsidyFiltersProps {
   filters: FilterState;
-  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
+  setFilters: React.Dispatch<React.SetStateAction<any>>;
   onClearFilters: () => void;
+  availableRegions?: string[];
+  availableCountries?: string[];
+  availableFundingTypes?: string[];
+  availableCategories?: string[];
 }
 
 const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({ 
   filters, 
   setFilters,
-  onClearFilters
+  onClearFilters,
+  availableRegions = [],
+  availableCountries = [],
+  availableFundingTypes = [],
+  availableCategories = []
 }) => {
   const { t } = useLanguage();
 
   // Helper function for toggling array filters
   const toggleArrayFilter = (filterName: keyof FilterState, value: string) => {
-    setFilters(prev => {
+    setFilters((prev: any) => {
       const currentArray = prev[filterName] as string[];
       if (currentArray.includes(value)) {
         return {
@@ -82,7 +90,7 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
         <div className="mb-4">
           <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.region')}</h4>
           <div className="flex flex-wrap">
-            {['France', 'Germany', 'Spain', 'Italy', 'Romania', 'Poland', 'EU-wide'].map(region => (
+            {availableRegions.map(region => (
               <FilterTagButton
                 key={region}
                 value={region}
@@ -91,6 +99,9 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
                 translationKey={region}
               />
             ))}
+            {availableRegions.length === 0 && (
+              <p className="text-sm text-gray-400">No regions available</p>
+            )}
           </div>
         </div>
         <div>
@@ -101,12 +112,12 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
               placeholder={t('search.filters.eligibleCountry')}
               className="pl-8"
               value={filters.eligibleCountry}
-              onChange={(e) => setFilters(prev => ({ ...prev, eligibleCountry: e.target.value }))}
+              onChange={(e) => setFilters((prev: any) => ({ ...prev, eligibleCountry: e.target.value }))}
             />
             {filters.eligibleCountry && (
               <button 
                 className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                onClick={() => setFilters(prev => ({ ...prev, eligibleCountry: '' }))}
+                onClick={() => setFilters((prev: any) => ({ ...prev, eligibleCountry: '' }))}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -119,22 +130,18 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
       <FilterSection title="search.filters.agriculturalSector">
         <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.farmingType')}</h4>
         <div className="flex flex-wrap">
-          {[
-            { value: 'arableCrops', key: 'search.filters.farmingType.arableCrops' },
-            { value: 'vineyards', key: 'search.filters.farmingType.vineyards' },
-            { value: 'livestock', key: 'search.filters.farmingType.livestock' },
-            { value: 'aquaculture', key: 'search.filters.farmingType.aquaculture' },
-            { value: 'mixedFarming', key: 'search.filters.farmingType.mixedFarming' },
-            { value: 'greenhouse', key: 'search.filters.farmingType.greenhouse' },
-          ].map(type => (
+          {availableCategories.map(category => (
             <FilterTagButton
-              key={type.value}
-              value={type.value}
-              active={filters.farmingTypes.includes(type.value)}
-              onClick={() => toggleArrayFilter('farmingTypes', type.value)}
-              translationKey={type.key}
+              key={category}
+              value={category}
+              active={filters.farmingTypes.includes(category)}
+              onClick={() => toggleArrayFilter('farmingTypes', category)}
+              translationKey={category}
             />
           ))}
+          {availableCategories.length === 0 && (
+            <p className="text-sm text-gray-400">No categories available</p>
+          )}
         </div>
       </FilterSection>
 
@@ -143,20 +150,19 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
         <div className="mb-4">
           <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.fundingSource')}</h4>
           <div>
-            {[
-              { value: 'public', key: 'search.filters.fundingSource.public' },
-              { value: 'private', key: 'search.filters.fundingSource.private' },
-              { value: 'hybrid', key: 'search.filters.fundingSource.hybrid' },
-            ].map(source => (
+            {availableFundingTypes.map(fundingType => (
               <FilterCheckbox
-                key={source.value}
-                id={`funding-source-${source.value}`}
-                value={source.value}
-                checked={filters.fundingSources.includes(source.value)}
-                onChange={() => toggleArrayFilter('fundingSources', source.value)}
-                translationKey={source.key}
+                key={fundingType}
+                id={`funding-source-${fundingType}`}
+                value={fundingType}
+                checked={filters.fundingSources.includes(fundingType)}
+                onChange={() => toggleArrayFilter('fundingSources', fundingType)}
+                translationKey={`search.filters.fundingSource.${fundingType}`}
               />
             ))}
+            {availableFundingTypes.length === 0 && (
+              <p className="text-sm text-gray-400">No funding types available</p>
+            )}
           </div>
         </div>
 

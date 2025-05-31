@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertTriangle, Clock, Globe, Hash, DollarSign, Percent, Plus, Link, FileText, Zap, Pin } from 'lucide-react';
-import { getRandomSubsidies, subsidies } from '@/data/subsidies';
 import { farms } from '@/data/farms';
 import { Progress } from '@/components/ui/progress';
 import FarmCardApplyButton from '@/components/FarmCardApplyButton';
@@ -16,6 +16,7 @@ import { Subsidy } from '@/types/subsidy';
 import { useToast } from '@/hooks/use-toast';
 import { getSubsidiesForFarm } from '@/utils/subsidyAttachment';
 import { getLocalizedContent } from '@/utils/language';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SubsidiesTabContentProps {
   farmId: string;
@@ -26,32 +27,84 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   const { toast } = useToast();
   const [allSubsidies, setAllSubsidies] = useState<Subsidy[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const farm = farms.find(f => f.id === farmId);
   
-  // Initialize subsidies, including those from the search engine
+  // Fetch subsidies from database and combine with custom ones
   useEffect(() => {
-    // Get base subsidies
-    const baseSubsidies = getRandomSubsidies(farmId);
-    
-    // Get custom subsidies from localStorage
-    const customSubsidiesKey = `farm_${farmId}_custom_subsidies`;
-    const customSubsidiesStr = localStorage.getItem(customSubsidiesKey);
-    const customSubsidies = customSubsidiesStr ? JSON.parse(customSubsidiesStr) : [];
-    
-    // Get subsidies attached from the search page
-    const attachedSubsidyIds = getSubsidiesForFarm(farmId);
-    const attachedSubsidies = subsidies.filter(subsidy => 
-      attachedSubsidyIds.includes(subsidy.id) && 
-      !baseSubsidies.some(s => s.id === subsidy.id)
-    ).map(subsidy => ({
-      ...subsidy,
-      source: 'search',
-      isManuallyAdded: true
-    }));
-    
-    // Combine all subsidies
-    setAllSubsidies([...baseSubsidies, ...customSubsidies, ...attachedSubsidies]);
-  }, [farmId]);
+    const fetchSubsidies = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch from database
+        const { data: dbSubsidies, error } = await supabase
+          .from('subsidies')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching subsidies:', error);
+          toast({
+            title: t('common.error'),
+            description: 'Failed to fetch subsidies from database',
+            variant: 'destructive',
+          });
+        }
+
+        // Transform database subsidies to match our Subsidy type
+        const transformedSubsidies: Subsidy[] = (dbSubsidies || []).map((dbSubsidy: any) => ({
+          id: dbSubsidy.id,
+          code: dbSubsidy.code,
+          name: dbSubsidy.title,
+          description: dbSubsidy.description,
+          grant: dbSubsidy.amount_max 
+            ? `€${dbSubsidy.amount_min || 0} - €${dbSubsidy.amount_max}`
+            : `€${dbSubsidy.amount_min || 0}`,
+          region: dbSubsidy.region || [],
+          matchConfidence: Math.floor(Math.random() * 30) + 70, // Random confidence for now
+          deadline: dbSubsidy.deadline || '2025-12-31',
+          fundingType: dbSubsidy.funding_type as 'public' | 'private' | 'mixed',
+          status: dbSubsidy.status,
+          agriculturalSector: dbSubsidy.categories,
+          countryEligibility: dbSubsidy.region,
+          source: 'static' as const,
+        }));
+        
+        // Get custom subsidies from localStorage
+        const customSubsidiesKey = `farm_${farmId}_custom_subsidies`;
+        const customSubsidiesStr = localStorage.getItem(customSubsidiesKey);
+        const customSubsidies = customSubsidiesStr ? JSON.parse(customSubsidiesStr) : [];
+        
+        // Get subsidies attached from the search page
+        const attachedSubsidyIds = getSubsidiesForFarm(farmId);
+        const attachedSubsidies = transformedSubsidies.filter(subsidy => 
+          attachedSubsidyIds.includes(subsidy.id)
+        ).map(subsidy => ({
+          ...subsidy,
+          source: 'search',
+          isManuallyAdded: true
+        }));
+        
+        // Combine all subsidies (filter out duplicates)
+        const allCombinedSubsidies = [...transformedSubsidies, ...customSubsidies, ...attachedSubsidies];
+        const uniqueSubsidies = allCombinedSubsidies.filter((subsidy, index, self) => 
+          index === self.findIndex(s => s.id === subsidy.id)
+        );
+        
+        setAllSubsidies(uniqueSubsidies);
+      } catch (error) {
+        console.error('Error in fetchSubsidies:', error);
+        toast({
+          title: t('common.error'),
+          description: 'Failed to load subsidies',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubsidies();
+  }, [farmId, t, toast]);
   
   const getFarmCountry = () => {
     if (!farm?.region) return "France";
@@ -64,7 +117,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
     return "France";
   };
   
-  let matchedSubsidies = allSubsidies.filter(subsidy => {
+  const matchedSubsidies = allSubsidies.filter(subsidy => {
     const farmCountry = getFarmCountry();
     
     // For custom subsidies with source from search, always show them
@@ -77,7 +130,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
       return subsidy.region.some(r => r.includes(farmCountry));
     }
     
-    return subsidy.region.includes(farmCountry) || subsidy.region === "EU-wide";
+    return typeof subsidy.region === 'string' && (subsidy.region.includes(farmCountry) || subsidy.region === "EU-wide");
   });
 
   const handleAddSubsidy = (newSubsidy: Subsidy) => {
@@ -88,6 +141,23 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
       description: `${newSubsidy.name} has been added successfully.`,
     });
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('subsidies.title')}</CardTitle>
+          <CardDescription>{t('subsidies.subtitle')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span className="ml-2">{t('common.loading')}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
