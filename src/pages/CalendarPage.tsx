@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import Navbar from '@/components/Navbar';
-import { useLanguage } from '@/contexts/language';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const CalendarPage: React.FC = () => {

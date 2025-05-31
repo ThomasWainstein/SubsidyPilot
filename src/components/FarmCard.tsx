@@ -1,7 +1,7 @@
 
 import { Farm } from '@/data/farms';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '@/contexts/language';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import TagBadge from './TagBadge';
 import StatusBadge from './StatusBadge';

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/language';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 

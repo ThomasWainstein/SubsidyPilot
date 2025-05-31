@@ -52,7 +52,7 @@ const App = () => (
                   }
                 />
                 <Route
-                  path="/farm/:id"
+                  path="/farm/:farmId"
                   element={
                     <ProtectedRoute>
                       <FarmProfilePage />
