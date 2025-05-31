@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, ChevronLeft, Download, FileText, Upload, X } from 'lucide-react';
 import { AgriToolExtensionSimulator } from '@/components/AgriToolExtensionSimulator';
 import { toast } from '@/components/ui/use-toast';
@@ -240,7 +240,7 @@ const EUSubsidyPortalPage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="certificationStatus">{t('form.certificationStatus')}</Label>
-                      <SelectRoot 
+                      <Select 
                         value={formData.certificationStatus} 
                         onValueChange={(value) => handleSelectChange('certificationStatus', value)}
                       >
@@ -252,7 +252,7 @@ const EUSubsidyPortalPage = () => {
                           <SelectItem value="conventional">Conventional</SelectItem>
                           <SelectItem value="carbon">Carbon+</SelectItem>
                         </SelectContent>
-                      </SelectRoot>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">

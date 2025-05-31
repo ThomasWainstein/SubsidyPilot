@@ -6,7 +6,7 @@ import { Bell, Calendar, MessageSquare, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AlertsActions = () => {
   const { t } = useLanguage();
@@ -37,7 +37,7 @@ const AlertsActions = () => {
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-medium">{t('dashboard.alertsAndActions')}</CardTitle>
           
-          <SelectRoot value={activeTab} onValueChange={setActiveTab}>
+          <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-[140px] h-8 text-xs border-gray-200">
               <SelectValue />
             </SelectTrigger>
@@ -61,7 +61,7 @@ const AlertsActions = () => {
                 </div>
               </SelectItem>
             </SelectContent>
-          </SelectRoot>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>

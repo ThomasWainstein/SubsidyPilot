@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,7 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Info, ChevronLeft, Upload, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -88,7 +89,7 @@ const ApplicationFormPage = () => {
         return <Textarea {...commonProps} rows={3} />;
       case 'select':
         return (
-          <SelectRoot value={field.value} onValueChange={(value) => updateFieldValue(section.id, field.id, value)}>
+          <Select value={field.value} onValueChange={(value) => updateFieldValue(section.id, field.id, value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
@@ -99,7 +100,7 @@ const ApplicationFormPage = () => {
                 </SelectItem>
               ))}
             </SelectContent>
-          </SelectRoot>
+          </Select>
         );
       default:
         return <Input {...commonProps} type={field.type} />;

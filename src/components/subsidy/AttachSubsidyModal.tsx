@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/language';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { farms } from '@/data/farms';
 import { Subsidy } from '@/types/subsidy';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +48,7 @@ const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
         </DialogHeader>
         <div className="py-4">
           <Label htmlFor="farm-select">{t('common.selectFarm')}</Label>
-          <SelectRoot value={selectedFarmId} onValueChange={setSelectedFarmId}>
+          <Select value={selectedFarmId} onValueChange={setSelectedFarmId}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder={t('common.selectFarm')} />
             </SelectTrigger>
@@ -59,7 +59,7 @@ const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
                 </SelectItem>
               ))}
             </SelectContent>
-          </SelectRoot>
+          </Select>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

@@ -7,7 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { SelectRoot, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { subsidies, Subsidy } from '@/data/subsidies';
 import { useToast } from '@/hooks/use-toast';
 
@@ -97,7 +97,7 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('simulation.form.country')}</FormLabel>
-                <SelectRoot value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -109,7 +109,7 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
                     <SelectItem value="Germany">Germany</SelectItem>
                     <SelectItem value="Poland">Poland</SelectItem>
                   </SelectContent>
-                </SelectRoot>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -137,7 +137,7 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('simulation.form.irrigation')}</FormLabel>
-                <SelectRoot value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -148,7 +148,7 @@ const SimulationForm = ({ onShowResults }: SimulationFormProps) => {
                     <SelectItem value="Center Pivot">Center Pivot</SelectItem>
                     <SelectItem value="Subsurface Irrigation">Subsurface Irrigation</SelectItem>
                   </SelectContent>
-                </SelectRoot>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
