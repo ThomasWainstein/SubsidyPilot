@@ -41,4 +41,5 @@ export type FormTranslationKey =
   | 'addFarm.enterValid'
   | 'addFarm.registryHelp'
   | 'addFarm.searchFarm'
-  | 'addFarm.registryId';
+  | 'addFarm.registryId'
+  | 'addFarm.startFarmCreation';
