@@ -2,7 +2,7 @@
 import React from 'react';
 import FarmCard from '@/components/FarmCard';
 
-interface Farm {
+interface DatabaseFarm {
   id: string;
   name: string;
   address: string;
@@ -12,13 +12,37 @@ interface Farm {
   updated_at: string;
 }
 
+// Simple interface for FarmCard compatibility
+interface FarmCardProps {
+  id: string;
+  name: string;
+  address: string;
+  department: string | null;
+  total_hectares: number | null;
+  created_at: string;
+  updated_at: string;
+  updatedAt: string;
+  size: string;
+  staff: number;
+  status: 'Profile Complete' | 'Subsidy In Progress' | 'Needs Update' | 'In Review';
+  region: string;
+  tags: string[];
+  certifications: string[];
+  irrigationMethod: string;
+  crops: string[];
+  revenue: string;
+  activities: string[];
+  carbonScore: number;
+  software: string[];
+}
+
 interface FarmGridProps {
-  farms: Farm[];
+  farms: DatabaseFarm[];
 }
 
 const FarmGrid = ({ farms }: FarmGridProps) => {
-  // Transform farms to match FarmCard interface
-  const transformedFarms = farms.map(farm => ({
+  // Transform database farms to match FarmCard interface with minimal required properties
+  const transformedFarms: FarmCardProps[] = farms.map(farm => ({
     id: farm.id,
     name: farm.name,
     address: farm.address,
@@ -29,7 +53,7 @@ const FarmGrid = ({ farms }: FarmGridProps) => {
     updatedAt: farm.updated_at,
     size: farm.total_hectares ? `${farm.total_hectares} ha` : 'Unknown',
     staff: 0,
-    status: 'active' as const,
+    status: 'Profile Complete' as const,
     region: farm.department || 'Unknown',
     tags: [],
     certifications: [],
