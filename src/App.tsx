@@ -13,9 +13,7 @@ import Index from "./pages/Index";
 import DashboardPage from "./pages/DashboardPage";
 import SubsidySearchPage from "./pages/SubsidySearchPage";
 import FarmProfilePage from "./pages/FarmProfilePage";
-import CalendarPage from "./pages/CalendarPage";
 import ApplicationFormPage from "./pages/ApplicationFormPage";
-import EUSubsidyPortalPage from "./pages/EUSubsidyPortalPage";
 import RegulationsPage from "./pages/RegulationsPage";
 import NewFarmPage from "./pages/NewFarmPage";
 import AuthPage from "./pages/AuthPage";
@@ -59,26 +57,10 @@ const App = () => (
                 }
               />
               <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <CalendarPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/application/:subsidyId"
                 element={
                   <ProtectedRoute>
                     <ApplicationFormPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/eu-portal"
-                element={
-                  <ProtectedRoute>
-                    <EUSubsidyPortalPage />
                   </ProtectedRoute>
                 }
               />

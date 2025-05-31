@@ -43,8 +43,6 @@ const Navbar = () => {
   const navigationItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/subsidies', label: 'Subsidies' },
-    { href: '/calendar', label: 'Calendar' },
-    { href: '/eu-portal', label: 'EU Portal' },
     { href: '/regulations', label: 'Regulations' },
   ];
 
