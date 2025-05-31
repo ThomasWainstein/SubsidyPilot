@@ -1,7 +1,7 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/language';
-import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, Calendar, BookOpen } from 'lucide-react';
+import { ChevronDown, Globe, Home, LayoutDashboard, LogOut, ChevronLeft, User, Search, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -41,6 +41,7 @@ const Navbar = () => {
   };
   
   const isHomePage = location.pathname === '/';
+  const isAuthenticated = !isHomePage; // Simple auth check - in production this would be more sophisticated
   
   const handleBack = () => {
     if (location.pathname.includes('/farm/')) {
@@ -91,43 +92,33 @@ const Navbar = () => {
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link
-                to="/"
-                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname === '/' ? 'border-green-600 text-gray-900' : ''}`}
-              >
-                <Home size={18} className="mr-2" />
-                {t('nav.home')}
-              </Link>
-              <Link
-                to="/dashboard"
-                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/dashboard') ? 'border-green-600 text-gray-900' : ''}`}
-              >
-                <LayoutDashboard size={18} className="mr-2" />
-                {t('common.dashboard')}
-              </Link>
-              <Link
-                to="/calendar"
-                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/calendar') ? 'border-green-600 text-gray-900' : ''}`}
-              >
-                <Calendar size={18} className="mr-2" />
-                {t('nav.calendar')}
-              </Link>
-              <Link
-                to="/subsidy-search"
-                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/subsidy-search') ? 'border-green-600 text-gray-900' : ''}`}
-              >
-                <Search size={18} className="mr-2" />
-                {t('nav.searchSubsidies')}
-              </Link>
-              <Link
-                to="/regulations"
-                className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/regulations') ? 'border-green-600 text-gray-900' : ''}`}
-              >
-                <BookOpen size={18} className="mr-2" />
-                {t('nav.regulations')}
-              </Link>
-            </div>
+            
+            {/* Only show navigation if authenticated (not on homepage) */}
+            {isAuthenticated && (
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <Link
+                  to="/dashboard"
+                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/dashboard') ? 'border-green-600 text-gray-900' : ''}`}
+                >
+                  <LayoutDashboard size={18} className="mr-2" />
+                  {t('common.dashboard')}
+                </Link>
+                <Link
+                  to="/subsidy-search"
+                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/subsidy-search') ? 'border-green-600 text-gray-900' : ''}`}
+                >
+                  <Search size={18} className="mr-2" />
+                  {t('nav.searchSubsidies')}
+                </Link>
+                <Link
+                  to="/regulations"
+                  className={`border-transparent text-gray-500 hover:border-green-600 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${location.pathname.includes('/regulations') ? 'border-green-600 text-gray-900' : ''}`}
+                >
+                  <BookOpen size={18} className="mr-2" />
+                  {t('nav.regulations')}
+                </Link>
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-2">            
             <DropdownMenu>
@@ -158,22 +149,25 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="ml-2">
-                  <User size={18} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>{t('nav.profile')}</DropdownMenuItem>
-                <DropdownMenuItem>{t('nav.settings')}</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <LogOut size={16} className="mr-2" />
-                  {t('nav.logout')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Only show user menu if authenticated */}
+            {isAuthenticated && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="ml-2">
+                    <User size={18} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>{t('nav.profile')}</DropdownMenuItem>
+                  <DropdownMenuItem>{t('nav.settings')}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/')}>
+                    <LogOut size={16} className="mr-2" />
+                    {t('nav.logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>

@@ -11,14 +11,10 @@ import { ProfileTabContent } from '@/components/farm/ProfileTabContent';
 import { DocumentsTabContent } from '@/components/farm/DocumentsTabContent';
 import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
-import FarmCalendarSection from '@/components/farm/FarmCalendarSection';
 
 const FarmProfilePage = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const { t } = useLanguage();
-  const [assistantInput, setAssistantInput] = useState('');
-  const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
 
   const farm = farms.find(f => f.id === farmId);
   if (!farm) return <div>Farm not found</div>;
@@ -26,21 +22,6 @@ const FarmProfilePage = () => {
   const formatRegion = (region: string) => {
     if (region.includes(',')) return region;
     return `${region}, France`;
-  };
-
-  const handleAssistantSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assistantInput.trim()) return;
-    
-    setIsTyping(true);
-    setAssistantResponse('');
-    
-    setTimeout(() => {
-      setAssistantResponse(t('farm.assistantResponse'));
-      setIsTyping(false);
-    }, 1500);
-    
-    setAssistantInput('');
   };
 
   return (
@@ -76,14 +57,7 @@ const FarmProfilePage = () => {
             </TabsList>
             
             <TabsContent value="profile">
-              <ProfileTabContent
-                farm={farm}
-                assistantInput={assistantInput}
-                setAssistantInput={setAssistantInput}
-                assistantResponse={assistantResponse}
-                isTyping={isTyping}
-                handleAssistantSubmit={handleAssistantSubmit}
-              />
+              <ProfileTabContent farm={farm} />
             </TabsContent>
             
             <TabsContent value="documents">
@@ -96,7 +70,6 @@ const FarmProfilePage = () => {
             
             <TabsContent value="applications">
               <ApplicationsTabContent farmId={farm.id} />
-              <FarmCalendarSection farmId={farm.id} farmName={farm.name} />
             </TabsContent>
           </Tabs>
         </div>

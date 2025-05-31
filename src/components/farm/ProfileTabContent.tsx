@@ -3,33 +3,19 @@ import React from 'react';
 import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Info, Send } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Farm } from '@/data/farms';
 
 interface ProfileTabContentProps {
   farm: Farm;
-  assistantInput: string;
-  setAssistantInput: (value: string) => void;
-  assistantResponse: string | null;
-  isTyping: boolean;
-  handleAssistantSubmit: (e: React.FormEvent) => void;
 }
 
-export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
-  farm,
-  assistantInput,
-  setAssistantInput,
-  assistantResponse,
-  isTyping,
-  handleAssistantSubmit
-}) => {
+export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({ farm }) => {
   const { t } = useLanguage();
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid md:grid-cols-1 gap-4">
       <Card>
         <CardHeader>
           <CardTitle>{t('farm.profileTitle')}</CardTitle>
@@ -137,82 +123,6 @@ export const ProfileTabContent: React.FC<ProfileTabContentProps> = ({
           </dl>
         </CardContent>
       </Card>
-
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('farm.assistantTitle')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAssistantSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder={t('farm.assistantPlaceholder')}
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                />
-              </div>
-
-              {(assistantResponse || isTyping) && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  {isTyping ? (
-                    <div className="typing-animation w-full">
-                      <span className="inline-block h-2 w-2 rounded-full bg-gray-500 mr-1"></span>
-                      <span className="inline-block h-2 w-2 rounded-full bg-gray-500 mr-1"></span>
-                      <span className="inline-block h-2 w-2 rounded-full bg-gray-500"></span>
-                    </div>
-                  ) : (
-                    <div className="flex">
-                      <div className="w-8 h-8 rounded-full bg-agri-green flex items-center justify-center mr-2 flex-shrink-0">
-                        <span className="text-white text-xs font-bold">A</span>
-                      </div>
-                      <p className="text-gray-700">{assistantResponse}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Button type="submit">
-                <Send size={16} className="mr-2" />
-                {t('common.send')}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('farm.regionOpportunityScore')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{t('farm.grantDensity')}</span>
-                  <span className="font-medium">{t('farm.high')}</span>
-                </div>
-                <Progress value={85} className="h-2" />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{t('farm.politicalFriendliness')}</span>
-                  <span className="font-medium">{t('farm.medium')}</span>
-                </div>
-                <Progress value={68} className="h-2" />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{t('farm.recentApprovals')}</span>
-                  <span className="font-medium">{t('farm.veryHigh')}</span>
-                </div>
-                <Progress value={92} className="h-2" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
