@@ -20,109 +20,121 @@ import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 function App() {
+  console.log('App: Rendering');
+  
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <AuthProvider>
-          <LanguageProvider>
-            <CalendarProvider>
-              <div className="min-h-screen bg-background font-sans antialiased">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/farm/new" 
-                    element={
-                      <ProtectedRoute>
-                        <NewFarmPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/farm/:farmId" 
-                    element={
-                      <ProtectedRoute>
-                        <FarmProfilePage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/farm/:farmId/edit" 
-                    element={
-                      <ProtectedRoute>
-                        <FarmEditPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/search" 
-                    element={
-                      <ProtectedRoute>
-                        <SubsidySearchPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/calendar" 
-                    element={
-                      <ProtectedRoute>
-                        <CalendarPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/application/:subsidyId" 
-                    element={
-                      <ProtectedRoute>
-                        <ApplicationFormPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/eu-portal" 
-                    element={
-                      <ProtectedRoute>
-                        <EUSubsidyPortalPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/regulations" 
-                    element={
-                      <ProtectedRoute>
-                        <RegulationsPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/admin" 
-                    element={
-                      <ProtectedRoute>
-                        <AdminPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </div>
-            </CalendarProvider>
-          </LanguageProvider>
-        </AuthProvider>
-      </Router>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AuthProvider>
+            <LanguageProvider>
+              <CalendarProvider>
+                <div className="min-h-screen bg-background font-sans antialiased">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <DashboardPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/farm/new" 
+                      element={
+                        <ProtectedRoute>
+                          <NewFarmPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/farm/:farmId" 
+                      element={
+                        <ProtectedRoute>
+                          <FarmProfilePage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/farm/:farmId/edit" 
+                      element={
+                        <ProtectedRoute>
+                          <FarmEditPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/search" 
+                      element={
+                        <ProtectedRoute>
+                          <SubsidySearchPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/calendar" 
+                      element={
+                        <ProtectedRoute>
+                          <CalendarPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/application/:subsidyId" 
+                      element={
+                        <ProtectedRoute>
+                          <ApplicationFormPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/eu-portal" 
+                      element={
+                        <ProtectedRoute>
+                          <EUSubsidyPortalPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/regulations" 
+                      element={
+                        <ProtectedRoute>
+                          <RegulationsPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/admin" 
+                      element={
+                        <ProtectedRoute>
+                          <AdminPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <Toaster />
+                </div>
+              </CalendarProvider>
+            </LanguageProvider>
+          </AuthProvider>
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
