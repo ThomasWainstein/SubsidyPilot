@@ -45,10 +45,28 @@ const FarmProfilePage = () => {
     );
   }
 
-  // Use Supabase farm if available, otherwise fallback to static farm
-  const farm = supabaseFarm || staticFarm;
+  // Transform Supabase farm to match the expected format or use static farm
+  const transformedFarm = supabaseFarm ? {
+    id: supabaseFarm.id,
+    name: supabaseFarm.name,
+    region: supabaseFarm.department || 'Unknown',
+    status: 'Profile Complete' as const,
+    updatedAt: supabaseFarm.updated_at || supabaseFarm.created_at || '',
+    // Add other required properties with defaults
+    size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Unknown',
+    staff: 0,
+    tags: supabaseFarm.matching_tags || [],
+    certifications: [],
+    irrigationMethod: 'Unknown',
+    crops: supabaseFarm.land_use_types || [],
+    revenue: '€0',
+    activities: supabaseFarm.land_use_types || [],
+    carbonScore: 0,
+    software: [],
+    address: supabaseFarm.address
+  } : staticFarm;
 
-  if (!farm) {
+  if (!transformedFarm) {
     console.error('FarmProfilePage: No farm found for ID:', farmId);
     return (
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -69,27 +87,6 @@ const FarmProfilePage = () => {
       </div>
     );
   }
-
-  // Transform Supabase farm to match the expected format if needed
-  const transformedFarm = supabaseFarm ? {
-    id: supabaseFarm.id,
-    name: supabaseFarm.name,
-    region: supabaseFarm.department || 'Unknown',
-    status: 'Profile Complete' as const,
-    updatedAt: supabaseFarm.updated_at || supabaseFarm.created_at || '',
-    // Add other required properties with defaults
-    size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Unknown',
-    staff: 0,
-    tags: supabaseFarm.matching_tags || [],
-    certifications: [],
-    irrigationMethod: 'Unknown',
-    crops: supabaseFarm.land_use_types || [],
-    revenue: '€0',
-    activities: supabaseFarm.land_use_types || [],
-    carbonScore: 0,
-    software: [],
-    address: supabaseFarm.address
-  } : farm;
 
   const formatRegion = (region: string) => {
     if (region.includes(',')) return region;
