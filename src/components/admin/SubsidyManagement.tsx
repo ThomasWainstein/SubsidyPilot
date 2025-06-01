@@ -36,7 +36,16 @@ const SubsidyManagement = () => {
 
   const onSubmit = async (data: SubsidyCreationData) => {
     try {
-      await createSubsidyMutation.mutateAsync(data);
+      // Ensure required fields are present and properly typed
+      const subsidyData = {
+        ...data,
+        code: data.code, // Ensure code is required
+        title: data.title as any, // Cast to Json type expected by Supabase
+        description: data.description as any, // Cast to Json type expected by Supabase
+        eligibility_criteria: data.eligibility_criteria as any,
+      };
+      
+      await createSubsidyMutation.mutateAsync(subsidyData);
       setShowCreateForm(false);
       form.reset();
     } catch (error) {
@@ -197,9 +206,9 @@ const SubsidyManagement = () => {
 
       <div className="grid gap-4">
         {subsidies?.map((subsidy) => {
-          const title = typeof subsidy.title === 'object' && subsidy.title
-            ? subsidy.title.en || subsidy.title.ro || Object.values(subsidy.title)[0]
-            : subsidy.title || 'Untitled';
+          // Safely handle the title type casting
+          const titleObj = subsidy.title as Record<string, any> | null;
+          const title = titleObj?.en || titleObj?.ro || Object.values(titleObj || {})[0] || 'Untitled';
 
           return (
             <Card key={subsidy.id}>

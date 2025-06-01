@@ -178,7 +178,7 @@ const DashboardPage = () => {
                   </button>
                 </div>
               ) : (
-                <FarmGrid farms={sortedFarms} />
+                <FarmGrid />
               )}
             </div>
           </div>
