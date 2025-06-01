@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
-import { VALID_DOCUMENT_CATEGORIES } from '@/utils/documentValidation';
+import { VALID_DOCUMENT_CATEGORIES, type DocumentCategory, isValidDocumentCategory } from '@/utils/documentValidation';
 import DocumentFilters from './DocumentFilters';
 import DocumentGrid from './DocumentGrid';
 import DocumentEmptyState from './DocumentEmptyState';
@@ -15,7 +15,7 @@ interface DocumentContentProps {
 
 const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: DocumentContentProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | ''>('');
 
   // Get unique valid categories from documents
   const availableCategories = useMemo(() => {
@@ -23,7 +23,7 @@ const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: Do
     
     const documentCategories = Array.from(new Set(documents.map(doc => doc.category)));
     // Only return categories that are both in documents and in our valid list
-    return documentCategories.filter(cat => VALID_DOCUMENT_CATEGORIES.includes(cat)).sort();
+    return documentCategories.filter((cat): cat is DocumentCategory => isValidDocumentCategory(cat)).sort();
   }, [documents]);
 
   // Filter documents based on search and category
@@ -47,7 +47,9 @@ const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: Do
   // Safe category change handler
   const handleCategoryChange = (category: string) => {
     // Only allow valid categories or empty string for clearing
-    if (category === '' || VALID_DOCUMENT_CATEGORIES.includes(category)) {
+    if (category === '') {
+      setSelectedCategory('');
+    } else if (isValidDocumentCategory(category)) {
       setSelectedCategory(category);
     } else {
       console.warn('Attempted to set invalid category:', category);
@@ -55,7 +57,7 @@ const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: Do
     }
   };
 
-  const hasActiveFilters = searchTerm || selectedCategory;
+  const hasActiveFilters = Boolean(searchTerm || selectedCategory);
 
   return (
     <>
