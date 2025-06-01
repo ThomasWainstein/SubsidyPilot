@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ import RegulationsPage from '@/pages/RegulationsPage';
 import AdminPage from '@/pages/AdminPage';
 import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
 
 const queryClient = new QueryClient();

@@ -40,7 +40,9 @@ const FarmEditForm = ({ farmId }: FarmEditFormProps) => {
       own_or_lease: farm?.own_or_lease || false,
       land_use_types: farm?.land_use_types || [],
       livestock_present: farm?.livestock_present || false,
-      livestock: farm?.livestock || {},
+      livestock: (farm?.livestock && typeof farm.livestock === 'object' && !Array.isArray(farm.livestock)) 
+        ? farm.livestock as { [x: string]: any } 
+        : {},
       irrigation_method: farm?.irrigation_method || '',
       certifications: farm?.certifications || [],
       environmental_permit: farm?.environmental_permit || false,
@@ -68,7 +70,9 @@ const FarmEditForm = ({ farmId }: FarmEditFormProps) => {
         own_or_lease: farm.own_or_lease || false,
         land_use_types: farm.land_use_types || [],
         livestock_present: farm.livestock_present || false,
-        livestock: farm.livestock || {},
+        livestock: (farm.livestock && typeof farm.livestock === 'object' && !Array.isArray(farm.livestock)) 
+          ? farm.livestock as { [x: string]: any } 
+          : {},
         irrigation_method: farm.irrigation_method || '',
         certifications: farm.certifications || [],
         environmental_permit: farm.environmental_permit || false,

@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const countries = [
@@ -29,6 +30,35 @@ export const countries = [
   { code: 'SE', name: 'Sweden' },
   { code: 'CY', name: 'Cyprus' },
 ] as const;
+
+export const departmentsByCountry: Record<string, string[]> = {
+  'RO': [
+    'alba', 'arad', 'arges', 'bacau', 'bihor', 'bistrita-nasaud', 'botosani', 'brasov',
+    'braila', 'buzau', 'caras-severin', 'calarasi', 'cluj', 'constanta', 'covasna',
+    'dambovita', 'dolj', 'galati', 'giurgiu', 'gorj', 'harghita', 'hunedoara',
+    'ialomita', 'iasi', 'ilfov', 'maramures', 'mehedinti', 'mures', 'neamt',
+    'olt', 'prahova', 'satu-mare', 'salaj', 'sibiu', 'suceava', 'teleorman',
+    'timis', 'tulcea', 'vaslui', 'valcea', 'vrancea', 'bucuresti'
+  ],
+  'FR': [
+    'ain', 'aisne', 'allier', 'alpes-de-haute-provence', 'hautes-alpes', 'alpes-maritimes',
+    'ardeche', 'ardennes', 'ariege', 'aube', 'aude', 'aveyron', 'bouches-du-rhone',
+    'calvados', 'cantal', 'charente', 'charente-maritime', 'cher', 'correze',
+    'corse-du-sud', 'haute-corse', 'cote-dor', 'cotes-darmor', 'creuse', 'dordogne',
+    'doubs', 'drome', 'eure', 'eure-et-loir', 'finistere', 'gard', 'haute-garonne',
+    'gers', 'gironde', 'herault', 'ille-et-vilaine', 'indre', 'indre-et-loire',
+    'isere', 'jura', 'landes', 'loir-et-cher', 'loire', 'haute-loire', 'loire-atlantique',
+    'loiret', 'lot', 'lot-et-garonne', 'lozere', 'maine-et-loire', 'manche', 'marne',
+    'haute-marne', 'mayenne', 'meurthe-et-moselle', 'meuse', 'morbihan', 'moselle',
+    'nievre', 'nord', 'oise', 'orne', 'pas-de-calais', 'puy-de-dome', 'pyrenees-atlantiques',
+    'hautes-pyrenees', 'pyrenees-orientales', 'bas-rhin', 'haut-rhin', 'rhone',
+    'haute-saone', 'saone-et-loire', 'sarthe', 'savoie', 'haute-savoie', 'paris',
+    'seine-maritime', 'seine-et-marne', 'yvelines', 'deux-sevres', 'somme', 'tarn',
+    'tarn-et-garonne', 'var', 'vaucluse', 'vendee', 'vienne', 'haute-vienne', 'vosges',
+    'yonne', 'territoire-de-belfort', 'essonne', 'hauts-de-seine', 'seine-saint-denis',
+    'val-de-marne', 'val-doise'
+  ]
+};
 
 export interface ValidationResult {
   isValid: boolean;
@@ -71,6 +101,42 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
+
+export const farmCreationSchema = z.object({
+  farmName: z.string().min(1, 'Farm name is required'),
+  farmAddress: z.string().min(1, 'Farm address is required'),
+  legalStatus: z.string().min(1, 'Legal status is required'),
+  cnpOrCui: z.string().min(1, 'CNP or CUI is required'),
+  country: z.string().min(1, 'Country is required'),
+  department: z.string().optional(),
+  locality: z.string().optional(),
+  apiaRegions: z.array(z.string()).default([]),
+  landOwnership: z.string().optional(),
+  totalArea: z.string().optional(),
+  landUseTypes: z.array(z.string()).min(1, 'At least one land use type is required'),
+  otherLandUse: z.string().optional(),
+  hasLivestock: z.boolean().default(false),
+  animalTypes: z.record(z.string()).default({}),
+  hasEnvironmentalPermits: z.boolean().default(false),
+  certifications: z.array(z.string()).default([]),
+  hasTechnicalDocs: z.boolean().default(false),
+  subsidyInterests: z.array(z.string()).default([]),
+  otherSubsidyInterest: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  preferredLanguage: z.string().optional(),
+  gdprConsent: z.boolean().refine(val => val === true, 'GDPR consent is required'),
+  notificationConsent: z.boolean().default(false),
+  revenue: z.string().optional(),
+  staff: z.string().optional(),
+  irrigationMethod: z.string().optional(),
+  software: z.array(z.string()).default([]),
+  uploadedFiles: z.record(z.object({
+    filename: z.string(),
+    uploaded: z.boolean()
+  })).default({}),
+});
+
+export type FarmCreationData = z.infer<typeof farmCreationSchema>;
 
 export const farmEditSchema = z.object({
   name: z.string().min(1, 'Farm name is required'),
