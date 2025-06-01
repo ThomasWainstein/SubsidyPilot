@@ -123,12 +123,15 @@ export type Database = {
         Row: {
           address: string
           apia_region: string[] | null
+          certifications: string[] | null
           cnp_or_cui: string | null
+          country: string | null
           created_at: string | null
           department: string | null
           environmental_permit: boolean | null
           gdpr_consent: boolean
           id: string
+          irrigation_method: string | null
           land_use_types: string[] | null
           legal_status: string | null
           livestock: Json | null
@@ -140,6 +143,9 @@ export type Database = {
           own_or_lease: boolean | null
           phone: string | null
           preferred_language: string | null
+          revenue: string | null
+          software_used: string[] | null
+          staff_count: number | null
           subsidy_interest: string[] | null
           tech_docs: boolean | null
           total_hectares: number | null
@@ -149,12 +155,15 @@ export type Database = {
         Insert: {
           address: string
           apia_region?: string[] | null
+          certifications?: string[] | null
           cnp_or_cui?: string | null
+          country?: string | null
           created_at?: string | null
           department?: string | null
           environmental_permit?: boolean | null
           gdpr_consent?: boolean
           id?: string
+          irrigation_method?: string | null
           land_use_types?: string[] | null
           legal_status?: string | null
           livestock?: Json | null
@@ -166,6 +175,9 @@ export type Database = {
           own_or_lease?: boolean | null
           phone?: string | null
           preferred_language?: string | null
+          revenue?: string | null
+          software_used?: string[] | null
+          staff_count?: number | null
           subsidy_interest?: string[] | null
           tech_docs?: boolean | null
           total_hectares?: number | null
@@ -175,12 +187,15 @@ export type Database = {
         Update: {
           address?: string
           apia_region?: string[] | null
+          certifications?: string[] | null
           cnp_or_cui?: string | null
+          country?: string | null
           created_at?: string | null
           department?: string | null
           environmental_permit?: boolean | null
           gdpr_consent?: boolean
           id?: string
+          irrigation_method?: string | null
           land_use_types?: string[] | null
           legal_status?: string | null
           livestock?: Json | null
@@ -192,6 +207,9 @@ export type Database = {
           own_or_lease?: boolean | null
           phone?: string | null
           preferred_language?: string | null
+          revenue?: string | null
+          software_used?: string[] | null
+          staff_count?: number | null
           subsidy_interest?: string[] | null
           tech_docs?: boolean | null
           total_hectares?: number | null

@@ -52,29 +52,29 @@ const FarmProfilePage = () => {
   const transformedFarm = supabaseFarm ? {
     id: supabaseFarm.id,
     name: supabaseFarm.name,
-    region: (supabaseFarm as any).country ? 
-      `${supabaseFarm.department || 'Unknown'}, ${countries.find(c => c.code === (supabaseFarm as any).country)?.name || (supabaseFarm as any).country}` : 
+    region: supabaseFarm.country ? 
+      `${supabaseFarm.department || 'Unknown'}, ${countries.find(c => c.code === supabaseFarm.country)?.name || supabaseFarm.country}` : 
       supabaseFarm.department || 'Unknown',
     status: 'Profile Complete' as const,
     updatedAt: supabaseFarm.updated_at ? new Date(supabaseFarm.updated_at).toLocaleDateString() : 
                 supabaseFarm.created_at ? new Date(supabaseFarm.created_at).toLocaleDateString() : '',
-    // Add other required properties with defaults
+    // Add other required properties with proper types
     size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Not specified',
-    staff: (supabaseFarm as any).staff_count || 0,
+    staff: supabaseFarm.staff_count || 0,
     tags: supabaseFarm.matching_tags || [],
-    certifications: (supabaseFarm as any).certifications || [],
-    irrigationMethod: (supabaseFarm as any).irrigation_method || 'Not specified',
+    certifications: supabaseFarm.certifications || [],
+    irrigationMethod: supabaseFarm.irrigation_method || 'Not specified',
     crops: supabaseFarm.land_use_types || [],
-    revenue: (supabaseFarm as any).revenue || 'Not specified',
+    revenue: supabaseFarm.revenue || 'Not specified',
     activities: supabaseFarm.land_use_types || [],
     carbonScore: 0, // This would need to be calculated
-    software: (supabaseFarm as any).software_used || [],
+    software: supabaseFarm.software_used || [],
     address: supabaseFarm.address,
     // Additional farm details
     yearEstablished: supabaseFarm.created_at ? new Date(supabaseFarm.created_at).getFullYear() : undefined,
     legalStatus: supabaseFarm.legal_status,
     cnpOrCui: supabaseFarm.cnp_or_cui,
-    country: (supabaseFarm as any).country,
+    country: supabaseFarm.country,
     department: supabaseFarm.department,
     locality: supabaseFarm.locality,
     landOwnership: supabaseFarm.own_or_lease ? 'Own' : 'Lease',
