@@ -12,7 +12,8 @@ export interface DropzoneUploadProps {
   description?: React.ReactNode;
   accept?: Record<string, string[]>;
   maxFiles?: number;
-  onUploadSuccess?: (file?: any) => void;
+  onUploadSuccess?: (files?: File[]) => void;
+  disabled?: boolean;
 }
 
 export const DropzoneUpload = ({ 
@@ -20,10 +21,12 @@ export const DropzoneUpload = ({
   description, 
   accept = { 
     'application/pdf': ['.pdf'], 
-    'application/msword': ['.doc', '.docx'] 
+    'application/msword': ['.doc', '.docx'],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
   },
-  maxFiles = 1,
-  onUploadSuccess
+  maxFiles = 5,
+  onUploadSuccess,
+  disabled = false
 }: DropzoneUploadProps) => {
   const { t } = useLanguage();
   const [files, setFiles] = useState<File[]>([]);
@@ -48,6 +51,7 @@ export const DropzoneUpload = ({
     onDrop,
     accept,
     maxFiles: maxFiles - files.length,
+    disabled: disabled || uploading,
   });
   
   const removeFile = (index: number) => {
@@ -85,18 +89,11 @@ export const DropzoneUpload = ({
         });
         
         if (onUploadSuccess) {
-          // Call with mock document data
-          const mockDoc = {
-            id: `doc-${Date.now()}`,
-            name: files[0].name,
-            type: files[0].name.endsWith('.pdf') ? 'PDF' : 'DOC',
-            tag: 'Farm Document',
-            uploadedAt: new Date().toLocaleDateString()
-          };
-          onUploadSuccess(mockDoc);
+          onUploadSuccess(files);
         }
         
         setFiles([]);
+        setUploadProgress(0);
       }, 500);
     }, 3000);
   };
@@ -109,7 +106,7 @@ export const DropzoneUpload = ({
           isDragActive 
             ? 'border-green-500 bg-green-50 dark:bg-green-950/20' 
             : 'border-gray-300 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-600'
-        }`}
+        } ${(disabled || uploading) ? 'pointer-events-none opacity-50' : ''}`}
       >
         <input {...getInputProps()} />
         <div className="flex flex-col items-center justify-center space-y-2">
@@ -120,7 +117,7 @@ export const DropzoneUpload = ({
               {description || 'Drag & drop files here, or click to select files'}
             </p>
           </div>
-          <Button type="button" size="sm" className="mt-2">
+          <Button type="button" size="sm" className="mt-2" disabled={disabled || uploading}>
             {t('common.upload')}
           </Button>
         </div>
@@ -169,6 +166,7 @@ export const DropzoneUpload = ({
             <Button 
               onClick={uploadFiles} 
               className="w-full"
+              disabled={disabled}
             >
               {t('common.uploadNow')}
             </Button>
