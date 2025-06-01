@@ -356,6 +356,12 @@ export type Database = {
         | "id_document"
         | "company_certificate"
         | "lpis_maps"
+        | "legal"
+        | "financial"
+        | "environmental"
+        | "technical"
+        | "certification"
+        | "other"
       user_type: "farmer" | "consultant" | "organization"
     }
     CompositeTypes: {
@@ -488,6 +494,12 @@ export const Constants = {
         "id_document",
         "company_certificate",
         "lpis_maps",
+        "legal",
+        "financial",
+        "environmental",
+        "technical",
+        "certification",
+        "other",
       ],
       user_type: ["farmer", "consultant", "organization"],
     },

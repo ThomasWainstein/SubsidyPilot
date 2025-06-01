@@ -9,6 +9,9 @@ interface UseDocumentUploadProps {
   onSuccess?: () => void;
 }
 
+// Valid document categories that match the database enum
+const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
+
 export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<string>('');
@@ -52,10 +55,38 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
   };
 
   const uploadFiles = async () => {
-    if (selectedFiles.length === 0 || !category) {
+    // Validate inputs
+    if (selectedFiles.length === 0) {
       toast({
-        title: 'Missing information',
-        description: 'Please select files and a category before uploading.',
+        title: 'No files selected',
+        description: 'Please select at least one file to upload.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!category || category.trim() === '') {
+      toast({
+        title: 'Category required',
+        description: 'Please select a document category.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!VALID_CATEGORIES.includes(category)) {
+      toast({
+        title: 'Invalid category',
+        description: 'Please select a valid document category.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!farmId || farmId.trim() === '') {
+      toast({
+        title: 'Farm ID missing',
+        description: 'Unable to upload documents - farm ID is required.',
         variant: 'destructive',
       });
       return;
@@ -94,7 +125,12 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
   return {
     selectedFiles,
     category,
-    setCategory,
+    setCategory: (newCategory: string) => {
+      // Only set valid categories
+      if (newCategory === '' || VALID_CATEGORIES.includes(newCategory)) {
+        setCategory(newCategory);
+      }
+    },
     uploadProgress,
     uploadedFiles,
     isUploading: uploadMutation.isPending,

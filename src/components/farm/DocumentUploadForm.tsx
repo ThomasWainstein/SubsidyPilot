@@ -22,7 +22,7 @@ const DOCUMENT_CATEGORIES = [
   { value: 'technical', label: 'Technical Documentation' },
   { value: 'certification', label: 'Certifications' },
   { value: 'other', label: 'Other' },
-];
+].filter(cat => cat.value && cat.value.trim() !== ''); // Filter out any empty values
 
 const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps) => {
   const {
@@ -37,6 +37,17 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     uploadFiles,
   } = useDocumentUpload({ farmId, onSuccess: onUploadSuccess });
 
+  // Validate category before setting it
+  const handleCategoryChange = (value: string) => {
+    if (value && value.trim() !== '') {
+      setCategory(value);
+    }
+  };
+
+  // Check if category is valid for upload
+  const isCategoryValid = category && category.trim() !== '' && 
+    DOCUMENT_CATEGORIES.some(cat => cat.value === category);
+
   return (
     <Card>
       <CardHeader>
@@ -49,7 +60,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
         {/* Category Selection */}
         <div className="space-y-2">
           <Label htmlFor="category">Document Category</Label>
-          <Select value={category} onValueChange={setCategory} disabled={isUploading}>
+          <Select value={category || ''} onValueChange={handleCategoryChange} disabled={isUploading}>
             <SelectTrigger id="category" aria-label="Select document category">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
@@ -61,6 +72,9 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
               ))}
             </SelectContent>
           </Select>
+          {category && !isCategoryValid && (
+            <p className="text-sm text-red-600">Please select a valid category</p>
+          )}
         </div>
 
         {/* File Drop Zone */}
@@ -84,7 +98,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
         {/* Upload Button */}
         <Button
           onClick={uploadFiles}
-          disabled={selectedFiles.length === 0 || !category || isUploading}
+          disabled={selectedFiles.length === 0 || !isCategoryValid || isUploading}
           className="w-full"
           size="lg"
           aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
