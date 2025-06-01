@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,9 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { Upload } from 'lucide-react';
 import { useCreateFarm } from '@/hooks/useFarms';
-import { farmCreationSchema, type FarmCreationData } from '@/schemas/farmValidation';
+import { farmCreationSchema, type FarmCreationData, standardRegions } from '@/schemas/farmValidation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from '@/hooks/use-toast';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
@@ -48,11 +50,19 @@ const FarmCreationForm = () => {
 
   const onSubmit = async (data: FarmCreationData) => {
     if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create a farm',
+        variant: 'destructive',
+      });
       return;
     }
 
     try {
-      await createFarmMutation.mutateAsync({
+      console.log('Creating farm with data:', data);
+      console.log('User ID:', user.id);
+      
+      const farmData = {
         name: data.farmName,
         address: data.farmAddress,
         legal_status: data.legalStatus,
@@ -71,11 +81,26 @@ const FarmCreationForm = () => {
         preferred_language: data.preferredLanguage,
         gdpr_consent: data.gdprConsent,
         notify_consent: data.notificationConsent,
+      };
+
+      console.log('Submitting farm data to Supabase:', farmData);
+      const createdFarm = await createFarmMutation.mutateAsync(farmData);
+      console.log('Farm created successfully:', createdFarm);
+      
+      toast({
+        title: 'Success',
+        description: 'Farm profile created successfully!',
       });
       
-      navigate('/dashboard');
-    } catch (error) {
-      // Error handling is done in the hook
+      // Navigate to the specific farm page instead of dashboard
+      navigate(`/farm/${createdFarm.id}`);
+    } catch (error: any) {
+      console.error('Error creating farm:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to create farm: ${error.message}`,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -84,6 +109,10 @@ const FarmCreationForm = () => {
     if (file) {
       // TODO: Implement file upload to Supabase Storage
       console.log(`File selected for ${fieldName}:`, file.name);
+      toast({
+        title: 'File Upload',
+        description: `File ${file.name} selected for ${fieldName}. Upload functionality will be implemented.`,
+      });
     }
   };
 
@@ -211,17 +240,17 @@ const FarmCreationForm = () => {
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department">Department *</Label>
                   <Select onValueChange={(value) => form.setValue('department', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="alba">Alba</SelectItem>
-                      <SelectItem value="bucharest">Bucharest</SelectItem>
-                      <SelectItem value="cluj">Cluj</SelectItem>
-                      <SelectItem value="constanta">Constanta</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {standardRegions.map((region) => (
+                        <SelectItem key={region} value={region}>
+                          {region.charAt(0).toUpperCase() + region.slice(1).replace('-', ' ')}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -230,7 +259,7 @@ const FarmCreationForm = () => {
                   <Input
                     id="locality"
                     type="text"
-                    placeholder="Enter locality"
+                    placeholder="Enter locality (free text)"
                     {...form.register('locality')}
                   />
                 </div>
@@ -262,7 +291,7 @@ const FarmCreationForm = () => {
           {/* Section 3: Land Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 3: Land Info</CardTitle>
+              <CardTitle>Section 3: Types of Crops / Land Use</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -290,12 +319,12 @@ const FarmCreationForm = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Types of crops/land use (select all that apply)</Label>
+                <Label>Types of crops/land use (select all that apply) *</Label>
                 <div className="grid md:grid-cols-3 gap-2">
                   {[
-                    'Cereals', 'Vegetables', 'Vineyards', 'Fruit Orchards', 
-                    'Pasture/Grassland', 'Greenhouse/Protected Area', 'Industrial Crops',
-                    'Aromatic/Medicinal Plants', 'Fallow Land', 'Mixed Use', 'Forestry Plots', 'Other'
+                    'cereals', 'vegetables', 'vineyards', 'fruit_orchards', 
+                    'pasture_grassland', 'greenhouse_protected', 'industrial_crops',
+                    'aromatic_medicinal_plants', 'fallow_land', 'mixed_use', 'forestry_plots'
                   ].map((landUse) => (
                     <div key={landUse} className="flex items-center space-x-2">
                       <Checkbox
@@ -305,10 +334,30 @@ const FarmCreationForm = () => {
                           handleCheckboxArrayChange(form.getValues('landUseTypes'), landUse, checked as boolean, 'landUseTypes')
                         }
                       />
-                      <Label htmlFor={landUse} className="text-sm">{landUse}</Label>
+                      <Label htmlFor={landUse} className="text-sm">
+                        {landUse.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      </Label>
                     </div>
                   ))}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="other"
+                      checked={form.getValues('landUseTypes').includes('other')}
+                      onCheckedChange={(checked) => 
+                        handleCheckboxArrayChange(form.getValues('landUseTypes'), 'other', checked as boolean, 'landUseTypes')
+                      }
+                    />
+                    <Label htmlFor="other" className="text-sm">Other</Label>
+                  </div>
                 </div>
+                {form.getValues('landUseTypes').includes('other') && (
+                  <div className="mt-2">
+                    <Input
+                      placeholder="Please specify other land use type"
+                      {...form.register('otherLandUse')}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -360,9 +409,9 @@ const FarmCreationForm = () => {
                 <div className="space-y-4">
                   <Label>Animal Types and Quantities</Label>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {['Cattle', 'Sheep', 'Goats', 'Swine', 'Poultry', 'Horses', 'Rabbits', 'Bees'].map((animal) => (
+                    {['cattle', 'sheep', 'goats', 'swine', 'poultry', 'horses', 'rabbits', 'bees'].map((animal) => (
                       <div key={animal} className="flex items-center space-x-2">
-                        <Label className="w-20">{animal}:</Label>
+                        <Label className="w-20 capitalize">{animal}:</Label>
                         <Input
                           type="number"
                           placeholder="Quantity"
@@ -371,6 +420,15 @@ const FarmCreationForm = () => {
                         />
                       </div>
                     ))}
+                    <div className="flex items-center space-x-2">
+                      <Label className="w-20">Other:</Label>
+                      <Input
+                        type="text"
+                        placeholder="Specify type and quantity"
+                        value={form.getValues('animalTypes')['other'] || ''}
+                        onChange={(e) => handleAnimalTypeChange('other', e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -405,33 +463,44 @@ const FarmCreationForm = () => {
                 <Label htmlFor="env-permits">Do you hold any environmental permits?</Label>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              {form.getValues('hasEnvironmentalPermits') && (
                 <div className="space-y-2">
-                  <Label>Upload Environmental Documents (PDF - optional)</Label>
+                  <Label>Upload Environmental Permits (PDF)</Label>
                   <div className="flex items-center justify-center w-full">
                     <label htmlFor="env-docs" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                       <div className="flex flex-col items-center justify-center pt-2 pb-2">
                         <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload env. docs</p>
+                        <p className="text-sm text-gray-500">Upload environmental permits</p>
                       </div>
                       <input id="env-docs" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('envDocs')} />
                     </label>
                   </div>
                 </div>
+              )}
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="tech-docs"
+                  checked={form.watch('hasTechnicalDocs') || false}
+                  onCheckedChange={(checked) => form.setValue('hasTechnicalDocs' as any, checked as boolean)}
+                />
+                <Label htmlFor="tech-docs">Do you have technical project documentation?</Label>
+              </div>
+
+              {form.watch('hasTechnicalDocs') && (
                 <div className="space-y-2">
-                  <Label>Upload Technical Project Documentation (PDF - optional)</Label>
+                  <Label>Upload Technical Project Documentation (PDF)</Label>
                   <div className="flex items-center justify-center w-full">
-                    <label htmlFor="tech-docs" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                    <label htmlFor="tech-docs-upload" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                       <div className="flex flex-col items-center justify-center pt-2 pb-2">
                         <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload tech docs</p>
+                        <p className="text-sm text-gray-500">Upload technical docs</p>
                       </div>
-                      <input id="tech-docs" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('techDocs')} />
+                      <input id="tech-docs-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('techDocs')} />
                     </label>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

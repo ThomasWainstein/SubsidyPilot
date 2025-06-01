@@ -17,6 +17,7 @@ export const farmCreationSchema = z.object({
   landOwnership: z.string().optional(),
   totalArea: z.string().optional(),
   landUseTypes: z.array(z.string()).default([]),
+  otherLandUse: z.string().optional(),
   
   // Section 4: Livestock
   hasLivestock: z.boolean().default(false),
@@ -24,6 +25,7 @@ export const farmCreationSchema = z.object({
   
   // Section 5: Environmental & Technical
   hasEnvironmentalPermits: z.boolean().default(false),
+  hasTechnicalDocs: z.boolean().default(false),
   
   // Section 6: Subsidy Interests
   subsidyInterests: z.array(z.string()).default([]),

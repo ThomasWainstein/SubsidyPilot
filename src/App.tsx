@@ -17,6 +17,7 @@ import ApplicationFormPage from "./pages/ApplicationFormPage";
 import RegulationsPage from "./pages/RegulationsPage";
 import NewFarmPage from "./pages/NewFarmPage";
 import AuthPage from "./pages/AuthPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <NewFarmPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
                   </ProtectedRoute>
                 }
               />

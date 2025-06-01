@@ -15,7 +15,12 @@ export const useFarms = () => {
   return useQuery({
     queryKey: ['farms', user?.id],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.log('No user found for farms query');
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('Fetching farms for user:', user.id);
       
       const { data, error } = await supabase
         .from('farms')
@@ -23,7 +28,12 @@ export const useFarms = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching farms:', error);
+        throw error;
+      }
+      
+      console.log('Fetched farms:', data);
       return data as Farm[];
     },
     enabled: !!user,
@@ -36,21 +46,37 @@ export const useCreateFarm = () => {
 
   return useMutation({
     mutationFn: async (farmData: Omit<FarmInsert, 'user_id'>) => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.error('No user found for farm creation');
+        throw new Error('User not authenticated');
+      }
+
+      console.log('Creating farm for user:', user.id);
+      console.log('Farm data being inserted:', farmData);
+
+      const insertData = {
+        ...farmData,
+        user_id: user.id,
+      };
+
+      console.log('Final insert data:', insertData);
 
       const { data, error } = await supabase
         .from('farms')
-        .insert({
-          ...farmData,
-          user_id: user.id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating farm:', error);
+        throw error;
+      }
+      
+      console.log('Farm created successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Farm creation successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['farms'] });
       toast({
         title: 'Success',
@@ -58,6 +84,7 @@ export const useCreateFarm = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Farm creation failed:', error);
       toast({
         title: 'Error',
         description: `Failed to create farm: ${error.message}`,
@@ -72,6 +99,8 @@ export const useUpdateFarm = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: FarmUpdate & { id: string }) => {
+      console.log('Updating farm:', id, updates);
+      
       const { data, error } = await supabase
         .from('farms')
         .update(updates)
@@ -79,7 +108,12 @@ export const useUpdateFarm = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating farm:', error);
+        throw error;
+      }
+      
+      console.log('Farm updated successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -90,6 +124,7 @@ export const useUpdateFarm = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Farm update failed:', error);
       toast({
         title: 'Error',
         description: `Failed to update farm: ${error.message}`,
@@ -103,13 +138,20 @@ export const useFarm = (farmId: string) => {
   return useQuery({
     queryKey: ['farm', farmId],
     queryFn: async () => {
+      console.log('Fetching single farm:', farmId);
+      
       const { data, error } = await supabase
         .from('farms')
         .select('*')
         .eq('id', farmId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching farm:', error);
+        throw error;
+      }
+      
+      console.log('Fetched farm:', data);
       return data as Farm;
     },
     enabled: !!farmId,
