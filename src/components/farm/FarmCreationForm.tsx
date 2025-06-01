@@ -39,6 +39,7 @@ const FarmCreationForm = () => {
       hasLivestock: false,
       animalTypes: {},
       hasEnvironmentalPermits: false,
+      hasTechnicalDocs: false,
       subsidyInterests: [],
       otherSubsidyInterest: '',
       mobileNumber: '',
@@ -76,6 +77,7 @@ const FarmCreationForm = () => {
         livestock_present: data.hasLivestock,
         livestock: data.hasLivestock ? data.animalTypes : null,
         environmental_permit: data.hasEnvironmentalPermits,
+        tech_docs: data.hasTechnicalDocs,
         subsidy_interest: [...data.subsidyInterests, data.otherSubsidyInterest].filter(Boolean),
         phone: data.mobileNumber,
         preferred_language: data.preferredLanguage,
@@ -92,8 +94,10 @@ const FarmCreationForm = () => {
         description: 'Farm profile created successfully!',
       });
       
-      // Navigate to the specific farm page instead of dashboard
-      navigate(`/farm/${createdFarm.id}`);
+      // Use setTimeout to ensure the toast shows before navigation
+      setTimeout(() => {
+        navigate(`/farm/${createdFarm.id}`, { replace: true });
+      }, 100);
     } catch (error: any) {
       console.error('Error creating farm:', error);
       toast({
@@ -107,7 +111,6 @@ const FarmCreationForm = () => {
   const handleFileUpload = (fieldName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // TODO: Implement file upload to Supabase Storage
       console.log(`File selected for ${fieldName}:`, file.name);
       toast({
         title: 'File Upload',
@@ -116,10 +119,17 @@ const FarmCreationForm = () => {
     }
   };
 
-  const handleCheckboxArrayChange = (array: string[], item: string, checked: boolean, field: keyof FarmCreationData) => {
-    const newArray = checked 
-      ? [...array, item]
-      : array.filter(i => i !== item);
+  const handleCheckboxArrayChange = (field: keyof FarmCreationData, item: string, checked: boolean) => {
+    const currentArray = form.getValues(field as any) as string[] || [];
+    let newArray: string[];
+    
+    if (checked) {
+      // Add item if not already present
+      newArray = currentArray.includes(item) ? currentArray : [...currentArray, item];
+    } else {
+      // Remove item
+      newArray = currentArray.filter(i => i !== item);
+    }
     
     form.setValue(field as any, newArray);
   };
@@ -275,9 +285,9 @@ const FarmCreationForm = () => {
                     <div key={region} className="flex items-center space-x-2">
                       <Checkbox
                         id={region}
-                        checked={form.getValues('apiaRegions').includes(region)}
+                        checked={form.watch('apiaRegions')?.includes(region) || false}
                         onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange(form.getValues('apiaRegions'), region, checked as boolean, 'apiaRegions')
+                          handleCheckboxArrayChange('apiaRegions', region, checked as boolean)
                         }
                       />
                       <Label htmlFor={region} className="text-sm">{region}</Label>
@@ -329,9 +339,9 @@ const FarmCreationForm = () => {
                     <div key={landUse} className="flex items-center space-x-2">
                       <Checkbox
                         id={landUse}
-                        checked={form.getValues('landUseTypes').includes(landUse)}
+                        checked={form.watch('landUseTypes')?.includes(landUse) || false}
                         onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange(form.getValues('landUseTypes'), landUse, checked as boolean, 'landUseTypes')
+                          handleCheckboxArrayChange('landUseTypes', landUse, checked as boolean)
                         }
                       />
                       <Label htmlFor={landUse} className="text-sm">
@@ -342,15 +352,15 @@ const FarmCreationForm = () => {
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="other"
-                      checked={form.getValues('landUseTypes').includes('other')}
+                      checked={form.watch('landUseTypes')?.includes('other') || false}
                       onCheckedChange={(checked) => 
-                        handleCheckboxArrayChange(form.getValues('landUseTypes'), 'other', checked as boolean, 'landUseTypes')
+                        handleCheckboxArrayChange('landUseTypes', 'other', checked as boolean)
                       }
                     />
                     <Label htmlFor="other" className="text-sm">Other</Label>
                   </div>
                 </div>
-                {form.getValues('landUseTypes').includes('other') && (
+                {form.watch('landUseTypes')?.includes('other') && (
                   <div className="mt-2">
                     <Input
                       placeholder="Please specify other land use type"
@@ -399,13 +409,13 @@ const FarmCreationForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="has-livestock"
-                  checked={form.getValues('hasLivestock')}
+                  checked={form.watch('hasLivestock')}
                   onCheckedChange={(checked) => form.setValue('hasLivestock', checked as boolean)}
                 />
                 <Label htmlFor="has-livestock">Do you manage livestock?</Label>
               </div>
 
-              {form.getValues('hasLivestock') && (
+              {form.watch('hasLivestock') && (
                 <div className="space-y-4">
                   <Label>Animal Types and Quantities</Label>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -415,7 +425,7 @@ const FarmCreationForm = () => {
                         <Input
                           type="number"
                           placeholder="Quantity"
-                          value={form.getValues('animalTypes')[animal] || ''}
+                          value={form.watch('animalTypes')[animal] || ''}
                           onChange={(e) => handleAnimalTypeChange(animal, e.target.value)}
                         />
                       </div>
@@ -425,7 +435,7 @@ const FarmCreationForm = () => {
                       <Input
                         type="text"
                         placeholder="Specify type and quantity"
-                        value={form.getValues('animalTypes')['other'] || ''}
+                        value={form.watch('animalTypes')['other'] || ''}
                         onChange={(e) => handleAnimalTypeChange('other', e.target.value)}
                       />
                     </div>
@@ -457,13 +467,13 @@ const FarmCreationForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="env-permits"
-                  checked={form.getValues('hasEnvironmentalPermits')}
+                  checked={form.watch('hasEnvironmentalPermits')}
                   onCheckedChange={(checked) => form.setValue('hasEnvironmentalPermits', checked as boolean)}
                 />
                 <Label htmlFor="env-permits">Do you hold any environmental permits?</Label>
               </div>
 
-              {form.getValues('hasEnvironmentalPermits') && (
+              {form.watch('hasEnvironmentalPermits') && (
                 <div className="space-y-2">
                   <Label>Upload Environmental Permits (PDF)</Label>
                   <div className="flex items-center justify-center w-full">
@@ -481,8 +491,8 @@ const FarmCreationForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="tech-docs"
-                  checked={form.watch('hasTechnicalDocs') || false}
-                  onCheckedChange={(checked) => form.setValue('hasTechnicalDocs' as any, checked as boolean)}
+                  checked={form.watch('hasTechnicalDocs')}
+                  onCheckedChange={(checked) => form.setValue('hasTechnicalDocs', checked as boolean)}
                 />
                 <Label htmlFor="tech-docs">Do you have technical project documentation?</Label>
               </div>
@@ -521,9 +531,9 @@ const FarmCreationForm = () => {
                   <div key={interest} className="flex items-center space-x-2">
                     <Checkbox
                       id={interest}
-                      checked={form.getValues('subsidyInterests').includes(interest)}
+                      checked={form.watch('subsidyInterests')?.includes(interest) || false}
                       onCheckedChange={(checked) => 
-                        handleCheckboxArrayChange(form.getValues('subsidyInterests'), interest, checked as boolean, 'subsidyInterests')
+                        handleCheckboxArrayChange('subsidyInterests', interest, checked as boolean)
                       }
                     />
                     <Label htmlFor={interest} className="text-sm">{interest}</Label>
