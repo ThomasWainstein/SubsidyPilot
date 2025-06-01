@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { File } from 'lucide-react';
 import { useFarmDocuments, useDeleteDocument, type FarmDocument } from '@/hooks/useFarmDocuments';
-import DocumentGrid from './DocumentGrid';
 import DocumentFilters from './DocumentFilters';
 import DocumentItem from './DocumentItem';
 
@@ -15,6 +14,32 @@ interface DocumentListProps {
 // Valid categories that match our form and database enum
 const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
 
+// Category labels for display
+const CATEGORY_LABELS: Record<string, string> = {
+  'legal': 'Legal Documents',
+  'financial': 'Financial Records',
+  'environmental': 'Environmental Permits',
+  'technical': 'Technical Documentation',
+  'certification': 'Certifications',
+  'other': 'Other'
+};
+
+// Utility function to validate and normalize document category
+const normalizeDocumentCategory = (category: string | null | undefined): string => {
+  if (!category || typeof category !== 'string' || category.trim() === '') {
+    console.warn('Document found with invalid category, defaulting to "other":', category);
+    return 'other';
+  }
+  
+  const trimmedCategory = category.trim().toLowerCase();
+  if (!VALID_CATEGORIES.includes(trimmedCategory)) {
+    console.warn('Document found with unknown category, defaulting to "other":', category);
+    return 'other';
+  }
+  
+  return trimmedCategory;
+};
+
 const DocumentList = ({ farmId }: DocumentListProps) => {
   const { data: documents, isLoading, error } = useFarmDocuments(farmId);
   const deleteMutation = useDeleteDocument();
@@ -22,20 +47,39 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Normalize documents to ensure valid categories
+  // Normalize documents to ensure valid categories and log any issues
   const normalizedDocuments = useMemo(() => {
     if (!documents) return [];
     
-    return documents.map(doc => ({
-      ...doc,
-      category: VALID_CATEGORIES.includes(doc.category) ? doc.category : 'other'
-    }));
+    let invalidCategoryCount = 0;
+    const normalized = documents.map(doc => {
+      const originalCategory = doc.category;
+      const normalizedCategory = normalizeDocumentCategory(originalCategory);
+      
+      if (originalCategory !== normalizedCategory) {
+        invalidCategoryCount++;
+      }
+      
+      return {
+        ...doc,
+        category: normalizedCategory
+      };
+    });
+
+    if (invalidCategoryCount > 0) {
+      console.warn(`Found ${invalidCategoryCount} documents with invalid categories that were normalized to "other"`);
+    }
+
+    return normalized;
   }, [documents]);
 
-  // Get unique categories from normalized documents
-  const categories = useMemo(() => {
+  // Get unique valid categories from normalized documents
+  const availableCategories = useMemo(() => {
     if (!normalizedDocuments) return [];
-    return Array.from(new Set(normalizedDocuments.map(doc => doc.category))).sort();
+    
+    const documentCategories = Array.from(new Set(normalizedDocuments.map(doc => doc.category)));
+    // Only return categories that are both in documents and in our valid list
+    return documentCategories.filter(cat => VALID_CATEGORIES.includes(cat)).sort();
   }, [normalizedDocuments]);
 
   // Filter documents based on search and category
@@ -69,6 +113,17 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
   const handleClearFilters = () => {
     setSearchTerm('');
     setSelectedCategory('');
+  };
+
+  // Safe category change handler
+  const handleCategoryChange = (category: string) => {
+    // Only allow valid categories or empty string for clearing
+    if (category === '' || VALID_CATEGORIES.includes(category)) {
+      setSelectedCategory(category);
+    } else {
+      console.warn('Attempted to set invalid category:', category);
+      setSelectedCategory('');
+    }
   };
 
   if (isLoading) {
@@ -138,8 +193,8 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              categories={categories}
+              onCategoryChange={handleCategoryChange}
+              categories={availableCategories}
               totalDocuments={normalizedDocuments.length}
               filteredCount={filteredDocuments.length}
               onClearFilters={handleClearFilters}

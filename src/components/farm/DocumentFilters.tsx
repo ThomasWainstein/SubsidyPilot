@@ -26,6 +26,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   'other': 'Other'
 };
 
+// Valid categories to prevent rendering invalid items
+const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
+
 const DocumentFilters = ({
   searchTerm,
   onSearchChange,
@@ -38,13 +41,35 @@ const DocumentFilters = ({
 }: DocumentFiltersProps) => {
   const hasActiveFilters = searchTerm || selectedCategory;
 
-  // Safe category change handler
+  // Safe category change handler that validates input
   const handleCategoryChange = (value: string) => {
-    // Only allow valid categories or empty string for clearing
-    if (value === '' || categories.includes(value)) {
+    console.log('Category change requested:', value);
+    
+    // Allow empty string for clearing selection
+    if (value === '') {
+      onCategoryChange('');
+      return;
+    }
+    
+    // Only allow valid categories
+    if (VALID_CATEGORIES.includes(value)) {
       onCategoryChange(value);
+    } else {
+      console.warn('Invalid category selection attempted:', value);
+      // Don't change the selection if invalid
     }
   };
+
+  // Filter and validate categories for rendering
+  const safeCategories = categories.filter(category => {
+    // Ensure category is a valid string and in our approved list
+    return category && 
+           typeof category === 'string' && 
+           category.trim() !== '' && 
+           VALID_CATEGORIES.includes(category);
+  });
+
+  console.log('Rendering categories:', safeCategories);
 
   return (
     <div className="space-y-4">
@@ -65,13 +90,11 @@ const DocumentFilters = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All categories</SelectItem>
-            {categories
-              .filter(category => category && category.trim() !== '') // Filter out invalid categories
-              .map((category) => (
-                <SelectItem key={category} value={category}>
-                  {CATEGORY_LABELS[category] || category}
-                </SelectItem>
-              ))}
+            {safeCategories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {CATEGORY_LABELS[category] || category}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
