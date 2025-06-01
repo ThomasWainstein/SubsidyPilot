@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
 import { CalendarDays, Loader2, Edit } from 'lucide-react';
 import { ProfileTabContent } from '@/components/farm/ProfileTabContent';
-import { DocumentsTabContent } from '@/components/farm/DocumentsTabContent';
+import DocumentsTabContent from '@/components/farm/DocumentsTabContent';
 import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
 import { countries } from '@/schemas/farmValidation';

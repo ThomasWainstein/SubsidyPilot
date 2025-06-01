@@ -38,10 +38,25 @@ const DocumentVault = ({ farmId }: DocumentVaultProps) => {
     }
   };
   
-  // Handle successful upload
-  const handleUploadSuccess = (newDoc: FarmDocument) => {
-    if (newDoc) {
-      setDocuments(prev => [...prev, newDoc]);
+  // Handle successful upload - updated to match DropzoneUpload signature
+  const handleUploadSuccess = (files?: File[]) => {
+    if (files && files.length > 0) {
+      // Convert File objects to FarmDocument objects
+      const newDocuments = files.map((file, index) => ({
+        id: `${Date.now()}-${index}`,
+        name: file.name,
+        type: file.type.includes('pdf') ? 'PDF' : 
+              file.type.includes('sheet') || file.type.includes('excel') ? 'XLSX' : 'DOC',
+        tag: 'uploaded',
+        uploadedAt: new Date().toLocaleDateString()
+      }));
+      
+      setDocuments(prev => [...prev, ...newDocuments]);
+      
+      toast({
+        title: t('messages.documentUploaded'),
+        description: files.map(f => f.name).join(', ') + ' ' + t('messages.documentUploadedDesc'),
+      });
     }
   };
   
