@@ -7,6 +7,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Valid document categories that match the database enum
+const VALID_DOCUMENT_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
+
+const normalizeDocumentCategory = (category: unknown): string => {
+  if (!category || typeof category !== 'string') {
+    console.warn('Invalid category type, defaulting to "other":', typeof category, category);
+    return 'other';
+  }
+  
+  const trimmed = category.trim().toLowerCase();
+  
+  if (!trimmed || trimmed === '') {
+    console.warn('Empty category string, defaulting to "other"');
+    return 'other';
+  }
+  
+  if (VALID_DOCUMENT_CATEGORIES.includes(trimmed)) {
+    return trimmed;
+  }
+  
+  console.warn('Unknown category, defaulting to "other":', category);
+  return 'other';
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -42,14 +66,26 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const farmId = formData.get('farmId') as string;
-    const category = formData.get('category') as string;
+    const rawCategory = formData.get('category') as string;
 
-    if (!file || !farmId || !category) {
+    console.log('Upload request received:', { 
+      fileName: file?.name, 
+      farmId, 
+      rawCategory,
+      fileSize: file?.size 
+    });
+
+    if (!file || !farmId || !rawCategory) {
+      console.error('Missing required fields:', { file: !!file, farmId, rawCategory });
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Normalize and validate category with fallback
+    const category = normalizeDocumentCategory(rawCategory);
+    console.log('Category normalized from', rawCategory, 'to', category);
 
     // Verify user owns the farm
     const { data: farm, error: farmError } = await supabase
@@ -60,6 +96,7 @@ serve(async (req) => {
       .single();
 
     if (farmError || !farm) {
+      console.error('Farm access denied:', farmError);
       return new Response(JSON.stringify({ error: 'Farm not found or access denied' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,7 +132,7 @@ serve(async (req) => {
       .from('farm-documents')
       .getPublicUrl(filePath);
 
-    // Store document record in database
+    // Store document record in database with validated category
     const { data: documentData, error: dbError } = await supabase
       .from('farm_documents')
       .insert({
@@ -104,7 +141,7 @@ serve(async (req) => {
         file_url: urlData.publicUrl,
         file_size: file.size,
         mime_type: file.type,
-        category: category,
+        category: category, // Using normalized category
       })
       .select()
       .single();
@@ -119,7 +156,11 @@ serve(async (req) => {
       });
     }
 
-    console.log('Document uploaded successfully:', documentData);
+    console.log('Document uploaded successfully:', { 
+      id: documentData.id, 
+      category: documentData.category,
+      fileName: documentData.file_name 
+    });
 
     return new Response(JSON.stringify({ 
       success: true, 

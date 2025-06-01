@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Eye, Trash2, Loader2 } from 'lucide-react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
+import { CATEGORY_LABELS, normalizeDocumentCategory } from '@/utils/documentValidation';
 
 interface DocumentItemProps {
   document: FarmDocument;
@@ -13,23 +14,12 @@ interface DocumentItemProps {
   isDeleting: boolean;
 }
 
-// Category labels for display
-const CATEGORY_LABELS: Record<string, string> = {
-  'legal': 'Legal Documents',
-  'financial': 'Financial Records', 
-  'environmental': 'Environmental Permits',
-  'technical': 'Technical Documentation',
-  'certification': 'Certifications',
-  'other': 'Other'
-};
-
-// Valid categories
-const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
-
 const DocumentItem = ({ document, onDelete, onView, isDeleting }: DocumentItemProps) => {
-  // Ensure we have a valid category
-  const safeCategory = VALID_CATEGORIES.includes(document.category) ? document.category : 'other';
+  // Ensure we have a valid category with robust fallback
+  const safeCategory = normalizeDocumentCategory(document.category);
   const categoryLabel = CATEGORY_LABELS[safeCategory] || 'Other';
+  
+  console.log('DocumentItem rendering with category:', document.category, '-> normalized:', safeCategory);
   
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size';

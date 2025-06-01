@@ -3,14 +3,12 @@ import { useState } from 'react';
 import { useUploadDocument } from '@/hooks/useFarmDocuments';
 import { toast } from '@/components/ui/use-toast';
 import { validateFile, type ValidationResult } from '@/utils/fileValidation';
+import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/documentValidation';
 
 interface UseDocumentUploadProps {
   farmId: string;
   onSuccess?: () => void;
 }
-
-// Valid document categories that match the database enum
-const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
 
 export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -55,6 +53,8 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
   };
 
   const uploadFiles = async () => {
+    console.log('Upload initiated with category:', category);
+
     // Validate inputs
     if (selectedFiles.length === 0) {
       toast({
@@ -68,13 +68,14 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     if (!category || category.trim() === '') {
       toast({
         title: 'Category required',
-        description: 'Please select a document category.',
+        description: 'Please select a document category before uploading.',
         variant: 'destructive',
       });
       return;
     }
 
-    if (!VALID_CATEGORIES.includes(category)) {
+    if (!isValidDocumentCategory(category)) {
+      console.error('Invalid category detected during upload:', category);
       toast({
         title: 'Invalid category',
         description: 'Please select a valid document category.',
@@ -92,6 +93,10 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       return;
     }
 
+    // Normalize category as a final safety check
+    const normalizedCategory = normalizeDocumentCategory(category);
+    console.log('Using normalized category for upload:', normalizedCategory);
+
     setUploadProgress(0);
     setUploadedFiles([]);
     const totalFiles = selectedFiles.length;
@@ -99,10 +104,12 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
+        console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
+        
         await uploadMutation.mutateAsync({
           file,
           farmId,
-          category,
+          category: normalizedCategory,
         });
         setUploadProgress(((i + 1) / totalFiles) * 100);
         setUploadedFiles(prev => [...prev, file.name]);
@@ -114,6 +121,7 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       setUploadProgress(0);
       setUploadedFiles([]);
       
+      console.log('Upload completed successfully');
       onSuccess?.();
     } catch (error) {
       console.error('Upload failed:', error);
@@ -126,9 +134,11 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     selectedFiles,
     category,
     setCategory: (newCategory: string) => {
-      // Only set valid categories
-      if (newCategory === '' || VALID_CATEGORIES.includes(newCategory)) {
+      // Only set valid categories or empty string for clearing
+      if (newCategory === '' || isValidDocumentCategory(newCategory)) {
         setCategory(newCategory);
+      } else {
+        console.warn('Attempted to set invalid category:', newCategory);
       }
     },
     uploadProgress,

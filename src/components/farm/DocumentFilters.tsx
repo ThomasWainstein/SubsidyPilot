@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X } from 'lucide-react';
+import { CATEGORY_LABELS, isValidDocumentCategory } from '@/utils/documentValidation';
 
 interface DocumentFiltersProps {
   searchTerm: string;
@@ -15,19 +16,6 @@ interface DocumentFiltersProps {
   filteredCount: number;
   onClearFilters: () => void;
 }
-
-// Category labels for display
-const CATEGORY_LABELS: Record<string, string> = {
-  'legal': 'Legal Documents',
-  'financial': 'Financial Records',
-  'environmental': 'Environmental Permits',
-  'technical': 'Technical Documentation',
-  'certification': 'Certifications',
-  'other': 'Other'
-};
-
-// Valid categories to prevent rendering invalid items
-const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
 
 const DocumentFilters = ({
   searchTerm,
@@ -43,7 +31,7 @@ const DocumentFilters = ({
 
   // Safe category change handler that validates input
   const handleCategoryChange = (value: string) => {
-    console.log('Category change requested:', value);
+    console.log('Filter category change requested:', value);
     
     // Allow empty string for clearing selection
     if (value === '') {
@@ -52,24 +40,23 @@ const DocumentFilters = ({
     }
     
     // Only allow valid categories
-    if (VALID_CATEGORIES.includes(value)) {
+    if (isValidDocumentCategory(value)) {
       onCategoryChange(value);
     } else {
-      console.warn('Invalid category selection attempted:', value);
+      console.warn('Invalid category filter selection attempted:', value);
       // Don't change the selection if invalid
     }
   };
 
-  // Filter and validate categories for rendering
+  // Filter and validate categories for rendering - only include valid, non-empty categories
   const safeCategories = categories.filter(category => {
-    // Ensure category is a valid string and in our approved list
     return category && 
            typeof category === 'string' && 
            category.trim() !== '' && 
-           VALID_CATEGORIES.includes(category);
+           isValidDocumentCategory(category);
   });
 
-  console.log('Rendering categories:', safeCategories);
+  console.log('Rendering filter categories:', safeCategories);
 
   return (
     <div className="space-y-4">
