@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
-import { Upload } from 'lucide-react';
 import { useCreateFarm } from '@/hooks/useFarms';
-import { farmCreationSchema, type FarmCreationData, standardRegions } from '@/schemas/farmValidation';
+import { farmCreationSchema, type FarmCreationData, countries, departmentsByCountry } from '@/schemas/farmValidation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/hooks/use-toast';
+import FileUploadField from '@/components/form/FileUploadField';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
@@ -30,6 +30,7 @@ const FarmCreationForm = () => {
       farmAddress: '',
       legalStatus: '',
       cnpOrCui: '',
+      country: '',
       department: '',
       locality: '',
       apiaRegions: [],
@@ -46,8 +47,17 @@ const FarmCreationForm = () => {
       preferredLanguage: '',
       gdprConsent: false,
       notificationConsent: false,
+      revenue: '',
+      staff: '',
+      certifications: [],
+      irrigationMethod: '',
+      software: [],
+      uploadedFiles: {},
     },
   });
+
+  const selectedCountry = form.watch('country');
+  const availableDepartments = selectedCountry ? departmentsByCountry[selectedCountry] || [] : [];
 
   const onSubmit = async (data: FarmCreationData) => {
     if (!user) {
@@ -68,6 +78,7 @@ const FarmCreationForm = () => {
         address: data.farmAddress,
         legal_status: data.legalStatus,
         cnp_or_cui: data.cnpOrCui,
+        country: data.country,
         department: data.department,
         locality: data.locality,
         apia_region: data.apiaRegions,
@@ -83,6 +94,11 @@ const FarmCreationForm = () => {
         preferred_language: data.preferredLanguage,
         gdpr_consent: data.gdprConsent,
         notify_consent: data.notificationConsent,
+        revenue: data.revenue,
+        staff_count: data.staff ? parseInt(data.staff) : null,
+        certifications: data.certifications,
+        irrigation_method: data.irrigationMethod,
+        software_used: data.software,
       };
 
       console.log('Submitting farm data to Supabase:', farmData);
@@ -94,10 +110,8 @@ const FarmCreationForm = () => {
         description: 'Farm profile created successfully!',
       });
       
-      // Use setTimeout to ensure the toast shows before navigation
-      setTimeout(() => {
-        navigate(`/farm/${createdFarm.id}`, { replace: true });
-      }, 100);
+      // Navigate to the farm profile
+      navigate(`/farm/${createdFarm.id}`, { replace: true });
     } catch (error: any) {
       console.error('Error creating farm:', error);
       toast({
@@ -108,14 +122,25 @@ const FarmCreationForm = () => {
     }
   };
 
-  const handleFileUpload = (fieldName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (fieldName: string) => (file: File | null) => {
     if (file) {
       console.log(`File selected for ${fieldName}:`, file.name);
+      
+      // Update upload state
+      form.setValue(`uploadedFiles.${fieldName}`, {
+        filename: file.name,
+        uploaded: true,
+      });
+      
       toast({
-        title: 'File Upload',
+        title: 'File Selected',
         description: `File ${file.name} selected for ${fieldName}. Upload functionality will be implemented.`,
       });
+    } else {
+      // Remove upload state
+      const currentFiles = form.getValues('uploadedFiles');
+      delete currentFiles[fieldName];
+      form.setValue('uploadedFiles', currentFiles);
     }
   };
 
@@ -124,10 +149,8 @@ const FarmCreationForm = () => {
     let newArray: string[];
     
     if (checked) {
-      // Add item if not already present
       newArray = currentArray.includes(item) ? currentArray : [...currentArray, item];
     } else {
-      // Remove item
       newArray = currentArray.filter(i => i !== item);
     }
     
@@ -166,7 +189,7 @@ const FarmCreationForm = () => {
           {/* Section 1: Farm Identity & Legal Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 1: Farm Identity</CardTitle>
+              <CardTitle>Section 1: Farm Identity & Legal Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -174,7 +197,7 @@ const FarmCreationForm = () => {
                 <Input
                   id="farm-name"
                   type="text"
-                  placeholder="Enter farm name"
+                  placeholder="Enter your farm or business name"
                   {...form.register('farmName')}
                 />
                 {form.formState.errors.farmName && (
@@ -183,10 +206,10 @@ const FarmCreationForm = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="farm-address">Farm Address *</Label>
+                <Label htmlFor="farm-address">Complete Farm Address *</Label>
                 <Textarea
                   id="farm-address"
-                  placeholder="Enter complete farm address"
+                  placeholder="Enter complete farm address including street, city, postal code"
                   {...form.register('farmAddress')}
                 />
                 {form.formState.errors.farmAddress && (
@@ -194,162 +217,205 @@ const FarmCreationForm = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="legal-status">Legal Status *</Label>
-                <Select onValueChange={(value) => form.setValue('legalStatus', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select legal status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="individual">Individual</SelectItem>
-                    <SelectItem value="srl">SRL</SelectItem>
-                    <SelectItem value="cooperative">Cooperative</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.legalStatus && (
-                  <p className="text-sm text-red-500">{form.formState.errors.legalStatus.message}</p>
-                )}
-              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="legal-status">Legal Status *</Label>
+                  <Select onValueChange={(value) => form.setValue('legalStatus', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select legal entity type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Individual Farmer</SelectItem>
+                      <SelectItem value="srl">Limited Liability Company (SRL)</SelectItem>
+                      <SelectItem value="cooperative">Agricultural Cooperative</SelectItem>
+                      <SelectItem value="partnership">Partnership</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.legalStatus && (
+                    <p className="text-sm text-red-500">{form.formState.errors.legalStatus.message}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cnp-cui">CNP (for individuals) or CUI (for legal entities) *</Label>
-                <Input
-                  id="cnp-cui"
-                  type="text"
-                  placeholder="Enter CNP or CUI"
-                  {...form.register('cnpOrCui')}
-                />
-                {form.formState.errors.cnpOrCui && (
-                  <p className="text-sm text-red-500">{form.formState.errors.cnpOrCui.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Upload ID or Company Certificate (PDF)</Label>
-                <div className="flex items-center justify-center w-full">
-                  <label htmlFor="id-cert" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> ID or certificate
-                      </p>
-                    </div>
-                    <input id="id-cert" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('idCert')} />
-                  </label>
+                <div className="space-y-2">
+                  <Label htmlFor="cnp-cui">Tax Identification Number *</Label>
+                  <Input
+                    id="cnp-cui"
+                    type="text"
+                    placeholder="CNP (individuals) or CUI/VAT number (companies)"
+                    {...form.register('cnpOrCui')}
+                  />
+                  {form.formState.errors.cnpOrCui && (
+                    <p className="text-sm text-red-500">{form.formState.errors.cnpOrCui.message}</p>
+                  )}
                 </div>
               </div>
+
+              <FileUploadField
+                id="id-cert"
+                label="Identity or Company Registration Document"
+                description="Upload ID card, passport, or company registration certificate (PDF format)"
+                accept=".pdf"
+                required
+                onFileSelect={handleFileUpload('idCert')}
+                uploadedFile={form.watch('uploadedFiles.idCert')}
+              />
             </CardContent>
           </Card>
 
-          {/* Section 2: Location */}
+          {/* Section 2: International Location */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 2: Location</CardTitle>
+              <CardTitle>Section 2: Farm Location</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Select onValueChange={(value) => form.setValue('department', value)}>
+                  <Label htmlFor="country">Country *</Label>
+                  <Select onValueChange={(value) => {
+                    form.setValue('country', value);
+                    form.setValue('department', ''); // Reset department when country changes
+                  }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.country && (
+                    <p className="text-sm text-red-500">{form.formState.errors.country.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department/Region</Label>
+                  <Select 
+                    onValueChange={(value) => form.setValue('department', value)}
+                    disabled={!selectedCountry || availableDepartments.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedCountry ? "Select department" : "Select country first"} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
-                      {standardRegions.map((region) => (
-                        <SelectItem key={region} value={region}>
-                          {region.charAt(0).toUpperCase() + region.slice(1).replace('-', ' ')}
+                      {availableDepartments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept.charAt(0).toUpperCase() + dept.slice(1).replace('-', ' ')}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="locality">Locality</Label>
+                  <Label htmlFor="locality">Locality/Municipality</Label>
                   <Input
                     id="locality"
                     type="text"
-                    placeholder="Enter locality (free text)"
+                    placeholder="Enter city or municipality name"
                     {...form.register('locality')}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>APIA Operating Regions (select all that apply)</Label>
-                <div className="grid md:grid-cols-3 gap-2">
-                  {[
-                    'North-East', 'South-East', 'South-Muntenia', 'South-West Oltenia',
-                    'West', 'North-West', 'Center', 'Bucharest-Ilfov'
-                  ].map((region) => (
-                    <div key={region} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={region}
-                        checked={form.watch('apiaRegions')?.includes(region) || false}
-                        onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange('apiaRegions', region, checked as boolean)
-                        }
-                      />
-                      <Label htmlFor={region} className="text-sm">{region}</Label>
-                    </div>
-                  ))}
+              {selectedCountry === 'RO' && (
+                <div className="space-y-2">
+                  <Label>APIA Operating Regions (Romania only - select all that apply)</Label>
+                  <div className="grid md:grid-cols-3 gap-2">
+                    {[
+                      'North-East', 'South-East', 'South-Muntenia', 'South-West Oltenia',
+                      'West', 'North-West', 'Center', 'Bucharest-Ilfov'
+                    ].map((region) => (
+                      <div key={region} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={region}
+                          checked={form.watch('apiaRegions')?.includes(region) || false}
+                          onCheckedChange={(checked) => 
+                            handleCheckboxArrayChange('apiaRegions', region, checked as boolean)
+                          }
+                        />
+                        <Label htmlFor={region} className="text-sm">{region}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Section 3: Land Info */}
+          {/* Section 3: Land Use & Agricultural Activities */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 3: Types of Crops / Land Use</CardTitle>
+              <CardTitle>Section 3: Land Use & Agricultural Activities</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Do you own or lease land?</Label>
-                <Select onValueChange={(value) => form.setValue('landOwnership', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select ownership type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="own">Own</SelectItem>
-                    <SelectItem value="lease">Lease</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Land Ownership Type</Label>
+                  <Select onValueChange={(value) => form.setValue('landOwnership', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select ownership type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="own">Own the land</SelectItem>
+                      <SelectItem value="lease">Lease the land</SelectItem>
+                      <SelectItem value="both">Both owned and leased</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="total-area">Total Agricultural Area</Label>
+                  <div className="flex">
+                    <Input
+                      id="total-area"
+                      type="number"
+                      placeholder="Enter area"
+                      {...form.register('totalArea')}
+                      className="rounded-r-none"
+                    />
+                    <div className="px-3 py-2 bg-gray-100 border border-l-0 rounded-r-md text-sm text-gray-600">
+                      hectares
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="total-area">Total agricultural area (hectares)</Label>
-                <Input
-                  id="total-area"
-                  type="number"
-                  placeholder="Enter area in hectares"
-                  {...form.register('totalArea')}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Types of crops/land use (select all that apply) *</Label>
+                <Label>Types of Agricultural Activities *</Label>
+                <p className="text-sm text-gray-600">Select all types of crops and land use that apply to your farm</p>
                 <div className="grid md:grid-cols-3 gap-2">
                   {[
-                    'cereals', 'vegetables', 'vineyards', 'fruit_orchards', 
-                    'pasture_grassland', 'greenhouse_protected', 'industrial_crops',
-                    'aromatic_medicinal_plants', 'fallow_land', 'mixed_use', 'forestry_plots'
+                    { value: 'cereals', label: 'Cereals (wheat, corn, barley, etc.)' },
+                    { value: 'vegetables', label: 'Vegetables' },
+                    { value: 'vineyards', label: 'Vineyards' },
+                    { value: 'fruit_orchards', label: 'Fruit Orchards' },
+                    { value: 'pasture_grassland', label: 'Pasture & Grassland' },
+                    { value: 'greenhouse_protected', label: 'Greenhouse/Protected Cultivation' },
+                    { value: 'industrial_crops', label: 'Industrial Crops (sunflower, rapeseed)' },
+                    { value: 'aromatic_medicinal_plants', label: 'Aromatic & Medicinal Plants' },
+                    { value: 'fallow_land', label: 'Fallow Land' },
+                    { value: 'mixed_use', label: 'Mixed Agricultural Use' },
+                    { value: 'forestry_plots', label: 'Forestry Plots' },
                   ].map((landUse) => (
-                    <div key={landUse} className="flex items-center space-x-2">
+                    <div key={landUse.value} className="flex items-start space-x-2">
                       <Checkbox
-                        id={landUse}
-                        checked={form.watch('landUseTypes')?.includes(landUse) || false}
+                        id={landUse.value}
+                        checked={form.watch('landUseTypes')?.includes(landUse.value) || false}
                         onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange('landUseTypes', landUse, checked as boolean)
+                          handleCheckboxArrayChange('landUseTypes', landUse.value, checked as boolean)
                         }
                       />
-                      <Label htmlFor={landUse} className="text-sm">
-                        {landUse.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      <Label htmlFor={landUse.value} className="text-sm leading-5">
+                        {landUse.label}
                       </Label>
                     </div>
                   ))}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-start space-x-2">
                     <Checkbox
                       id="other"
                       checked={form.watch('landUseTypes')?.includes('other') || false}
@@ -357,53 +423,75 @@ const FarmCreationForm = () => {
                         handleCheckboxArrayChange('landUseTypes', 'other', checked as boolean)
                       }
                     />
-                    <Label htmlFor="other" className="text-sm">Other</Label>
+                    <Label htmlFor="other" className="text-sm">Other (specify below)</Label>
                   </div>
                 </div>
                 {form.watch('landUseTypes')?.includes('other') && (
                   <div className="mt-2">
                     <Input
-                      placeholder="Please specify other land use type"
+                      placeholder="Please specify other agricultural activities"
                       {...form.register('otherLandUse')}
                     />
                   </div>
                 )}
+                {form.formState.errors.landUseTypes && (
+                  <p className="text-sm text-red-500">{form.formState.errors.landUseTypes.message}</p>
+                )}
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Irrigation Method</Label>
+                  <Select onValueChange={(value) => form.setValue('irrigationMethod', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select irrigation method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No irrigation</SelectItem>
+                      <SelectItem value="drip">Drip irrigation</SelectItem>
+                      <SelectItem value="sprinkler">Sprinkler system</SelectItem>
+                      <SelectItem value="flood">Flood irrigation</SelectItem>
+                      <SelectItem value="pivot">Center pivot</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="staff">Number of Farm Workers</Label>
+                  <Input
+                    id="staff"
+                    type="number"
+                    placeholder="Enter number of workers"
+                    {...form.register('staff')}
+                  />
+                </div>
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Upload Lease or Ownership Documents (PDF)</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="land-docs" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                        <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload land documents</p>
-                      </div>
-                      <input id="land-docs" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('landDocs')} />
-                    </label>
-                  </div>
-                </div>
+                <FileUploadField
+                  id="land-docs"
+                  label="Land Ownership or Lease Documents"
+                  description="Upload ownership deeds or lease agreements (PDF format)"
+                  onFileSelect={handleFileUpload('landDocs')}
+                  uploadedFile={form.watch('uploadedFiles.landDocs')}
+                />
 
-                <div className="space-y-2">
-                  <Label>Upload LPIS or Parcel Maps (optional, PDF)</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="parcel-maps" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                        <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload parcel maps (optional)</p>
-                      </div>
-                      <input id="parcel-maps" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('parcelMaps')} />
-                    </label>
-                  </div>
-                </div>
+                <FileUploadField
+                  id="parcel-maps"
+                  label="LPIS or Parcel Maps (Optional)"
+                  description="Upload land parcel identification maps if available"
+                  onFileSelect={handleFileUpload('parcelMaps')}
+                  uploadedFile={form.watch('uploadedFiles.parcelMaps')}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Section 4: Livestock */}
+          {/* Section 4: Livestock Management */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 4: Animal Holdings</CardTitle>
+              <CardTitle>Section 4: Livestock Management</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
@@ -412,115 +500,138 @@ const FarmCreationForm = () => {
                   checked={form.watch('hasLivestock')}
                   onCheckedChange={(checked) => form.setValue('hasLivestock', checked as boolean)}
                 />
-                <Label htmlFor="has-livestock">Do you manage livestock?</Label>
+                <Label htmlFor="has-livestock">Do you manage livestock on your farm?</Label>
               </div>
 
               {form.watch('hasLivestock') && (
                 <div className="space-y-4">
                   <Label>Animal Types and Quantities</Label>
+                  <p className="text-sm text-gray-600">Enter the number of animals for each type you manage</p>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {['cattle', 'sheep', 'goats', 'swine', 'poultry', 'horses', 'rabbits', 'bees'].map((animal) => (
-                      <div key={animal} className="flex items-center space-x-2">
-                        <Label className="w-20 capitalize">{animal}:</Label>
+                    {[
+                      { key: 'cattle', label: 'Cattle (cows, bulls)' },
+                      { key: 'sheep', label: 'Sheep' },
+                      { key: 'goats', label: 'Goats' },
+                      { key: 'swine', label: 'Swine (pigs)' },
+                      { key: 'poultry', label: 'Poultry (chickens, ducks)' },
+                      { key: 'horses', label: 'Horses' },
+                      { key: 'rabbits', label: 'Rabbits' },
+                      { key: 'bees', label: 'Bee colonies' }
+                    ].map((animal) => (
+                      <div key={animal.key} className="flex items-center space-x-2">
+                        <Label className="w-32 text-sm">{animal.label}:</Label>
                         <Input
                           type="number"
                           placeholder="Quantity"
-                          value={form.watch('animalTypes')[animal] || ''}
-                          onChange={(e) => handleAnimalTypeChange(animal, e.target.value)}
+                          value={form.watch('animalTypes')[animal.key] || ''}
+                          onChange={(e) => handleAnimalTypeChange(animal.key, e.target.value)}
+                          className="flex-1"
                         />
                       </div>
                     ))}
                     <div className="flex items-center space-x-2">
-                      <Label className="w-20">Other:</Label>
+                      <Label className="w-32 text-sm">Other:</Label>
                       <Input
                         type="text"
                         placeholder="Specify type and quantity"
                         value={form.watch('animalTypes')['other'] || ''}
                         onChange={(e) => handleAnimalTypeChange('other', e.target.value)}
+                        className="flex-1"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Upload ANSVSA registration or animal movement logs (PDF)</Label>
-                    <div className="flex items-center justify-center w-full">
-                      <label htmlFor="animal-docs" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                        <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                          <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                          <p className="text-sm text-gray-500">Upload animal registration docs</p>
-                        </div>
-                        <input id="animal-docs" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('animalDocs')} />
-                      </label>
-                    </div>
-                  </div>
+                  <FileUploadField
+                    id="animal-docs"
+                    label="Livestock Registration Documents"
+                    description="Upload ANSVSA registration or animal movement logs (PDF format)"
+                    onFileSelect={handleFileUpload('animalDocs')}
+                    uploadedFile={form.watch('uploadedFiles.animalDocs')}
+                  />
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Section 5: Environmental & Technical */}
+          {/* Section 5: Environmental & Technical Compliance */}
           <Card>
             <CardHeader>
               <CardTitle>Section 5: Environmental & Technical Compliance</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="env-permits"
-                  checked={form.watch('hasEnvironmentalPermits')}
-                  onCheckedChange={(checked) => form.setValue('hasEnvironmentalPermits', checked as boolean)}
-                />
-                <Label htmlFor="env-permits">Do you hold any environmental permits?</Label>
-              </div>
-
-              {form.watch('hasEnvironmentalPermits') && (
-                <div className="space-y-2">
-                  <Label>Upload Environmental Permits (PDF)</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="env-docs" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                        <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload environmental permits</p>
-                      </div>
-                      <input id="env-docs" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('envDocs')} />
-                    </label>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="env-permits"
+                    checked={form.watch('hasEnvironmentalPermits')}
+                    onCheckedChange={(checked) => form.setValue('hasEnvironmentalPermits', checked as boolean)}
+                  />
+                  <Label htmlFor="env-permits">Do you hold environmental permits or certifications?</Label>
                 </div>
-              )}
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="tech-docs"
-                  checked={form.watch('hasTechnicalDocs')}
-                  onCheckedChange={(checked) => form.setValue('hasTechnicalDocs', checked as boolean)}
-                />
-                <Label htmlFor="tech-docs">Do you have technical project documentation?</Label>
-              </div>
-
-              {form.watch('hasTechnicalDocs') && (
-                <div className="space-y-2">
-                  <Label>Upload Technical Project Documentation (PDF)</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="tech-docs-upload" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                        <Upload className="w-6 h-6 mb-2 text-gray-500" />
-                        <p className="text-sm text-gray-500">Upload technical docs</p>
+                {form.watch('hasEnvironmentalPermits') && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Environmental Certifications</Label>
+                      <div className="grid md:grid-cols-2 gap-2">
+                        {['Organic', 'Integrated Pest Management', 'Good Agricultural Practices', 'ISO 14001', 'Other'].map((cert) => (
+                          <div key={cert} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={cert}
+                              checked={form.watch('certifications')?.includes(cert) || false}
+                              onCheckedChange={(checked) => 
+                                handleCheckboxArrayChange('certifications', cert, checked as boolean)
+                              }
+                            />
+                            <Label htmlFor={cert} className="text-sm">{cert}</Label>
+                          </div>
+                        ))}
                       </div>
-                      <input id="tech-docs-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload('techDocs')} />
-                    </label>
+                    </div>
+
+                    <FileUploadField
+                      id="env-docs"
+                      label="Environmental Permits and Certificates"
+                      description="Upload environmental permits or certification documents"
+                      onFileSelect={handleFileUpload('envDocs')}
+                      uploadedFile={form.watch('uploadedFiles.envDocs')}
+                    />
                   </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="tech-docs"
+                    checked={form.watch('hasTechnicalDocs')}
+                    onCheckedChange={(checked) => form.setValue('hasTechnicalDocs', checked as boolean)}
+                  />
+                  <Label htmlFor="tech-docs">Do you have technical project documentation or investment plans?</Label>
                 </div>
-              )}
+
+                {form.watch('hasTechnicalDocs') && (
+                  <FileUploadField
+                    id="tech-docs-upload"
+                    label="Technical Project Documentation"
+                    description="Upload technical project plans, investment documentation, or feasibility studies"
+                    onFileSelect={handleFileUpload('techDocs')}
+                    uploadedFile={form.watch('uploadedFiles.techDocs')}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Section 6: Subsidy Interests */}
+          {/* Section 6: Subsidy Interests & Support Needs */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 6: Subsidy Interests</CardTitle>
+              <CardTitle>Section 6: Subsidy Interests & Support Needs</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Label>Select the types of subsidies you are interested in:</Label>
+              <div className="space-y-2">
+                <Label>Which types of agricultural support are you interested in?</Label>
+                <p className="text-sm text-gray-600">Select all subsidy categories that match your farm's needs and development plans</p>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-2">
                 {[
                   'Direct area payments', 'Livestock support', 'Agro-environmental & climate', 'Organic farming',
@@ -542,35 +653,52 @@ const FarmCreationForm = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="other-subsidy">Other (specify)</Label>
+                <Label htmlFor="other-subsidy">Other Support Interests</Label>
                 <Input
                   id="other-subsidy"
                   type="text"
-                  placeholder="Specify other subsidy interests"
+                  placeholder="Specify any other subsidy or support interests not listed above"
                   {...form.register('otherSubsidyInterest')}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="revenue">Annual Farm Revenue (Optional)</Label>
+                <Select onValueChange={(value) => form.setValue('revenue', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select revenue range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="under-50k">Under €50,000</SelectItem>
+                    <SelectItem value="50k-100k">€50,000 - €100,000</SelectItem>
+                    <SelectItem value="100k-250k">€100,000 - €250,000</SelectItem>
+                    <SelectItem value="250k-500k">€250,000 - €500,000</SelectItem>
+                    <SelectItem value="over-500k">Over €500,000</SelectItem>
+                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
 
-          {/* Section 7: Contact & Consent */}
+          {/* Section 7: Contact Information & Digital Tools */}
           <Card>
             <CardHeader>
-              <CardTitle>Section 7: Contact & Notifications</CardTitle>
+              <CardTitle>Section 7: Contact Information & Digital Tools</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number</Label>
+                  <Label htmlFor="mobile">Mobile Phone Number</Label>
                   <Input
                     id="mobile"
                     type="tel"
-                    placeholder="Enter mobile number"
+                    placeholder="Enter mobile number with country code"
                     {...form.register('mobileNumber')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Preferred Language</Label>
+                  <Label>Preferred Communication Language</Label>
                   <Select onValueChange={(value) => form.setValue('preferredLanguage', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select language" />
@@ -579,44 +707,71 @@ const FarmCreationForm = () => {
                       <SelectItem value="ro">Romanian</SelectItem>
                       <SelectItem value="en">English</SelectItem>
                       <SelectItem value="fr">French</SelectItem>
+                      <SelectItem value="de">German</SelectItem>
+                      <SelectItem value="es">Spanish</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
+              <div className="space-y-2">
+                <Label>Farm Management Software (Optional)</Label>
+                <p className="text-sm text-gray-600">What digital tools do you currently use for farm management?</p>
+                <div className="grid md:grid-cols-3 gap-2">
+                  {['Excel/Spreadsheets', 'Farm ERP system', 'Field mapping software', 'Financial software', 'IoT sensors', 'Drone technology', 'None', 'Other'].map((software) => (
+                    <div key={software} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={software}
+                        checked={form.watch('software')?.includes(software) || false}
+                        onCheckedChange={(checked) => 
+                          handleCheckboxArrayChange('software', software, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={software} className="text-sm">{software}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-gray-900">Privacy & Notifications</h4>
+                
+                <div className="flex items-start space-x-2">
                   <Checkbox
                     id="gdpr-consent"
                     checked={form.watch('gdprConsent')}
                     onCheckedChange={(checked) => form.setValue('gdprConsent', checked as boolean)}
                     required
                   />
-                  <Label htmlFor="gdpr-consent">✅ I consent to GDPR data processing *</Label>
+                  <Label htmlFor="gdpr-consent" className="text-sm leading-5">
+                    <span className="text-red-500">*</span> I consent to the processing of my personal data in accordance with GDPR regulations for the purpose of farm profile management and subsidy matching services
+                  </Label>
                 </div>
                 {form.formState.errors.gdprConsent && (
                   <p className="text-sm text-red-500">{form.formState.errors.gdprConsent.message}</p>
                 )}
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-start space-x-2">
                   <Checkbox
                     id="notification-consent"
                     checked={form.watch('notificationConsent')}
                     onCheckedChange={(checked) => form.setValue('notificationConsent', checked as boolean)}
                   />
-                  <Label htmlFor="notification-consent">✅ I want to receive subsidy deadline and update notifications</Label>
+                  <Label htmlFor="notification-consent" className="text-sm leading-5">
+                    I want to receive notifications about subsidy deadlines, new funding opportunities, and important updates relevant to my farm
+                  </Label>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end space-x-4 pb-8">
             <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createFarmMutation.isPending}>
-              {createFarmMutation.isPending ? 'Creating...' : 'Create Farm Profile'}
+            <Button type="submit" disabled={createFarmMutation.isPending} className="min-w-[200px]">
+              {createFarmMutation.isPending ? 'Creating Farm Profile...' : 'Create Farm Profile'}
             </Button>
           </div>
         </form>

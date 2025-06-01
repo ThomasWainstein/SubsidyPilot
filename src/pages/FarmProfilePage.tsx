@@ -1,21 +1,24 @@
 
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFarm } from '@/hooks/useFarms';
 import Navbar from '@/components/Navbar';
 import { farms } from '@/data/farms';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
-import { CalendarDays, Loader2 } from 'lucide-react';
+import { CalendarDays, Loader2, Edit } from 'lucide-react';
 import { ProfileTabContent } from '@/components/farm/ProfileTabContent';
 import { DocumentsTabContent } from '@/components/farm/DocumentsTabContent';
 import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
+import { countries } from '@/schemas/farmValidation';
 
 const FarmProfilePage = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   console.log('FarmProfilePage: farmId from params:', farmId);
   console.log('FarmProfilePage: farmId type:', typeof farmId);
@@ -49,21 +52,39 @@ const FarmProfilePage = () => {
   const transformedFarm = supabaseFarm ? {
     id: supabaseFarm.id,
     name: supabaseFarm.name,
-    region: supabaseFarm.department || 'Unknown',
+    region: supabaseFarm.country ? 
+      `${supabaseFarm.department || 'Unknown'}, ${countries.find(c => c.code === supabaseFarm.country)?.name || supabaseFarm.country}` : 
+      supabaseFarm.department || 'Unknown',
     status: 'Profile Complete' as const,
-    updatedAt: supabaseFarm.updated_at || supabaseFarm.created_at || '',
+    updatedAt: supabaseFarm.updated_at ? new Date(supabaseFarm.updated_at).toLocaleDateString() : 
+                supabaseFarm.created_at ? new Date(supabaseFarm.created_at).toLocaleDateString() : '',
     // Add other required properties with defaults
-    size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Unknown',
-    staff: 0,
+    size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Not specified',
+    staff: supabaseFarm.staff_count || 0,
     tags: supabaseFarm.matching_tags || [],
-    certifications: [],
-    irrigationMethod: 'Unknown',
+    certifications: supabaseFarm.certifications || [],
+    irrigationMethod: supabaseFarm.irrigation_method || 'Not specified',
     crops: supabaseFarm.land_use_types || [],
-    revenue: '€0',
+    revenue: supabaseFarm.revenue || 'Not specified',
     activities: supabaseFarm.land_use_types || [],
-    carbonScore: 0,
-    software: [],
-    address: supabaseFarm.address
+    carbonScore: 0, // This would need to be calculated
+    software: supabaseFarm.software_used || [],
+    address: supabaseFarm.address,
+    // Additional farm details
+    yearEstablished: supabaseFarm.created_at ? new Date(supabaseFarm.created_at).getFullYear() : undefined,
+    legalStatus: supabaseFarm.legal_status,
+    cnpOrCui: supabaseFarm.cnp_or_cui,
+    country: supabaseFarm.country,
+    department: supabaseFarm.department,
+    locality: supabaseFarm.locality,
+    landOwnership: supabaseFarm.own_or_lease ? 'Own' : 'Lease',
+    hasLivestock: supabaseFarm.livestock_present,
+    livestock: supabaseFarm.livestock,
+    environmentalPermits: supabaseFarm.environmental_permit,
+    technicalDocs: supabaseFarm.tech_docs,
+    subsidyInterests: supabaseFarm.subsidy_interest,
+    phone: supabaseFarm.phone,
+    preferredLanguage: supabaseFarm.preferred_language,
   } : staticFarm;
 
   if (!transformedFarm) {
@@ -79,9 +100,12 @@ const FarmProfilePage = () => {
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               The farm with ID "{farmId}" could not be found.
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
               Please check the URL or return to the dashboard.
             </p>
+            <Button onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </Button>
           </div>
         </main>
       </div>
@@ -90,7 +114,12 @@ const FarmProfilePage = () => {
 
   const formatRegion = (region: string) => {
     if (region.includes(',')) return region;
-    return `${region}, France`;
+    return `${region}, Unknown Country`;
+  };
+
+  const handleEditFarm = () => {
+    // For now, navigate to a new edit page - we'll implement this next
+    navigate(`/farm/${farmId}/edit`);
   };
 
   return (
@@ -113,6 +142,14 @@ const FarmProfilePage = () => {
                 <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                   {formatRegion(transformedFarm.region)}
                 </div>
+              </div>
+              <div className="flex gap-2">
+                {supabaseFarm && (
+                  <Button onClick={handleEditFarm} variant="outline" className="flex items-center gap-2">
+                    <Edit size={16} />
+                    Edit Farm
+                  </Button>
+                )}
               </div>
             </div>
           </div>
