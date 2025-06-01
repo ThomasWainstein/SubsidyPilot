@@ -26,7 +26,17 @@ interface Farm {
 const DashboardPage = () => {
   console.log('DashboardPage: Rendering');
   
-  const { t } = useLanguage();
+  // Wrap language context usage in try-catch
+  let t: any;
+  try {
+    const { t: translation } = useLanguage();
+    t = translation;
+  } catch (error) {
+    console.error('DashboardPage: Error getting language context:', error);
+    // Fallback translation function
+    t = (key: string) => key;
+  }
+
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddFarmModalOpen, setIsAddFarmModalOpen] = useState(false);
@@ -196,23 +206,31 @@ const DashboardPage = () => {
         <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.clientFarmDashboard')}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {typeof t === 'function' ? t('dashboard.clientFarmDashboard') : 'Farm Dashboard'}
+              </h1>
             </div>
             
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 space-y-6">
-                <DashboardFilters 
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  sortOption={sortOption}
-                  setSortOption={setSortOption}
-                  statusFilter={statusFilter}
-                  setStatusFilter={setStatusFilter}
-                  regionFilter={regionFilter}
-                  toggleRegionFilter={toggleRegionFilter}
-                  uniqueRegions={uniqueRegions}
-                  onAddFarm={() => setIsAddFarmModalOpen(true)}
-                />
+                <ErrorBoundary fallback={
+                  <div className="p-4 border border-red-300 rounded-md bg-red-50">
+                    <p className="text-red-700">Error loading filters</p>
+                  </div>
+                }>
+                  <DashboardFilters 
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    sortOption={sortOption}
+                    setSortOption={setSortOption}
+                    statusFilter={statusFilter}
+                    setStatusFilter={setStatusFilter}
+                    regionFilter={regionFilter}
+                    toggleRegionFilter={toggleRegionFilter}
+                    uniqueRegions={uniqueRegions}
+                    onAddFarm={() => setIsAddFarmModalOpen(true)}
+                  />
+                </ErrorBoundary>
                 
                 {farms.length === 0 ? (
                   <div className="text-center py-12">
@@ -226,17 +244,29 @@ const DashboardPage = () => {
                     </button>
                   </div>
                 ) : (
-                  <FarmGrid />
+                  <ErrorBoundary fallback={
+                    <div className="p-4 border border-red-300 rounded-md bg-red-50">
+                      <p className="text-red-700">Error loading farm grid</p>
+                    </div>
+                  }>
+                    <FarmGrid />
+                  </ErrorBoundary>
                 )}
               </div>
             </div>
           </div>
         </main>
         
-        <AddFarmModal 
-          isOpen={isAddFarmModalOpen}
-          onClose={() => setIsAddFarmModalOpen(false)}
-        />
+        <ErrorBoundary fallback={
+          <div className="p-4 border border-red-300 rounded-md bg-red-50">
+            <p className="text-red-700">Error loading add farm modal</p>
+          </div>
+        }>
+          <AddFarmModal 
+            isOpen={isAddFarmModalOpen}
+            onClose={() => setIsAddFarmModalOpen(false)}
+          />
+        </ErrorBoundary>
       </div>
     </ErrorBoundary>
   );

@@ -11,19 +11,38 @@ interface AddFarmModalProps {
 }
 
 const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
-  const { t } = useLanguage();
+  // Wrap language context usage in try-catch
+  let t: any;
+  try {
+    const { t: translation } = useLanguage();
+    t = translation;
+  } catch (error) {
+    console.error('AddFarmModal: Error getting language context:', error);
+    // Fallback translation function
+    t = (key: string) => key;
+  }
+
   const navigate = useNavigate();
 
   const handleManualEntry = () => {
-    onClose();
-    navigate('/new-farm');
+    try {
+      onClose();
+      // Use the correct route that exists in App.tsx
+      navigate('/farm/new');
+    } catch (error) {
+      console.error('AddFarmModal: Navigation error:', error);
+      // Fallback to window.location
+      window.location.href = '/farm/new';
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('common.addNewClientFarm')}</DialogTitle>
+          <DialogTitle>
+            {typeof t === 'function' ? t('common.addNewClientFarm') : 'Add New Farm'}
+          </DialogTitle>
           <DialogDescription>
             Create a comprehensive farm profile with all required information
           </DialogDescription>
@@ -35,14 +54,14 @@ const AddFarmModal = ({ isOpen, onClose }: AddFarmModalProps) => {
               Fill out the complete farm registration form to add a new client farm to your portfolio
             </p>
             <Button onClick={handleManualEntry} className="w-full">
-              {t('addFarm.startFarmCreation')}
+              {typeof t === 'function' ? t('addFarm.startFarmCreation') : 'Start Farm Creation'}
             </Button>
           </div>
         </div>
         
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
+            {typeof t === 'function' ? t('common.cancel') : 'Cancel'}
           </Button>
         </DialogFooter>
       </DialogContent>
