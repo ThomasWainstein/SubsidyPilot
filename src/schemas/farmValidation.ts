@@ -1,163 +1,100 @@
-
 import { z } from 'zod';
 
-export const farmCreationSchema = z.object({
-  // Section 1: Farm Identity
-  farmName: z.string().min(2, 'Farm name must be at least 2 characters'),
-  farmAddress: z.string().min(10, 'Please provide a complete address'),
-  legalStatus: z.string().min(1, 'Legal status is required'),
-  cnpOrCui: z.string().min(1, 'CNP or CUI is required'),
-  
-  // Section 2: International Location
-  country: z.string().min(1, 'Country is required'),
-  department: z.string().optional(),
-  locality: z.string().optional(),
-  apiaRegions: z.array(z.string()).default([]),
-  
-  // Section 3: Land Info
-  landOwnership: z.string().optional(),
-  totalArea: z.string().optional(),
-  landUseTypes: z.array(z.string()).default([]),
-  otherLandUse: z.string().optional(),
-  
-  // Section 4: Livestock
-  hasLivestock: z.boolean().default(false),
-  animalTypes: z.record(z.string()).default({}),
-  
-  // Section 5: Environmental & Technical
-  hasEnvironmentalPermits: z.boolean().default(false),
-  hasTechnicalDocs: z.boolean().default(false),
-  
-  // Section 6: Subsidy Interests
-  subsidyInterests: z.array(z.string()).default([]),
-  otherSubsidyInterest: z.string().optional(),
-  
-  // Section 7: Contact & Consent
-  mobileNumber: z.string().optional(),
-  preferredLanguage: z.string().optional(),
-  gdprConsent: z.boolean().refine(val => val === true, 'GDPR consent is required'),
-  notificationConsent: z.boolean().default(false),
-  
-  // Additional Profile Fields
-  revenue: z.string().optional(),
-  staff: z.string().optional(),
-  certifications: z.array(z.string()).default([]),
-  irrigationMethod: z.string().optional(),
-  software: z.array(z.string()).default([]),
-  
-  // File Upload States
-  uploadedFiles: z.record(z.object({
-    filename: z.string(),
-    uploaded: z.boolean(),
-  })).default({}),
-});
-
-export type FarmCreationData = z.infer<typeof farmCreationSchema>;
-
-// Country and region data
 export const countries = [
   { code: 'RO', name: 'Romania' },
   { code: 'FR', name: 'France' },
-  { code: 'PL', name: 'Poland' },
   { code: 'DE', name: 'Germany' },
-  { code: 'ES', name: 'Spain' },
   { code: 'IT', name: 'Italy' },
-  { code: 'BE', name: 'Belgium' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'PL', name: 'Poland' },
   { code: 'NL', name: 'Netherlands' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'MT', name: 'Malta' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CY', name: 'Cyprus' },
 ] as const;
 
-export const departmentsByCountry: Record<string, string[]> = {
-  'RO': [
-    'alba', 'arad', 'arges', 'bacau', 'bihor', 'bistrita-nasaud', 'botosani', 
-    'brasov', 'braila', 'buzau', 'caras-severin', 'calarasi', 'cluj', 'constanta', 
-    'covasna', 'dambovita', 'dolj', 'galati', 'giurgiu', 'gorj', 'harghita', 
-    'hunedoara', 'ialomita', 'iasi', 'ilfov', 'maramures', 'mehedinti', 'mures', 
-    'neamt', 'olt', 'prahova', 'satu-mare', 'salaj', 'sibiu', 'suceava', 
-    'teleorman', 'timis', 'tulcea', 'vaslui', 'valcea', 'vrancea', 'bucharest'
-  ],
-  'FR': [
-    'ain', 'aisne', 'allier', 'alpes-de-haute-provence', 'hautes-alpes', 'alpes-maritimes',
-    'ardeche', 'ardennes', 'ariege', 'aube', 'aude', 'aveyron', 'bouches-du-rhone',
-    'calvados', 'cantal', 'charente', 'charente-maritime', 'cher', 'correze', 'corse-du-sud',
-    'haute-corse', 'cote-d-or', 'cotes-d-armor', 'creuse', 'dordogne', 'doubs', 'drome',
-    'eure', 'eure-et-loir', 'finistere', 'gard', 'haute-garonne', 'gers', 'gironde',
-    'herault', 'ille-et-vilaine', 'indre', 'indre-et-loire', 'isere', 'jura', 'landes',
-    'loir-et-cher', 'loire', 'haute-loire', 'loire-atlantique', 'loiret', 'lot',
-    'lot-et-garonne', 'lozere', 'maine-et-loire', 'manche', 'marne', 'haute-marne',
-    'mayenne', 'meurthe-et-moselle', 'meuse', 'morbihan', 'moselle', 'nievre', 'nord',
-    'oise', 'orne', 'pas-de-calais', 'puy-de-dome', 'pyrenees-atlantiques', 'hautes-pyrenees',
-    'pyrenees-orientales', 'bas-rhin', 'haut-rhin', 'rhone', 'haute-saone', 'saone-et-loire',
-    'sarthe', 'savoie', 'haute-savoie', 'paris', 'seine-maritime', 'seine-et-marne',
-    'yvelines', 'deux-sevres', 'somme', 'tarn', 'tarn-et-garonne', 'var', 'vaucluse',
-    'vendee', 'vienne', 'haute-vienne', 'vosges', 'yonne', 'territoire-de-belfort',
-    'essonne', 'hauts-de-seine', 'seine-saint-denis', 'val-de-marne', 'val-d-oise'
-  ],
-  'PL': [
-    'dolnoslaskie', 'kujawsko-pomorskie', 'lubelskie', 'lubuskie', 'lodzkie',
-    'malopolskie', 'mazowieckie', 'opolskie', 'podkarpackie', 'podlaskie',
-    'pomorskie', 'slaskie', 'swietokrzyskie', 'warminsko-mazurskie', 'wielkopolskie',
-    'zachodniopomorskie'
-  ],
-  'DE': [
-    'baden-wurttemberg', 'bayern', 'berlin', 'brandenburg', 'bremen', 'hamburg',
-    'hessen', 'mecklenburg-vorpommern', 'niedersachsen', 'nordrhein-westfalen',
-    'rheinland-pfalz', 'saarland', 'sachsen', 'sachsen-anhalt', 'schleswig-holstein',
-    'thuringen'
-  ],
-  'ES': [
-    'andalucia', 'aragon', 'asturias', 'islas-baleares', 'canarias', 'cantabria',
-    'castilla-la-mancha', 'castilla-y-leon', 'cataluna', 'extremadura', 'galicia',
-    'madrid', 'murcia', 'navarra', 'pais-vasco', 'la-rioja', 'valencia', 'ceuta', 'melilla'
-  ],
-  'IT': [
-    'abruzzo', 'basilicata', 'calabria', 'campania', 'emilia-romagna', 'friuli-venezia-giulia',
-    'lazio', 'liguria', 'lombardia', 'marche', 'molise', 'piemonte', 'puglia',
-    'sardegna', 'sicilia', 'toscana', 'trentino-alto-adige', 'umbria', 'valle-d-aosta', 'veneto'
-  ],
-  'BE': [
-    'antwerpen', 'limburg', 'oost-vlaanderen', 'vlaams-brabant', 'west-vlaanderen',
-    'brussels', 'brabant-wallon', 'hainaut', 'liege', 'luxembourg', 'namur'
-  ],
-  'NL': [
-    'drenthe', 'flevoland', 'friesland', 'gelderland', 'groningen', 'limburg',
-    'noord-brabant', 'noord-holland', 'overijssel', 'utrecht', 'zeeland', 'zuid-holland'
-  ],
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+export const validateFile = (file: File, maxSize: number = 50 * 1024 * 1024): ValidationResult => {
+  const errors: string[] = [];
+  
+  // Size validation
+  if (file.size > maxSize) {
+    errors.push(`File size exceeds ${Math.round(maxSize / (1024 * 1024))}MB limit`);
+  }
+  
+  // Type validation
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png'
+  ];
+  
+  if (!allowedTypes.includes(file.type)) {
+    errors.push('File type not supported');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 };
 
-// Standard taxonomy for land use types
-export const standardLandUseTypes = [
-  'cereals',
-  'vegetables',
-  'vineyards',
-  'fruit_orchards',
-  'pasture_grassland',
-  'greenhouse_protected',
-  'industrial_crops',
-  'aromatic_medicinal_plants',
-  'fallow_land',
-  'mixed_use',
-  'forestry_plots',
-  'other',
-] as const;
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
-// Standard taxonomy for livestock types
-export const standardLivestockTypes = [
-  'cattle',
-  'sheep',
-  'goats',
-  'swine',
-  'poultry',
-  'horses',
-  'rabbits',
-  'bees',
-] as const;
+export const farmEditSchema = z.object({
+  name: z.string().min(1, 'Farm name is required'),
+  address: z.string().min(1, 'Address is required'),
+  legal_status: z.string().optional(),
+  cnp_or_cui: z.string().optional(),
+  country: z.string().optional(),
+  department: z.string().optional(),
+  locality: z.string().optional(),
+  total_hectares: z.number().positive().optional(),
+  own_or_lease: z.boolean().default(false),
+  land_use_types: z.array(z.string()).default([]),
+  livestock_present: z.boolean().default(false),
+  livestock: z.record(z.any()).default({}),
+  irrigation_method: z.string().optional(),
+  certifications: z.array(z.string()).default([]),
+  environmental_permit: z.boolean().default(false),
+  tech_docs: z.boolean().default(false),
+  subsidy_interest: z.array(z.string()).default([]),
+  phone: z.string().optional(),
+  preferred_language: z.string().default('en'),
+  revenue: z.string().optional(),
+  software_used: z.array(z.string()).default([]),
+  staff_count: z.number().min(0).default(0),
+});
 
-// Standard taxonomy for regions/departments
-export const standardRegions = [
-  'alba', 'arad', 'arges', 'bacau', 'bihor', 'bistrita-nasaud', 'botosani',
-  'brasov', 'braila', 'buzau', 'caras-severin', 'calarasi', 'cluj', 'constanta',
-  'covasna', 'dambovita', 'dolj', 'galati', 'giurgiu', 'gorj', 'harghita',
-  'hunedoara', 'ialomita', 'iasi', 'ilfov', 'maramures', 'mehedinti', 'mures',
-  'neamt', 'olt', 'prahova', 'satu-mare', 'salaj', 'sibiu', 'suceava',
-  'teleorman', 'timis', 'tulcea', 'vaslui', 'valcea', 'vrancea', 'bucharest',
-] as const;
+export type FarmEditData = z.infer<typeof farmEditSchema>;

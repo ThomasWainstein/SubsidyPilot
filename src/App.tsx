@@ -1,102 +1,128 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { LanguageProvider } from "@/contexts/language";
-import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { CalendarProvider } from "@/contexts/CalendarContext";
-
-import Index from "./pages/Index";
-import DashboardPage from "./pages/DashboardPage";
-import SubsidySearchPage from "./pages/SubsidySearchPage";
-import FarmProfilePage from "./pages/FarmProfilePage";
-import ApplicationFormPage from "./pages/ApplicationFormPage";
-import RegulationsPage from "./pages/RegulationsPage";
-import NewFarmPage from "./pages/NewFarmPage";
-import AuthPage from "./pages/AuthPage";
-import AdminPage from "./pages/AdminPage";
-import NotFound from "./pages/NotFound";
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { CalendarProvider } from '@/contexts/CalendarContext';
+import Index from '@/pages/Index';
+import AuthPage from '@/pages/AuthPage';
+import DashboardPage from '@/pages/DashboardPage';
+import NewFarmPage from '@/pages/NewFarmPage';
+import FarmProfilePage from '@/pages/FarmProfilePage';
+import SubsidySearchPage from '@/pages/SubsidySearchPage';
+import CalendarPage from '@/pages/CalendarPage';
+import ApplicationFormPage from '@/pages/ApplicationFormPage';
+import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
+import RegulationsPage from '@/pages/RegulationsPage';
+import AdminPage from '@/pages/AdminPage';
+import NotFound from '@/pages/NotFound';
+import { Toaster } from '@/components/ui/toaster';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import FarmEditPage from '@/pages/FarmEditPage';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <LanguageProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router>
         <AuthProvider>
-          <CalendarProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/subsidies"
-                element={
-                  <ProtectedRoute>
-                    <SubsidySearchPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/farm/:farmId"
-                element={
-                  <ProtectedRoute>
-                    <FarmProfilePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/application/:subsidyId"
-                element={
-                  <ProtectedRoute>
-                    <ApplicationFormPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/regulations"
-                element={
-                  <ProtectedRoute>
-                    <RegulationsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/new-farm"
-                element={
-                  <ProtectedRoute>
-                    <NewFarmPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute>
-                    <AdminPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
-            </Routes>
-          </CalendarProvider>
+          <LanguageProvider>
+            <CalendarProvider>
+              <div className="min-h-screen bg-background font-sans antialiased">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <DashboardPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/new" 
+                    element={
+                      <ProtectedRoute>
+                        <NewFarmPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId" 
+                    element={
+                      <ProtectedRoute>
+                        <FarmProfilePage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/edit" 
+                    element={
+                      <ProtectedRoute>
+                        <FarmEditPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/search" 
+                    element={
+                      <ProtectedRoute>
+                        <SubsidySearchPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/calendar" 
+                    element={
+                      <ProtectedRoute>
+                        <CalendarPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/application/:subsidyId" 
+                    element={
+                      <ProtectedRoute>
+                        <ApplicationFormPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/eu-portal" 
+                    element={
+                      <ProtectedRoute>
+                        <EUSubsidyPortalPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/regulations" 
+                    element={
+                      <ProtectedRoute>
+                        <RegulationsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin" 
+                    element={
+                      <ProtectedRoute>
+                        <AdminPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+              </div>
+            </CalendarProvider>
+          </LanguageProvider>
         </AuthProvider>
-      </LanguageProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </Router>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
