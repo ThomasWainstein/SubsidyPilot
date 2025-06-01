@@ -11,7 +11,7 @@ interface FileUploadFieldProps {
   accept?: string;
   required?: boolean;
   onFileSelect: (file: File | null) => void;
-  uploadedFile?: { filename: string; uploaded: boolean } | null;
+  uploadedFile?: { filename?: string; uploaded?: boolean } | null;
   className?: string;
 }
 
@@ -57,6 +57,9 @@ const FileUploadField = ({
     onFileSelect(null);
   };
 
+  const isUploaded = uploadedFile?.uploaded === true;
+  const filename = uploadedFile?.filename;
+
   return (
     <div className={`space-y-2 ${className}`}>
       <Label htmlFor={id}>
@@ -67,7 +70,7 @@ const FileUploadField = ({
         <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
       )}
 
-      {!uploadedFile?.uploaded ? (
+      {!isUploaded ? (
         <div
           className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
             isDragOver
@@ -107,7 +110,7 @@ const FileUploadField = ({
                 File uploaded successfully
               </p>
               <p className="text-xs text-green-600 dark:text-green-400">
-                {uploadedFile.filename}
+                {filename || 'Unknown file'}
               </p>
             </div>
           </div>
