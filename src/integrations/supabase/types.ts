@@ -55,6 +55,20 @@ export type Database = {
             referencedRelation: "subsidies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_applications_farm_id"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_applications_subsidy_id"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       farm_documents: {
@@ -96,6 +110,13 @@ export type Database = {
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_farm_documents_farm_id"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       farms: {
@@ -113,6 +134,7 @@ export type Database = {
           livestock: Json | null
           livestock_present: boolean | null
           locality: string | null
+          matching_tags: string[] | null
           name: string
           notify_consent: boolean | null
           own_or_lease: boolean | null
@@ -138,6 +160,7 @@ export type Database = {
           livestock?: Json | null
           livestock_present?: boolean | null
           locality?: string | null
+          matching_tags?: string[] | null
           name: string
           notify_consent?: boolean | null
           own_or_lease?: boolean | null
@@ -163,6 +186,7 @@ export type Database = {
           livestock?: Json | null
           livestock_present?: boolean | null
           locality?: string | null
+          matching_tags?: string[] | null
           name?: string
           notify_consent?: boolean | null
           own_or_lease?: boolean | null
@@ -174,7 +198,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_farms_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subsidies: {
         Row: {
@@ -190,6 +222,7 @@ export type Database = {
           id: string
           language: string[] | null
           legal_entities: string[] | null
+          matching_tags: string[] | null
           region: string[] | null
           status: string | null
           tags: string[] | null
@@ -209,6 +242,7 @@ export type Database = {
           id?: string
           language?: string[] | null
           legal_entities?: string[] | null
+          matching_tags?: string[] | null
           region?: string[] | null
           status?: string | null
           tags?: string[] | null
@@ -228,6 +262,7 @@ export type Database = {
           id?: string
           language?: string[] | null
           legal_entities?: string[] | null
+          matching_tags?: string[] | null
           region?: string[] | null
           status?: string | null
           tags?: string[] | null
@@ -277,7 +312,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_match_confidence: {
+        Args: {
+          farm_tags: string[]
+          subsidy_tags: string[]
+          farm_region: string
+          subsidy_regions: string[]
+        }
+        Returns: number
+      }
     }
     Enums: {
       application_status:

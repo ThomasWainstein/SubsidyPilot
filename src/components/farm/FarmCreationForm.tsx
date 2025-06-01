@@ -1,8 +1,6 @@
-
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,160 +9,111 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
+import { useCreateFarm } from '@/hooks/useFarms';
+import { farmCreationSchema, type FarmCreationData } from '@/schemas/farmValidation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    // Section 1: Farm Identity
-    farmName: '',
-    farmAddress: '',
-    legalStatus: '',
-    cnpOrCui: '',
-    
-    // Section 2: Location
-    department: '',
-    locality: '',
-    apiaRegions: [] as string[],
-    
-    // Section 3: Land Info
-    landOwnership: '',
-    totalArea: '',
-    landUseTypes: [] as string[],
-    
-    // Section 4: Livestock
-    hasLivestock: false,
-    animalTypes: {} as Record<string, string>,
-    
-    // Section 5: Environmental & Technical
-    hasEnvironmentalPermits: false,
-    
-    // Section 6: Subsidy Interests
-    subsidyInterests: [] as string[],
-    otherSubsidyInterest: '',
-    
-    // Section 7: Contact & Consent
-    mobileNumber: '',
-    preferredLanguage: '',
-    gdprConsent: false,
-    notificationConsent: false
+  const createFarmMutation = useCreateFarm();
+
+  const form = useForm<FarmCreationData>({
+    resolver: zodResolver(farmCreationSchema),
+    defaultValues: {
+      farmName: '',
+      farmAddress: '',
+      legalStatus: '',
+      cnpOrCui: '',
+      department: '',
+      locality: '',
+      apiaRegions: [],
+      landOwnership: '',
+      totalArea: '',
+      landUseTypes: [],
+      hasLivestock: false,
+      animalTypes: {},
+      hasEnvironmentalPermits: false,
+      subsidyInterests: [],
+      otherSubsidyInterest: '',
+      mobileNumber: '',
+      preferredLanguage: '',
+      gdprConsent: false,
+      notificationConsent: false,
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (data: FarmCreationData) => {
     if (!user) {
-      toast({
-        title: t('common.error'),
-        description: 'You must be logged in to create a farm',
-        variant: 'destructive',
-      });
       return;
     }
-
-    if (!formData.farmName || !formData.farmAddress || !formData.legalStatus || !formData.cnpOrCui) {
-      toast({
-        title: t('common.error'),
-        description: 'Please fill in all required fields in Farm Identity section',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!formData.gdprConsent) {
-      toast({
-        title: t('common.error'),
-        description: 'GDPR consent is required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
 
     try {
-      const farmData = {
-        user_id: user.id,
-        name: formData.farmName,
-        address: formData.farmAddress,
-        legal_status: formData.legalStatus,
-        cnp_or_cui: formData.cnpOrCui,
-        department: formData.department,
-        locality: formData.locality,
-        apia_region: formData.apiaRegions,
-        own_or_lease: formData.landOwnership === 'own',
-        total_hectares: formData.totalArea ? parseFloat(formData.totalArea) : null,
-        land_use_types: formData.landUseTypes,
-        livestock_present: formData.hasLivestock,
-        livestock: formData.hasLivestock ? formData.animalTypes : null,
-        environmental_permit: formData.hasEnvironmentalPermits,
-        subsidy_interest: [...formData.subsidyInterests, formData.otherSubsidyInterest].filter(Boolean),
-        phone: formData.mobileNumber,
-        preferred_language: formData.preferredLanguage,
-        gdpr_consent: formData.gdprConsent,
-        notify_consent: formData.notificationConsent
-      };
-
-      const { data, error } = await supabase
-        .from('farms')
-        .insert(farmData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast({
-        title: t('common.success'),
-        description: 'Farm profile created successfully',
+      await createFarmMutation.mutateAsync({
+        name: data.farmName,
+        address: data.farmAddress,
+        legal_status: data.legalStatus,
+        cnp_or_cui: data.cnpOrCui,
+        department: data.department,
+        locality: data.locality,
+        apia_region: data.apiaRegions,
+        own_or_lease: data.landOwnership === 'own',
+        total_hectares: data.totalArea ? parseFloat(data.totalArea) : null,
+        land_use_types: data.landUseTypes,
+        livestock_present: data.hasLivestock,
+        livestock: data.hasLivestock ? data.animalTypes : null,
+        environmental_permit: data.hasEnvironmentalPermits,
+        subsidy_interest: [...data.subsidyInterests, data.otherSubsidyInterest].filter(Boolean),
+        phone: data.mobileNumber,
+        preferred_language: data.preferredLanguage,
+        gdpr_consent: data.gdprConsent,
+        notify_consent: data.notificationConsent,
       });
       
       navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: 'Failed to create farm: ' + error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // Error handling is done in the hook
     }
   };
 
   const handleFileUpload = (fieldName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      toast({
-        title: t('common.success'),
-        description: `File ${file.name} selected (upload functionality will be added)`,
-      });
+      // TODO: Implement file upload to Supabase Storage
+      console.log(`File selected for ${fieldName}:`, file.name);
     }
   };
 
-  const handleCheckboxArrayChange = (array: string[], item: string, checked: boolean, field: string) => {
+  const handleCheckboxArrayChange = (array: string[], item: string, checked: boolean, field: keyof FarmCreationData) => {
     const newArray = checked 
       ? [...array, item]
       : array.filter(i => i !== item);
     
-    setFormData(prev => ({
-      ...prev,
-      [field]: newArray
-    }));
+    form.setValue(field as any, newArray);
   };
 
   const handleAnimalTypeChange = (animalType: string, quantity: string) => {
-    setFormData(prev => ({
-      ...prev,
-      animalTypes: {
-        ...prev.animalTypes,
-        [animalType]: quantity
-      }
-    }));
+    const currentTypes = form.getValues('animalTypes');
+    form.setValue('animalTypes', {
+      ...currentTypes,
+      [animalType]: quantity
+    });
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
+          <p className="text-gray-600 mb-4">Please log in to create a farm profile.</p>
+          <Button onClick={() => navigate('/auth')}>Go to Login</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -174,7 +123,7 @@ const FarmCreationForm = () => {
           <p className="text-gray-600">Complete all sections to create a comprehensive farm profile</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Section 1: Farm Identity & Legal Info */}
           <Card>
             <CardHeader>
@@ -187,10 +136,11 @@ const FarmCreationForm = () => {
                   id="farm-name"
                   type="text"
                   placeholder="Enter farm name"
-                  value={formData.farmName}
-                  onChange={(e) => setFormData({ ...formData, farmName: e.target.value })}
-                  required
+                  {...form.register('farmName')}
                 />
+                {form.formState.errors.farmName && (
+                  <p className="text-sm text-red-500">{form.formState.errors.farmName.message}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -198,15 +148,16 @@ const FarmCreationForm = () => {
                 <Textarea
                   id="farm-address"
                   placeholder="Enter complete farm address"
-                  value={formData.farmAddress}
-                  onChange={(e) => setFormData({ ...formData, farmAddress: e.target.value })}
-                  required
+                  {...form.register('farmAddress')}
                 />
+                {form.formState.errors.farmAddress && (
+                  <p className="text-sm text-red-500">{form.formState.errors.farmAddress.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="legal-status">Legal Status *</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, legalStatus: value })}>
+                <Select onValueChange={(value) => form.setValue('legalStatus', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select legal status" />
                   </SelectTrigger>
@@ -217,6 +168,9 @@ const FarmCreationForm = () => {
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
+                {form.formState.errors.legalStatus && (
+                  <p className="text-sm text-red-500">{form.formState.errors.legalStatus.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -225,10 +179,11 @@ const FarmCreationForm = () => {
                   id="cnp-cui"
                   type="text"
                   placeholder="Enter CNP or CUI"
-                  value={formData.cnpOrCui}
-                  onChange={(e) => setFormData({ ...formData, cnpOrCui: e.target.value })}
-                  required
+                  {...form.register('cnpOrCui')}
                 />
+                {form.formState.errors.cnpOrCui && (
+                  <p className="text-sm text-red-500">{form.formState.errors.cnpOrCui.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -257,7 +212,7 @@ const FarmCreationForm = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
-                  <Select onValueChange={(value) => setFormData({ ...formData, department: value })}>
+                  <Select onValueChange={(value) => form.setValue('department', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
@@ -276,8 +231,7 @@ const FarmCreationForm = () => {
                     id="locality"
                     type="text"
                     placeholder="Enter locality"
-                    value={formData.locality}
-                    onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
+                    {...form.register('locality')}
                   />
                 </div>
               </div>
@@ -292,9 +246,9 @@ const FarmCreationForm = () => {
                     <div key={region} className="flex items-center space-x-2">
                       <Checkbox
                         id={region}
-                        checked={formData.apiaRegions.includes(region)}
+                        checked={form.getValues('apiaRegions').includes(region)}
                         onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange(formData.apiaRegions, region, checked as boolean, 'apiaRegions')
+                          handleCheckboxArrayChange(form.getValues('apiaRegions'), region, checked as boolean, 'apiaRegions')
                         }
                       />
                       <Label htmlFor={region} className="text-sm">{region}</Label>
@@ -313,7 +267,7 @@ const FarmCreationForm = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Do you own or lease land?</Label>
-                <Select onValueChange={(value) => setFormData({ ...formData, landOwnership: value })}>
+                <Select onValueChange={(value) => form.setValue('landOwnership', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select ownership type" />
                   </SelectTrigger>
@@ -331,8 +285,7 @@ const FarmCreationForm = () => {
                   id="total-area"
                   type="number"
                   placeholder="Enter area in hectares"
-                  value={formData.totalArea}
-                  onChange={(e) => setFormData({ ...formData, totalArea: e.target.value })}
+                  {...form.register('totalArea')}
                 />
               </div>
 
@@ -347,9 +300,9 @@ const FarmCreationForm = () => {
                     <div key={landUse} className="flex items-center space-x-2">
                       <Checkbox
                         id={landUse}
-                        checked={formData.landUseTypes.includes(landUse)}
+                        checked={form.getValues('landUseTypes').includes(landUse)}
                         onCheckedChange={(checked) => 
-                          handleCheckboxArrayChange(formData.landUseTypes, landUse, checked as boolean, 'landUseTypes')
+                          handleCheckboxArrayChange(form.getValues('landUseTypes'), landUse, checked as boolean, 'landUseTypes')
                         }
                       />
                       <Label htmlFor={landUse} className="text-sm">{landUse}</Label>
@@ -397,13 +350,13 @@ const FarmCreationForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="has-livestock"
-                  checked={formData.hasLivestock}
-                  onCheckedChange={(checked) => setFormData({ ...formData, hasLivestock: checked as boolean })}
+                  checked={form.getValues('hasLivestock')}
+                  onCheckedChange={(checked) => form.setValue('hasLivestock', checked as boolean)}
                 />
                 <Label htmlFor="has-livestock">Do you manage livestock?</Label>
               </div>
 
-              {formData.hasLivestock && (
+              {form.getValues('hasLivestock') && (
                 <div className="space-y-4">
                   <Label>Animal Types and Quantities</Label>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -413,7 +366,7 @@ const FarmCreationForm = () => {
                         <Input
                           type="number"
                           placeholder="Quantity"
-                          value={formData.animalTypes[animal] || ''}
+                          value={form.getValues('animalTypes')[animal] || ''}
                           onChange={(e) => handleAnimalTypeChange(animal, e.target.value)}
                         />
                       </div>
@@ -446,8 +399,8 @@ const FarmCreationForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="env-permits"
-                  checked={formData.hasEnvironmentalPermits}
-                  onCheckedChange={(checked) => setFormData({ ...formData, hasEnvironmentalPermits: checked as boolean })}
+                  checked={form.getValues('hasEnvironmentalPermits')}
+                  onCheckedChange={(checked) => form.setValue('hasEnvironmentalPermits', checked as boolean)}
                 />
                 <Label htmlFor="env-permits">Do you hold any environmental permits?</Label>
               </div>
@@ -499,9 +452,9 @@ const FarmCreationForm = () => {
                   <div key={interest} className="flex items-center space-x-2">
                     <Checkbox
                       id={interest}
-                      checked={formData.subsidyInterests.includes(interest)}
+                      checked={form.getValues('subsidyInterests').includes(interest)}
                       onCheckedChange={(checked) => 
-                        handleCheckboxArrayChange(formData.subsidyInterests, interest, checked as boolean, 'subsidyInterests')
+                        handleCheckboxArrayChange(form.getValues('subsidyInterests'), interest, checked as boolean, 'subsidyInterests')
                       }
                     />
                     <Label htmlFor={interest} className="text-sm">{interest}</Label>
@@ -515,8 +468,7 @@ const FarmCreationForm = () => {
                   id="other-subsidy"
                   type="text"
                   placeholder="Specify other subsidy interests"
-                  value={formData.otherSubsidyInterest}
-                  onChange={(e) => setFormData({ ...formData, otherSubsidyInterest: e.target.value })}
+                  {...form.register('otherSubsidyInterest')}
                 />
               </div>
             </CardContent>
@@ -535,13 +487,12 @@ const FarmCreationForm = () => {
                     id="mobile"
                     type="tel"
                     placeholder="Enter mobile number"
-                    value={formData.mobileNumber}
-                    onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                    {...form.register('mobileNumber')}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Preferred Language</Label>
-                  <Select onValueChange={(value) => setFormData({ ...formData, preferredLanguage: value })}>
+                  <Select onValueChange={(value) => form.setValue('preferredLanguage', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
@@ -559,18 +510,21 @@ const FarmCreationForm = () => {
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="gdpr-consent"
-                    checked={formData.gdprConsent}
-                    onCheckedChange={(checked) => setFormData({ ...formData, gdprConsent: checked as boolean })}
+                    checked={form.watch('gdprConsent')}
+                    onCheckedChange={(checked) => form.setValue('gdprConsent', checked as boolean)}
                     required
                   />
                   <Label htmlFor="gdpr-consent">✅ I consent to GDPR data processing *</Label>
                 </div>
+                {form.formState.errors.gdprConsent && (
+                  <p className="text-sm text-red-500">{form.formState.errors.gdprConsent.message}</p>
+                )}
 
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="notification-consent"
-                    checked={formData.notificationConsent}
-                    onCheckedChange={(checked) => setFormData({ ...formData, notificationConsent: checked as boolean })}
+                    checked={form.watch('notificationConsent')}
+                    onCheckedChange={(checked) => form.setValue('notificationConsent', checked as boolean)}
                   />
                   <Label htmlFor="notification-consent">✅ I want to receive subsidy deadline and update notifications</Label>
                 </div>
@@ -582,8 +536,8 @@ const FarmCreationForm = () => {
             <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Farm Profile'}
+            <Button type="submit" disabled={createFarmMutation.isPending}>
+              {createFarmMutation.isPending ? 'Creating...' : 'Create Farm Profile'}
             </Button>
           </div>
         </form>
