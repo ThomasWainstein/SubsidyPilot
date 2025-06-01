@@ -3,127 +3,98 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, 
-  FileSpreadsheet, 
-  FileImage, 
-  File, 
-  ExternalLink, 
-  Trash2, 
-  Calendar,
-  Tag
-} from 'lucide-react';
+import { FileText, Eye, Trash2, Loader2 } from 'lucide-react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
-import { formatFileSize } from '@/utils/fileValidation';
-import { formatDate, getCategoryColor } from '@/utils/documentUtils';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 interface DocumentItemProps {
   document: FarmDocument;
   onDelete: (document: FarmDocument) => void;
   onView: (document: FarmDocument) => void;
-  isDeleting?: boolean;
+  isDeleting: boolean;
 }
 
-const DocumentItem = ({ document, onDelete, onView, isDeleting = false }: DocumentItemProps) => {
-  const getDocumentIcon = (mimeType: string | null) => {
-    if (!mimeType) return <File className="h-6 w-6 text-gray-500" />;
+// Category labels for display
+const CATEGORY_LABELS: Record<string, string> = {
+  'legal': 'Legal Documents',
+  'financial': 'Financial Records', 
+  'environmental': 'Environmental Permits',
+  'technical': 'Technical Documentation',
+  'certification': 'Certifications',
+  'other': 'Other'
+};
+
+// Valid categories
+const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
+
+const DocumentItem = ({ document, onDelete, onView, isDeleting }: DocumentItemProps) => {
+  // Ensure we have a valid category
+  const safeCategory = VALID_CATEGORIES.includes(document.category) ? document.category : 'other';
+  const categoryLabel = CATEGORY_LABELS[safeCategory] || 'Other';
+  
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return 'Unknown size';
+    const kb = bytes / 1024;
+    const mb = kb / 1024;
     
-    if (mimeType.includes('pdf')) {
-      return <FileText className="h-6 w-6 text-red-500" />;
+    if (mb >= 1) {
+      return `${mb.toFixed(1)} MB`;
+    } else {
+      return `${kb.toFixed(1)} KB`;
     }
-    if (mimeType.includes('sheet') || mimeType.includes('excel')) {
-      return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
-    }
-    if (mimeType.includes('image')) {
-      return <FileImage className="h-6 w-6 text-blue-500" />;
-    }
-    return <File className="h-6 w-6 text-gray-500" />;
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Unknown date';
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 border hover:border-gray-300 dark:hover:border-gray-600">
+    <Card>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-3 flex-1 min-w-0">
-            <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800 group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors">
-              {getDocumentIcon(document.mime_type)}
+        <div className="flex items-start space-x-3">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <FileText className="h-6 w-6 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-sm truncate" title={document.file_name}>
+              {document.file_name}
+            </h3>
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge variant="secondary" className="text-xs">
+                {categoryLabel}
+              </Badge>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-gray-900 dark:text-white truncate group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
-                {document.file_name}
-              </h4>
-              <div className="flex items-center space-x-3 mt-2">
-                <Badge 
-                  variant="secondary" 
-                  className={`${getCategoryColor(document.category)} text-xs`}
-                >
-                  <Tag className="h-3 w-3 mr-1" />
-                  {document.category}
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {formatDate(document.uploaded_at)}
-                </span>
-                <span>{formatFileSize(document.file_size || 0)}</span>
-              </div>
+            <div className="text-xs text-gray-500 mt-1 space-y-1">
+              <div>{formatFileSize(document.file_size)}</div>
+              <div>Uploaded {formatDate(document.uploaded_at)}</div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-1 ml-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onView(document)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-              aria-label={`View ${document.file_name}`}
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isDeleting}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-8 w-8 p-0"
-                  aria-label={`Delete ${document.file_name}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{document.file_name}"? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(document)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+        </div>
+        
+        <div className="flex items-center justify-end space-x-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onView(document)}
+            className="flex items-center space-x-1"
+          >
+            <Eye className="h-4 w-4" />
+            <span>View</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(document)}
+            disabled={isDeleting}
+            className="flex items-center space-x-1 text-red-600 hover:text-red-700"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            <span>Delete</span>
+          </Button>
         </div>
       </CardContent>
     </Card>

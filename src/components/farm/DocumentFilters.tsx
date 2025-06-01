@@ -1,29 +1,29 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 interface DocumentFiltersProps {
   searchTerm: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange: (term: string) => void;
   selectedCategory: string;
-  onCategoryChange: (value: string) => void;
+  onCategoryChange: (category: string) => void;
   categories: string[];
   totalDocuments: number;
   filteredCount: number;
   onClearFilters: () => void;
 }
 
+// Category labels for display
 const CATEGORY_LABELS: Record<string, string> = {
-  legal: 'Legal Documents',
-  financial: 'Financial Records',
-  environmental: 'Environmental Permits',
-  technical: 'Technical Documentation',
-  certification: 'Certifications',
-  other: 'Other',
+  'legal': 'Legal Documents',
+  'financial': 'Financial Records',
+  'environmental': 'Environmental Permits',
+  'technical': 'Technical Documentation',
+  'certification': 'Certifications',
+  'other': 'Other'
 };
 
 const DocumentFilters = ({
@@ -34,13 +34,21 @@ const DocumentFilters = ({
   categories,
   totalDocuments,
   filteredCount,
-  onClearFilters,
+  onClearFilters
 }: DocumentFiltersProps) => {
   const hasActiveFilters = searchTerm || selectedCategory;
 
+  // Safe category change handler
+  const handleCategoryChange = (value: string) => {
+    // Only allow valid categories or empty string for clearing
+    if (value === '' || categories.includes(value)) {
+      onCategoryChange(value);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -51,55 +59,37 @@ const DocumentFilters = ({
           />
         </div>
         
-        <Select value={selectedCategory} onValueChange={onCategoryChange}>
-          <SelectTrigger className="w-full sm:w-48">
+        <Select value={selectedCategory || ''} onValueChange={handleCategoryChange}>
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {CATEGORY_LABELS[category] || category}
-              </SelectItem>
-            ))}
+            {categories
+              .filter(category => category && category.trim() !== '') // Filter out invalid categories
+              .map((category) => (
+                <SelectItem key={category} value={category}>
+                  {CATEGORY_LABELS[category] || category}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>
-
+      
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {filteredCount} of {totalDocuments} documents
-          </span>
-          {hasActiveFilters && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onClearFilters}
-              className="h-7 text-xs"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Clear filters
-            </Button>
+        <p className="text-sm text-gray-500">
+          {hasActiveFilters ? (
+            <>Showing {filteredCount} of {totalDocuments} documents</>
+          ) : (
+            <>{totalDocuments} document{totalDocuments !== 1 ? 's' : ''} total</>
           )}
-        </div>
-
+        </p>
+        
         {hasActiveFilters && (
-          <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <div className="flex space-x-1">
-              {searchTerm && (
-                <Badge variant="secondary" className="text-xs">
-                  Search: {searchTerm}
-                </Badge>
-              )}
-              {selectedCategory && (
-                <Badge variant="secondary" className="text-xs">
-                  Category: {CATEGORY_LABELS[selectedCategory] || selectedCategory}
-                </Badge>
-              )}
-            </div>
-          </div>
+          <Button variant="ghost" size="sm" onClick={onClearFilters}>
+            <X className="h-4 w-4 mr-1" />
+            Clear filters
+          </Button>
         )}
       </div>
     </div>

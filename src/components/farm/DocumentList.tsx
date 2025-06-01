@@ -12,6 +12,9 @@ interface DocumentListProps {
   farmId: string;
 }
 
+// Valid categories that match our form and database enum
+const VALID_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
+
 const DocumentList = ({ farmId }: DocumentListProps) => {
   const { data: documents, isLoading, error } = useFarmDocuments(farmId);
   const deleteMutation = useDeleteDocument();
@@ -19,24 +22,34 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Get unique categories from documents
-  const categories = useMemo(() => {
+  // Normalize documents to ensure valid categories
+  const normalizedDocuments = useMemo(() => {
     if (!documents) return [];
-    return Array.from(new Set(documents.map(doc => doc.category))).sort();
+    
+    return documents.map(doc => ({
+      ...doc,
+      category: VALID_CATEGORIES.includes(doc.category) ? doc.category : 'other'
+    }));
   }, [documents]);
+
+  // Get unique categories from normalized documents
+  const categories = useMemo(() => {
+    if (!normalizedDocuments) return [];
+    return Array.from(new Set(normalizedDocuments.map(doc => doc.category))).sort();
+  }, [normalizedDocuments]);
 
   // Filter documents based on search and category
   const filteredDocuments = useMemo(() => {
-    if (!documents) return [];
+    if (!normalizedDocuments) return [];
     
-    return documents.filter(doc => {
+    return normalizedDocuments.filter(doc => {
       const matchesSearch = !searchTerm || 
         doc.file_name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || doc.category === selectedCategory;
       
       return matchesSearch && matchesCategory;
     });
-  }, [documents, searchTerm, selectedCategory]);
+  }, [normalizedDocuments, searchTerm, selectedCategory]);
 
   const handleView = (document: FarmDocument) => {
     window.open(document.file_url, '_blank');
@@ -116,10 +129,10 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Documents ({documents?.length || 0})</CardTitle>
+        <CardTitle>Documents ({normalizedDocuments?.length || 0})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {documents && documents.length > 0 ? (
+        {normalizedDocuments && normalizedDocuments.length > 0 ? (
           <>
             <DocumentFilters
               searchTerm={searchTerm}
@@ -127,7 +140,7 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
               selectedCategory={selectedCategory}
               onCategoryChange={setSelectedCategory}
               categories={categories}
-              totalDocuments={documents.length}
+              totalDocuments={normalizedDocuments.length}
               filteredCount={filteredDocuments.length}
               onClearFilters={handleClearFilters}
             />
