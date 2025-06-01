@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFarm } from '@/hooks/useFarms';
 import Navbar from '@/components/Navbar';
 import { farms } from '@/data/farms';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/StatusBadge';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Loader2 } from 'lucide-react';
 import { ProfileTabContent } from '@/components/farm/ProfileTabContent';
 import { DocumentsTabContent } from '@/components/farm/DocumentsTabContent';
 import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
@@ -16,8 +17,79 @@ const FarmProfilePage = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const { t } = useLanguage();
 
-  const farm = farms.find(f => f.id === farmId);
-  if (!farm) return <div>Farm not found</div>;
+  console.log('FarmProfilePage: farmId from params:', farmId);
+  console.log('FarmProfilePage: farmId type:', typeof farmId);
+
+  // Try to get farm from Supabase first
+  const { data: supabaseFarm, isLoading, error } = useFarm(farmId || '');
+  
+  console.log('FarmProfilePage: Supabase farm data:', supabaseFarm);
+  console.log('FarmProfilePage: isLoading:', isLoading);
+  console.log('FarmProfilePage: error:', error);
+
+  // Fallback to static farms data if Supabase farm not found
+  const staticFarm = farms.find(f => f.id === farmId);
+  console.log('FarmProfilePage: Static farm found:', staticFarm);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="animate-spin" />
+            <span>Loading farm...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Use Supabase farm if available, otherwise fallback to static farm
+  const farm = supabaseFarm || staticFarm;
+
+  if (!farm) {
+    console.error('FarmProfilePage: No farm found for ID:', farmId);
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Farm Not Found
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              The farm with ID "{farmId}" could not be found.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              Please check the URL or return to the dashboard.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Transform Supabase farm to match the expected format if needed
+  const transformedFarm = supabaseFarm ? {
+    id: supabaseFarm.id,
+    name: supabaseFarm.name,
+    region: supabaseFarm.department || 'Unknown',
+    status: 'Profile Complete' as const,
+    updatedAt: supabaseFarm.updated_at || supabaseFarm.created_at || '',
+    // Add other required properties with defaults
+    size: supabaseFarm.total_hectares ? `${supabaseFarm.total_hectares} ha` : 'Unknown',
+    staff: 0,
+    tags: supabaseFarm.matching_tags || [],
+    certifications: [],
+    irrigationMethod: 'Unknown',
+    crops: supabaseFarm.land_use_types || [],
+    revenue: '€0',
+    activities: supabaseFarm.land_use_types || [],
+    carbonScore: 0,
+    software: [],
+    address: supabaseFarm.address
+  } : farm;
 
   const formatRegion = (region: string) => {
     if (region.includes(',')) return region;
@@ -33,16 +105,16 @@ const FarmProfilePage = () => {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{farm.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{transformedFarm.name}</h1>
                 <div className="flex items-center mt-2 gap-2">
-                  <StatusBadge status={farm.status} />
+                  <StatusBadge status={transformedFarm.status} />
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     <CalendarDays size={14} className="inline mr-1" />
-                    {t('common.lastUpdated')}: {farm.updatedAt}
+                    {t('common.lastUpdated')}: {transformedFarm.updatedAt}
                   </span>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                  {formatRegion(farm.region)}
+                  {formatRegion(transformedFarm.region)}
                 </div>
               </div>
             </div>
@@ -57,19 +129,19 @@ const FarmProfilePage = () => {
             </TabsList>
             
             <TabsContent value="profile">
-              <ProfileTabContent farm={farm} />
+              <ProfileTabContent farm={transformedFarm} />
             </TabsContent>
             
             <TabsContent value="documents">
-              <DocumentsTabContent farmId={farm.id} />
+              <DocumentsTabContent farmId={transformedFarm.id} />
             </TabsContent>
             
             <TabsContent value="subsidies">
-              <SubsidiesTabContent farmId={farm.id} />
+              <SubsidiesTabContent farmId={transformedFarm.id} />
             </TabsContent>
             
             <TabsContent value="applications">
-              <ApplicationsTabContent farmId={farm.id} />
+              <ApplicationsTabContent farmId={transformedFarm.id} />
             </TabsContent>
           </Tabs>
         </div>

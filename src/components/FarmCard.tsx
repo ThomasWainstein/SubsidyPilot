@@ -21,6 +21,11 @@ const FarmCard = ({ farm }: FarmCardProps) => {
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [areTagsCollapsed, setAreTagsCollapsed] = useState(true);
 
+  // Debug logging for farm ID
+  console.log('FarmCard: farm object:', farm);
+  console.log('FarmCard: farm.id:', farm.id);
+  console.log('FarmCard: farm.id type:', typeof farm.id);
+
   useEffect(() => {
     const farmId = typeof farm.id === 'string' ? parseInt(farm.id, 10) : farm.id;
     let count = 0;
@@ -69,6 +74,10 @@ const FarmCard = ({ farm }: FarmCardProps) => {
       return farm.region;
     }
   };
+
+  // Ensure farm ID is properly formatted for the route
+  const farmLink = `/farm/${farm.id}`;
+  console.log('FarmCard: Generated farm link:', farmLink);
 
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md relative dark:bg-dark-card dark:hover:bg-dark-surface-hover">
@@ -139,7 +148,7 @@ const FarmCard = ({ farm }: FarmCardProps) => {
         
         <div className="flex justify-end">
           <Button asChild variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 dark:hover:text-emerald-200">
-            <Link to={`/farm/${farm.id}`}>
+            <Link to={farmLink}>
               {t('common.openClientProfile')}
             </Link>
           </Button>
