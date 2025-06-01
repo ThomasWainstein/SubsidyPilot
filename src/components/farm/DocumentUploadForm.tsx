@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, X, File, Loader2 } from 'lucide-react';
+import { Upload, X, File, Loader2, CheckCircle2 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { useUploadDocument } from '@/hooks/useFarmDocuments';
 import { toast } from '@/components/ui/use-toast';
@@ -28,6 +28,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const uploadMutation = useUploadDocument();
 
@@ -72,6 +73,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     }
 
     setUploadProgress(0);
+    setUploadedFiles([]);
     const totalFiles = selectedFiles.length;
     
     try {
@@ -83,12 +85,14 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
           category,
         });
         setUploadProgress(((i + 1) / totalFiles) * 100);
+        setUploadedFiles(prev => [...prev, file.name]);
       }
 
       // Clear form after successful upload
       setSelectedFiles([]);
       setCategory('');
       setUploadProgress(0);
+      setUploadedFiles([]);
       
       if (onUploadSuccess) {
         onUploadSuccess();
@@ -96,6 +100,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     } catch (error) {
       console.error('Upload failed:', error);
       setUploadProgress(0);
+      setUploadedFiles([]);
     }
   };
 
@@ -112,7 +117,10 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload Documents</CardTitle>
+        <CardTitle className="flex items-center space-x-2">
+          <Upload className="h-5 w-5" />
+          <span>Upload Documents</span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Category Selection */}
@@ -135,21 +143,26 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
         {/* File Drop Zone */}
         <div
           {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             isDragActive
               ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20'
               : 'border-gray-300 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-600'
           } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
         >
           <input {...getInputProps()} />
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <Upload className="h-10 w-10 text-gray-400" />
-            <div className="space-y-1">
-              <p className="text-base font-medium">
-                {isDragActive ? 'Drop files here' : 'Click to upload or drag and drop'}
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
+              <Upload className="h-8 w-8 text-gray-400" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-lg font-medium">
+                {isDragActive ? 'Drop files here' : 'Upload your documents'}
               </p>
               <p className="text-sm text-gray-500">
-                PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 50MB each)
+                Drag and drop files here, or click to browse
+              </p>
+              <p className="text-xs text-gray-400">
+                Supports PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 50MB each)
               </p>
             </div>
           </div>
@@ -157,17 +170,20 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
 
         {/* Selected Files */}
         {selectedFiles.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Selected Files ({selectedFiles.length})</Label>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <File className="h-5 w-5 text-gray-500" />
                     <div>
                       <p className="text-sm font-medium truncate max-w-[200px]">{file.name}</p>
                       <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                     </div>
+                    {uploadedFiles.includes(file.name) && (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    )}
                   </div>
                   <Button
                     type="button"
@@ -187,15 +203,20 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
 
         {/* Upload Progress */}
         {isUploading && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
-              <span className="flex items-center">
+              <span className="flex items-center font-medium">
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Uploading documents...
               </span>
-              <span>{Math.round(uploadProgress)}%</span>
+              <span className="font-medium">{Math.round(uploadProgress)}%</span>
             </div>
-            <Progress value={uploadProgress} className="h-2" />
+            <Progress value={uploadProgress} className="h-3" />
+            {uploadedFiles.length > 0 && (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Successfully uploaded: {uploadedFiles.join(', ')}
+              </div>
+            )}
           </div>
         )}
 
@@ -204,6 +225,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
           onClick={handleUpload}
           disabled={selectedFiles.length === 0 || !category || isUploading}
           className="w-full"
+          size="lg"
         >
           {isUploading ? (
             <>
