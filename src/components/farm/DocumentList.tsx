@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { File } from 'lucide-react';
 import { useFarmDocuments, useDeleteDocument, type FarmDocument } from '@/hooks/useFarmDocuments';
-import { toast } from '@/components/ui/use-toast';
 import DocumentGrid from './DocumentGrid';
 import DocumentFilters from './DocumentFilters';
+import DocumentItem from './DocumentItem';
 
 interface DocumentListProps {
   farmId: string;
@@ -133,12 +133,17 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
             />
             
             {filteredDocuments.length > 0 ? (
-              <DocumentGrid
-                documents={filteredDocuments}
-                onDelete={handleDelete}
-                onView={handleView}
-                deletingDocumentId={deleteMutation.isPending ? undefined : undefined}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredDocuments.map((document) => (
+                  <DocumentItem
+                    key={document.id}
+                    document={document}
+                    onDelete={handleDelete}
+                    onView={handleView}
+                    isDeleting={deleteMutation.isPending}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-8">
                 <File className="h-12 w-12 text-gray-400 mx-auto mb-4" />

@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, X, File, Loader2, CheckCircle2 } from 'lucide-react';
-import { Progress } from "@/components/ui/progress";
-import { useUploadDocument } from '@/hooks/useFarmDocuments';
-import { toast } from '@/components/ui/use-toast';
+import { Upload, Loader2 } from 'lucide-react';
+import { useDocumentUpload } from '@/hooks/useDocumentUpload';
+import FileDropZone from './upload/FileDropZone';
+import FilePreviewList from './upload/FilePreviewList';
+import UploadProgress from './upload/UploadProgress';
 
 interface DocumentUploadFormProps {
   farmId: string;
@@ -25,100 +25,23 @@ const DOCUMENT_CATEGORIES = [
 ];
 
 const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps) => {
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState<string>('');
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-
-  const uploadMutation = useUploadDocument();
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png'],
-    },
-    maxFiles: 5,
-    maxSize: 50 * 1024 * 1024, // 50MB
-    onDrop: (acceptedFiles) => {
-      setSelectedFiles(prev => [...prev, ...acceptedFiles]);
-    },
-    onDropRejected: (rejectedFiles) => {
-      rejectedFiles.forEach(rejection => {
-        toast({
-          title: 'File rejected',
-          description: `${rejection.file.name}: ${rejection.errors[0]?.message}`,
-          variant: 'destructive',
-        });
-      });
-    },
-  });
-
-  const removeFile = (index: number) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index));
-  };
-
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0 || !category) {
-      toast({
-        title: 'Missing information',
-        description: 'Please select files and a category before uploading.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setUploadProgress(0);
-    setUploadedFiles([]);
-    const totalFiles = selectedFiles.length;
-    
-    try {
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        await uploadMutation.mutateAsync({
-          file,
-          farmId,
-          category,
-        });
-        setUploadProgress(((i + 1) / totalFiles) * 100);
-        setUploadedFiles(prev => [...prev, file.name]);
-      }
-
-      // Clear form after successful upload
-      setSelectedFiles([]);
-      setCategory('');
-      setUploadProgress(0);
-      setUploadedFiles([]);
-      
-      if (onUploadSuccess) {
-        onUploadSuccess();
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      setUploadProgress(0);
-      setUploadedFiles([]);
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const isUploading = uploadMutation.isPending;
+  const {
+    selectedFiles,
+    category,
+    setCategory,
+    uploadProgress,
+    uploadedFiles,
+    isUploading,
+    addFiles,
+    removeFile,
+    uploadFiles,
+  } = useDocumentUpload({ farmId, onSuccess: onUploadSuccess });
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Upload className="h-5 w-5" />
+          <Upload className="h-5 w-5" aria-hidden="true" />
           <span>Upload Documents</span>
         </CardTitle>
       </CardHeader>
@@ -127,7 +50,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
         <div className="space-y-2">
           <Label htmlFor="category">Document Category</Label>
           <Select value={category} onValueChange={setCategory} disabled={isUploading}>
-            <SelectTrigger>
+            <SelectTrigger id="category" aria-label="Select document category">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
@@ -141,100 +64,39 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
         </div>
 
         {/* File Drop Zone */}
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20'
-              : 'border-gray-300 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-600'
-          } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
-              <Upload className="h-8 w-8 text-gray-400" />
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-medium">
-                {isDragActive ? 'Drop files here' : 'Upload your documents'}
-              </p>
-              <p className="text-sm text-gray-500">
-                Drag and drop files here, or click to browse
-              </p>
-              <p className="text-xs text-gray-400">
-                Supports PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 50MB each)
-              </p>
-            </div>
-          </div>
-        </div>
+        <FileDropZone onDrop={addFiles} disabled={isUploading} />
 
-        {/* Selected Files */}
-        {selectedFiles.length > 0 && (
-          <div className="space-y-3">
-            <Label>Selected Files ({selectedFiles.length})</Label>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <File className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm font-medium truncate max-w-[200px]">{file.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                    </div>
-                    {uploadedFiles.includes(file.name) && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(index)}
-                    disabled={isUploading}
-                    className="text-gray-500 hover:text-red-500"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Selected Files Preview */}
+        <FilePreviewList
+          files={selectedFiles}
+          uploadedFiles={uploadedFiles}
+          onRemoveFile={removeFile}
+          disabled={isUploading}
+        />
 
         {/* Upload Progress */}
-        {isUploading && (
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="flex items-center font-medium">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Uploading documents...
-              </span>
-              <span className="font-medium">{Math.round(uploadProgress)}%</span>
-            </div>
-            <Progress value={uploadProgress} className="h-3" />
-            {uploadedFiles.length > 0 && (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Successfully uploaded: {uploadedFiles.join(', ')}
-              </div>
-            )}
-          </div>
-        )}
+        <UploadProgress
+          progress={uploadProgress}
+          uploadedFiles={uploadedFiles}
+          isUploading={isUploading}
+        />
 
         {/* Upload Button */}
         <Button
-          onClick={handleUpload}
+          onClick={uploadFiles}
           disabled={selectedFiles.length === 0 || !category || isUploading}
           className="w-full"
           size="lg"
+          aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
         >
           {isUploading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
               Uploading...
             </>
           ) : (
             <>
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
               Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}` : 'Documents'}
             </>
           )}
