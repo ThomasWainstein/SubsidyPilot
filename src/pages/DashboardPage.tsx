@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import DashboardFilters from '@/components/dashboard/DashboardFilters';
 import AddFarmModal from '@/components/dashboard/AddFarmModal';
 import FarmGrid from '@/components/dashboard/FarmGrid';
+import DashboardErrorFallback from '@/components/dashboard/DashboardErrorFallback';
 import { toast } from '@/hooks/use-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -213,11 +213,7 @@ const DashboardPage = () => {
             
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 space-y-6">
-                <ErrorBoundary fallback={
-                  <div className="p-4 border border-red-300 rounded-md bg-red-50">
-                    <p className="text-red-700">Error loading filters</p>
-                  </div>
-                }>
+                <ErrorBoundary fallback={DashboardErrorFallback}>
                   <DashboardFilters 
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -244,11 +240,7 @@ const DashboardPage = () => {
                     </button>
                   </div>
                 ) : (
-                  <ErrorBoundary fallback={
-                    <div className="p-4 border border-red-300 rounded-md bg-red-50">
-                      <p className="text-red-700">Error loading farm grid</p>
-                    </div>
-                  }>
+                  <ErrorBoundary fallback={DashboardErrorFallback}>
                     <FarmGrid />
                   </ErrorBoundary>
                 )}
@@ -257,11 +249,7 @@ const DashboardPage = () => {
           </div>
         </main>
         
-        <ErrorBoundary fallback={
-          <div className="p-4 border border-red-300 rounded-md bg-red-50">
-            <p className="text-red-700">Error loading add farm modal</p>
-          </div>
-        }>
+        <ErrorBoundary fallback={DashboardErrorFallback}>
           <AddFarmModal 
             isOpen={isAddFarmModalOpen}
             onClose={() => setIsAddFarmModalOpen(false)}

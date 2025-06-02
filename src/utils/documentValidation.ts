@@ -35,7 +35,8 @@ export const normalizeDocumentCategory = (category: unknown): DocumentCategory =
   
   const trimmed = category.trim().toLowerCase() as DocumentCategory;
   
-  if (!trimmed || trimmed === '') {
+  // Fix: Check for empty string properly
+  if (!trimmed) {
     console.warn('Empty category string, defaulting to "other"');
     return 'other';
   }
