@@ -4,16 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import SubsidyManagement from '@/components/admin/SubsidyManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getIsAdmin, FEATURES, IS_PRODUCTION } from '@/config/environment';
 
 const AdminPage = () => {
   const { user } = useAuth();
-
-  // Simple role check (in a real app, this would be more sophisticated)
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('thomas');
+  const isAdmin = getIsAdmin(user);
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
           <Card className="w-96">
@@ -31,7 +30,7 @@ const AdminPage = () => {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
           <Card className="w-96">
@@ -40,6 +39,14 @@ const AdminPage = () => {
             </CardHeader>
             <CardContent>
               <p>You don't have permission to access the admin panel.</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Only administrators can access this section.
+              </p>
+              {!IS_PRODUCTION && (
+                <p className="text-xs text-blue-500 mt-2">
+                  Development mode: Admin access is restricted to configured emails.
+                </p>
+              )}
             </CardContent>
           </Card>
         </main>
@@ -48,10 +55,23 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <Navbar />
       <main className="flex-grow py-6 px-4">
         <div className="container mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Manage subsidies, farms, and system settings
+            </p>
+            {!IS_PRODUCTION && (
+              <div className="mt-2 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 px-3 py-2 rounded">
+                Development Environment - Additional features enabled
+              </div>
+            )}
+          </div>
           <SubsidyManagement />
         </div>
       </main>

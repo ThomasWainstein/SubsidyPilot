@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import StatusBadge from '@/components/StatusBadge';
-import { applications } from '@/data/subsidies';
-import { BarChart4, CheckCircle2 } from 'lucide-react';
+import { useApplications } from '@/hooks/useApplications';
+import { Loader2, FileText, Calendar, Euro } from 'lucide-react';
 
 interface ApplicationsTabContentProps {
   farmId: string;
@@ -13,65 +13,129 @@ interface ApplicationsTabContentProps {
 
 export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ farmId }) => {
   const { t } = useLanguage();
-  const farmApplications = applications[farmId] || [];
+  const { data: applications, isLoading, error } = useApplications(farmId);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('common.applications')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="animate-spin mr-2" />
+            <span>{t('common.loading')}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('common.applications')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <p className="text-red-500">Error loading applications: {error.message}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'in progress':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Application Dashboard</CardTitle>
-        <CardDescription>Track and manage your subsidy applications</CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <FileText size={20} />
+          {t('common.applications')}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-md">
-          <div className="px-4 py-3 bg-gray-50 text-sm font-medium text-gray-500 border-b grid grid-cols-12">
-            <div className="col-span-4">Subsidy Name</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-2">Submitted</div>
-            <div className="col-span-2">Amount</div>
-            <div className="col-span-2 text-right">Actions</div>
+        {!applications || applications.length === 0 ? (
+          <div className="text-center py-8">
+            <FileText className="mx-auto mb-4 text-gray-400" size={48} />
+            <h3 className="text-lg font-medium mb-2 dark:text-white">No Applications Yet</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              You haven't submitted any subsidy applications for this farm.
+            </p>
+            <Button>
+              Browse Available Subsidies
+            </Button>
           </div>
-          
-          {farmApplications.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              No applications found
-            </div>
-          ) : (
-            <div className="divide-y">
-              {farmApplications.map((app) => (
-                <div key={app.id} className="px-4 py-3 text-sm grid grid-cols-12 items-center">
-                  <div className="col-span-4">{app.subsidyName}</div>
-                  <div className="col-span-2">
-                    <StatusBadge status={app.status} />
+        ) : (
+          <div className="space-y-4">
+            {applications.map((application) => (
+              <div key={application.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                      Application #{application.id.slice(0, 8)}
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Subsidy ID: {application.subsidy_id}
+                    </p>
                   </div>
-                  <div className="col-span-2">{app.submittedDate}</div>
-                  <div className="col-span-2">{app.grantAmount}</div>
-                  <div className="col-span-2 flex justify-end space-x-2">
-                    <Button size="sm" variant="outline">
-                      {t('common.viewDetails')}
-                    </Button>
+                  <Badge className={getStatusColor(application.status || 'draft')}>
+                    {application.status || 'Draft'}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      {application.submitted_at 
+                        ? new Date(application.submitted_at).toLocaleDateString()
+                        : 'Not submitted'
+                      }
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      {application.notes ? 'Has notes' : 'No notes'}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        {farmApplications.some(app => app.status === 'Approved') && (
-          <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200 flex items-start">
-            <CheckCircle2 className="text-green-500 mr-3 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-green-800">Approved Applications</h4>
-              <p className="text-sm text-green-700 mt-1">
-                {farmApplications.filter(app => app.status === 'Approved').length} of your applications have been approved. 
-                View the details to download acceptance certificates and fund allocation schedules.
-              </p>
-              <div className="mt-2">
-                <Button size="sm" variant="outline" className="bg-white">
-                  <BarChart4 size={14} className="mr-2" />
-                  Fund Allocation Report
-                </Button>
+
+                {application.notes && (
+                  <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm">
+                    <p className="text-gray-700 dark:text-gray-300">{application.notes}</p>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" size="sm">
+                    View Details
+                  </Button>
+                  {application.status === 'draft' && (
+                    <Button size="sm">
+                      Continue Application
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         )}
       </CardContent>
