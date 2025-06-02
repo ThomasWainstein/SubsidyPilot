@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useUploadDocument } from '@/hooks/useFarmDocuments';
 import { toast } from '@/components/ui/use-toast';
-import { validateFile, type ValidationResult } from '@/utils/fileValidation';
+import { validateDocumentUpload } from '@/utils/documentValidation';
 import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/documentValidation';
 
 interface UseDocumentUploadProps {
@@ -22,7 +22,7 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     const validFiles: File[] = [];
     
     files.forEach(file => {
-      const validation: ValidationResult = validateFile(file);
+      const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
         validFiles.push(file);
       } else {
@@ -106,6 +106,12 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
         const file = selectedFiles[i];
         console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
         
+        // Validate each file before upload
+        const validation = validateDocumentUpload(file, normalizedCategory);
+        if (!validation.isValid) {
+          throw new Error(`File validation failed for ${file.name}: ${validation.errors.join(', ')}`);
+        }
+        
         await uploadMutation.mutateAsync({
           file,
           farmId,
@@ -127,6 +133,14 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       console.error('Upload failed:', error);
       setUploadProgress(0);
       setUploadedFiles([]);
+      
+      // Show specific error message if available
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during upload';
+      toast({
+        title: 'Upload failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     }
   };
 

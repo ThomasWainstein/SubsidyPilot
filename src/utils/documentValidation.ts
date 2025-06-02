@@ -1,116 +1,95 @@
 
-// Document validation utilities for maintaining data integrity
+// Document category validation and utilities
 
-export const VALID_DOCUMENT_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'] as const;
+export const VALID_DOCUMENT_CATEGORIES = [
+  'legal',
+  'financial', 
+  'environmental',
+  'technical',
+  'certification',
+  'other'
+] as const;
 
 export type DocumentCategory = typeof VALID_DOCUMENT_CATEGORIES[number];
 
 export const CATEGORY_LABELS: Record<DocumentCategory, string> = {
-  'legal': 'Legal Documents',
-  'financial': 'Financial Records',
-  'environmental': 'Environmental Permits',
-  'technical': 'Technical Documentation',
-  'certification': 'Certifications',
-  'other': 'Other'
+  legal: 'Legal Documents',
+  financial: 'Financial Records',
+  environmental: 'Environmental Reports',
+  technical: 'Technical Documentation',
+  certification: 'Certifications',
+  other: 'Other Documents'
 };
 
-/**
- * Validates and normalizes a document category value
- * @param category - The category value to validate
- * @returns A valid DocumentCategory, defaulting to 'other' if invalid
- */
+export const isValidDocumentCategory = (category: unknown): category is DocumentCategory => {
+  return typeof category === 'string' && 
+         category.trim() !== '' &&
+         VALID_DOCUMENT_CATEGORIES.includes(category as DocumentCategory);
+};
+
 export const normalizeDocumentCategory = (category: unknown): DocumentCategory => {
   if (!category || typeof category !== 'string') {
-    console.warn('Invalid category type:', typeof category, category);
+    console.warn('Invalid category type, defaulting to "other":', typeof category, category);
     return 'other';
   }
   
-  const trimmed = category.trim().toLowerCase();
+  const trimmed = category.trim().toLowerCase() as DocumentCategory;
   
   if (!trimmed || trimmed === '') {
-    console.warn('Empty category string');
+    console.warn('Empty category string, defaulting to "other"');
     return 'other';
   }
   
-  if (VALID_DOCUMENT_CATEGORIES.includes(trimmed as DocumentCategory)) {
-    return trimmed as DocumentCategory;
+  if (isValidDocumentCategory(trimmed)) {
+    return trimmed;
   }
   
-  console.warn('Unknown category, defaulting to "other":', category);
+  console.warn('Unknown category, normalizing to "other":', category);
   return 'other';
 };
 
-/**
- * Validates an array of categories, filtering out invalid ones
- * @param categories - Array of category strings
- * @returns Array of valid DocumentCategory values
- */
-export const filterValidCategories = (categories: unknown[]): DocumentCategory[] => {
-  if (!Array.isArray(categories)) {
-    console.warn('Categories is not an array:', categories);
-    return [];
+export const getCategoryDisplayName = (category: string): string => {
+  const normalizedCategory = normalizeDocumentCategory(category);
+  return CATEGORY_LABELS[normalizedCategory];
+};
+
+// Validation for document upload
+export const validateDocumentUpload = (file: File, category: string): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  
+  // Validate file size (50MB limit)
+  const maxSize = 50 * 1024 * 1024;
+  if (file.size > maxSize) {
+    errors.push('File size must be less than 50MB');
   }
   
-  return categories
-    .map(normalizeDocumentCategory)
-    .filter((category, index, arr) => arr.indexOf(category) === index) // Remove duplicates
-    .sort();
-};
-
-/**
- * Checks if a value is a valid document category
- * @param value - Value to check
- * @returns True if the value is a valid DocumentCategory
- */
-export const isValidDocumentCategory = (value: unknown): value is DocumentCategory => {
-  return typeof value === 'string' && 
-         VALID_DOCUMENT_CATEGORIES.includes(value as DocumentCategory);
-};
-
-/**
- * Validation function for database queries to detect invalid categories
- * @param documents - Array of documents from database
- * @returns Report of validation issues
- */
-export const validateDocumentCategories = (documents: Array<{ id: string; category: unknown; file_name: string }>) => {
-  const issues: Array<{ id: string; file_name: string; category: unknown; issue: string }> = [];
+  // Validate file type
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png'
+  ];
   
-  documents.forEach(doc => {
-    if (!doc.category) {
-      issues.push({
-        id: doc.id,
-        file_name: doc.file_name,
-        category: doc.category,
-        issue: 'Category is null or undefined'
-      });
-    } else if (typeof doc.category !== 'string') {
-      issues.push({
-        id: doc.id,
-        file_name: doc.file_name,
-        category: doc.category,
-        issue: 'Category is not a string'
-      });
-    } else if (doc.category.trim() === '') {
-      issues.push({
-        id: doc.id,
-        file_name: doc.file_name,
-        category: doc.category,
-        issue: 'Category is empty string'
-      });
-    } else if (!VALID_DOCUMENT_CATEGORIES.includes(doc.category as DocumentCategory)) {
-      issues.push({
-        id: doc.id,
-        file_name: doc.file_name,
-        category: doc.category,
-        issue: 'Category is not in valid list'
-      });
-    }
-  });
+  if (!allowedTypes.includes(file.type)) {
+    errors.push('File type not supported. Please upload PDF, DOC, DOCX, XLS, XLSX, JPG, or PNG files');
+  }
+  
+  // Validate category
+  if (!isValidDocumentCategory(category)) {
+    errors.push('Please select a valid document category');
+  }
+  
+  // Validate filename (basic sanitation check)
+  if (file.name.length > 255) {
+    errors.push('Filename is too long (maximum 255 characters)');
+  }
   
   return {
-    totalDocuments: documents.length,
-    validDocuments: documents.length - issues.length,
-    issues,
-    hasIssues: issues.length > 0
+    isValid: errors.length === 0,
+    errors
   };
 };

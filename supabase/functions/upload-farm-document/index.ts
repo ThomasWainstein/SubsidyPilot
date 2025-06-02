@@ -57,6 +57,7 @@ serve(async (req) => {
     // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.error('Authentication failed:', authError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -72,7 +73,8 @@ serve(async (req) => {
       fileName: file?.name, 
       farmId, 
       rawCategory,
-      fileSize: file?.size 
+      fileSize: file?.size,
+      userId: user.id
     });
 
     if (!file || !farmId || !rawCategory) {
@@ -96,22 +98,33 @@ serve(async (req) => {
       .single();
 
     if (farmError || !farm) {
-      console.error('Farm access denied:', farmError);
+      console.error('Farm access denied:', farmError, 'User:', user.id, 'Farm:', farmId);
       return new Response(JSON.stringify({ error: 'Farm not found or access denied' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Generate unique filename
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      console.error('File too large:', file.size, 'Max:', maxSize);
+      return new Response(JSON.stringify({ error: 'File size exceeds 50MB limit' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Generate unique filename with proper path structure: farm-documents/{farm_id}/{category}/{filename}
     const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop();
-    const fileName = `${timestamp}_${file.name}`;
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${timestamp}_${sanitizedFileName}`;
     const filePath = `${farmId}/${category}/${fileName}`;
 
     console.log('Uploading file:', { filePath, size: file.size, type: file.type });
 
-    // Upload file to storage
+    // Upload file to storage with proper path structure
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('farm-documents')
       .upload(filePath, file, {
@@ -121,7 +134,10 @@ serve(async (req) => {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      return new Response(JSON.stringify({ error: 'Failed to upload file' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Failed to upload file', 
+        details: uploadError.message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -149,8 +165,17 @@ serve(async (req) => {
     if (dbError) {
       console.error('Database error:', dbError);
       // Clean up uploaded file if database insert fails
-      await supabase.storage.from('farm-documents').remove([filePath]);
-      return new Response(JSON.stringify({ error: 'Failed to save document record' }), {
+      try {
+        await supabase.storage.from('farm-documents').remove([filePath]);
+        console.log('Cleaned up orphaned file:', filePath);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup orphaned file:', cleanupError);
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: 'Failed to save document record',
+        details: dbError.message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -159,7 +184,8 @@ serve(async (req) => {
     console.log('Document uploaded successfully:', { 
       id: documentData.id, 
       category: documentData.category,
-      fileName: documentData.file_name 
+      fileName: documentData.file_name,
+      filePath: filePath
     });
 
     return new Response(JSON.stringify({ 
@@ -172,7 +198,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in upload-farm-document function:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
