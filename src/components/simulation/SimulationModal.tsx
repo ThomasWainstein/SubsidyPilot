@@ -1,99 +1,59 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '@/contexts/language';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { FileText, Upload, MessageSquare } from 'lucide-react';
-import SimulationForm from './SimulationForm';
-import SimulationUpload from './SimulationUpload';
-import SimulationChat from './SimulationChat';
-import SimulationResults from './SimulationResults';
-import { Subsidy } from '@/data/subsidies';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SimulationForm } from './SimulationForm';
+import { SimulationResults } from './SimulationResults';
 
 interface SimulationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  farmId?: string;
+  subsidyId?: string;
 }
 
-const SimulationModal = ({ isOpen, onClose }: SimulationModalProps) => {
-  const { t } = useLanguage();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('form');
-  const [showResults, setShowResults] = useState(false);
-  const [matchingSubsidies, setMatchingSubsidies] = useState<Subsidy[]>([]);
+export const SimulationModal: React.FC<SimulationModalProps> = ({
+  isOpen,
+  onClose,
+  farmId,
+  subsidyId
+}) => {
+  const [simulationResult, setSimulationResult] = useState<any>(null);
 
-  const handleShowResults = (subsidies: Subsidy[]) => {
-    setMatchingSubsidies(subsidies);
-    setShowResults(true);
-  };
-
-  const handleReset = () => {
-    setShowResults(false);
-  };
-
-  const handleClose = () => {
-    setShowResults(false);
-    setActiveTab('form');
-    onClose();
+  const handleSimulate = (result: any) => {
+    setSimulationResult(result);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('simulation.title')}</DialogTitle>
-          <DialogDescription>
-            {t('simulation.description')}
-          </DialogDescription>
+          <DialogTitle>Subsidy Application Simulation</DialogTitle>
         </DialogHeader>
-
-        {!showResults ? (
-          <Tabs defaultValue="form" value={activeTab} onValueChange={setActiveTab} className="mt-4">
-            <TabsList className="grid grid-cols-3 mb-6">
-              <TabsTrigger value="form" className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" />
-                {t('simulation.tabs.form')}
-              </TabsTrigger>
-              <TabsTrigger value="upload" className="flex items-center">
-                <Upload className="mr-2 h-4 w-4" />
-                {t('simulation.tabs.upload')}
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="flex items-center">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                {t('simulation.tabs.chat')}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="form">
-              <SimulationForm onShowResults={handleShowResults} />
-            </TabsContent>
-            
-            <TabsContent value="upload">
-              <SimulationUpload onShowResults={handleShowResults} />
-            </TabsContent>
-            
-            <TabsContent value="chat">
-              <SimulationChat onShowResults={handleShowResults} />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <SimulationResults 
-            subsidies={matchingSubsidies} 
-            onReset={handleReset} 
-            onClose={handleClose}
-          />
-        )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            {t('common.close')}
-          </Button>
-        </DialogFooter>
+        
+        <div className="space-y-6">
+          {!simulationResult ? (
+            <SimulationForm farmId={farmId} onSimulate={handleSimulate} />
+          ) : (
+            <div className="space-y-4">
+              <SimulationResults result={simulationResult} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSimulationResult(null)}
+                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                >
+                  Run Another Simulation
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default SimulationModal;

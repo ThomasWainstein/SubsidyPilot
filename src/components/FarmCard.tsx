@@ -1,160 +1,128 @@
 
-import { Farm } from '@/data/farms';
-import { Link } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import TagBadge from './TagBadge';
-import StatusBadge from './StatusBadge';
-import FarmAlertsDropdown from './FarmAlertsDropdown';
-import { CalendarDays, ChevronDown, MapPin } from 'lucide-react';
-import { getRandomSubsidies } from '@/data/subsidies';
-import { useState, useEffect } from 'react';
+import { MapPin, Calendar, TrendingUp, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface Farm {
+  id: string;
+  name: string;
+  address: string;
+  department?: string | null;
+  total_hectares?: number | null;
+  created_at: string;
+  updated_at?: string | null;
+  updatedAt?: string;
+  size?: string;
+  staff?: number;
+  status?: 'Profile Complete' | 'Incomplete' | 'Pending';
+  region?: string;
+  tags?: string[];
+  certifications?: string[];
+  irrigationMethod?: string;
+  crops?: string[];
+  revenue?: string;
+  activities?: string[];
+  carbonScore?: number;
+  software?: string[];
+}
 
 interface FarmCardProps {
   farm: Farm;
 }
 
-const FarmCard = ({ farm }: FarmCardProps) => {
-  const { t } = useLanguage();
-  const [alertCount, setAlertCount] = useState(0);
-  const [isNewAlert, setIsNewAlert] = useState(false);
-  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
-  const [areTagsCollapsed, setAreTagsCollapsed] = useState(true);
+const FarmCard: React.FC<FarmCardProps> = ({ farm }) => {
+  const navigate = useNavigate();
 
-  // Debug logging for farm ID
-  console.log('FarmCard: farm object:', farm);
-  console.log('FarmCard: farm.id:', farm.id);
-  console.log('FarmCard: farm.id type:', typeof farm.id);
-
-  useEffect(() => {
-    const farmId = typeof farm.id === 'string' ? parseInt(farm.id, 10) : farm.id;
-    let count = 0;
-    
-    if (farmId % 3 === 0) count++;
-    if (farmId % 5 === 0) count++;
-    if (farm.status === 'In Review') count++;
-    if (farm.status === 'Profile Complete') count++;
-    
-    setAlertCount(count);
-    
-    if (count > 0) {
-      setIsNewAlert(true);
-      const timer = setTimeout(() => {
-        setIsNewAlert(false);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [farm]);
-
-  const randomSubsidies = getRandomSubsidies(farm.id.toString());
-  const newSubsidyLink = `/farm/${farm.id}/subsidies#${randomSubsidies[0]?.id}`;
-
-  const showNewSubsidyBadge = parseInt(farm.id, 10) % 3 === 0;
-  const showDocumentsRequiredBadge = parseInt(farm.id, 10) % 5 === 0;
-  const showInReviewBadge = farm.status === 'In Review';
-  const showReadyToSubmitBadge = farm.status === 'Profile Complete';
-
-  const shouldCollapseTags = farm.tags.length > 2;
-  const visibleTags = areTagsCollapsed && shouldCollapseTags 
-    ? farm.tags.slice(0, 2) 
-    : farm.tags;
-  const hiddenTagsCount = shouldCollapseTags ? farm.tags.length - 2 : 0;
-
-  // Format region and country display
-  const getLocationDisplay = () => {
-    // Extract region and country from farm.region
-    const parts = farm.region.split(',').map(part => part.trim());
-    
-    if (parts.length === 1) {
-      // If it's just a region without country (likely French region)
-      return `${parts[0]}, France`;
-    } else {
-      // It already has country information
-      return farm.region;
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'Profile Complete':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'Incomplete':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'Pending':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  // Ensure farm ID is properly formatted for the route
-  const farmLink = `/farm/${farm.id}`;
-  console.log('FarmCard: Generated farm link:', farmLink);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md relative dark:bg-dark-card dark:hover:bg-dark-surface-hover">
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{farm.name}</h3>
-          <div className="flex items-center space-x-2 relative">
-            {alertCount > 0 && (
-              <div className="relative">
-                <FarmAlertsDropdown
-                  farmId={farm.id.toString()}
-                  isOpen={isAlertsOpen}
-                  setIsOpen={setIsAlertsOpen}
-                  showNewSubsidyBadge={showNewSubsidyBadge}
-                  showDocumentsRequiredBadge={showDocumentsRequiredBadge}
-                  showInReviewBadge={showInReviewBadge}
-                  showReadyToSubmitBadge={showReadyToSubmitBadge}
-                  alertCount={alertCount}
-                  isNewAlert={isNewAlert}
-                  newSubsidyLink={newSubsidyLink}
-                />
-              </div>
+    <Card className="hover:shadow-lg transition-shadow duration-200">
+      <CardHeader className="pb-4">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+            {farm.name}
+          </CardTitle>
+          <Badge className={getStatusColor(farm.status)}>
+            {farm.status || 'Active'}
+          </Badge>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        <div className="flex items-start gap-2">
+          <MapPin size={16} className="text-gray-400 mt-1 flex-shrink-0" />
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            <p>{farm.address}</p>
+            {farm.department && (
+              <p className="text-xs text-gray-500">{farm.department}</p>
             )}
-            <StatusBadge status={farm.status} size="sm" />
           </div>
         </div>
-        
-        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-          <CalendarDays size={14} className="mr-1 flex-shrink-0" />
-          <span className="text-xs">{t('common.lastUpdated')}: {farm.updatedAt}</span>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-gray-500">Size:</span>
+            <p className="font-medium">
+              {farm.total_hectares ? `${farm.total_hectares} ha` : farm.size || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <span className="text-gray-500">Staff:</span>
+            <p className="font-medium">{farm.staff || 0}</p>
+          </div>
         </div>
-        
-        <div className="mb-5 flex items-center">
-          <MapPin size={14} className="mr-1 flex-shrink-0 text-gray-500 dark:text-gray-400" />
-          <p className="text-sm text-gray-600 dark:text-gray-300">{getLocationDisplay()}</p>
-        </div>
-        
-        {farm.tags.length > 0 && (
-          <div className={`tags-container mb-6 ${areTagsCollapsed ? 'collapsed' : ''}`}>
-            <div className="flex flex-wrap">
-              {visibleTags.map((tag, index) => (
-                <TagBadge key={index} tag={tag} />
-              ))}
-              
-              {shouldCollapseTags && (
-                <button 
-                  onClick={() => setAreTagsCollapsed(!areTagsCollapsed)}
-                  className="tags-toggle flex items-center dark:bg-gray-700 dark:text-gray-300"
-                >
-                  {areTagsCollapsed ? (
-                    <>+{hiddenTagsCount} more <ChevronDown size={12} className="ml-1" /></>
-                  ) : (
-                    <>Show less <ChevronDown size={12} className="ml-1 transform rotate-180" /></>
-                  )}
-                </button>
-              )}
-            </div>
-            
-            {!areTagsCollapsed && shouldCollapseTags && (
-              <div className="tags-overflow mt-2 flex flex-wrap">
-                {farm.tags.slice(2).map((tag, index) => (
-                  <TagBadge key={`overflow-${index}`} tag={tag} />
-                ))}
-              </div>
+
+        {farm.tags && farm.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {farm.tags.slice(0, 3).map((tag, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+            {farm.tags.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{farm.tags.length - 3} more
+              </Badge>
             )}
           </div>
         )}
-        
-        <div className="flex justify-end">
-          <Button asChild variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 dark:hover:text-emerald-200">
-            <Link to={farmLink}>
-              {t('common.openClientProfile')}
-            </Link>
+
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Calendar size={14} />
+          <span>Updated {formatDate(farm.updated_at || farm.updatedAt || farm.created_at)}</span>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate(`/farm/${farm.id}`)}
+            className="flex-1"
+          >
+            <Eye size={16} className="mr-2" />
+            View Details
           </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

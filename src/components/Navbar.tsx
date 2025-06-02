@@ -35,7 +35,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   
   const isAdmin = getIsAdmin(user);
@@ -57,10 +57,10 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { path: '/dashboard', label: t('navigation.dashboard'), icon: Home },
-    { path: '/calendar', label: t('navigation.calendar'), icon: Calendar },
-    { path: '/regulations', label: t('navigation.regulations'), icon: FileText },
-    { path: '/eu-portal', label: t('navigation.euPortal'), icon: BarChart3 },
+    { path: '/dashboard', label: 'Dashboard', icon: Home },
+    { path: '/calendar', label: 'Calendar', icon: Calendar },
+    { path: '/regulations', label: 'Regulations', icon: FileText },
+    { path: '/eu-portal', label: 'EU Portal', icon: BarChart3 },
   ];
 
   // Add admin item if user is admin
@@ -144,11 +144,11 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>{t('navigation.profile')}</span>
+                    <span>Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>{t('navigation.settings')}</span>
+                    <span>Settings</span>
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>
@@ -162,13 +162,13 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} disabled={isLoading}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>{t('navigation.signOut')}</span>
+                    <span>Sign Out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button onClick={() => navigate('/auth')} size="sm">
-                {t('navigation.signIn')}
+                Sign In
               </Button>
             )}
           </div>

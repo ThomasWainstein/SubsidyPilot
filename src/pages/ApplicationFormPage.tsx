@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
-import { farms } from '@/data/farms';
-import { subsidies, getApplicationForm, FormSection, FormField } from '@/data/subsidies';
+import { useFarm } from '@/hooks/useFarms';
+import { useSubsidy } from '@/hooks/useSubsidies';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Info, ChevronLeft, Upload, Save } from 'lucide-react';
+import { Info, ChevronLeft, Upload, Save, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import {
@@ -21,31 +21,133 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MultilingualText } from '@/types/subsidy';
+
+// Form section and field types
+interface FormField {
+  id: string;
+  label: string;
+  type: 'text' | 'email' | 'number' | 'textarea' | 'select';
+  value: string;
+  options?: string[];
+}
+
+interface FormSection {
+  id: string;
+  title: string;
+  fields: FormField[];
+}
 
 // Helper function to handle multilingual text
-const getLocalizedText = (text: string | MultilingualText | undefined): string => {
+const getLocalizedText = (text: string | any): string => {
   if (!text) return '';
   if (typeof text === 'string') {
     return text;
   }
-  return text.en; // Default to English
+  if (typeof text === 'object' && text.en) {
+    return text.en;
+  }
+  return String(text);
+};
+
+// Generate a basic application form structure
+const getApplicationForm = (farmId: string, subsidyId: string): FormSection[] => {
+  return [
+    {
+      id: 'section1',
+      title: 'Basic Information',
+      fields: [
+        {
+          id: 'applicant_name',
+          label: 'Applicant Name',
+          type: 'text',
+          value: ''
+        },
+        {
+          id: 'contact_email',
+          label: 'Contact Email',
+          type: 'email',
+          value: ''
+        },
+        {
+          id: 'project_description',
+          label: 'Project Description',
+          type: 'textarea',
+          value: ''
+        }
+      ]
+    },
+    {
+      id: 'section2',
+      title: 'Financial Information',
+      fields: [
+        {
+          id: 'requested_amount',
+          label: 'Requested Amount (€)',
+          type: 'number',
+          value: ''
+        },
+        {
+          id: 'project_duration',
+          label: 'Project Duration (months)',
+          type: 'number',
+          value: ''
+        }
+      ]
+    }
+  ];
 };
 
 const ApplicationFormPage = () => {
   const { farmId, subsidyId } = useParams<{ farmId: string; subsidyId: string }>();
   const { t } = useLanguage();
   
-  // Find farm and subsidy data
-  const farm = farms.find(f => f.id === farmId);
-  const subsidy = subsidies.find(s => s.id === subsidyId);
-  
-  if (!farm || !subsidy) return <div>Farm or subsidy not found</div>;
+  // Fetch farm and subsidy data from Supabase
+  const { data: farm, isLoading: farmLoading, error: farmError } = useFarm(farmId!);
+  const { data: subsidy, isLoading: subsidyLoading, error: subsidyError } = useSubsidy(subsidyId!);
   
   // Get form structure
   const [formSections, setFormSections] = useState<FormSection[]>(
     getApplicationForm(farmId!, subsidyId!)
   );
+  
+  // Loading state
+  if (farmLoading || subsidyLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <Loader2 className="animate-spin" />
+            <span>Loading application form...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
+  
+  // Error state
+  if (farmError || subsidyError || !farm || !subsidy) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle>Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-500 mb-4">
+                {farmError?.message || subsidyError?.message || 'Farm or subsidy not found'}
+              </p>
+              <Link to={`/farm/${farmId}`}>
+                <Button variant="outline">Back to Farm Profile</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
   
   // Update form field value
   const updateFieldValue = (sectionId: string, fieldId: string, value: string) => {
@@ -70,7 +172,7 @@ const ApplicationFormPage = () => {
     // Show success message
     toast({
       title: "Application Saved",
-      description: t('application.formSaved'),
+      description: "Your application has been saved as a draft.",
     });
   };
   
@@ -124,16 +226,16 @@ const ApplicationFormPage = () => {
             
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{t('application.title')}</h1>
-                <p className="text-gray-600">{getLocalizedText(subsidy.name)} - {farm.name}</p>
+                <h1 className="text-2xl font-bold text-gray-900">Application Form</h1>
+                <p className="text-gray-600">{getLocalizedText(subsidy.title)} - {farm.name}</p>
               </div>
             </div>
           </div>
           
           <Card>
             <CardHeader>
-              <CardTitle>{getLocalizedText(subsidy.name)}</CardTitle>
-              <CardDescription>{t('application.subtitle')}</CardDescription>
+              <CardTitle>{getLocalizedText(subsidy.title)}</CardTitle>
+              <CardDescription>Complete your subsidy application</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -141,7 +243,7 @@ const ApplicationFormPage = () => {
                   {formSections.map((section) => (
                     <AccordionItem key={section.id} value={section.id}>
                       <AccordionTrigger className="text-base font-medium">
-                        {t(`application.${section.id}` as any) || section.title}
+                        {section.title}
                       </AccordionTrigger>
                       <AccordionContent className="pb-6 pt-2">
                         <div className="space-y-4">
@@ -157,7 +259,7 @@ const ApplicationFormPage = () => {
                                       <Info size={14} className="ml-1 text-gray-400" />
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>{t('common.explainThis')}: {field.label}</p>
+                                      <p>Help for: {field.label}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -174,16 +276,16 @@ const ApplicationFormPage = () => {
                 <div className="flex justify-between pt-4 border-t">
                   <Button variant="outline" type="button">
                     <Upload size={16} className="mr-2" />
-                    {t('common.upload')} {t('common.documents')}
+                    Upload Documents
                   </Button>
                   
                   <div className="space-x-2">
                     <Button variant="outline" type="button">
                       <Save size={16} className="mr-2" />
-                      {t('common.save')} Draft
+                      Save Draft
                     </Button>
                     <Button type="submit">
-                      {t('common.submit')}
+                      Submit Application
                     </Button>
                   </div>
                 </div>

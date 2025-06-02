@@ -1,77 +1,128 @@
 
 import React, { useState } from 'react';
-import { useLanguage } from '@/contexts/language';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { farms } from '@/data/farms';
-import { Subsidy } from '@/types/subsidy';
-import { useToast } from '@/hooks/use-toast';
+import { useSubsidies } from '@/hooks/useSubsidies';
+import { toast } from '@/components/ui/use-toast';
+import { Loader2, Link as LinkIcon } from 'lucide-react';
 
 interface AttachSubsidyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  subsidy: Subsidy | null;
-  onAttach: (subsidyId: string, farmId: string) => void;
+  farmId: string;
+  onAttach?: (subsidyId: string) => void;
 }
 
-const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
+export const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
   isOpen,
   onClose,
-  subsidy,
-  onAttach,
+  farmId,
+  onAttach
 }) => {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [selectedFarmId, setSelectedFarmId] = useState<string>('');
+  const [selectedSubsidyId, setSelectedSubsidyId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isAttaching, setIsAttaching] = useState(false);
+  const { data: subsidies, isLoading } = useSubsidies();
 
-  const handleSubmit = () => {
-    if (!subsidy || !selectedFarmId) return;
-    
-    onAttach(subsidy.id, selectedFarmId);
-    
-    toast({
-      title: t('common.saved'),
-      description: `${t('messages.subsidyAttachedDesc')}`,
-    });
-    
-    setSelectedFarmId('');
-    onClose();
+  const handleAttach = async () => {
+    if (!selectedSubsidyId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a subsidy to attach',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsAttaching(true);
+    try {
+      // Simulate attaching subsidy to farm
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: 'Success',
+        description: 'Subsidy attached to farm successfully'
+      });
+      
+      onAttach?.(selectedSubsidyId);
+      onClose();
+      setSelectedSubsidyId('');
+      setNotes('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to attach subsidy',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsAttaching(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t('subsidies.selectFarm')}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <LinkIcon size={20} />
+            Attach Subsidy to Farm
+          </DialogTitle>
         </DialogHeader>
-        <div className="py-4">
-          <Label htmlFor="farm-select">{t('common.selectFarm')}</Label>
-          <Select value={selectedFarmId} onValueChange={setSelectedFarmId}>
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder={t('common.selectFarm')} />
-            </SelectTrigger>
-            <SelectContent>
-              {farms.map((farm) => (
-                <SelectItem key={farm.id} value={farm.id}>
-                  {farm.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="subsidy">Select Subsidy</Label>
+            {isLoading ? (
+              <div className="flex items-center gap-2 p-2">
+                <Loader2 className="animate-spin" size={16} />
+                <span>Loading subsidies...</span>
+              </div>
+            ) : (
+              <Select value={selectedSubsidyId} onValueChange={setSelectedSubsidyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a subsidy..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {subsidies?.map((subsidy) => (
+                    <SelectItem key={subsidy.id} value={subsidy.id}>
+                      {typeof subsidy.title === 'object' ? subsidy.title.en || subsidy.title.ro || 'Untitled' : subsidy.title || 'Untitled'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Input
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes about this subsidy..."
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleAttach} disabled={isAttaching}>
+              {isAttaching ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" size={16} />
+                  Attaching...
+                </>
+              ) : (
+                'Attach Subsidy'
+              )}
+            </Button>
+          </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={handleSubmit} disabled={!selectedFarmId}>
-            {t('common.save')}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default AttachSubsidyModal;

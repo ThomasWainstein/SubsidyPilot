@@ -1,148 +1,114 @@
 
-import { useState } from 'react';
-import { useLanguage } from '@/contexts/language';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, CheckCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { subsidies, Subsidy } from '@/data/subsidies';
-import { DropzoneUpload } from '@/components/document/DropzoneUpload';
+import { Upload, FileText, X } from 'lucide-react';
 
 interface SimulationUploadProps {
-  onShowResults: (subsidies: Subsidy[]) => void;
+  farmId?: string;
+  onUpload?: (files: File[]) => void;
 }
 
-const SimulationUpload = ({ onShowResults }: SimulationUploadProps) => {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [extractedData, setExtractedData] = useState<Record<string, string> | null>(null);
-  
-  const handleUploadSuccess = () => {
-    setIsUploading(true);
+export const SimulationUpload: React.FC<SimulationUploadProps> = ({ farmId, onUpload }) => {
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files) return;
     
-    // Simulate upload progress
-    let uploadProgress = 0;
-    const uploadInterval = setInterval(() => {
-      uploadProgress += 10;
-      setProgress(uploadProgress);
-      
-      if (uploadProgress >= 100) {
-        clearInterval(uploadInterval);
-        setIsUploading(false);
-        setIsAnalyzing(true);
-        
-        // Simulate OCR analysis
-        setTimeout(() => {
-          // Mock extracted data
-          setExtractedData({
-            'Farm Type': 'Dairy',
-            'Location': 'Southwest Romania',
-            'Size': '68 hectares',
-            'Certifications': 'Organic Transition',
-            'Farming Method': 'Conventional to Organic'
-          });
-          
-          toast({
-            title: t('messages.documentAnalyzed'),
-            description: t('messages.documentAnalyzedDesc'),
-          });
-          
-          setIsAnalyzing(false);
-        }, 3000);
-      }
-    }, 300);
+    const newFiles = Array.from(files);
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    onUpload?.(newFiles);
   };
-  
-  const handleProcessResults = () => {
-    // Randomly select 2-4 subsidies
-    const shuffled = [...subsidies].sort(() => 0.5 - Math.random());
-    const matchingSubsidies = shuffled.slice(0, Math.floor(Math.random() * 3) + 2); // 2 to 4 subsidies
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
     
-    // Adjust match confidence based on extracted data
-    const adjustedSubsidies = matchingSubsidies.map(subsidy => {
-      const confidence = Math.floor(Math.random() * 30) + 70; // 70-99
-      return {
-        ...subsidy,
-        matchConfidence: confidence
-      };
-    });
-    
-    onShowResults(adjustedSubsidies);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {!isUploading && !isAnalyzing && !extractedData && (
-        <DropzoneUpload 
-          maxFiles={1}
-          accept={{ 'application/pdf': ['.pdf'], 'application/msword': ['.doc', '.docx'] }}
-          title={t('simulation.upload.heading')}
-          description={t('simulation.upload.dragDrop')}
-          onUploadSuccess={handleUploadSuccess}
-        />
-      )}
-      
-      {isUploading && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center text-sm text-gray-500">
-              <Upload className="h-4 w-4 mr-2" />
-              {t('messages.uploading')}...
-            </span>
-            <span className="text-sm font-medium">{progress}%</span>
-          </div>
-          <Progress value={progress} />
-        </div>
-      )}
-      
-      {isAnalyzing && (
-        <div className="space-y-4">
-          <Card className="bg-yellow-50 border-yellow-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center flex-col space-y-4">
-                <FileText className="h-10 w-10 text-yellow-600 animate-pulse" />
-                <h3 className="font-medium text-yellow-800">{t('simulation.upload.analyzing')}</h3>
-                <p className="text-sm text-yellow-700">{t('messages.scanningDocument')}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      
-      {extractedData && (
-        <div className="space-y-4">
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center flex-col space-y-2">
-                <CheckCircle className="h-10 w-10 text-green-600" />
-                <h3 className="font-medium text-green-800">{t('simulation.upload.complete')}</h3>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-medium mb-4">{t('simulation.upload.extractedInfo')}</h3>
-            <dl className="divide-y divide-gray-200">
-              {Object.entries(extractedData).map(([key, value]) => (
-                <div key={key} className="py-3 grid grid-cols-3">
-                  <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                  <dd className="text-sm text-gray-900 col-span-2">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            
-            <Button onClick={handleProcessResults} className="w-full mt-6">
-              {t('simulation.form.submit')}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Upload size={20} />
+          Document Upload
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            dragActive
+              ? 'border-purple-500 bg-purple-50'
+              : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <Upload className="mx-auto mb-4 text-gray-400" size={48} />
+          <h3 className="text-lg font-medium mb-2">Upload Supporting Documents</h3>
+          <p className="text-gray-600 mb-4">
+            Drag and drop files here, or click to select files
+          </p>
+          <input
+            type="file"
+            multiple
+            onChange={(e) => handleFileUpload(e.target.files)}
+            className="hidden"
+            id="file-upload"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+          />
+          <label htmlFor="file-upload">
+            <Button asChild>
+              <span>Select Files</span>
             </Button>
-          </div>
+          </label>
         </div>
-      )}
-    </div>
+
+        {uploadedFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <h4 className="font-medium">Uploaded Files:</h4>
+            {uploadedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-gray-500" />
+                  <span className="text-sm">{file.name}</span>
+                  <span className="text-xs text-gray-500">
+                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeFile(index)}
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
-
-export default SimulationUpload;
