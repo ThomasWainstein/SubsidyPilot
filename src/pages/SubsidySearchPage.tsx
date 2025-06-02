@@ -1,21 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Subsidy } from '@/types/subsidy';
-import { uuidv4 } from '@/lib/utils';
+import { useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import SearchHeader from '@/components/subsidy/search/SearchHeader';
 import SearchFiltersPanel from '@/components/subsidy/search/SearchFiltersPanel';
 import SearchResultsPanel from '@/components/subsidy/search/SearchResultsPanel';
 import SearchLoadingState from '@/components/subsidy/search/SearchLoadingState';
 import { FilterSet } from '@/components/subsidy/SavedFilterSets';
+import { useSubsidyFiltering } from '@/hooks/useSubsidyFiltering';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { uuidv4 } from '@/lib/utils';
 
 const SubsidySearchPage = () => {
+  const { farmId } = useParams<{ farmId: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
-  const [subsidies, setSubsidies] = useState<Subsidy[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
     confidenceFilter: [0],
@@ -30,33 +30,21 @@ const SubsidySearchPage = () => {
     deadlineStatuses: [] as string[],
   });
 
-  // Clear all subsidies from database on page load
-  useEffect(() => {
-    const clearSubsidiesData = async () => {
-      try {
-        setLoading(true);
-        
-        // Delete all subsidies from database
-        const { error } = await supabase
-          .from('subsidies')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        if (error) {
-          console.error('Error clearing subsidies:', error);
-        }
-        
-        // Set empty subsidies array
-        setSubsidies([]);
-      } catch (error) {
-        console.error('Error in clearSubsidiesData:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Use the new filtering hook
+  const { 
+    subsidies, 
+    loading, 
+    error, 
+    totalCount, 
+    filteredCount 
+  } = useSubsidyFiltering(farmId || '', filters, searchQuery);
 
-    clearSubsidiesData();
-  }, []);
+  // Get filter options from database
+  const { 
+    regions: availableRegions, 
+    categories: availableCategories, 
+    fundingTypes: availableFundingTypes 
+  } = useFilterOptions();
 
   const clearFilters = () => {
     setFilters({
@@ -91,6 +79,22 @@ const SubsidySearchPage = () => {
     setSavedFilterSets(savedFilterSets.filter(set => set.id !== id));
   };
 
+  if (!farmId) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <main className="flex-grow py-6 px-4">
+          <div className="container mx-auto text-center">
+            <h2 className="text-xl font-semibold mb-4">Farm ID Required</h2>
+            <p className="text-gray-600 dark:text-gray-300">
+              Please navigate to this page from a farm profile.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (loading) {
     return <SearchLoadingState />;
   }
@@ -114,6 +118,9 @@ const SubsidySearchPage = () => {
                   onRemoveFilterSet={removeFilterSet}
                   onSaveCurrentFilters={saveCurrentFilterSet}
                   onClearFilters={clearFilters}
+                  availableRegions={availableRegions}
+                  availableCategories={availableCategories}
+                  availableFundingTypes={availableFundingTypes}
                 />
               </div>
             )}
@@ -124,6 +131,12 @@ const SubsidySearchPage = () => {
                 onSearchQueryChange={setSearchQuery}
                 showFilters={showFilters}
                 onToggleFilters={() => setShowFilters(!showFilters)}
+                subsidies={subsidies}
+                totalCount={totalCount}
+                filteredCount={filteredCount}
+                loading={loading}
+                error={error}
+                farmId={farmId}
               />
             </div>
           </div>

@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { calculateMatchConfidence } from '@/utils/tagNormalization';
 import type { Database } from '@/integrations/supabase/types';
 
 type Subsidy = Database['public']['Tables']['subsidies']['Row'];
@@ -115,22 +116,17 @@ export const useMatchingSubsidies = (farmId: string) => {
 
       if (subsidiesError) throw subsidiesError;
 
-      // Calculate match confidence for each subsidy
-      const subsidiesWithConfidence = await Promise.all(
-        subsidies.map(async (subsidy) => {
-          const { data: confidence } = await supabase.rpc('calculate_match_confidence', {
-            farm_tags: farm.matching_tags || [],
-            subsidy_tags: subsidy.matching_tags || [],
-            farm_region: farm.department || '',
-            subsidy_regions: subsidy.region || [],
-          });
+      // Calculate match confidence for each subsidy using the new logic
+      const subsidiesWithConfidence = subsidies?.map(subsidy => {
+        const farmTags = farm.matching_tags || [];
+        const subsidyTags = subsidy.matching_tags || [];
+        const matchConfidence = calculateMatchConfidence(farmTags, subsidyTags);
 
-          return {
-            ...subsidy,
-            matchConfidence: confidence || 0,
-          };
-        })
-      );
+        return {
+          ...subsidy,
+          matchConfidence,
+        };
+      }) || [];
 
       // Sort by match confidence and return top matches
       return subsidiesWithConfidence

@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useMatchingSubsidies } from '@/hooks/useSubsidies';
 import { useFarm } from '@/hooks/useFarms';
+import { useSubsidyFiltering } from '@/hooks/useSubsidyFiltering';
 import SubsidyHeader from './subsidy/SubsidyHeader';
 import SubsidyEmptyState from './subsidy/SubsidyEmptyState';
 import SubsidyAddDialog from './subsidy/SubsidyAddDialog';
 import SubsidyLoadingState from './subsidy/SubsidyLoadingState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Euro } from 'lucide-react';
+import { Calendar, MapPin, Euro, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SubsidiesTabContentProps {
   farmId: string;
@@ -95,10 +96,29 @@ const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
 
 export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const { data: farm } = useFarm(farmId);
-  const { data: matchingSubsidies, isLoading, error } = useMatchingSubsidies(farmId);
+  
+  // Use the new filtering hook with minimal filters for farm tab
+  const { 
+    subsidies: matchingSubsidies, 
+    loading, 
+    error, 
+    totalCount 
+  } = useSubsidyFiltering(farmId, {
+    confidenceFilter: [30], // Only show subsidies with >30% match
+    regions: [],
+    eligibleCountry: '',
+    farmingTypes: [],
+    fundingSources: [],
+    fundingInstruments: [],
+    documentsRequired: [],
+    applicationFormats: [],
+    sustainabilityGoals: [],
+    deadlineStatuses: ['open'], // Only show open subsidies
+  }, '');
 
-  if (isLoading) {
+  if (loading) {
     return <SubsidyLoadingState />;
   }
 
@@ -108,7 +128,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
         <SubsidyHeader onAddSubsidy={() => setDialogOpen(true)} />
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-red-500">Error loading subsidies: {error.message}</p>
+            <p className="text-red-500">Error loading subsidies: {error}</p>
           </div>
         </CardContent>
       </Card>
@@ -127,15 +147,36 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
               <h3 className="text-lg font-semibold">
                 Recommended Subsidies ({matchingSubsidies.length})
               </h3>
-              <Badge variant="secondary">
-                Based on farm profile
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant="secondary">
+                  Based on farm profile
+                </Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/subsidies/${farmId}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  Advanced Search
+                </Button>
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              {matchingSubsidies.map((subsidy) => (
+              {matchingSubsidies.slice(0, 6).map((subsidy) => (
                 <SubsidyCard key={subsidy.id} subsidy={subsidy} />
               ))}
             </div>
+            {matchingSubsidies.length > 6 && (
+              <div className="text-center pt-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate(`/subsidies/${farmId}`)}
+                >
+                  View All {totalCount} Subsidies
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

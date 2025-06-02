@@ -25,6 +25,9 @@ interface SearchFiltersPanelProps {
   onRemoveFilterSet: (id: string) => void;
   onSaveCurrentFilters: (name: string) => void;
   onClearFilters: () => void;
+  availableRegions: string[];
+  availableCategories: string[];
+  availableFundingTypes: string[];
 }
 
 const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
@@ -34,7 +37,10 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
   onApplyFilterSet,
   onRemoveFilterSet,
   onSaveCurrentFilters,
-  onClearFilters
+  onClearFilters,
+  availableRegions,
+  availableCategories,
+  availableFundingTypes
 }) => {
   return (
     <Card>
@@ -66,10 +72,10 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
           }}
           setFilters={setFilters}
           onClearFilters={onClearFilters}
-          availableRegions={[]}
-          availableCountries={[]}
-          availableFundingTypes={[]}
-          availableCategories={[]}
+          availableRegions={availableRegions}
+          availableCountries={[]} // Can be populated from database if needed
+          availableFundingTypes={availableFundingTypes}
+          availableCategories={availableCategories}
         />
       </CardContent>
     </Card>
