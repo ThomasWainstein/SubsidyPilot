@@ -2,9 +2,21 @@
 import { useLanguage } from '@/contexts/language';
 import Navbar from '@/components/Navbar';
 import AuthScreen from '@/components/auth/AuthScreen';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 const HomePage = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect authenticated users to dashboard
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -24,9 +24,8 @@ import {
   LogOut, 
   Settings, 
   Home, 
-  Calendar,
   FileText,
-  BarChart3,
+  Search,
   Shield
 } from 'lucide-react';
 import { getIsAdmin } from '@/config/environment';
@@ -56,15 +55,15 @@ const Navbar = () => {
     return email.split('@')[0].substring(0, 2).toUpperCase();
   };
 
-  const navItems = [
+  // Only show navigation items when user is authenticated
+  const navItems = user ? [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/calendar', label: 'Calendar', icon: Calendar },
+    { path: '/search', label: 'Search Subsidies', icon: Search },
     { path: '/regulations', label: 'Regulations', icon: FileText },
-    { path: '/eu-portal', label: 'EU Portal', icon: BarChart3 },
-  ];
+  ] : [];
 
   // Add admin item if user is admin
-  if (isAdmin) {
+  if (isAdmin && user) {
     navItems.push({ path: '/admin', label: 'Admin', icon: Shield });
   }
 
@@ -85,26 +84,28 @@ const Navbar = () => {
             </span>
           </div>
 
-          {/* Navigation Items */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              
-              return (
-                <Button
-                  key={item.path}
-                  variant={isActive ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => navigate(item.path)}
-                  className="flex items-center space-x-2"
-                >
-                  <Icon size={16} />
-                  <span>{item.label}</span>
-                </Button>
-              );
-            })}
-          </div>
+          {/* Navigation Items - Only shown when authenticated */}
+          {user && (
+            <div className="hidden md:flex items-center space-x-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                
+                return (
+                  <Button
+                    key={item.path}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => navigate(item.path)}
+                    className="flex items-center space-x-2"
+                  >
+                    <Icon size={16} />
+                    <span>{item.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Right side controls */}
           <div className="flex items-center space-x-4">
@@ -168,7 +169,7 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <Button onClick={() => navigate('/auth')} size="sm">
-                Sign In
+                Login
               </Button>
             )}
           </div>
