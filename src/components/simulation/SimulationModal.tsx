@@ -20,7 +20,25 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
   const [simulationResult, setSimulationResult] = useState<any>(null);
 
   const handleSimulate = (result: any) => {
-    setSimulationResult(result);
+    // Transform simulation result into subsidies format expected by SimulationResults
+    const mockSubsidies = [
+      {
+        id: '1',
+        name: { en: 'Sample Subsidy Match' },
+        description: { en: 'This subsidy matches your simulation criteria' },
+        code: 'SIM-001',
+        grant: '€50,000',
+        region: 'EU',
+        deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        matchConfidence: result.eligibilityScore || 75
+      }
+    ];
+    
+    setSimulationResult({ subsidies: mockSubsidies, originalResult: result });
+  };
+
+  const handleReset = () => {
+    setSimulationResult(null);
   };
 
   return (
@@ -34,23 +52,11 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
           {!simulationResult ? (
             <SimulationForm farmId={farmId} onSimulate={handleSimulate} />
           ) : (
-            <div className="space-y-4">
-              <SimulationResults result={simulationResult} />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSimulationResult(null)}
-                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                >
-                  Run Another Simulation
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+            <SimulationResults 
+              subsidies={simulationResult.subsidies}
+              onReset={handleReset}
+              onClose={onClose}
+            />
           )}
         </div>
       </DialogContent>
