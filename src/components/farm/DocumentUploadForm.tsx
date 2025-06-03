@@ -34,9 +34,6 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     onSuccess: () => {
       showSuccessMessage('Documents uploaded successfully!');
       onUploadSuccess?.();
-    },
-    onError: (error, fileName) => {
-      handleUploadError(error, fileName);
     }
   });
 
