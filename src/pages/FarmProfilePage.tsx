@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -142,7 +141,7 @@ const FarmProfilePage = () => {
             </TabsList>
             
             <TabsContent value="profile">
-              <ProfileTabContent farm={transformedFarm} />
+              <ProfileTabContent farmId={transformedFarm.id} />
             </TabsContent>
             
             <TabsContent value="documents">

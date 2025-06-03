@@ -62,6 +62,17 @@ export const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
     }
   };
 
+  const getSubsidyTitle = (title: any): string => {
+    if (!title) return 'Untitled';
+    if (typeof title === 'string') return title;
+    if (typeof title === 'object' && title !== null) {
+      // Type-safe access to object properties
+      const titleObj = title as Record<string, any>;
+      return titleObj.en || titleObj.ro || titleObj.fr || titleObj.es || 'Untitled';
+    }
+    return 'Untitled';
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -88,7 +99,7 @@ export const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
                 <SelectContent>
                   {subsidies?.map((subsidy) => (
                     <SelectItem key={subsidy.id} value={subsidy.id}>
-                      {typeof subsidy.title === 'object' ? subsidy.title.en || subsidy.title.ro || 'Untitled' : subsidy.title || 'Untitled'}
+                      {getSubsidyTitle(subsidy.title)}
                     </SelectItem>
                   ))}
                 </SelectContent>

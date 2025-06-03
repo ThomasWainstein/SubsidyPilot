@@ -41,15 +41,13 @@ const SubsidyAddDialog: React.FC<SubsidyAddDialogProps> = ({
           <TabsContent value="manual">
             <ManualSubsidyForm 
               farmId={farmId} 
-              farmRegion={farmRegion} 
-              onAddSubsidy={onAddSubsidy} 
+              onSubsidyAdded={() => onOpenChange(false)} 
             />
           </TabsContent>
           <TabsContent value="import">
             <ImportSubsidyForm 
               farmId={farmId}
-              farmRegion={farmRegion}
-              onAddSubsidy={onAddSubsidy}
+              onImportComplete={() => onOpenChange(false)}
             />
           </TabsContent>
         </Tabs>

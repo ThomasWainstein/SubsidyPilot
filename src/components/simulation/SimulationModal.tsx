@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulationForm } from './SimulationForm';
-import { SimulationResults } from './SimulationResults';
+import SimulationResults from './SimulationResults';
 
 interface SimulationModalProps {
   isOpen: boolean;
