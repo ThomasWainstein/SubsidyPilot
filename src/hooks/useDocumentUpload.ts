@@ -4,6 +4,7 @@ import { useUploadDocument } from '@/hooks/useFarmDocuments';
 import { toast } from '@/components/ui/use-toast';
 import { validateDocumentUpload } from '@/utils/documentValidation';
 import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/documentValidation';
+import { validateFileType, sanitizeFileName } from '@/utils/securityValidation';
 
 interface UseDocumentUploadProps {
   farmId: string;
@@ -22,9 +23,23 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     const validFiles: File[] = [];
     
     files.forEach(file => {
+      // Security validation first
+      const securityCheck = validateFileType(file);
+      if (!securityCheck.isValid) {
+        toast({
+          title: 'File rejected',
+          description: `${file.name}: ${securityCheck.error}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Then document validation
       const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
-        validFiles.push(file);
+        // Sanitize filename for security
+        const sanitizedFile = new File([file], sanitizeFileName(file.name), { type: file.type });
+        validFiles.push(sanitizedFile);
       } else {
         validation.errors.forEach(error => {
           toast({
@@ -105,6 +120,12 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
+        
+        // Final security validation before upload
+        const securityCheck = validateFileType(file);
+        if (!securityCheck.isValid) {
+          throw new Error(`Security validation failed for ${file.name}: ${securityCheck.error}`);
+        }
         
         // Validate each file before upload
         const validation = validateDocumentUpload(file, normalizedCategory);

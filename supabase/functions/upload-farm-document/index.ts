@@ -10,6 +10,17 @@ const corsHeaders = {
 // Valid document categories that match the database enum
 const VALID_DOCUMENT_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
 
+// Valid MIME types for security
+const VALID_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+];
+
 const normalizeDocumentCategory = (category: unknown): string => {
   if (!category || typeof category !== 'string') {
     console.warn('Invalid category type, defaulting to "other":', typeof category, category);
@@ -29,6 +40,21 @@ const normalizeDocumentCategory = (category: unknown): string => {
   
   console.warn('Unknown category, defaulting to "other":', category);
   return 'other';
+};
+
+const sanitizeFileName = (fileName: string): string => {
+  // Remove potentially dangerous characters and limit length
+  return fileName.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 255);
+};
+
+const validateFileType = (file: File): { isValid: boolean; error?: string } => {
+  if (!VALID_MIME_TYPES.includes(file.type)) {
+    return {
+      isValid: false,
+      error: `File type ${file.type} is not supported. Please upload PDF, Word, or image files only.`
+    };
+  }
+  return { isValid: true };
 };
 
 serve(async (req) => {
@@ -74,6 +100,7 @@ serve(async (req) => {
       farmId, 
       rawCategory,
       fileSize: file?.size,
+      fileType: file?.type,
       userId: user.id
     });
 
@@ -85,14 +112,24 @@ serve(async (req) => {
       });
     }
 
+    // Security validation: Check file type
+    const fileTypeCheck = validateFileType(file);
+    if (!fileTypeCheck.isValid) {
+      console.error('Invalid file type:', file.type);
+      return new Response(JSON.stringify({ error: fileTypeCheck.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Normalize and validate category with fallback
     const category = normalizeDocumentCategory(rawCategory);
     console.log('Category normalized from', rawCategory, 'to', category);
 
-    // Verify user owns the farm
+    // Verify user owns the farm - CRITICAL SECURITY CHECK
     const { data: farm, error: farmError } = await supabase
       .from('farms')
-      .select('id')
+      .select('id, user_id')
       .eq('id', farmId)
       .eq('user_id', user.id)
       .single();
@@ -115,10 +152,9 @@ serve(async (req) => {
       });
     }
 
-    // Generate unique filename with proper path structure: farm-documents/{farm_id}/{category}/{filename}
+    // Generate secure filename with proper path structure
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const sanitizedFileName = sanitizeFileName(file.name);
     const fileName = `${timestamp}_${sanitizedFileName}`;
     const filePath = `${farmId}/${category}/${fileName}`;
 
@@ -185,7 +221,8 @@ serve(async (req) => {
       id: documentData.id, 
       category: documentData.category,
       fileName: documentData.file_name,
-      filePath: filePath
+      filePath: filePath,
+      userId: user.id
     });
 
     return new Response(JSON.stringify({ 

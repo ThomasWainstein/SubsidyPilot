@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,11 +14,14 @@ import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent
 import { countries } from '@/schemas/farmValidation';
 import PageErrorBoundary from '@/components/error/PageErrorBoundary';
 import { handleApiError } from '@/utils/errorHandling';
+import React from 'react';
+import { usePerformanceMonitoring } from '@/hooks/usePerformanceMonitoring';
 
 const FarmProfilePage = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { trackUserAction } = usePerformanceMonitoring('Farm Profile');
 
   console.log('FarmProfilePage: farmId from params:', farmId);
 
@@ -27,6 +29,13 @@ const FarmProfilePage = () => {
   const { data: supabaseFarm, isLoading, error } = useFarm(farmId || '');
   
   console.log('FarmProfilePage: Supabase farm data:', supabaseFarm);
+
+  // Track page view
+  React.useEffect(() => {
+    if (farmId) {
+      trackUserAction('farm_profile_viewed', { farmId });
+    }
+  }, [farmId, trackUserAction]);
 
   // Handle API errors
   if (error) {
@@ -112,6 +121,7 @@ const FarmProfilePage = () => {
   };
 
   const handleEditFarm = () => {
+    trackUserAction('farm_edit_initiated', { farmId });
     navigate(`/farm/${farmId}/edit`);
   };
 
