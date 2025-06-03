@@ -74,7 +74,7 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </nav>
+    </div>
   );
 };
 
