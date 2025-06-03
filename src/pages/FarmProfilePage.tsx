@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -52,18 +53,18 @@ const FarmProfilePage = () => {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          <div className="text-center px-4">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4">
               Farm Not Found
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm md:text-base">
               {error ? 'Unable to load farm data. Please try again.' : `The farm with ID "${farmId}" could not be found.`}
             </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => window.location.reload()} variant="outline">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
                 Try Again
               </Button>
-              <Button onClick={() => navigate('/dashboard')}>
+              <Button onClick={() => navigate('/dashboard')} size="sm">
                 Return to Dashboard
               </Button>
             </div>
@@ -119,53 +120,75 @@ const FarmProfilePage = () => {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
         
-        <main className="flex-grow py-8">
+        <main className="flex-grow py-4 md:py-8">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-8">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{transformedFarm.name}</h1>
-                  <div className="flex items-center mt-2 gap-2">
-                    <StatusBadge status={transformedFarm.status} />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      <CalendarDays size={14} className="inline mr-1" />
-                      {t('common.lastUpdated')}: {transformedFarm.updatedAt}
-                    </span>
+            {/* Mobile-first header */}
+            <div className="mb-6 md:mb-8">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                      {transformedFarm.name}
+                    </h1>
+                    <div className="flex flex-col sm:flex-row sm:items-center mt-2 gap-2">
+                      <StatusBadge status={transformedFarm.status} />
+                      <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                        <CalendarDays size={14} className="inline mr-1 flex-shrink-0" />
+                        <span className="truncate">
+                          {t('common.lastUpdated')}: {transformedFarm.updatedAt}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-600 dark:text-gray-300 mt-1 truncate">
+                      {transformedFarm.region}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {transformedFarm.region}
+                  <div className="flex-shrink-0">
+                    <Button 
+                      onClick={handleEditFarm} 
+                      variant="outline" 
+                      className="w-full sm:w-auto flex items-center gap-2 min-h-[44px]"
+                      size="sm"
+                    >
+                      <Edit size={16} />
+                      <span className="hidden sm:inline">Edit Farm</span>
+                      <span className="sm:hidden">Edit</span>
+                    </Button>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleEditFarm} variant="outline" className="flex items-center gap-2">
-                    <Edit size={16} />
-                    Edit Farm
-                  </Button>
                 </div>
               </div>
             </div>
             
+            {/* Mobile-responsive tabs */}
             <Tabs defaultValue="profile" className="space-y-4">
-              <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3 md:grid-cols-4">
-                <TabsTrigger value="profile">{t('common.profile')}</TabsTrigger>
-                <TabsTrigger value="documents">{t('common.documents')}</TabsTrigger>
-                <TabsTrigger value="subsidies">{t('common.subsidies')}</TabsTrigger>
-                <TabsTrigger value="applications">{t('common.applications')}</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                <TabsTrigger value="profile" className="text-xs md:text-sm py-2 md:py-3">
+                  {t('common.profile')}
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs md:text-sm py-2 md:py-3">
+                  {t('common.documents')}
+                </TabsTrigger>
+                <TabsTrigger value="subsidies" className="text-xs md:text-sm py-2 md:py-3">
+                  {t('common.subsidies')}
+                </TabsTrigger>
+                <TabsTrigger value="applications" className="text-xs md:text-sm py-2 md:py-3">
+                  {t('common.applications')}
+                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="profile">
+              <TabsContent value="profile" className="mt-4">
                 <ProfileTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="documents">
+              <TabsContent value="documents" className="mt-4">
                 <DocumentsTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="subsidies">
+              <TabsContent value="subsidies" className="mt-4">
                 <SubsidiesTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="applications">
+              <TabsContent value="applications" className="mt-4">
                 <ApplicationsTabContent farmId={transformedFarm.id} />
               </TabsContent>
             </Tabs>

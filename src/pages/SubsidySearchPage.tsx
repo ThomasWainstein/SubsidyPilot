@@ -13,12 +13,14 @@ import { useSubsidyFiltering } from '@/hooks/useSubsidyFiltering';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { uuidv4 } from '@/lib/utils';
 import { handleApiError } from '@/utils/errorHandling';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false); // Start with filters hidden on mobile
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
 
   const [filters, setFilters] = useState({
@@ -115,12 +117,27 @@ const SubsidySearchPage = () => {
     return <SearchLoadingState />;
   }
 
+  const FiltersContent = () => (
+    <SearchFiltersPanel
+      filters={filters}
+      setFilters={setFilters}
+      savedFilterSets={savedFilterSets}
+      onApplyFilterSet={applyFilterSet}
+      onRemoveFilterSet={removeFilterSet}
+      onSaveCurrentFilters={saveCurrentFilterSet}
+      onClearFilters={clearFilters}
+      availableRegions={availableRegions}
+      availableCategories={availableCategories}
+      availableFundingTypes={availableFundingTypes}
+    />
+  );
+
   return (
     <PageErrorBoundary pageName="Subsidy Search">
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
 
-        <main className="flex-grow py-6 px-4">
+        <main className="flex-grow py-4 md:py-6 px-4">
           <div className="container mx-auto">
             <SearchHeader />
 
@@ -133,30 +150,52 @@ const SubsidySearchPage = () => {
                 onAction={() => window.location.reload()}
               />
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {showFilters && (
+              <div className="space-y-4">
+                {/* Mobile filters as sheet */}
+                <div className="lg:hidden">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" className="w-full flex items-center gap-2 min-h-[44px]">
+                        <Filter size={16} />
+                        Filters & Search
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-full sm:w-80 p-0">
+                      <div className="h-full overflow-y-auto p-4">
+                        <FiltersContent />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+
+                {/* Desktop layout */}
+                <div className="hidden lg:grid lg:grid-cols-4 gap-6">
                   <div className="lg:col-span-1">
-                    <SearchFiltersPanel
-                      filters={filters}
-                      setFilters={setFilters}
-                      savedFilterSets={savedFilterSets}
-                      onApplyFilterSet={applyFilterSet}
-                      onRemoveFilterSet={removeFilterSet}
-                      onSaveCurrentFilters={saveCurrentFilterSet}
-                      onClearFilters={clearFilters}
-                      availableRegions={availableRegions}
-                      availableCategories={availableCategories}
-                      availableFundingTypes={availableFundingTypes}
+                    <FiltersContent />
+                  </div>
+                  <div className="lg:col-span-3">
+                    <SearchResultsPanel
+                      searchQuery={searchQuery}
+                      onSearchQueryChange={setSearchQuery}
+                      showFilters={showFilters}
+                      onToggleFilters={() => setShowFilters(!showFilters)}
+                      subsidies={subsidies}
+                      totalCount={totalCount}
+                      filteredCount={filteredCount}
+                      loading={loading}
+                      error={error}
+                      farmId={farmId}
                     />
                   </div>
-                )}
+                </div>
 
-                <div className={`${showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
+                {/* Mobile layout */}
+                <div className="lg:hidden">
                   <SearchResultsPanel
                     searchQuery={searchQuery}
                     onSearchQueryChange={setSearchQuery}
-                    showFilters={showFilters}
-                    onToggleFilters={() => setShowFilters(!showFilters)}
+                    showFilters={false}
+                    onToggleFilters={() => {}}
                     subsidies={subsidies}
                     totalCount={totalCount}
                     filteredCount={filteredCount}

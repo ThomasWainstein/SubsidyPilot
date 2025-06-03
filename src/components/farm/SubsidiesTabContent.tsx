@@ -32,63 +32,65 @@ const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
   };
 
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg mb-1">{getTitle()}</h3>
-          <p className="text-gray-600 text-sm line-clamp-2">{getDescription()}</p>
-        </div>
-        <Badge 
-          variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
-          className="ml-2"
-        >
-          {subsidy.matchConfidence}% match
-        </Badge>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        {subsidy.categories?.slice(0, 3).map((category: string, index: number) => (
-          <Badge key={index} variant="outline" className="text-xs">
-            {category}
+    <Card className="p-3 md:p-4 hover:shadow-md transition-shadow">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-base md:text-lg mb-1 line-clamp-2">{getTitle()}</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm line-clamp-2">{getDescription()}</p>
+          </div>
+          <Badge 
+            variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
+            className="self-start flex-shrink-0 text-xs"
+          >
+            {subsidy.matchConfidence}% match
           </Badge>
-        ))}
-      </div>
+        </div>
 
-      <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-        {subsidy.deadline && (
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{new Date(subsidy.deadline).toLocaleDateString()}</span>
-          </div>
-        )}
-        {subsidy.region && subsidy.region.length > 0 && (
-          <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" />
-            <span>{subsidy.region.slice(0, 2).join(', ')}</span>
-          </div>
-        )}
-        {(subsidy.amount_min || subsidy.amount_max) && (
-          <div className="flex items-center gap-1">
-            <Euro className="w-4 h-4" />
-            <span>
-              {subsidy.amount_min && subsidy.amount_max
-                ? `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`
-                : subsidy.amount_min
-                ? `€${subsidy.amount_min.toLocaleString()}+`
-                : `Up to €${subsidy.amount_max?.toLocaleString()}`
-              }
-            </span>
-          </div>
-        )}
-      </div>
+        <div className="flex flex-wrap gap-1 md:gap-2">
+          {subsidy.categories?.slice(0, 3).map((category: string, index: number) => (
+            <Badge key={index} variant="outline" className="text-xs">
+              {category}
+            </Badge>
+          ))}
+        </div>
 
-      <div className="flex gap-2">
-        <Button size="sm" className="flex-1">
-          View Details
-        </Button>
-        <Button size="sm" variant="outline">
-          Apply
-        </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs md:text-sm text-gray-500 dark:text-gray-400">
+          {subsidy.deadline && (
+            <div className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate">{new Date(subsidy.deadline).toLocaleDateString()}</span>
+            </div>
+          )}
+          {subsidy.region && subsidy.region.length > 0 && (
+            <div className="flex items-center gap-1">
+              <MapPin className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate">{subsidy.region.slice(0, 2).join(', ')}</span>
+            </div>
+          )}
+          {(subsidy.amount_min || subsidy.amount_max) && (
+            <div className="flex items-center gap-1">
+              <Euro className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate">
+                {subsidy.amount_min && subsidy.amount_max
+                  ? `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`
+                  : subsidy.amount_min
+                  ? `€${subsidy.amount_min.toLocaleString()}+`
+                  : `Up to €${subsidy.amount_max?.toLocaleString()}`
+                }
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button size="sm" className="flex-1 min-h-[36px] text-xs md:text-sm">
+            View Details
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 min-h-[36px] text-xs md:text-sm">
+            Apply
+          </Button>
+        </div>
       </div>
     </Card>
   );
@@ -128,7 +130,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
         <SubsidyHeader onAddSubsidy={() => setDialogOpen(true)} />
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-red-500">Error loading subsidies: {error}</p>
+            <p className="text-red-500 text-sm md:text-base">Error loading subsidies: {error}</p>
           </div>
         </CardContent>
       </Card>
@@ -136,33 +138,34 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <SubsidyHeader onAddSubsidy={() => setDialogOpen(true)} />
-      <CardContent>
+      <CardContent className="p-4 md:p-6">
         {!matchingSubsidies || matchingSubsidies.length === 0 ? (
           <SubsidyEmptyState />
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h3 className="text-base md:text-lg font-semibold">
                 Recommended Subsidies ({matchingSubsidies.length})
               </h3>
-              <div className="flex gap-2">
-                <Badge variant="secondary">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Badge variant="secondary" className="text-xs">
                   Based on farm profile
                 </Badge>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => navigate(`/subsidies/${farmId}`)}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 min-h-[36px] text-xs md:text-sm"
                 >
-                  <Search className="h-4 w-4" />
-                  Advanced Search
+                  <Search className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Advanced Search</span>
+                  <span className="sm:hidden">Search</span>
                 </Button>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 md:gap-4 grid-cols-1 lg:grid-cols-2">
               {matchingSubsidies.slice(0, 6).map((subsidy) => (
                 <SubsidyCard key={subsidy.id} subsidy={subsidy} />
               ))}
@@ -172,6 +175,7 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
                 <Button 
                   variant="outline"
                   onClick={() => navigate(`/subsidies/${farmId}`)}
+                  className="w-full sm:w-auto min-h-[44px]"
                 >
                   View All {totalCount} Subsidies
                 </Button>

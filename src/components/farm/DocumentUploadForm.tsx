@@ -77,19 +77,21 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
 
   return (
     <PageErrorBoundary pageName="Document Upload">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Upload className="h-5 w-5" aria-hidden="true" />
+      <Card className="w-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
+            <Upload className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" aria-hidden="true" />
             <span>Upload Documents</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Category Selection */}
+        <CardContent className="space-y-4 md:space-y-6">
+          {/* Category Selection - Mobile responsive */}
           <div className="space-y-2">
-            <Label htmlFor="category">Document Category *</Label>
+            <Label htmlFor="category" className="text-sm md:text-base font-medium">
+              Document Category *
+            </Label>
             <Select value={category || ''} onValueChange={handleCategoryChange} disabled={isUploading}>
-              <SelectTrigger id="category" aria-label="Select document category">
+              <SelectTrigger id="category" aria-label="Select document category" className="w-full min-h-[44px]">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
@@ -101,54 +103,67 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
               </SelectContent>
             </Select>
             {!hasValidCategory && category !== '' && (
-              <p className="text-sm text-red-600">Please select a valid category</p>
+              <p className="text-xs md:text-sm text-red-600">Please select a valid category</p>
             )}
           </div>
 
-          {/* File Drop Zone */}
-          <FileDropZone onDrop={handleFilesAdd} disabled={isUploading} />
+          {/* File Drop Zone - Mobile responsive */}
+          <div className="w-full">
+            <FileDropZone onDrop={handleFilesAdd} disabled={isUploading} />
+          </div>
 
-          {/* Selected Files Preview */}
-          <FilePreviewList
-            files={selectedFiles}
-            uploadedFiles={uploadedFiles}
-            onRemoveFile={removeFile}
-            disabled={isUploading}
-          />
+          {/* Selected Files Preview - Mobile responsive */}
+          <div className="w-full">
+            <FilePreviewList
+              files={selectedFiles}
+              uploadedFiles={uploadedFiles}
+              onRemoveFile={removeFile}
+              disabled={isUploading}
+            />
+          </div>
 
-          {/* Upload Progress */}
-          <UploadProgress
-            progress={uploadProgress}
-            uploadedFiles={uploadedFiles}
-            isUploading={isUploading}
-          />
+          {/* Upload Progress - Mobile responsive */}
+          <div className="w-full">
+            <UploadProgress
+              progress={uploadProgress}
+              uploadedFiles={uploadedFiles}
+              isUploading={isUploading}
+            />
+          </div>
 
-          {/* Upload Button */}
-          <Button
-            onClick={handleUpload}
-            disabled={selectedFiles.length === 0 || !hasValidCategory || isUploading}
-            className="w-full"
-            size="lg"
-            aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}` : 'Documents'}
-              </>
+          {/* Upload Button - Mobile responsive */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleUpload}
+              disabled={selectedFiles.length === 0 || !hasValidCategory || isUploading}
+              className="w-full min-h-[44px]"
+              size="lg"
+              aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                  <span className="hidden sm:inline">
+                    Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}` : 'Documents'}
+                  </span>
+                  <span className="sm:hidden">
+                    Upload {selectedFiles.length > 0 ? `(${selectedFiles.length})` : 'Files'}
+                  </span>
+                </>
+              )}
+            </Button>
+            
+            {selectedFiles.length > 0 && !hasValidCategory && (
+              <p className="text-xs md:text-sm text-amber-600 text-center">
+                Please select a document category before uploading
+              </p>
             )}
-          </Button>
-          
-          {selectedFiles.length > 0 && !hasValidCategory && (
-            <p className="text-sm text-amber-600 text-center">
-              Please select a document category before uploading
-            </p>
-          )}
+          </div>
         </CardContent>
       </Card>
     </PageErrorBoundary>
