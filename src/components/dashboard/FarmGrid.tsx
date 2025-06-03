@@ -2,10 +2,12 @@
 import React from 'react';
 import FarmCard from '@/components/FarmCard';
 import { useFarms } from '@/hooks/useFarms';
-import { Skeleton } from '@/components/ui/skeleton';
+import { FarmCardSkeleton } from '@/components/ui/loading-skeleton';
+import EmptyState from '@/components/states/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { handleApiError } from '@/utils/errorHandling';
 
 interface DatabaseFarm {
   id: string;
@@ -54,44 +56,34 @@ const FarmGrid = () => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-64 w-full" />
+          <FarmCardSkeleton key={i} />
         ))}
       </div>
     );
   }
 
   if (error) {
+    handleApiError(error, 'Farms');
     return (
-      <div className="text-center py-8">
-        <p className="text-red-500 mb-4">Error loading farms: {error.message}</p>
-        <Button onClick={() => window.location.reload()}>
-          Try Again
-        </Button>
-      </div>
+      <EmptyState
+        icon={AlertCircle}
+        title="Error Loading Farms"
+        description="Unable to load your farms. Please try again or contact support if the problem persists."
+        actionLabel="Try Again"
+        onAction={() => window.location.reload()}
+      />
     );
   }
 
   if (!farms || farms.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <div className="mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-              <Plus className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No farms found
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Get started by creating your first farm profile to access subsidies and manage your agricultural operations.
-            </p>
-          </div>
-          <Button onClick={() => navigate('/new-farm')} className="inline-flex items-center gap-2">
-            <Plus size={16} />
-            Create Your First Farm
-          </Button>
-        </div>
-      </div>
+      <EmptyState
+        icon={Plus}
+        title="No farms found"
+        description="Get started by creating your first farm profile to access subsidies and manage your agricultural operations."
+        actionLabel="Create Your First Farm"
+        onAction={() => navigate('/farm/new')}
+      />
     );
   }
 

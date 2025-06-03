@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Upload, Loader2 } from 'lucide-react';
 import { useDocumentUpload } from '@/hooks/useDocumentUpload';
 import { VALID_DOCUMENT_CATEGORIES, CATEGORY_LABELS, isValidDocumentCategory } from '@/utils/documentValidation';
+import { handleUploadError, showSuccessMessage } from '@/utils/errorHandling';
 import FileDropZone from './upload/FileDropZone';
 import FilePreviewList from './upload/FilePreviewList';
 import UploadProgress from './upload/UploadProgress';
+import PageErrorBoundary from '@/components/error/PageErrorBoundary';
 
 interface DocumentUploadFormProps {
   farmId: string;
@@ -27,7 +29,16 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     addFiles,
     removeFile,
     uploadFiles,
-  } = useDocumentUpload({ farmId, onSuccess: onUploadSuccess });
+  } = useDocumentUpload({ 
+    farmId, 
+    onSuccess: () => {
+      showSuccessMessage('Documents uploaded successfully!');
+      onUploadSuccess?.();
+    },
+    onError: (error, fileName) => {
+      handleUploadError(error, fileName);
+    }
+  });
 
   // Validate category before setting it - only allow valid categories or empty string for clearing
   const handleCategoryChange = (value: string) => {
@@ -51,81 +62,99 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
   // Check if we have a valid category selected
   const hasValidCategory = category && category.trim() !== '' && isValidDocumentCategory(category);
 
+  const handleFilesAdd = (files: File[]) => {
+    try {
+      addFiles(files);
+    } catch (error) {
+      handleUploadError(error);
+    }
+  };
+
+  const handleUpload = async () => {
+    try {
+      await uploadFiles();
+    } catch (error) {
+      handleUploadError(error);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Upload className="h-5 w-5" aria-hidden="true" />
-          <span>Upload Documents</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Category Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="category">Document Category *</Label>
-          <Select value={category || ''} onValueChange={handleCategoryChange} disabled={isUploading}>
-            <SelectTrigger id="category" aria-label="Select document category">
-              <SelectValue placeholder="Select a category" />
-            </SelectTrigger>
-            <SelectContent>
-              {VALID_DOCUMENT_CATEGORIES.map((categoryValue) => (
-                <SelectItem key={categoryValue} value={categoryValue}>
-                  {CATEGORY_LABELS[categoryValue]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!hasValidCategory && category !== '' && (
-            <p className="text-sm text-red-600">Please select a valid category</p>
+    <PageErrorBoundary pageName="Document Upload">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Upload className="h-5 w-5" aria-hidden="true" />
+            <span>Upload Documents</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Category Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Document Category *</Label>
+            <Select value={category || ''} onValueChange={handleCategoryChange} disabled={isUploading}>
+              <SelectTrigger id="category" aria-label="Select document category">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {VALID_DOCUMENT_CATEGORIES.map((categoryValue) => (
+                  <SelectItem key={categoryValue} value={categoryValue}>
+                    {CATEGORY_LABELS[categoryValue]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!hasValidCategory && category !== '' && (
+              <p className="text-sm text-red-600">Please select a valid category</p>
+            )}
+          </div>
+
+          {/* File Drop Zone */}
+          <FileDropZone onDrop={handleFilesAdd} disabled={isUploading} />
+
+          {/* Selected Files Preview */}
+          <FilePreviewList
+            files={selectedFiles}
+            uploadedFiles={uploadedFiles}
+            onRemoveFile={removeFile}
+            disabled={isUploading}
+          />
+
+          {/* Upload Progress */}
+          <UploadProgress
+            progress={uploadProgress}
+            uploadedFiles={uploadedFiles}
+            isUploading={isUploading}
+          />
+
+          {/* Upload Button */}
+          <Button
+            onClick={handleUpload}
+            disabled={selectedFiles.length === 0 || !hasValidCategory || isUploading}
+            className="w-full"
+            size="lg"
+            aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}` : 'Documents'}
+              </>
+            )}
+          </Button>
+          
+          {selectedFiles.length > 0 && !hasValidCategory && (
+            <p className="text-sm text-amber-600 text-center">
+              Please select a document category before uploading
+            </p>
           )}
-        </div>
-
-        {/* File Drop Zone */}
-        <FileDropZone onDrop={addFiles} disabled={isUploading} />
-
-        {/* Selected Files Preview */}
-        <FilePreviewList
-          files={selectedFiles}
-          uploadedFiles={uploadedFiles}
-          onRemoveFile={removeFile}
-          disabled={isUploading}
-        />
-
-        {/* Upload Progress */}
-        <UploadProgress
-          progress={uploadProgress}
-          uploadedFiles={uploadedFiles}
-          isUploading={isUploading}
-        />
-
-        {/* Upload Button */}
-        <Button
-          onClick={uploadFiles}
-          disabled={selectedFiles.length === 0 || !hasValidCategory || isUploading}
-          className="w-full"
-          size="lg"
-          aria-label={`Upload ${selectedFiles.length} document${selectedFiles.length !== 1 ? 's' : ''}`}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-              Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}` : 'Documents'}
-            </>
-          )}
-        </Button>
-        
-        {selectedFiles.length > 0 && !hasValidCategory && (
-          <p className="text-sm text-amber-600 text-center">
-            Please select a document category before uploading
-          </p>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </PageErrorBoundary>
   );
 };
 

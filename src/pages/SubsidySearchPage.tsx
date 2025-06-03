@@ -6,10 +6,14 @@ import SearchHeader from '@/components/subsidy/search/SearchHeader';
 import SearchFiltersPanel from '@/components/subsidy/search/SearchFiltersPanel';
 import SearchResultsPanel from '@/components/subsidy/search/SearchResultsPanel';
 import SearchLoadingState from '@/components/subsidy/search/SearchLoadingState';
+import EmptyState from '@/components/states/EmptyState';
+import PageErrorBoundary from '@/components/error/PageErrorBoundary';
 import { FilterSet } from '@/components/subsidy/SavedFilterSets';
 import { useSubsidyFiltering } from '@/hooks/useSubsidyFiltering';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { uuidv4 } from '@/lib/utils';
+import { handleApiError } from '@/utils/errorHandling';
+import { Search, AlertCircle } from 'lucide-react';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -46,6 +50,13 @@ const SubsidySearchPage = () => {
     fundingTypes: availableFundingTypes 
   } = useFilterOptions();
 
+  // Handle API errors
+  useEffect(() => {
+    if (error) {
+      handleApiError(error, 'Subsidy Search');
+    }
+  }, [error]);
+
   const clearFilters = () => {
     setFilters({
       confidenceFilter: [0],
@@ -81,17 +92,22 @@ const SubsidySearchPage = () => {
 
   if (!farmId) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <Navbar />
-        <main className="flex-grow py-6 px-4">
-          <div className="container mx-auto text-center">
-            <h2 className="text-xl font-semibold mb-4">Farm ID Required</h2>
-            <p className="text-gray-600 dark:text-gray-300">
-              Please navigate to this page from a farm profile.
-            </p>
-          </div>
-        </main>
-      </div>
+      <PageErrorBoundary pageName="Subsidy Search">
+        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+          <Navbar />
+          <main className="flex-grow py-6 px-4">
+            <div className="container mx-auto">
+              <EmptyState
+                icon={AlertCircle}
+                title="Farm ID Required"
+                description="Please navigate to this page from a farm profile to search for matching subsidies."
+                actionLabel="Go to Dashboard"
+                onAction={() => window.location.href = '/dashboard'}
+              />
+            </div>
+          </main>
+        </div>
+      </PageErrorBoundary>
     );
   }
 
@@ -100,49 +116,61 @@ const SubsidySearchPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Navbar />
+    <PageErrorBoundary pageName="Subsidy Search">
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Navbar />
 
-      <main className="flex-grow py-6 px-4">
-        <div className="container mx-auto">
-          <SearchHeader />
+        <main className="flex-grow py-6 px-4">
+          <div className="container mx-auto">
+            <SearchHeader />
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {showFilters && (
-              <div className="lg:col-span-1">
-                <SearchFiltersPanel
-                  filters={filters}
-                  setFilters={setFilters}
-                  savedFilterSets={savedFilterSets}
-                  onApplyFilterSet={applyFilterSet}
-                  onRemoveFilterSet={removeFilterSet}
-                  onSaveCurrentFilters={saveCurrentFilterSet}
-                  onClearFilters={clearFilters}
-                  availableRegions={availableRegions}
-                  availableCategories={availableCategories}
-                  availableFundingTypes={availableFundingTypes}
-                />
+            {error ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="Error Loading Subsidies"
+                description="Unable to load subsidy data. Please try again or contact support if the problem persists."
+                actionLabel="Retry"
+                onAction={() => window.location.reload()}
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {showFilters && (
+                  <div className="lg:col-span-1">
+                    <SearchFiltersPanel
+                      filters={filters}
+                      setFilters={setFilters}
+                      savedFilterSets={savedFilterSets}
+                      onApplyFilterSet={applyFilterSet}
+                      onRemoveFilterSet={removeFilterSet}
+                      onSaveCurrentFilters={saveCurrentFilterSet}
+                      onClearFilters={clearFilters}
+                      availableRegions={availableRegions}
+                      availableCategories={availableCategories}
+                      availableFundingTypes={availableFundingTypes}
+                    />
+                  </div>
+                )}
+
+                <div className={`${showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
+                  <SearchResultsPanel
+                    searchQuery={searchQuery}
+                    onSearchQueryChange={setSearchQuery}
+                    showFilters={showFilters}
+                    onToggleFilters={() => setShowFilters(!showFilters)}
+                    subsidies={subsidies}
+                    totalCount={totalCount}
+                    filteredCount={filteredCount}
+                    loading={loading}
+                    error={error}
+                    farmId={farmId}
+                  />
+                </div>
               </div>
             )}
-
-            <div className={`${showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
-              <SearchResultsPanel
-                searchQuery={searchQuery}
-                onSearchQueryChange={setSearchQuery}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                subsidies={subsidies}
-                totalCount={totalCount}
-                filteredCount={filteredCount}
-                loading={loading}
-                error={error}
-                farmId={farmId}
-              />
-            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </PageErrorBoundary>
   );
 };
 

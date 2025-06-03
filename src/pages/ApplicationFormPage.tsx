@@ -14,7 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Info, ChevronLeft, Upload, Save, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { handleApiError, showSuccessMessage } from '@/utils/errorHandling';
+import PageErrorBoundary from '@/components/error/PageErrorBoundary';
 import {
   Tooltip,
   TooltipContent,
@@ -109,43 +111,60 @@ const ApplicationFormPage = () => {
   const [formSections, setFormSections] = useState<FormSection[]>(
     getApplicationForm(farmId!, subsidyId!)
   );
+
+  // Handle errors
+  if (farmError) {
+    handleApiError(farmError, 'Farm data');
+  }
+  if (subsidyError) {
+    handleApiError(subsidyError, 'Subsidy data');
+  }
   
   // Loading state
   if (farmLoading || subsidyLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="flex items-center gap-2">
-            <Loader2 className="animate-spin" />
-            <span>Loading application form...</span>
-          </div>
-        </main>
-      </div>
+      <PageErrorBoundary pageName="Application Form">
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Navbar />
+          <main className="flex-grow flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <Loader2 className="animate-spin" />
+              <span>Loading application form...</span>
+            </div>
+          </main>
+        </div>
+      </PageErrorBoundary>
     );
   }
   
   // Error state
   if (farmError || subsidyError || !farm || !subsidy) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
-        <main className="flex-grow flex items-center justify-center">
-          <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Error</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-red-500 mb-4">
-                {farmError?.message || subsidyError?.message || 'Farm or subsidy not found'}
-              </p>
-              <Link to={`/farm/${farmId}`}>
-                <Button variant="outline">Back to Farm Profile</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+      <PageErrorBoundary pageName="Application Form">
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Navbar />
+          <main className="flex-grow flex items-center justify-center">
+            <Card className="w-96">
+              <CardHeader>
+                <CardTitle>Error</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-red-500 mb-4">
+                  {farmError?.message || subsidyError?.message || 'Farm or subsidy not found'}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => window.location.reload()}>
+                    Try Again
+                  </Button>
+                  <Link to={`/farm/${farmId}`}>
+                    <Button>Back to Farm Profile</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </PageErrorBoundary>
     );
   }
   
@@ -169,11 +188,12 @@ const ApplicationFormPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Show success message
-    toast({
-      title: "Application Saved",
-      description: "Your application has been saved as a draft.",
-    });
+    try {
+      // Show success message
+      showSuccessMessage("Your application has been saved as a draft.", "Application Saved");
+    } catch (error) {
+      handleApiError(error, 'Form submission');
+    }
   };
   
   // Render field based on type
@@ -210,91 +230,93 @@ const ApplicationFormPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-      
-      <main className="flex-grow py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link 
-              to={`/farm/${farmId}`} 
-              className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-            >
-              <ChevronLeft size={16} className="mr-1" />
-              Back to Farm Profile
-            </Link>
-            
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Application Form</h1>
-                <p className="text-gray-600">{getLocalizedText(subsidy.title)} - {farm.name}</p>
+    <PageErrorBoundary pageName="Application Form">
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        
+        <main className="flex-grow py-8">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-8">
+              <Link 
+                to={`/farm/${farmId}`} 
+                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+              >
+                <ChevronLeft size={16} className="mr-1" />
+                Back to Farm Profile
+              </Link>
+              
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Application Form</h1>
+                  <p className="text-gray-600">{getLocalizedText(subsidy.title)} - {farm.name}</p>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>{getLocalizedText(subsidy.title)}</CardTitle>
-              <CardDescription>Complete your subsidy application</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <Accordion type="multiple" defaultValue={['section1']} className="w-full">
-                  {formSections.map((section) => (
-                    <AccordionItem key={section.id} value={section.id}>
-                      <AccordionTrigger className="text-base font-medium">
-                        {section.title}
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-6 pt-2">
-                        <div className="space-y-4">
-                          {section.fields.map((field) => (
-                            <div key={field.id} className="space-y-2">
-                              <div className="flex items-center">
-                                <Label htmlFor={field.id} className="font-medium">
-                                  {field.label}
-                                </Label>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Info size={14} className="ml-1 text-gray-400" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Help for: {field.label}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>{getLocalizedText(subsidy.title)}</CardTitle>
+                <CardDescription>Complete your subsidy application</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <Accordion type="multiple" defaultValue={['section1']} className="w-full">
+                    {formSections.map((section) => (
+                      <AccordionItem key={section.id} value={section.id}>
+                        <AccordionTrigger className="text-base font-medium">
+                          {section.title}
+                        </AccordionTrigger>
+                        <AccordionContent className="pb-6 pt-2">
+                          <div className="space-y-4">
+                            {section.fields.map((field) => (
+                              <div key={field.id} className="space-y-2">
+                                <div className="flex items-center">
+                                  <Label htmlFor={field.id} className="font-medium">
+                                    {field.label}
+                                  </Label>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Info size={14} className="ml-1 text-gray-400" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Help for: {field.label}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                {renderField(section, field)}
                               </div>
-                              {renderField(section, field)}
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-                
-                <div className="flex justify-between pt-4 border-t">
-                  <Button variant="outline" type="button">
-                    <Upload size={16} className="mr-2" />
-                    Upload Documents
-                  </Button>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                   
-                  <div className="space-x-2">
+                  <div className="flex justify-between pt-4 border-t">
                     <Button variant="outline" type="button">
-                      <Save size={16} className="mr-2" />
-                      Save Draft
+                      <Upload size={16} className="mr-2" />
+                      Upload Documents
                     </Button>
-                    <Button type="submit">
-                      Submit Application
-                    </Button>
+                    
+                    <div className="space-x-2">
+                      <Button variant="outline" type="button">
+                        <Save size={16} className="mr-2" />
+                        Save Draft
+                      </Button>
+                      <Button type="submit">
+                        Submit Application
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    </PageErrorBoundary>
   );
 };
 

@@ -21,12 +21,21 @@ import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import GenericErrorFallback from '@/components/error/GenericErrorFallback';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       staleTime: 5 * 60 * 1000, // 5 minutes
+      onError: (error) => {
+        console.error('Query error:', error);
+      },
+    },
+    mutations: {
+      onError: (error) => {
+        console.error('Mutation error:', error);
+      },
     },
   },
 });
@@ -35,7 +44,15 @@ function App() {
   console.log('App: Rendering');
   
   return (
-    <ErrorBoundary>
+    <ErrorBoundary 
+      fallback={({ error, resetError }) => (
+        <GenericErrorFallback 
+          error={error} 
+          resetError={resetError}
+          customMessage="A critical error occurred in the application. Please refresh the page or contact support."
+        />
+      )}
+    >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <LanguageProvider>

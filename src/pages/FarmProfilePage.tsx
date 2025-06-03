@@ -12,6 +12,8 @@ import DocumentsTabContent from '@/components/farm/DocumentsTabContent';
 import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
 import { countries } from '@/schemas/farmValidation';
+import PageErrorBoundary from '@/components/error/PageErrorBoundary';
+import { handleApiError } from '@/utils/errorHandling';
 
 const FarmProfilePage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -24,6 +26,11 @@ const FarmProfilePage = () => {
   const { data: supabaseFarm, isLoading, error } = useFarm(farmId || '');
   
   console.log('FarmProfilePage: Supabase farm data:', supabaseFarm);
+
+  // Handle API errors
+  if (error) {
+    handleApiError(error, 'Farm Profile');
+  }
 
   if (isLoading) {
     return (
@@ -50,11 +57,16 @@ const FarmProfilePage = () => {
               Farm Not Found
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              The farm with ID "{farmId}" could not be found.
+              {error ? 'Unable to load farm data. Please try again.' : `The farm with ID "${farmId}" could not be found.`}
             </p>
-            <Button onClick={() => navigate('/dashboard')}>
-              Return to Dashboard
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Try Again
+              </Button>
+              <Button onClick={() => navigate('/dashboard')}>
+                Return to Dashboard
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -103,62 +115,64 @@ const FarmProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      
-      <main className="flex-grow py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{transformedFarm.name}</h1>
-                <div className="flex items-center mt-2 gap-2">
-                  <StatusBadge status={transformedFarm.status} />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    <CalendarDays size={14} className="inline mr-1" />
-                    {t('common.lastUpdated')}: {transformedFarm.updatedAt}
-                  </span>
+    <PageErrorBoundary pageName="Farm Profile">
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        
+        <main className="flex-grow py-8">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{transformedFarm.name}</h1>
+                  <div className="flex items-center mt-2 gap-2">
+                    <StatusBadge status={transformedFarm.status} />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <CalendarDays size={14} className="inline mr-1" />
+                      {t('common.lastUpdated')}: {transformedFarm.updatedAt}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    {transformedFarm.region}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                  {transformedFarm.region}
+                <div className="flex gap-2">
+                  <Button onClick={handleEditFarm} variant="outline" className="flex items-center gap-2">
+                    <Edit size={16} />
+                    Edit Farm
+                  </Button>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleEditFarm} variant="outline" className="flex items-center gap-2">
-                  <Edit size={16} />
-                  Edit Farm
-                </Button>
               </div>
             </div>
+            
+            <Tabs defaultValue="profile" className="space-y-4">
+              <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3 md:grid-cols-4">
+                <TabsTrigger value="profile">{t('common.profile')}</TabsTrigger>
+                <TabsTrigger value="documents">{t('common.documents')}</TabsTrigger>
+                <TabsTrigger value="subsidies">{t('common.subsidies')}</TabsTrigger>
+                <TabsTrigger value="applications">{t('common.applications')}</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="profile">
+                <ProfileTabContent farmId={transformedFarm.id} />
+              </TabsContent>
+              
+              <TabsContent value="documents">
+                <DocumentsTabContent farmId={transformedFarm.id} />
+              </TabsContent>
+              
+              <TabsContent value="subsidies">
+                <SubsidiesTabContent farmId={transformedFarm.id} />
+              </TabsContent>
+              
+              <TabsContent value="applications">
+                <ApplicationsTabContent farmId={transformedFarm.id} />
+              </TabsContent>
+            </Tabs>
           </div>
-          
-          <Tabs defaultValue="profile" className="space-y-4">
-            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3 md:grid-cols-4">
-              <TabsTrigger value="profile">{t('common.profile')}</TabsTrigger>
-              <TabsTrigger value="documents">{t('common.documents')}</TabsTrigger>
-              <TabsTrigger value="subsidies">{t('common.subsidies')}</TabsTrigger>
-              <TabsTrigger value="applications">{t('common.applications')}</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="profile">
-              <ProfileTabContent farmId={transformedFarm.id} />
-            </TabsContent>
-            
-            <TabsContent value="documents">
-              <DocumentsTabContent farmId={transformedFarm.id} />
-            </TabsContent>
-            
-            <TabsContent value="subsidies">
-              <SubsidiesTabContent farmId={transformedFarm.id} />
-            </TabsContent>
-            
-            <TabsContent value="applications">
-              <ApplicationsTabContent farmId={transformedFarm.id} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </PageErrorBoundary>
   );
 };
 
