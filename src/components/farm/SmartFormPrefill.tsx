@@ -64,6 +64,15 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
     onApplyExtraction(mappedData);
   };
 
+  // Get unique extractions (deduplicate by document)
+  const uniqueExtractions = extractions.reduce((acc, extraction) => {
+    const existing = acc.find(e => e.document_id === extraction.document_id);
+    if (!existing || new Date(extraction.created_at) > new Date(existing.created_at)) {
+      return [...acc.filter(e => e.document_id !== extraction.document_id), extraction];
+    }
+    return acc;
+  }, [] as typeof extractions);
+
   return (
     <Card className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
@@ -74,11 +83,21 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {extractions.slice(0, 3).map((extraction) => {
+          {uniqueExtractions.slice(0, 3).map((extraction) => {
             const extractedData = extraction.extracted_data as any;
             const confidence = extractedData?.confidence || 0;
             const extractedFields = extractedData?.extractedFields || [];
             const documentName = extraction.farm_documents?.file_name || 'Document';
+            const hasError = extractedData?.error;
+
+            // Preview of extracted values
+            const extractedValues = extractedFields.slice(0, 3).map((field: string) => {
+              const value = extractedData[field];
+              if (Array.isArray(value) && value.length > 0) return `${field}: ${value.join(', ')}`;
+              if (value && typeof value === 'string') return `${field}: ${value}`;
+              if (typeof value === 'number') return `${field}: ${value}`;
+              return null;
+            }).filter(Boolean);
 
             return (
               <div key={extraction.id} className="border rounded-lg p-3 bg-background">
@@ -86,48 +105,66 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{documentName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {extractedFields.length} fields extracted
+                      {hasError ? 'Extraction failed' : `${extractedFields.length} fields extracted`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(extraction.created_at).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={confidence > 0.7 ? "default" : "secondary"} className="text-xs">
-                      {Math.round(confidence * 100)}% confident
-                    </Badge>
-                    {confidence < 0.7 && (
+                    {hasError ? (
+                      <Badge variant="destructive" className="text-xs">
+                        Failed
+                      </Badge>
+                    ) : (
+                      <Badge variant={confidence > 0.5 ? "default" : "secondary"} className="text-xs">
+                        {Math.round(confidence * 100)}% confident
+                      </Badge>
+                    )}
+                    {!hasError && confidence < 0.5 && (
                       <AlertTriangle className="h-3 w-3 text-amber-500" />
                     )}
                   </div>
                 </div>
                 
-                {extractedFields.length > 0 && (
+                {hasError ? (
+                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                    {extractedData.error}
+                  </div>
+                ) : extractedFields.length > 0 ? (
                   <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1">Extracted fields:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {extractedFields.slice(0, 4).map((field: string) => (
-                        <Badge key={field} variant="outline" className="text-xs">
-                          {field}
-                        </Badge>
+                    <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                    <div className="space-y-1">
+                      {extractedValues.slice(0, 3).map((preview: string, idx: number) => (
+                        <p key={idx} className="text-xs text-foreground bg-muted p-1 rounded">
+                          {preview}
+                        </p>
                       ))}
-                      {extractedFields.length > 4 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{extractedFields.length - 4} more
-                        </Badge>
+                      {extractedFields.length > 3 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{extractedFields.length - 3} more fields
+                        </p>
                       )}
                     </div>
+                  </div>
+                ) : (
+                  <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                    No extractable data found in this document
                   </div>
                 )}
 
                 <Button
                   size="sm"
                   onClick={() => handleApplyExtraction(extraction)}
-                  disabled={disabled}
+                  disabled={disabled || hasError || extractedFields.length === 0}
                   className="w-full"
+                  variant={extractedFields.length > 0 ? "default" : "outline"}
                 >
                   <Sparkles className="h-3 w-3 mr-1" />
-                  Apply to Form
+                  {extractedFields.length > 0 ? 'Apply to Form' : 'No Data to Apply'}
                 </Button>
 
-                {confidence < 0.7 && (
+                {!hasError && confidence < 0.5 && extractedFields.length > 0 && (
                   <p className="text-xs text-amber-600 mt-2 flex items-center">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Low confidence - please review all fields carefully
@@ -137,9 +174,9 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
             );
           })}
           
-          {extractions.length > 3 && (
+          {uniqueExtractions.length > 3 && (
             <p className="text-xs text-muted-foreground text-center">
-              +{extractions.length - 3} more extractions available
+              +{uniqueExtractions.length - 3} more extractions available
             </p>
           )}
         </div>
