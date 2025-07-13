@@ -19,13 +19,22 @@ serve(async (req) => {
   }
 
   let documentId: string | undefined;
+  let debugInfo: any = {};
   
   try {
+    // Enhanced request validation and logging
     const requestBody = await req.json();
     documentId = requestBody.documentId;
     const { fileUrl, fileName, documentType } = requestBody;
     
-    console.log(`🤖 Starting AI extraction for document: ${fileName}, URL: ${fileUrl}`);
+    console.log(`🤖 Starting AI extraction for document: ${fileName}`);
+    console.log(`📄 Document details:`, { documentId, fileUrl, documentType });
+    console.log(`🔐 Request headers:`, Object.fromEntries(req.headers.entries()));
+
+    // Validate required parameters
+    if (!documentId || !fileUrl || !fileName) {
+      throw new Error(`Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`);
+    }
 
     if (!openAIApiKey) {
       console.error('❌ OpenAI API key not configured');
@@ -40,48 +49,103 @@ serve(async (req) => {
       console.error(`❌ Failed to download document. Status: ${fileResponse.status}, StatusText: ${fileResponse.statusText}`);
       throw new Error(`Failed to download document: ${fileResponse.status} ${fileResponse.statusText}`);
     }
-    console.log(`✅ Document downloaded successfully. Size: ${fileResponse.headers.get('content-length')} bytes`);
+    
+    const contentLength = fileResponse.headers.get('content-length');
+    const contentType = fileResponse.headers.get('content-type');
+    console.log(`✅ Document downloaded successfully. Size: ${contentLength} bytes, Type: ${contentType}`);
 
-    // Extract text from the document with debug info
-    const { text: extractedText, debugInfo } = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+    // Extract text from the document with comprehensive debug info
+    const extractionResult = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+    const extractedText = extractionResult.text;
+    debugInfo = extractionResult.debugInfo;
 
-    // Log extraction debug information
-    console.log(`📊 Text extraction debug:`, {
+    // Enhanced extraction debug logging
+    console.log(`📊 Text extraction complete:`, {
       method: debugInfo.extractionMethod,
+      library: debugInfo.libraryUsed,
       textLength: debugInfo.textLength,
       extractionTime: debugInfo.extractionTime,
-      errors: debugInfo.errors,
-      warnings: debugInfo.warnings
+      errors: debugInfo.errors?.length || 0,
+      warnings: debugInfo.warnings?.length || 0,
+      ocrConfidence: debugInfo.ocrConfidence
     });
 
-    // Extract farm data using OpenAI
+    if (debugInfo.errors?.length > 0) {
+      console.warn(`⚠️ Extraction errors:`, debugInfo.errors);
+    }
+    
+    if (debugInfo.warnings?.length > 0) {
+      console.warn(`⚠️ Extraction warnings:`, debugInfo.warnings);
+    }
+
+    // Extract farm data using OpenAI with multilingual support
     const extractedData = await extractFarmDataWithOpenAI(extractedText, openAIApiKey, debugInfo);
 
-    // Store extraction results in database
+    // Enhanced logging for extraction results
+    console.log(`🎯 AI extraction results:`, {
+      confidence: extractedData.confidence,
+      extractedFields: extractedData.extractedFields,
+      detectedLanguage: extractedData.detectedLanguage,
+      hasError: !!extractedData.error
+    });
+
+    // Store comprehensive extraction results in database
     await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);
 
-    console.log(`AI extraction completed for ${fileName}:`, extractedData);
+    console.log(`✅ AI extraction completed successfully for ${fileName}`);
 
     return new Response(JSON.stringify({
       success: true,
       documentId,
       extractedData,
+      debugInfo: {
+        extractionMethod: debugInfo.extractionMethod,
+        libraryUsed: debugInfo.libraryUsed,
+        textLength: debugInfo.textLength,
+        detectedLanguage: extractedData.detectedLanguage,
+        confidence: extractedData.confidence
+      },
       message: 'Extraction completed successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in extract-document-data function:', error);
+    console.error('❌ Error in extract-document-data function:', error);
+    console.error('🔍 Error details:', {
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+      documentId,
+      debugInfo
+    });
     
-    // Try to log the failure to the database if we have documentId
+    // Comprehensive error logging to database
     if (documentId) {
-      await logExtractionError(documentId, (error as Error).message, supabaseUrl, supabaseServiceKey);
+      try {
+        await logExtractionError(
+          documentId, 
+          (error as Error).message, 
+          supabaseUrl, 
+          supabaseServiceKey,
+          {
+            ...debugInfo,
+            errorStack: (error as Error).stack,
+            errorTimestamp: new Date().toISOString()
+          }
+        );
+      } catch (logError) {
+        console.error('❌ Failed to log error to database:', logError);
+      }
     }
     
     return new Response(JSON.stringify({
       success: false,
-      error: (error as Error).message
+      error: (error as Error).message,
+      debugInfo: {
+        extractionMethod: debugInfo.extractionMethod || 'unknown',
+        hasErrors: true,
+        errorTimestamp: new Date().toISOString()
+      }
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
