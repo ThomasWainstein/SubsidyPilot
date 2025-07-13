@@ -64,7 +64,7 @@ export const validateDocumentUpload = (file: File, category: string): { isValid:
     errors.push('File size must be less than 50MB');
   }
   
-  // Validate file type
+  // Validate file type - includes Excel files
   const allowedTypes = [
     'application/pdf',
     'application/msword',

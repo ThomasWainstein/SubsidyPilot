@@ -9,8 +9,9 @@ interface DocumentsTabContentProps {
 
 const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
   const handleUploadSuccess = () => {
-    // This will trigger a refetch of the documents list
-    window.location.reload();
+    // Document list will automatically refresh via React Query invalidation
+    // No need to reload the page - this was causing the redirect issue
+    console.log('Document upload successful - list will refresh automatically');
   };
 
   return (
