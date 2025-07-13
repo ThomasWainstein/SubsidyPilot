@@ -32,6 +32,12 @@ const ManualExtractionButton = ({
   const handleManualExtraction = async () => {
     setIsExtracting(true);
     console.log(`🔄 Starting manual extraction for: ${fileName}`);
+    console.log(`📄 Document details:`, { documentId, fileUrl, fileName, category });
+
+    // Validate required parameters
+    if (!documentId || !fileUrl || !fileName) {
+      throw new Error(`Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`);
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('extract-document-data', {

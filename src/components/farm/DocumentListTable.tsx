@@ -36,7 +36,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
 
   const handleDelete = async (document: any) => {
     if (confirm(`Are you sure you want to delete "${document.file_name}"?`)) {
-      await deleteDocumentMutation.mutateAsync(document.id);
+      await deleteDocumentMutation.mutateAsync({ documentId: document.id, farmId });
     }
   };
 
