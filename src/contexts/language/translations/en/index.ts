@@ -16,6 +16,7 @@ import { simulation } from './simulation';
 import { status } from './status';
 import { subsidies } from './subsidies';
 import { calendar } from './calendar';
+import { admin } from './admin';
 
 export const en = {
   ...application,
@@ -35,4 +36,5 @@ export const en = {
   ...status,
   ...subsidies,
   ...calendar,
+  ...admin,
 } as const;
