@@ -2,9 +2,6 @@
  * Advanced text extraction utilities with proper library support
  */
 
-// Import statements for text extraction
-import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
-
 export interface ExtractionDebugInfo {
   fileName: string;
   fileSize: number;
@@ -108,29 +105,11 @@ async function extractPDFText(
   openAIApiKey: string, 
   debugInfo: ExtractionDebugInfo
 ): Promise<{ text: string }> {
-  debugInfo.extractionMethod = 'pdf_advanced';
-  console.log(`📋 Processing PDF with advanced extraction...`);
+  debugInfo.extractionMethod = 'pdf_ocr_vision';
+  console.log(`📋 Processing PDF with OpenAI Vision OCR...`);
   
   try {
     const arrayBuffer = await fileResponse.arrayBuffer();
-    
-    // Try direct PDF text extraction first
-    try {
-      const pdfText = await extractPDFTextDirect(arrayBuffer);
-      if (pdfText && pdfText.length > 100) {
-        console.log(`✅ Direct PDF text extraction successful`);
-        return { text: pdfText };
-      } else {
-        debugInfo.warnings.push('Direct PDF extraction yielded insufficient text, falling back to OCR');
-      }
-    } catch (directError) {
-      debugInfo.warnings.push(`Direct PDF extraction failed: ${(directError as Error).message}`);
-    }
-    
-    // Fallback to OCR via OpenAI Vision
-    debugInfo.extractionMethod = 'pdf_ocr_vision';
-    console.log(`📤 Falling back to OCR via OpenAI Vision...`);
-    
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     console.log(`📤 Sending PDF to OpenAI Vision (${Math.round(base64.length/1024)}KB)`);
     
@@ -180,24 +159,6 @@ async function extractPDFText(
   }
 }
 
-// Direct PDF text extraction (simplified implementation)
-async function extractPDFTextDirect(arrayBuffer: ArrayBuffer): Promise<string> {
-  // This is a simplified implementation. In production, you'd use a proper PDF library
-  // like PDF.js, pdfminer, or similar
-  const text = new TextDecoder().decode(arrayBuffer);
-  
-  // Basic PDF text extraction looking for text objects
-  const textMatches = text.match(/\((.*?)\)/g);
-  if (textMatches) {
-    return textMatches
-      .map(match => match.slice(1, -1))
-      .filter(text => text.length > 2)
-      .join(' ');
-  }
-  
-  throw new Error('No extractable text found in PDF structure');
-}
-
 async function extractDOCXText(
   fileResponse: Response,
   debugInfo: ExtractionDebugInfo
@@ -207,18 +168,12 @@ async function extractDOCXText(
   
   try {
     const arrayBuffer = await fileResponse.arrayBuffer();
-    
-    // Advanced DOCX text extraction
     const text = new TextDecoder().decode(arrayBuffer);
     
     // Look for document content in various XML structures
     const extractors = [
-      // Word 2016+ format
       /<w:t[^>]*>(.*?)<\/w:t>/g,
-      // Older format
       /<t[^>]*>(.*?)<\/t>/g,
-      // Paragraph text
-      /<w:p[^>]*>.*?<w:t[^>]*>(.*?)<\/w:t>.*?<\/w:p>/g,
     ];
     
     let extractedText = '';
@@ -232,7 +187,7 @@ async function extractDOCXText(
           .join(' ');
         
         if (extractedText.length > 100) {
-          console.log(`✅ DOCX text extraction successful using regex pattern`);
+          console.log(`✅ DOCX text extraction successful`);
           break;
         }
       }
@@ -246,7 +201,6 @@ async function extractDOCXText(
         .replace(/\s+/g, ' ')
         .trim();
       
-      // Look for readable content
       const readableText = cleanText.match(/[a-zA-Z][a-zA-Z\s,.-]{10,}/g);
       if (readableText) {
         extractedText = readableText.join(' ');
@@ -280,28 +234,4 @@ function cleanExtractedText(text: string): string {
     .replace(/^(Page \d+|\d+\/\d+|Header|Footer).*$/gm, '')
     // Trim and normalize
     .trim();
-  } catch (textError) {
-    console.error('❌ Text extraction failed:', textError);
-    extractedText = `Failed to extract text from ${fileName}. File type: ${fileExtension}, Size: ${fileResponse.headers.get('content-length')} bytes. Error: ${(textError as Error).message}`;
-  }
-
-  // Clean and validate extracted text
-  extractedText = extractedText.trim();
-  
-  // Log preview of extracted text for debugging
-  const textPreview = extractedText.substring(0, 500);
-  console.log(`📄 Text extraction preview (first 500 chars): ${textPreview}`);
-  console.log(`📊 Total extracted text length: ${extractedText.length} characters`);
-
-  // Check text quality
-  if (extractedText.length < 50) {
-    console.warn('⚠️ Warning: Very little text extracted from document');
-  }
-  
-  const hasReadableContent = /[a-zA-Z]{10,}/.test(extractedText);
-  if (!hasReadableContent) {
-    console.warn('⚠️ Warning: Document appears to contain no readable text content');
-  }
-
-  return extractedText;
 }
