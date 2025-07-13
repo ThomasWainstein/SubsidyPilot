@@ -81,5 +81,17 @@ export const common = {
   'common.getStarted': 'Rozpocznij',
   'common.returnHome': 'Powrót do Strony Głównej',
   'common.backToDashboard': 'Powrót do Panelu',
-  'common.explainThis': 'Wyjaśnij To'
+  'common.explainThis': 'Wyjaśnij To',
+  'common.attach': 'Załącz',
+  'common.useToPrefillProfile': 'Użyj do Wypełnienia Profilu',
+  'common.prefillNow': 'Tak, Wypełnij Teraz',
+  'common.noThanks': 'Nie, Dziękuję',
+  'common.dontAskAgain': 'Nie Pytaj Więcej',
+  'common.usePrefillPrompt': 'Czy chcesz użyć informacji z tego dokumentu do wypełnienia profilu farmy?',
+  'common.extractionCompleted': 'Analiza dokumentu zakończona',
+  'common.extractionAvailable': 'Inteligentne wypełnianie dostępne',
+  'common.confidence': 'Pewność',
+  'common.prefillApplied': 'Formularz wypełniony wyciągniętymi danymi',
+  'common.extractionProcessing': 'Przetwarzanie dokumentu...',
+  'common.extractionFailed': 'Analiza dokumentu nie powiodła się'
 } as const;

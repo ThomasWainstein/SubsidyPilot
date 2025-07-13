@@ -16,9 +16,10 @@ import PageErrorBoundary from '@/components/error/PageErrorBoundary';
 interface DocumentUploadFormProps {
   farmId: string;
   onUploadSuccess?: () => void;
+  onExtractionCompleted?: (fileName: string, extraction: any) => void;
 }
 
-const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps) => {
+const DocumentUploadForm = ({ farmId, onUploadSuccess, onExtractionCompleted }: DocumentUploadFormProps) => {
   const {
     selectedFiles,
     category,
@@ -31,10 +32,8 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
     uploadFiles,
   } = useDocumentUpload({ 
     farmId, 
-    onSuccess: () => {
-      showSuccessMessage('Documents uploaded successfully!');
-      onUploadSuccess?.();
-    }
+    onSuccess: onUploadSuccess,
+    onExtractionCompleted 
   });
 
   // Validate category before setting it - only allow valid categories or empty string for clearing

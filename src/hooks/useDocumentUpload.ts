@@ -10,9 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface UseDocumentUploadProps {
   farmId: string;
   onSuccess?: () => void;
+  onExtractionCompleted?: (fileName: string, extraction: any) => void;
 }
 
-export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps) => {
+export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: UseDocumentUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<string>('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);

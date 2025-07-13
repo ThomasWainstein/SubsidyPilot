@@ -76,6 +76,7 @@ const DocumentList = ({ farmId }: DocumentListProps) => {
             onDelete={handleDelete}
             onView={handleView}
             deletingDocumentId={deleteMutation.isPending ? undefined : undefined}
+            farmId={farmId}
           />
         ) : (
           <div className="text-center py-8">

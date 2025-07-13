@@ -80,4 +80,16 @@ export type CommonTranslationKey =
   | 'common.getStarted'
   | 'common.returnHome'
   | 'common.backToDashboard'
-  | 'common.explainThis';
+  | 'common.explainThis'
+  | 'common.attach'
+  | 'common.useToPrefillProfile'
+  | 'common.prefillNow'
+  | 'common.noThanks'
+  | 'common.dontAskAgain'
+  | 'common.usePrefillPrompt'
+  | 'common.extractionCompleted'
+  | 'common.extractionAvailable'
+  | 'common.confidence'
+  | 'common.prefillApplied'
+  | 'common.extractionProcessing'
+  | 'common.extractionFailed';

@@ -81,5 +81,17 @@ export const common = {
   'common.getStarted': 'Comenzar',
   'common.returnHome': 'Volver a Inicio',
   'common.backToDashboard': 'Volver al Panel',
-  'common.explainThis': 'Explicar Esto'
+  'common.explainThis': 'Explicar Esto',
+  'common.attach': 'Adjuntar',
+  'common.useToPrefillProfile': 'Usar para Completar Perfil',
+  'common.prefillNow': 'Sí, Completar Ahora',
+  'common.noThanks': 'No, Gracias',
+  'common.dontAskAgain': 'No Preguntar Más',
+  'common.usePrefillPrompt': '¿Te gustaría usar la información de este documento para completar tu perfil de granja?',
+  'common.extractionCompleted': 'Análisis del documento completado',
+  'common.extractionAvailable': 'Autocompletado inteligente disponible',
+  'common.confidence': 'Confianza',
+  'common.prefillApplied': 'Formulario completado con datos extraídos',
+  'common.extractionProcessing': 'Procesando documento...',
+  'common.extractionFailed': 'Análisis del documento falló'
 } as const;

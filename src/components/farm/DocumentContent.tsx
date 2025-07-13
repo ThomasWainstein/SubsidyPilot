@@ -11,9 +11,10 @@ interface DocumentContentProps {
   onDelete: (document: FarmDocument) => void;
   onView: (document: FarmDocument) => void;
   deletingDocumentId?: string;
+  farmId: string;
 }
 
-const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: DocumentContentProps) => {
+const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId, farmId }: DocumentContentProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | ''>('');
 
@@ -78,6 +79,7 @@ const DocumentContent = ({ documents, onDelete, onView, deletingDocumentId }: Do
           onDelete={onDelete}
           onView={onView}
           deletingDocumentId={deletingDocumentId}
+          farmId={farmId}
         />
       ) : (
         <DocumentEmptyState 

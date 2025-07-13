@@ -81,5 +81,17 @@ export const common = {
   'common.getStarted': 'Începe',
   'common.returnHome': 'Înapoi la Pagina Principală',
   'common.backToDashboard': 'Înapoi la Panoul de Control',
-  'common.explainThis': 'Explică Acest Lucru'
+  'common.explainThis': 'Explică Acest Lucru',
+  'common.attach': 'Atașează',
+  'common.useToPrefillProfile': 'Folosește pentru Completarea Profilului',
+  'common.prefillNow': 'Da, Completează Acum',
+  'common.noThanks': 'Nu, Mulțumesc',
+  'common.dontAskAgain': 'Nu Mai Întreba',
+  'common.usePrefillPrompt': 'Vrei să folosești informațiile din acest document pentru a completa profilul fermei?',
+  'common.extractionCompleted': 'Analiza documentului finalizată',
+  'common.extractionAvailable': 'Completare inteligentă disponibilă',
+  'common.confidence': 'Încredere',
+  'common.prefillApplied': 'Formularul completat cu datele extrase',
+  'common.extractionProcessing': 'Procesarea documentului...',
+  'common.extractionFailed': 'Analiza documentului a eșuat'
 } as const;

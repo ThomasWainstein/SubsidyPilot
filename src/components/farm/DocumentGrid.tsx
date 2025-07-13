@@ -8,9 +8,10 @@ interface DocumentGridProps {
   onDelete: (document: FarmDocument) => void;
   onView: (document: FarmDocument) => void;
   deletingDocumentId?: string;
+  farmId: string;
 }
 
-const DocumentGrid = ({ documents, onDelete, onView, deletingDocumentId }: DocumentGridProps) => {
+const DocumentGrid = ({ documents, onDelete, onView, deletingDocumentId, farmId }: DocumentGridProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {documents.map((document) => (
@@ -20,6 +21,7 @@ const DocumentGrid = ({ documents, onDelete, onView, deletingDocumentId }: Docum
           onDelete={onDelete}
           onView={onView}
           isDeleting={deletingDocumentId === document.id}
+          farmId={farmId}
         />
       ))}
     </div>

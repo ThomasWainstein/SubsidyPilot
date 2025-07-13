@@ -79,5 +79,16 @@ export const common = {
   'common.returnHome': 'Return to Homepage',
   'common.backToDashboard': 'Back to Dashboard',
   'common.explainThis': 'Explain This',
-  'common.attach': 'Attach'
+  'common.attach': 'Attach',
+  'common.useToPrefillProfile': 'Use to Prefill Profile',
+  'common.prefillNow': 'Yes, Prefill Now',
+  'common.noThanks': 'No, Thanks',
+  'common.dontAskAgain': 'Don\'t Ask Again',
+  'common.usePrefillPrompt': 'Would you like to use the information from this document to populate your farm profile?',
+  'common.extractionCompleted': 'Document analysis completed',
+  'common.extractionAvailable': 'Smart prefill available',
+  'common.confidence': 'Confidence',
+  'common.prefillApplied': 'Form prefilled with extracted data',
+  'common.extractionProcessing': 'Processing document...',
+  'common.extractionFailed': 'Document analysis failed'
 } as const;

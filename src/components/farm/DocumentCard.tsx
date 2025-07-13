@@ -12,9 +12,13 @@ import {
   Trash2, 
   Calendar,
   Tag,
-  Download
+  Download,
+  Sparkles
 } from 'lucide-react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
+import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,9 +36,13 @@ interface DocumentCardProps {
   onDelete: (document: FarmDocument) => void;
   onView: (document: FarmDocument) => void;
   isDeleting?: boolean;
+  farmId: string;
 }
 
-const DocumentCard = ({ document, onDelete, onView, isDeleting = false }: DocumentCardProps) => {
+const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }: DocumentCardProps) => {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const { data: extraction } = useLatestDocumentExtraction(document.id);
   const getDocumentIcon = (mimeType: string | null) => {
     if (!mimeType) return <File className="h-6 w-6 text-gray-500" />;
     
@@ -76,6 +84,19 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false }: Docume
     return colors[category] || colors.other;
   };
 
+  const getConfidenceColor = (confidence: number | null) => {
+    if (!confidence) return 'bg-gray-100 text-gray-800';
+    if (confidence >= 80) return 'bg-green-100 text-green-800';
+    if (confidence >= 60) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-orange-100 text-orange-800';
+  };
+
+  const handlePrefillClick = () => {
+    if (extraction) {
+      navigate(`/farm/${farmId}/edit?prefill=true&extractionId=${extraction.id}`);
+    }
+  };
+
   return (
     <Card className="group hover:shadow-md transition-all duration-200 border hover:border-gray-300 dark:hover:border-gray-600">
       <CardContent className="p-4">
@@ -88,7 +109,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false }: Docume
               <h4 className="font-medium text-gray-900 dark:text-white truncate group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
                 {document.file_name}
               </h4>
-              <div className="flex items-center space-x-3 mt-2">
+              <div className="flex items-center space-x-2 mt-2 flex-wrap gap-1">
                 <Badge 
                   variant="secondary" 
                   className={`${getCategoryColor(document.category)} text-xs`}
@@ -96,6 +117,15 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false }: Docume
                   <Tag className="h-3 w-3 mr-1" />
                   {document.category}
                 </Badge>
+                {extraction && (
+                  <Badge 
+                    variant="secondary" 
+                    className={`${getConfidenceColor(extraction.confidence_score)} text-xs`}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {t('common.extractionAvailable')}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center">
@@ -108,6 +138,17 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false }: Docume
           </div>
           
           <div className="flex items-center space-x-1 ml-2">
+            {extraction && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handlePrefillClick}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 h-auto"
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                {t('common.useToPrefillProfile')}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
