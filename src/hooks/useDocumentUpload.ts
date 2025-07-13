@@ -24,8 +24,10 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
     
     files.forEach(file => {
       // Security validation first
+      console.log('🔄 Starting file validation for:', file.name, 'Type:', file.type);
       const securityCheck = validateFileType(file);
       if (!securityCheck.isValid) {
+        console.error('❌ Security validation failed:', securityCheck.error);
         toast({
           title: 'File rejected',
           description: `${file.name}: ${securityCheck.error}`,
@@ -33,14 +35,18 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
         });
         return;
       }
+      console.log('✅ Security validation passed for:', file.name);
 
       // Then document validation
+      console.log('🔄 Starting document validation for:', file.name);
       const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
         // Sanitize filename for security
         const sanitizedFile = new File([file], sanitizeFileName(file.name), { type: file.type });
+        console.log('✅ Document validation passed, sanitized filename:', sanitizeFileName(file.name));
         validFiles.push(sanitizedFile);
       } else {
+        console.error('❌ Document validation failed:', validation.errors);
         validation.errors.forEach(error => {
           toast({
             title: 'File rejected',
@@ -122,10 +128,13 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
         console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
         
         // Final security validation before upload
+        console.log('🔄 Final security validation before upload for:', file.name);
         const securityCheck = validateFileType(file);
         if (!securityCheck.isValid) {
+          console.error('❌ Final security validation failed:', securityCheck.error);
           throw new Error(`Security validation failed for ${file.name}: ${securityCheck.error}`);
         }
+        console.log('✅ Final security validation passed for:', file.name);
         
         // Validate each file before upload
         const validation = validateDocumentUpload(file, normalizedCategory);
