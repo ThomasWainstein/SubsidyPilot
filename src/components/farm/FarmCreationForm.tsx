@@ -220,7 +220,10 @@ const FarmCreationForm = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="legal-status">Legal Status *</Label>
-                  <Select onValueChange={(value) => form.setValue('legalStatus', value)}>
+                  <Select 
+                    value={form.watch('legalStatus') || ''} 
+                    onValueChange={(value) => form.setValue('legalStatus', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select legal entity type" />
                     </SelectTrigger>
@@ -272,10 +275,13 @@ const FarmCreationForm = () => {
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="country">Country *</Label>
-                  <Select onValueChange={(value) => {
-                    form.setValue('country', value);
-                    form.setValue('department', ''); // Reset department when country changes
-                  }}>
+                  <Select 
+                    value={form.watch('country') || ''} 
+                    onValueChange={(value) => {
+                      form.setValue('country', value);
+                      form.setValue('department', ''); // Reset department when country changes
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
@@ -295,6 +301,7 @@ const FarmCreationForm = () => {
                 <div className="space-y-2">
                   <Label htmlFor="department">Department/Region</Label>
                   <Select 
+                    value={form.watch('department') || ''} 
                     onValueChange={(value) => form.setValue('department', value)}
                     disabled={!selectedCountry || availableDepartments.length === 0}
                   >
@@ -356,7 +363,10 @@ const FarmCreationForm = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Land Ownership Type</Label>
-                  <Select onValueChange={(value) => form.setValue('landOwnership', value)}>
+                  <Select 
+                    value={form.watch('landOwnership') || ''} 
+                    onValueChange={(value) => form.setValue('landOwnership', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select ownership type" />
                     </SelectTrigger>
@@ -442,7 +452,10 @@ const FarmCreationForm = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Irrigation Method</Label>
-                  <Select onValueChange={(value) => form.setValue('irrigationMethod', value)}>
+                  <Select 
+                    value={form.watch('irrigationMethod') || ''} 
+                    onValueChange={(value) => form.setValue('irrigationMethod', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select irrigation method" />
                     </SelectTrigger>
@@ -664,7 +677,10 @@ const FarmCreationForm = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="revenue">Annual Farm Revenue (Optional)</Label>
-                <Select onValueChange={(value) => form.setValue('revenue', value)}>
+                <Select 
+                  value={form.watch('revenue') || ''} 
+                  onValueChange={(value) => form.setValue('revenue', value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select revenue range" />
                   </SelectTrigger>
@@ -699,7 +715,10 @@ const FarmCreationForm = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Preferred Communication Language</Label>
-                  <Select onValueChange={(value) => form.setValue('preferredLanguage', value)}>
+                  <Select 
+                    value={form.watch('preferredLanguage') || ''} 
+                    onValueChange={(value) => form.setValue('preferredLanguage', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
