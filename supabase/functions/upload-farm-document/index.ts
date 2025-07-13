@@ -10,13 +10,15 @@ const corsHeaders = {
 // Valid document categories that match the database enum
 const VALID_DOCUMENT_CATEGORIES = ['legal', 'financial', 'environmental', 'technical', 'certification', 'other'];
 
-// Valid MIME types for security
+// Valid MIME types for security - includes Excel files
 const VALID_MIME_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'image/jpeg',
-  'image/jpg',
+  'image/jpg', 
   'image/png',
   'image/webp'
 ];
@@ -51,10 +53,57 @@ const validateFileType = (file: File): { isValid: boolean; error?: string } => {
   if (!VALID_MIME_TYPES.includes(file.type)) {
     return {
       isValid: false,
-      error: `File type ${file.type} is not supported. Please upload PDF, Word, or image files only.`
+      error: `File type ${file.type} is not supported. Please upload PDF, Word, Excel, or image files only.`
     };
   }
   return { isValid: true };
+};
+
+// Validate file content to prevent fake files (e.g., txt renamed to pdf)
+const validateFileContent = async (file: File): Promise<{ isValid: boolean; error?: string }> => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    // Check file signatures (magic numbers)
+    if (file.type === 'application/pdf') {
+      // PDF starts with %PDF
+      const pdfHeader = '%PDF';
+      const fileHeader = new TextDecoder().decode(bytes.slice(0, 4));
+      if (!fileHeader.startsWith(pdfHeader)) {
+        return { isValid: false, error: 'File is not a valid PDF document' };
+      }
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+               file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      // Modern Office docs are ZIP files starting with PK
+      if (bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+        return { isValid: false, error: 'File is not a valid Office document' };
+      }
+    } else if (file.type === 'application/msword' || file.type === 'application/vnd.ms-excel') {
+      // Old Office docs start with specific signatures
+      if (bytes[0] !== 0xD0 || bytes[1] !== 0xCF || bytes[2] !== 0x11 || bytes[3] !== 0xE0) {
+        return { isValid: false, error: 'File is not a valid legacy Office document' };
+      }
+    } else if (file.type.startsWith('image/')) {
+      // Basic image validation
+      if (file.type === 'image/jpeg') {
+        if (bytes[0] !== 0xFF || bytes[1] !== 0xD8) {
+          return { isValid: false, error: 'File is not a valid JPEG image' };
+        }
+      } else if (file.type === 'image/png') {
+        const pngHeader = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        for (let i = 0; i < pngHeader.length; i++) {
+          if (bytes[i] !== pngHeader[i]) {
+            return { isValid: false, error: 'File is not a valid PNG image' };
+          }
+        }
+      }
+    }
+    
+    return { isValid: true };
+  } catch (error) {
+    return { isValid: false, error: 'Unable to validate file content' };
+  }
 };
 
 serve(async (req) => {
@@ -117,6 +166,16 @@ serve(async (req) => {
     if (!fileTypeCheck.isValid) {
       console.error('Invalid file type:', file.type);
       return new Response(JSON.stringify({ error: fileTypeCheck.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Security validation: Check file content
+    const fileContentCheck = await validateFileContent(file);
+    if (!fileContentCheck.isValid) {
+      console.error('Invalid file content:', fileContentCheck.error);
+      return new Response(JSON.stringify({ error: fileContentCheck.error }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

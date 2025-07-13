@@ -69,15 +69,21 @@ export const useUploadDocument = () => {
       queryClient.invalidateQueries({ queryKey: ['farm-documents', variables.farmId] });
       
       toast({
-        title: 'Document uploaded successfully',
-        description: `${variables.file.name} has been uploaded to your farm.`,
+        title: 'Upload successful',
+        description: `${variables.file.name} has been uploaded successfully.`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Document upload failed:', error);
+      
+      // Show specific error message if available
+      const errorMessage = error?.message || 
+                           error?.details || 
+                           'Unable to upload document. Please check the file and try again.';
+      
       toast({
         title: 'Upload failed',
-        description: 'There was an error uploading your document. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
