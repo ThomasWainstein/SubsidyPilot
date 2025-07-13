@@ -10,8 +10,8 @@ interface DocumentsTabContentProps {
 const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
   const handleUploadSuccess = () => {
     // Document list will automatically refresh via React Query invalidation
-    // No need to reload the page - this was causing the redirect issue
-    console.log('Document upload successful - list will refresh automatically');
+    // Stay on Documents tab - no redirects or page reloads
+    console.log('Document upload successful - staying on Documents tab');
   };
 
   return (

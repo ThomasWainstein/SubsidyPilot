@@ -20,11 +20,24 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
   const uploadMutation = useUploadDocument();
 
   const addFiles = (files: File[]) => {
+    console.log(`📝 Processing ${files.length} files for upload validation`);
     const validFiles: File[] = [];
     
     files.forEach(file => {
-      // Security validation first
-      console.log('🔄 Starting file validation for:', file.name, 'Type:', file.type);
+      // Check file size first (50MB limit)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        console.error('❌ File size validation failed:', file.name, 'Size:', file.size);
+        toast({
+          title: 'File too large',
+          description: `${file.name} exceeds 50MB limit. Please choose a smaller file.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Security validation
+      console.log('🔄 Starting file validation for:', file.name, 'Type:', file.type, 'Size:', file.size);
       const securityCheck = validateFileType(file);
       if (!securityCheck.isValid) {
         console.error('❌ Security validation failed:', securityCheck.error);
@@ -37,7 +50,7 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       }
       console.log('✅ Security validation passed for:', file.name);
 
-      // Then document validation
+      // Document validation
       console.log('🔄 Starting document validation for:', file.name);
       const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
@@ -49,7 +62,7 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
         console.error('❌ Document validation failed:', validation.errors);
         validation.errors.forEach(error => {
           toast({
-            title: 'File rejected',
+            title: 'File validation failed',
             description: `${file.name}: ${error}`,
             variant: 'destructive',
           });
@@ -57,16 +70,20 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       }
     });
 
+    // Check total file limit
     if (selectedFiles.length + validFiles.length > 5) {
       toast({
         title: 'Too many files',
-        description: 'Maximum 5 files allowed per upload.',
+        description: `Maximum 5 files allowed per upload. You have ${selectedFiles.length} selected and tried to add ${validFiles.length} more.`,
         variant: 'destructive',
       });
       return;
     }
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    if (validFiles.length > 0) {
+      console.log(`✅ Added ${validFiles.length} valid files to upload queue`);
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
   };
 
   const removeFile = (index: number) => {
@@ -157,7 +174,14 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
       setUploadProgress(0);
       setUploadedFiles([]);
       
-      console.log('Upload completed successfully');
+      console.log('✅ Upload completed successfully - form cleared');
+      
+      // Show success toast with file count
+      toast({
+        title: 'Upload successful',
+        description: `${totalFiles} document${totalFiles > 1 ? 's' : ''} uploaded successfully.`,
+      });
+      
       onSuccess?.();
     } catch (error) {
       console.error('Upload failed:', error);

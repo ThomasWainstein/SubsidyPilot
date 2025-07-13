@@ -65,13 +65,12 @@ export const useUploadDocument = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      // Invalidate and refetch documents for this farm
+      // Invalidate and refetch documents for this farm immediately
       queryClient.invalidateQueries({ queryKey: ['farm-documents', variables.farmId] });
+      // Force immediate refetch to ensure real-time updates
+      queryClient.refetchQueries({ queryKey: ['farm-documents', variables.farmId] });
       
-      toast({
-        title: 'Upload successful',
-        description: `${variables.file.name} has been uploaded successfully.`,
-      });
+      console.log('✅ Document upload successful, refreshing document list:', variables.file.name);
     },
     onError: (error: any) => {
       console.error('Document upload failed:', error);

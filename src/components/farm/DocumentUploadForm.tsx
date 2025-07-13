@@ -128,6 +128,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess }: DocumentUploadFormProps
               progress={uploadProgress}
               uploadedFiles={uploadedFiles}
               isUploading={isUploading}
+              totalFiles={selectedFiles.length}
             />
           </div>
 
