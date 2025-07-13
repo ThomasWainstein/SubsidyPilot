@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import ManualExtractionButton from './ManualExtractionButton';
 
 interface DocumentCardProps {
   document: FarmDocument;
@@ -150,14 +151,15 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
               </Button>
             )}
             {/* Manual extraction button for all documents */}
-            <Button
-              variant="outline"
-              size="sm"
+            <ManualExtractionButton
+              documentId={document.id}
+              farmId={farmId}
+              fileName={document.file_name}
+              fileUrl={document.file_url}
+              category={document.category}
+              hasExistingExtraction={!!extraction}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 h-auto"
-            >
-              <Sparkles className="h-3 w-3 mr-1" />
-              Extract & Prefill
-            </Button>
+            />
             <Button
               variant="ghost"
               size="sm"
