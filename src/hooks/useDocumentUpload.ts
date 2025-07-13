@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { validateDocumentUpload } from '@/utils/documentValidation';
 import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/documentValidation';
 import { validateFileType, sanitizeFileName } from '@/utils/securityValidation';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseDocumentUploadProps {
   farmId: string;
@@ -159,11 +160,34 @@ export const useDocumentUpload = ({ farmId, onSuccess }: UseDocumentUploadProps)
           throw new Error(`File validation failed for ${file.name}: ${validation.errors.join(', ')}`);
         }
         
-        await uploadMutation.mutateAsync({
+        const uploadResult = await uploadMutation.mutateAsync({
           file,
           farmId,
           category: normalizedCategory,
         });
+        
+        // Trigger AI extraction for supported file types
+        if (uploadResult?.documentId && ['pdf', 'doc', 'docx', 'txt', 'csv'].some(ext => 
+          file.name.toLowerCase().endsWith(`.${ext}`))) {
+          try {
+            console.log(`🤖 Triggering AI extraction for document: ${file.name}`);
+            // Don't await - let extraction run in background
+            supabase.functions.invoke('extract-document-data', {
+              body: {
+                documentId: uploadResult.documentId,
+                fileUrl: uploadResult.fileUrl,
+                fileName: file.name,
+                documentType: normalizedCategory
+              }
+            }).catch(error => {
+              console.warn('AI extraction failed (non-blocking):', error);
+            });
+          } catch (error) {
+            console.warn('Failed to trigger AI extraction:', error);
+            // Don't block upload on extraction failure
+          }
+        }
+        
         setUploadProgress(((i + 1) / totalFiles) * 100);
         setUploadedFiles(prev => [...prev, file.name]);
       }

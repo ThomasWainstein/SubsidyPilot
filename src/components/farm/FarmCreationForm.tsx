@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/hooks/use-toast';
 import FileUploadField from '@/components/form/FileUploadField';
+import SmartFormPrefill from '@/components/farm/SmartFormPrefill';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
@@ -60,6 +61,19 @@ const FarmCreationForm = () => {
   const availableDepartments = selectedCountry 
     ? (departmentsByCountry[selectedCountry] || []).filter(dept => dept && dept.trim() !== '') 
     : [];
+
+  const handleApplyExtraction = (extractedData: any) => {
+    Object.keys(extractedData).forEach(key => {
+      if (extractedData[key] !== undefined && extractedData[key] !== null) {
+        form.setValue(key as any, extractedData[key]);
+      }
+    });
+    
+    toast({
+      title: 'Data Applied',
+      description: 'AI-extracted data has been applied to the form. Please review and adjust as needed.',
+    });
+  };
 
   const onSubmit = async (data: FarmCreationData) => {
     if (!user) {
@@ -188,6 +202,15 @@ const FarmCreationForm = () => {
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* Smart Prefill Section - Only show for existing farms with documents */}
+          {user && (
+            <SmartFormPrefill 
+              farmId="" // Will be empty for new farms
+              onApplyExtraction={handleApplyExtraction}
+              disabled={createFarmMutation.isPending}
+            />
+          )}
+
           {/* Section 1: Farm Identity & Legal Info */}
           <Card>
             <CardHeader>

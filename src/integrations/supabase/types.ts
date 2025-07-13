@@ -76,6 +76,50 @@ export type Database = {
           },
         ]
       }
+      document_extractions: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          document_id: string
+          error_message: string | null
+          extracted_data: Json
+          extraction_type: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          document_id: string
+          error_message?: string | null
+          extracted_data: Json
+          extraction_type?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          document_id?: string
+          error_message?: string | null
+          extracted_data?: Json
+          extraction_type?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_document_extractions_document_id"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "farm_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_documents: {
         Row: {
           category: Database["public"]["Enums"]["document_category"]

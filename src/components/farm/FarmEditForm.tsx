@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useUpdateFarm, useFarm } from '@/hooks/useFarms';
 import { farmEditSchema, type FarmEditData } from '@/schemas/farmValidation';
 import { countries } from '@/schemas/farmValidation';
+import SmartFormPrefill from '@/components/farm/SmartFormPrefill';
+import { toast } from '@/hooks/use-toast';
 
 interface FarmEditFormProps {
   farmId: string;
@@ -87,6 +89,19 @@ const FarmEditForm = ({ farmId }: FarmEditFormProps) => {
     }
   }, [farm, form]);
 
+  const handleApplyExtraction = (extractedData: any) => {
+    Object.keys(extractedData).forEach(key => {
+      if (extractedData[key] !== undefined && extractedData[key] !== null) {
+        form.setValue(key as any, extractedData[key]);
+      }
+    });
+    
+    toast({
+      title: 'Data Applied',
+      description: 'AI-extracted data has been applied to the form. Please review and adjust as needed.',
+    });
+  };
+
   const onSubmit = async (data: FarmEditData) => {
     try {
       await updateMutation.mutateAsync({
@@ -124,6 +139,13 @@ const FarmEditForm = ({ farmId }: FarmEditFormProps) => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Smart Prefill Section */}
+            <SmartFormPrefill 
+              farmId={farmId}
+              onApplyExtraction={handleApplyExtraction}
+              disabled={updateMutation.isPending}
+            />
+
             {/* Basic Information */}
             <Card>
               <CardHeader>
