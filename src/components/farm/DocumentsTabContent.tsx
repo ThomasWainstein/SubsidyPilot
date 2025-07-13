@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DocumentUploadForm from './DocumentUploadForm';
-import DocumentList from './DocumentList';
+import DocumentListTable from './DocumentListTable';
 import UploadSuccessPrompt from './UploadSuccessPrompt';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { Tables } from '@/integrations/supabase/types';
@@ -42,9 +42,9 @@ const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
         />
       </div>
       
-      {/* Mobile-first responsive document list */}
+      {/* Enhanced document list table */}
       <div className="w-full">
-        <DocumentList farmId={farmId} />
+        <DocumentListTable farmId={farmId} />
       </div>
 
       {/* Upload success prompt */}

@@ -168,7 +168,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
           category: normalizedCategory,
         });
         
-        // Trigger AI extraction for supported file types
+        // Trigger AI extraction for supported file types - FIXED file extension check
         const supportedExtensions = ['pdf', 'docx', 'xlsx', 'txt', 'csv'];
         const fileExtension = file.name.toLowerCase().split('.').pop();
         

@@ -25,17 +25,22 @@ serve(async (req) => {
     documentId = requestBody.documentId;
     const { fileUrl, fileName, documentType } = requestBody;
     
-    console.log(`Starting AI extraction for document: ${fileName}`);
+    console.log(`🤖 Starting AI extraction for document: ${fileName}, URL: ${fileUrl}`);
 
     if (!openAIApiKey) {
+      console.error('❌ OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
+    console.log('✅ OpenAI API key found');
 
-    // Download the document content
+    // Download the document content with enhanced error handling
+    console.log(`📥 Downloading document from: ${fileUrl}`);
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
-      throw new Error('Failed to download document');
+      console.error(`❌ Failed to download document. Status: ${fileResponse.status}, StatusText: ${fileResponse.statusText}`);
+      throw new Error(`Failed to download document: ${fileResponse.status} ${fileResponse.statusText}`);
     }
+    console.log(`✅ Document downloaded successfully. Size: ${fileResponse.headers.get('content-length')} bytes`);
 
     const fileExtension = fileName.split('.').pop()?.toLowerCase();
     let extractedText = '';
@@ -121,8 +126,11 @@ Document content: ${extractedText.substring(0, 4000)}`;
     });
 
     if (!aiResponse.ok) {
-      throw new Error(`OpenAI API error: ${aiResponse.status}`);
+      const errorText = await aiResponse.text();
+      console.error(`❌ OpenAI API error: ${aiResponse.status} ${aiResponse.statusText}`, errorText);
+      throw new Error(`OpenAI API error: ${aiResponse.status} ${aiResponse.statusText} - ${errorText}`);
     }
+    console.log('✅ OpenAI API call successful');
 
     const aiData = await aiResponse.json();
     const extractedContent = aiData.choices[0]?.message?.content;
