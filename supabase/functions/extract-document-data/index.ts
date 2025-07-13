@@ -2,6 +2,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Import PDF parsing library
+import { PDFExtract } from 'https://esm.sh/pdf.js-extract@0.2.1';
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -45,46 +48,79 @@ serve(async (req) => {
     const fileExtension = fileName.split('.').pop()?.toLowerCase();
     let extractedText = '';
 
-    // For now, handle text-based extraction (PDFs would need additional processing)
-    if (['txt', 'csv'].includes(fileExtension || '')) {
-      extractedText = await fileResponse.text();
-    } else {
-      // For binary files, we'll extract metadata and basic info
-      extractedText = `Document: ${fileName}, Type: ${documentType}, Size: ${fileResponse.headers.get('content-length')} bytes`;
+    console.log(`🔍 Extracting text from ${fileExtension} file...`);
+
+    try {
+      if (['txt', 'csv'].includes(fileExtension || '')) {
+        extractedText = await fileResponse.text();
+      } else if (fileExtension === 'pdf') {
+        // For PDF files, try basic text extraction using OpenAI vision
+        const arrayBuffer = await fileResponse.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        
+        // Use OpenAI to extract text from PDF as image
+        const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Extract all readable text from this document. Return the text exactly as it appears, preserving structure and formatting where possible.'
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:application/pdf;base64,${base64}`
+                    }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 4000,
+          }),
+        });
+
+        if (visionResponse.ok) {
+          const visionData = await visionResponse.json();
+          extractedText = visionData.choices[0]?.message?.content || '';
+        } else {
+          throw new Error('Vision API failed');
+        }
+      } else {
+        // For other files (DOCX, XLSX), try to extract as text
+        try {
+          extractedText = await fileResponse.text();
+        } catch {
+          extractedText = `Document: ${fileName}, Type: ${documentType}, Extension: ${fileExtension}`;
+        }
+      }
+    } catch (textError) {
+      console.error('❌ Text extraction failed:', textError);
+      extractedText = `Failed to extract text from ${fileName}. File type: ${fileExtension}, Size: ${fileResponse.headers.get('content-length')} bytes`;
     }
 
-    // Create extraction prompt based on document type
-    let extractionPrompt = '';
-    if (documentType === 'ownership_proof' || documentType === 'legal') {
-      extractionPrompt = `Extract farm/property information from this document. Look for:
-- Property owner name
-- Farm/property name
-- Address/location
-- Property size/hectares
-- Registration numbers
-- Legal entity information
+    // Log preview of extracted text for debugging
+    const textPreview = extractedText.substring(0, 500);
+    console.log(`📄 Text extraction preview (first 500 chars): ${textPreview}`);
+    console.log(`📊 Total extracted text length: ${extractedText.length} characters`);
 
-Document content: ${extractedText.substring(0, 4000)}`;
-    } else if (documentType === 'financial') {
-      extractionPrompt = `Extract financial information from this document. Look for:
-- Company/farm name
-- Revenue amounts
-- Financial year
-- Bank account details
-- Tax identification numbers
-
-Document content: ${extractedText.substring(0, 4000)}`;
-    } else {
-      extractionPrompt = `Extract relevant agricultural/farm information from this document. Look for:
-- Farm name
-- Owner/operator name
-- Location/address
-- Agricultural activities
-- Certifications
-- Numbers, amounts, dates
-
-Document content: ${extractedText.substring(0, 4000)}`;
+    if (extractedText.length < 50) {
+      console.warn('⚠️ Warning: Very little text extracted from document');
     }
+
+    // Create comprehensive extraction prompt with full document text
+    const extractionPrompt = `Extract comprehensive farm/agricultural information from this document.
+
+Document content:
+${extractedText.substring(0, 6000)}`;
 
     // Call OpenAI for extraction
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -98,22 +134,55 @@ Document content: ${extractedText.substring(0, 4000)}`;
         messages: [
           {
             role: 'system',
-            content: `You are an AI that extracts structured data from agricultural documents. 
-            Return a JSON object with extracted fields. Use null for fields not found.
-            Always return valid JSON in this format:
-            {
-              "farmName": "string or null",
-              "ownerName": "string or null", 
-              "address": "string or null",
-              "totalHectares": "number or null",
-              "legalStatus": "string or null",
-              "registrationNumber": "string or null",
-              "revenue": "string or null",
-              "certifications": ["array of strings"],
-              "activities": ["array of strings"],
-              "confidence": 0.8,
-              "extractedFields": ["list of field names that were successfully extracted"]
-            }`
+            content: `You are a document analysis assistant for a European agricultural platform.
+Your task is to extract detailed, structured farm/business profile data from agricultural documents.
+
+INSTRUCTIONS:
+- Carefully analyze the provided document text
+- Extract every field in the schema below if it appears clearly in the document
+- If a value is missing, set it to null (for string/number/boolean) or an empty array [] (for lists)
+- Do not invent or hallucinate missing data
+- Return only a valid, flat JSON object with these fields and lowercase keys:
+
+{
+  "farmName": "string or null",
+  "ownerName": "string or null",
+  "legalStatus": "string or null",
+  "registrationNumber": "string or null",
+  "address": "string or null",
+  "region": "string or null",
+  "country": "string or null",
+  "department": "string or null",
+  "totalHectares": "number or null",
+  "landOwned": "number or null",
+  "landRented": "number or null",
+  "landUseTypes": ["list of strings"],
+  "activities": ["list of strings"],
+  "mainCrops": ["list of strings"],
+  "livestockTypes": ["list of strings"],
+  "organicFarming": "boolean or null",
+  "precisionAgriculture": "boolean or null",
+  "irrigationUsed": "boolean or null",
+  "irrigationMethods": ["list of strings"],
+  "certifications": ["list of strings"],
+  "environmentalPractices": ["list of strings"],
+  "carbonFootprintAssessment": "boolean or null",
+  "annualRevenue": "string or number or null",
+  "profitabilityStatus": "string or null",
+  "receivedPreviousSubsidies": "boolean or null",
+  "subsidiesReceived": ["list of strings"],
+  "fullTimeEmployees": "number or null",
+  "partTimeEmployees": "number or null",
+  "youngFarmersInvolvement": "boolean or null",
+  "genderBalanceInitiatives": "boolean or null",
+  "socialInitiatives": ["list of strings"],
+  "farmManagementSoftware": "boolean or null",
+  "digitalInfrastructure": ["list of strings"],
+  "renewableEnergyUse": ["list of strings"],
+  "energyEfficiencyMeasures": ["list of strings"],
+  "confidence": 0.8,
+  "extractedFields": ["list of field names that were successfully extracted"]
+}`
           },
           {
             role: 'user',
@@ -121,7 +190,7 @@ Document content: ${extractedText.substring(0, 4000)}`;
           }
         ],
         temperature: 0.2,
-        max_tokens: 1000,
+        max_tokens: 2000,
       }),
     });
 
@@ -134,16 +203,44 @@ Document content: ${extractedText.substring(0, 4000)}`;
 
     const aiData = await aiResponse.json();
     const extractedContent = aiData.choices[0]?.message?.content;
+    
+    // Log raw OpenAI response for debugging
+    console.log(`🔍 OpenAI raw response: ${extractedContent}`);
+    console.log(`📊 OpenAI usage:`, aiData.usage);
 
     let extractedData;
     try {
-      extractedData = JSON.parse(extractedContent);
+      // Clean the response by removing markdown code blocks if present
+      let cleanContent = extractedContent;
+      if (cleanContent.includes('```json')) {
+        cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      }
+      if (cleanContent.includes('```')) {
+        cleanContent = cleanContent.replace(/```\n?/g, '');
+      }
+      
+      extractedData = JSON.parse(cleanContent);
+      console.log(`✅ Successfully parsed extraction data:`, extractedData);
+      
+      // Validate that we have the expected structure
+      if (!extractedData.hasOwnProperty('confidence')) {
+        extractedData.confidence = 0.5; // Default confidence
+      }
+      if (!extractedData.hasOwnProperty('extractedFields')) {
+        extractedData.extractedFields = Object.keys(extractedData).filter(key => 
+          extractedData[key] !== null && extractedData[key] !== undefined && 
+          (Array.isArray(extractedData[key]) ? extractedData[key].length > 0 : true)
+        );
+      }
+      
     } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', extractedContent);
+      console.error('❌ Failed to parse AI response as JSON:', parseError);
+      console.error('📄 Raw content that failed to parse:', extractedContent);
       extractedData = {
-        error: 'Failed to parse extraction results',
+        error: `Failed to parse extraction results: ${parseError.message}`,
         confidence: 0,
-        extractedFields: []
+        extractedFields: [],
+        rawResponse: extractedContent
       };
     }
 
