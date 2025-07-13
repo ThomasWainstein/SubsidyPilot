@@ -42,11 +42,20 @@ serve(async (req) => {
     }
     console.log(`✅ Document downloaded successfully. Size: ${fileResponse.headers.get('content-length')} bytes`);
 
-    // Extract text from the document
-    const extractedText = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+    // Extract text from the document with debug info
+    const { text: extractedText, debugInfo } = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+
+    // Log extraction debug information
+    console.log(`📊 Text extraction debug:`, {
+      method: debugInfo.extractionMethod,
+      textLength: debugInfo.textLength,
+      extractionTime: debugInfo.extractionTime,
+      errors: debugInfo.errors,
+      warnings: debugInfo.warnings
+    });
 
     // Extract farm data using OpenAI
-    const extractedData = await extractFarmDataWithOpenAI(extractedText, openAIApiKey);
+    const extractedData = await extractFarmDataWithOpenAI(extractedText, openAIApiKey, debugInfo);
 
     // Store extraction results in database
     await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);

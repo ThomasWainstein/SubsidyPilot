@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, FileText, AlertTriangle } from 'lucide-react';
+import { Sparkles, FileText, AlertTriangle, Bug } from 'lucide-react';
 import { useFarmDocumentExtractions } from '@/hooks/useDocumentExtractions';
+import ExtractionDebugModal from './ExtractionDebugModal';
 
 interface SmartFormPrefillProps {
   farmId: string;
@@ -17,6 +18,8 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
   disabled = false
 }) => {
   const { data: extractions, isLoading } = useFarmDocumentExtractions(farmId);
+  const [debugModalOpen, setDebugModalOpen] = useState(false);
+  const [selectedExtraction, setSelectedExtraction] = useState<any>(null);
 
   if (isLoading) {
     return (
@@ -62,6 +65,11 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
     if (extractedData.activities) mappedData.land_use_types = extractedData.activities;
 
     onApplyExtraction(mappedData);
+  };
+
+  const handleViewDebug = (extraction: any) => {
+    setSelectedExtraction(extraction);
+    setDebugModalOpen(true);
   };
 
   // Get unique extractions (deduplicate by document)
@@ -153,16 +161,25 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                   </div>
                 )}
 
-                <Button
-                  size="sm"
-                  onClick={() => handleApplyExtraction(extraction)}
-                  disabled={disabled || hasError || extractedFields.length === 0}
-                  className="w-full"
-                  variant={extractedFields.length > 0 ? "default" : "outline"}
-                >
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  {extractedFields.length > 0 ? 'Apply to Form' : 'No Data to Apply'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleApplyExtraction(extraction)}
+                    disabled={disabled || hasError || extractedFields.length === 0}
+                    className="flex-1"
+                    variant={extractedFields.length > 0 ? "default" : "outline"}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {extractedFields.length > 0 ? 'Apply to Form' : 'No Data to Apply'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleViewDebug(extraction)}
+                    variant="outline"
+                  >
+                    <Bug className="h-3 w-3" />
+                  </Button>
+                </div>
 
                 {!hasError && confidence < 0.5 && extractedFields.length > 0 && (
                   <p className="text-xs text-amber-600 mt-2 flex items-center">
@@ -181,6 +198,15 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
           )}
         </div>
       </CardContent>
+      
+      {selectedExtraction && (
+        <ExtractionDebugModal
+          isOpen={debugModalOpen}
+          onClose={() => setDebugModalOpen(false)}
+          extraction={selectedExtraction}
+          documentName={selectedExtraction.farm_documents?.file_name || 'Unknown Document'}
+        />
+      )}
     </Card>
   );
 };
