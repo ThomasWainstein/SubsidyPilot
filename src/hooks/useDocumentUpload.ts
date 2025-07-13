@@ -168,25 +168,37 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         });
         
         // Trigger AI extraction for supported file types
-        if (uploadResult?.documentId && ['pdf', 'doc', 'docx', 'txt', 'csv'].some(ext => 
-          file.name.toLowerCase().endsWith(`.${ext}`))) {
-          try {
-            console.log(`🤖 Triggering AI extraction for document: ${file.name}`);
-            // Don't await - let extraction run in background
-            supabase.functions.invoke('extract-document-data', {
-              body: {
-                documentId: uploadResult.documentId,
-                fileUrl: uploadResult.fileUrl,
-                fileName: file.name,
-                documentType: normalizedCategory
+        const supportedExtensions = ['pdf', 'docx', 'xlsx', 'txt', 'csv'];
+        const fileExtension = file.name.toLowerCase().split('.').pop();
+        
+        if (uploadResult?.documentId && fileExtension && supportedExtensions.includes(fileExtension)) {
+          console.log(`🤖 Triggering AI extraction for document: ${file.name} (${fileExtension})`);
+          
+          // Trigger extraction in background - don't await to avoid blocking upload
+          const extractionPromise = supabase.functions.invoke('extract-document-data', {
+            body: {
+              documentId: uploadResult.documentId,
+              fileUrl: uploadResult.fileUrl,
+              fileName: file.name,
+              documentType: normalizedCategory
+            }
+          });
+          
+          // Handle extraction result in background
+          extractionPromise
+            .then(({ data, error }) => {
+              if (error) {
+                console.error(`❌ AI extraction failed for ${file.name}:`, error);
+              } else {
+                console.log(`✅ AI extraction completed for ${file.name}:`, data);
+                onExtractionCompleted?.(file.name, data?.extractedData);
               }
-            }).catch(error => {
-              console.warn('AI extraction failed (non-blocking):', error);
+            })
+            .catch(error => {
+              console.error(`❌ AI extraction error for ${file.name}:`, error);
             });
-          } catch (error) {
-            console.warn('Failed to trigger AI extraction:', error);
-            // Don't block upload on extraction failure
-          }
+        } else {
+          console.log(`⏭️ Skipping AI extraction for ${file.name} (${fileExtension}) - not supported`);
         }
         
         setUploadProgress(((i + 1) / totalFiles) * 100);

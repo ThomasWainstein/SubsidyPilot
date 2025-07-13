@@ -18,8 +18,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let documentId: string | undefined;
+  
   try {
-    const { documentId, fileUrl, fileName, documentType } = await req.json();
+    const requestBody = await req.json();
+    documentId = requestBody.documentId;
+    const { fileUrl, fileName, documentType } = requestBody;
     
     console.log(`Starting AI extraction for document: ${fileName}`);
 
@@ -164,6 +168,25 @@ Document content: ${extractedText.substring(0, 4000)}`;
 
   } catch (error) {
     console.error('Error in extract-document-data function:', error);
+    
+    // Try to log the failure to the database if we have documentId
+    try {
+      if (documentId) {
+        await supabase
+          .from('document_extractions')
+          .insert({
+            document_id: documentId,
+            extracted_data: { error: 'Extraction failed' },
+            extraction_type: 'openai_gpt4o',
+            confidence_score: 0,
+            status: 'failed',
+            error_message: error.message,
+            created_at: new Date().toISOString(),
+          });
+      }
+    } catch (logError) {
+      console.error('Failed to log extraction error:', logError);
+    }
     
     return new Response(JSON.stringify({
       success: false,
