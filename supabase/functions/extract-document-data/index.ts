@@ -1,3 +1,6 @@
+/**
+ * Debug testing function for comprehensive extraction pipeline verification
+ */
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { extractTextFromFile } from './textExtraction.ts';
@@ -19,132 +22,183 @@ serve(async (req) => {
   }
 
   let documentId: string | undefined;
-  let debugInfo: any = {};
+  let debugLog: any[] = [];
+  
+  function addDebugLog(step: string, data: any) {
+    const logEntry = {
+      step,
+      timestamp: new Date().toISOString(),
+      data
+    };
+    debugLog.push(logEntry);
+    console.log(`🔍 DEBUG [${step}]:`, data);
+  }
   
   try {
-    // Enhanced request validation and logging
+    addDebugLog('REQUEST_START', { 
+      method: req.method, 
+      url: req.url,
+      headers: Object.fromEntries(req.headers.entries())
+    });
+
+    // Parse and validate request
     const requestBody = await req.json();
     documentId = requestBody.documentId;
     const { fileUrl, fileName, documentType } = requestBody;
     
-    console.log(`🤖 Starting AI extraction for document: ${fileName}`);
-    console.log(`📄 Document details:`, { documentId, fileUrl, documentType });
-    console.log(`🔐 Request headers:`, Object.fromEntries(req.headers.entries()));
+    addDebugLog('REQUEST_PARSED', {
+      documentId,
+      fileUrl,
+      fileName,
+      documentType
+    });
 
     // Validate required parameters
     if (!documentId || !fileUrl || !fileName) {
-      throw new Error(`Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`);
+      const error = `Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`;
+      addDebugLog('VALIDATION_FAILED', { error });
+      throw new Error(error);
     }
 
-    if (!openAIApiKey) {
-      console.error('❌ OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
-    }
-    console.log('✅ OpenAI API key found');
-
-    // Download the document content with enhanced error handling
-    console.log(`📥 Downloading document from: ${fileUrl}`);
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      console.error(`❌ Failed to download document. Status: ${fileResponse.status}, StatusText: ${fileResponse.statusText}`);
-      throw new Error(`Failed to download document: ${fileResponse.status} ${fileResponse.statusText}`);
-    }
-    
-    const contentLength = fileResponse.headers.get('content-length');
-    const contentType = fileResponse.headers.get('content-type');
-    console.log(`✅ Document downloaded successfully. Size: ${contentLength} bytes, Type: ${contentType}`);
-
-    // Extract text from the document with comprehensive debug info
-    const extractionResult = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
-    const extractedText = extractionResult.text;
-    debugInfo = extractionResult.debugInfo;
-
-    // Enhanced extraction debug logging
-    console.log(`📊 Text extraction complete:`, {
-      method: debugInfo.extractionMethod,
-      library: debugInfo.libraryUsed,
-      textLength: debugInfo.textLength,
-      extractionTime: debugInfo.extractionTime,
-      errors: debugInfo.errors?.length || 0,
-      warnings: debugInfo.warnings?.length || 0,
-      ocrConfidence: debugInfo.ocrConfidence
+    // Check environment variables
+    addDebugLog('ENVIRONMENT_CHECK', {
+      hasOpenAIKey: !!openAIApiKey,
+      openAIKeyLength: openAIApiKey?.length || 0,
+      supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      serviceKeyLength: supabaseServiceKey?.length || 0
     });
 
-    if (debugInfo.errors?.length > 0) {
-      console.warn(`⚠️ Extraction errors:`, debugInfo.errors);
+    if (!openAIApiKey) {
+      const error = 'OpenAI API key not configured';
+      addDebugLog('OPENAI_KEY_MISSING', { error });
+      throw new Error(error);
     }
+
+    // Download document
+    addDebugLog('DOWNLOAD_START', { fileUrl });
+    const fileResponse = await fetch(fileUrl);
     
-    if (debugInfo.warnings?.length > 0) {
-      console.warn(`⚠️ Extraction warnings:`, debugInfo.warnings);
+    addDebugLog('DOWNLOAD_RESPONSE', {
+      ok: fileResponse.ok,
+      status: fileResponse.status,
+      statusText: fileResponse.statusText,
+      contentLength: fileResponse.headers.get('content-length'),
+      contentType: fileResponse.headers.get('content-type')
+    });
+
+    if (!fileResponse.ok) {
+      const error = `Failed to download document: ${fileResponse.status} ${fileResponse.statusText}`;
+      addDebugLog('DOWNLOAD_FAILED', { error });
+      throw new Error(error);
     }
 
-    // Extract farm data using OpenAI with multilingual support
-    const extractedData = await extractFarmDataWithOpenAI(extractedText, openAIApiKey, debugInfo);
+    // Extract text
+    addDebugLog('TEXT_EXTRACTION_START', { fileName });
+    const extractionResult = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+    
+    addDebugLog('TEXT_EXTRACTION_COMPLETE', {
+      textLength: extractionResult.text.length,
+      textPreview: extractionResult.text.substring(0, 300),
+      debugInfo: extractionResult.debugInfo
+    });
 
-    // Enhanced logging for extraction results
-    console.log(`🎯 AI extraction results:`, {
+    // OpenAI extraction
+    addDebugLog('OPENAI_EXTRACTION_START', {
+      textLength: extractionResult.text.length,
+      textSample: extractionResult.text.substring(0, 200)
+    });
+    
+    const extractedData = await extractFarmDataWithOpenAI(
+      extractionResult.text, 
+      openAIApiKey, 
+      extractionResult.debugInfo
+    );
+
+    addDebugLog('OPENAI_EXTRACTION_COMPLETE', {
+      hasError: !!extractedData.error,
       confidence: extractedData.confidence,
       extractedFields: extractedData.extractedFields,
       detectedLanguage: extractedData.detectedLanguage,
-      hasError: !!extractedData.error
+      promptUsed: extractedData.promptUsed,
+      rawResponse: extractedData.rawResponse?.substring(0, 500)
     });
 
-    // Store comprehensive extraction results in database
-    await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);
+    // Database storage
+    addDebugLog('DATABASE_STORAGE_START', { documentId });
+    
+    try {
+      await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);
+      addDebugLog('DATABASE_STORAGE_SUCCESS', { documentId });
+    } catch (dbError) {
+      addDebugLog('DATABASE_STORAGE_FAILED', {
+        error: (dbError as Error).message,
+        stack: (dbError as Error).stack
+      });
+      throw dbError;
+    }
 
-    console.log(`✅ AI extraction completed successfully for ${fileName}`);
+    // Final success response
+    addDebugLog('EXTRACTION_SUCCESS', {
+      documentId,
+      confidence: extractedData.confidence,
+      extractedFieldCount: extractedData.extractedFields?.length || 0
+    });
 
     return new Response(JSON.stringify({
       success: true,
       documentId,
       extractedData,
-      debugInfo: {
-        extractionMethod: debugInfo.extractionMethod,
-        libraryUsed: debugInfo.libraryUsed,
-        textLength: debugInfo.textLength,
+      debugLog,
+      summary: {
+        textExtractionMethod: extractionResult.debugInfo.extractionMethod,
+        textLength: extractionResult.text.length,
         detectedLanguage: extractedData.detectedLanguage,
-        confidence: extractedData.confidence
-      },
-      message: 'Extraction completed successfully'
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields?.length || 0,
+        hasOpenAIUsage: !!extractedData.debugInfo?.openaiUsage
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('❌ Error in extract-document-data function:', error);
-    console.error('🔍 Error details:', {
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-      documentId,
-      debugInfo
-    });
+    const errorMessage = (error as Error).message;
+    const errorStack = (error as Error).stack;
     
-    // Comprehensive error logging to database
+    addDebugLog('EXTRACTION_FAILED', {
+      error: errorMessage,
+      stack: errorStack,
+      documentId
+    });
+
+    // Try to log error to database
     if (documentId) {
       try {
         await logExtractionError(
           documentId, 
-          (error as Error).message, 
+          errorMessage, 
           supabaseUrl, 
           supabaseServiceKey,
-          {
-            ...debugInfo,
-            errorStack: (error as Error).stack,
-            errorTimestamp: new Date().toISOString()
-          }
+          { debugLog, errorStack }
         );
+        addDebugLog('ERROR_LOGGED_TO_DB', { documentId });
       } catch (logError) {
-        console.error('❌ Failed to log error to database:', logError);
+        addDebugLog('ERROR_LOGGING_FAILED', {
+          error: (logError as Error).message
+        });
       }
     }
     
     return new Response(JSON.stringify({
       success: false,
-      error: (error as Error).message,
-      debugInfo: {
-        extractionMethod: debugInfo.extractionMethod || 'unknown',
-        hasErrors: true,
-        errorTimestamp: new Date().toISOString()
+      error: errorMessage,
+      debugLog,
+      stack: errorStack,
+      summary: {
+        failedAt: debugLog[debugLog.length - 1]?.step || 'unknown',
+        totalSteps: debugLog.length,
+        hasDocumentId: !!documentId
       }
     }), {
       status: 500,
