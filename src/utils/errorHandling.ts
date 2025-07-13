@@ -68,3 +68,40 @@ export const showWarningMessage = (message: string, title = 'Warning'): void => 
     variant: 'default', // Using default as there's no warning variant
   });
 };
+
+/**
+ * Safe value extractor for Select components to prevent empty string values
+ */
+export const getSafeSelectValue = (value: any, fallback = ''): string => {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string') return value.trim() || fallback;
+  return String(value).trim() || fallback;
+};
+
+/**
+ * Filter array to remove empty/invalid values for Select components
+ */
+export const filterValidSelectOptions = (options: any[]): string[] => {
+  return options.filter(option => 
+    option !== null && 
+    option !== undefined && 
+    typeof option === 'string' && 
+    option.trim() !== ''
+  );
+};
+
+/**
+ * Handles form validation errors
+ */
+export const handleValidationError = (errors: Record<string, any>): void => {
+  const errorMessages = Object.entries(errors)
+    .map(([field, error]) => `${field}: ${error.message || error}`)
+    .slice(0, 3) // Show max 3 errors
+    .join(', ');
+    
+  toast({
+    title: 'Validation Error',
+    description: errorMessages,
+    variant: 'destructive',
+  });
+};

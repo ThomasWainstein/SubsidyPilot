@@ -57,7 +57,9 @@ const FarmCreationForm = () => {
   });
 
   const selectedCountry = form.watch('country');
-  const availableDepartments = selectedCountry ? departmentsByCountry[selectedCountry] || [] : [];
+  const availableDepartments = selectedCountry 
+    ? (departmentsByCountry[selectedCountry] || []).filter(dept => dept && dept.trim() !== '') 
+    : [];
 
   const onSubmit = async (data: FarmCreationData) => {
     if (!user) {
@@ -286,11 +288,13 @@ const FarmCreationForm = () => {
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.name}
-                        </SelectItem>
-                      ))}
+                      {countries
+                        .filter(country => country.code && country.code.trim() !== '')
+                        .map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   {form.formState.errors.country && (
@@ -309,11 +313,13 @@ const FarmCreationForm = () => {
                       <SelectValue placeholder={selectedCountry ? "Select department" : "Select country first"} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
-                      {availableDepartments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept.charAt(0).toUpperCase() + dept.slice(1).replace('-', ' ')}
-                        </SelectItem>
-                      ))}
+                      {availableDepartments
+                        .filter(dept => dept && dept.trim() !== '')
+                        .map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept.charAt(0).toUpperCase() + dept.slice(1).replace('-', ' ')}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

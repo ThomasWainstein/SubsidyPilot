@@ -202,11 +202,13 @@ const FarmEditForm = ({ farmId }: FarmEditFormProps) => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {countries.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                {country.name}
-                              </SelectItem>
-                            ))}
+                            {countries
+                              .filter(country => country.code && country.code.trim() !== '')
+                              .map((country) => (
+                                <SelectItem key={country.code} value={country.code}>
+                                  {country.name}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />

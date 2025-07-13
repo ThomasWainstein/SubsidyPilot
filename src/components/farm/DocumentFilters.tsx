@@ -33,8 +33,8 @@ const DocumentFilters = ({
   const handleCategoryChange = (value: string) => {
     console.log('Filter category change requested:', value);
     
-    // Allow empty string for clearing selection
-    if (value === '') {
+    // Allow "all" for clearing selection (equivalent to empty string)
+    if (value === 'all' || value === '') {
       onCategoryChange('');
       return;
     }
@@ -71,12 +71,12 @@ const DocumentFilters = ({
           />
         </div>
         
-        <Select value={selectedCategory || ''} onValueChange={handleCategoryChange}>
+        <Select value={selectedCategory || 'all'} onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All categories</SelectItem>
+            <SelectItem value="all">All categories</SelectItem>
             {safeCategories.map((category) => (
               <SelectItem key={category} value={category}>
                 {CATEGORY_LABELS[category] || category}
