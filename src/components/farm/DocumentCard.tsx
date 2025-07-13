@@ -149,6 +149,15 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
                 {t('common.useToPrefillProfile')}
               </Button>
             )}
+            {/* Manual extraction button for all documents */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 h-auto"
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              Extract & Prefill
+            </Button>
             <Button
               variant="ghost"
               size="sm"

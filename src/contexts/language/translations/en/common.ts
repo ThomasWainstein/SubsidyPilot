@@ -90,5 +90,13 @@ export const common = {
   'common.confidence': 'Confidence',
   'common.prefillApplied': 'Form prefilled with extracted data',
   'common.extractionProcessing': 'Processing document...',
-  'common.extractionFailed': 'Document analysis failed'
+  'common.extractionFailed': 'Document analysis failed',
+  'common.extracted': 'Extracted',
+  'common.readyToExtract': 'Ready to Extract',
+  'common.documentsUploaded': 'Documents Uploaded Successfully',
+  'common.extractAndPrefill': 'Extract & Prefill',
+  'common.reExtract': 'Re-extract',
+  'common.extracting': 'Extracting...',
+  'common.extractionSuccess': 'Successfully extracted data from {fileName}',
+  'common.extractionError': 'Failed to extract data from document'
 } as const;

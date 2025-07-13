@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UseDocumentUploadProps {
   farmId: string;
-  onSuccess?: () => void;
+  onSuccess?: (files: Array<{ documentId: string; fileName: string; fileUrl: string; category: string }>) => void;
   onExtractionCompleted?: (fileName: string, extraction: any) => void;
 }
 
@@ -140,6 +140,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
     setUploadProgress(0);
     setUploadedFiles([]);
     const totalFiles = selectedFiles.length;
+    const successfulUploads: Array<{ documentId: string; fileName: string; fileUrl: string; category: string }> = [];
     
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
@@ -184,22 +185,58 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
             }
           });
           
-          // Handle extraction result in background
+          // Handle extraction result in background with proper error logging
           extractionPromise
             .then(({ data, error }) => {
               if (error) {
                 console.error(`❌ AI extraction failed for ${file.name}:`, error);
+                // Log failed extraction to database
+                supabase.from('document_extractions').insert({
+                  document_id: uploadResult.documentId,
+                  extracted_data: { error: 'Extraction failed', details: error.message },
+                  extraction_type: 'openai_gpt4o',
+                  confidence_score: 0,
+                  status: 'failed',
+                  error_message: error.message
+                }).then(({ error: insertError }) => {
+                  if (insertError) {
+                    console.error('Failed to log extraction error:', insertError);
+                  }
+                });
               } else {
                 console.log(`✅ AI extraction completed for ${file.name}:`, data);
-                onExtractionCompleted?.(file.name, data?.extractedData);
+                if (data?.extractedData) {
+                  onExtractionCompleted?.(file.name, data.extractedData);
+                }
               }
             })
             .catch(error => {
               console.error(`❌ AI extraction error for ${file.name}:`, error);
+              // Log exception to database
+              supabase.from('document_extractions').insert({
+                document_id: uploadResult.documentId,
+                extracted_data: { error: 'Extraction exception', details: error.message },
+                extraction_type: 'openai_gpt4o',
+                confidence_score: 0,
+                status: 'failed',
+                error_message: error.message
+              }).then(({ error: insertError }) => {
+                if (insertError) {
+                  console.error('Failed to log extraction exception:', insertError);
+                }
+              });
             });
         } else {
           console.log(`⏭️ Skipping AI extraction for ${file.name} (${fileExtension}) - not supported`);
         }
+        
+        // Track successful upload
+        successfulUploads.push({
+          documentId: uploadResult.documentId,
+          fileName: file.name,
+          fileUrl: uploadResult.fileUrl,
+          category: normalizedCategory
+        });
         
         setUploadProgress(((i + 1) / totalFiles) * 100);
         setUploadedFiles(prev => [...prev, file.name]);
@@ -219,7 +256,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         description: `${totalFiles} document${totalFiles > 1 ? 's' : ''} uploaded successfully.`,
       });
       
-      onSuccess?.();
+      onSuccess?.(successfulUploads);
     } catch (error) {
       console.error('Upload failed:', error);
       setUploadProgress(0);

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import DocumentUploadForm from './DocumentUploadForm';
 import DocumentList from './DocumentList';
-import PrefillPromptDialog from './PrefillPromptDialog';
+import UploadSuccessPrompt from './UploadSuccessPrompt';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { Tables } from '@/integrations/supabase/types';
 
@@ -14,26 +14,22 @@ interface DocumentsTabContentProps {
 
 const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
   const { preferences } = useUserPreferences();
-  const [promptData, setPromptData] = useState<{
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+    documentId: string;
     fileName: string;
-    extraction: DocumentExtraction;
-  } | null>(null);
+    fileUrl: string;
+    category: string;
+  }>>([]);
 
-  const handleUploadSuccess = () => {
+  const handleUploadSuccess = (files: Array<{ documentId: string; fileName: string; fileUrl: string; category: string }>) => {
     // Document list will automatically refresh via React Query invalidation
-    // Stay on Documents tab - no redirects or page reloads
-    console.log('Document upload successful - staying on Documents tab');
+    // Show upload success prompt with extraction options
+    console.log('Document upload successful - showing extraction prompt');
+    setUploadedFiles(files);
   };
 
-  const handleExtractionCompleted = (fileName: string, extraction: DocumentExtraction) => {
-    // Only show prompt if user hasn't suppressed it
-    if (!preferences.suppressPrefillPrompt) {
-      setPromptData({ fileName, extraction });
-    }
-  };
-
-  const handleClosePrompt = () => {
-    setPromptData(null);
+  const handleDismissUploadPrompt = () => {
+    setUploadedFiles([]);
   };
 
   return (
@@ -43,7 +39,6 @@ const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
         <DocumentUploadForm 
           farmId={farmId} 
           onUploadSuccess={handleUploadSuccess}
-          onExtractionCompleted={handleExtractionCompleted}
         />
       </div>
       
@@ -52,14 +47,12 @@ const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
         <DocumentList farmId={farmId} />
       </div>
 
-      {/* Prefill prompt dialog */}
-      {promptData && (
-        <PrefillPromptDialog
-          isOpen={true}
-          onClose={handleClosePrompt}
+      {/* Upload success prompt */}
+      {uploadedFiles.length > 0 && (
+        <UploadSuccessPrompt
           farmId={farmId}
-          fileName={promptData.fileName}
-          extraction={promptData.extraction}
+          uploadedFiles={uploadedFiles}
+          onDismiss={handleDismissUploadPrompt}
         />
       )}
     </div>
