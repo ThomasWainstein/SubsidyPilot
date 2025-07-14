@@ -172,14 +172,14 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         const supportedExtensions = ['pdf', 'docx', 'xlsx', 'txt', 'csv'];
         const fileExtension = file.name.toLowerCase().split('.').pop();
         
-        if (uploadResult?.documentId && fileExtension && supportedExtensions.includes(fileExtension)) {
+        if (uploadResult?.document?.id && fileExtension && supportedExtensions.includes(fileExtension)) {
           console.log(`🤖 Triggering AI extraction for document: ${file.name} (${fileExtension})`);
           
           // Trigger extraction in background - don't await to avoid blocking upload
           const extractionPromise = supabase.functions.invoke('extract-document-data', {
             body: {
-              documentId: uploadResult.documentId,
-              fileUrl: uploadResult.fileUrl,
+              documentId: uploadResult.document.id,
+              fileUrl: uploadResult.document.file_url,
               fileName: file.name,
               documentType: normalizedCategory
             }
@@ -192,7 +192,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
                 console.error(`❌ AI extraction failed for ${file.name}:`, error);
                 // Log failed extraction to database
                 supabase.from('document_extractions').insert({
-                  document_id: uploadResult.documentId,
+                  document_id: uploadResult.document.id,
                   extracted_data: { error: 'Extraction failed', details: error.message },
                   extraction_type: 'openai_gpt4o',
                   confidence_score: 0,
@@ -214,7 +214,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
               console.error(`❌ AI extraction error for ${file.name}:`, error);
               // Log exception to database
               supabase.from('document_extractions').insert({
-                document_id: uploadResult.documentId,
+                document_id: uploadResult.document.id,
                 extracted_data: { error: 'Extraction exception', details: error.message },
                 extraction_type: 'openai_gpt4o',
                 confidence_score: 0,
@@ -232,9 +232,9 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         
         // Track successful upload
         successfulUploads.push({
-          documentId: uploadResult.documentId,
+          documentId: uploadResult.document.id,
           fileName: file.name,
-          fileUrl: uploadResult.fileUrl,
+          fileUrl: uploadResult.document.file_url,
           category: normalizedCategory
         });
         

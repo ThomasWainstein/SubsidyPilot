@@ -56,9 +56,9 @@ const UploadSuccessPrompt = ({ farmId, uploadedFiles, onDismiss }: UploadSuccess
           </AlertDescription>
           
           <div className="flex flex-wrap gap-2">
-            {uploadedFiles.map((file) => (
+            {uploadedFiles.map((file, index) => (
               <ManualExtractionButton
-                key={file.documentId}
+                key={`${file.documentId}-${index}`}
                 documentId={file.documentId}
                 farmId={farmId}
                 fileName={file.fileName}
