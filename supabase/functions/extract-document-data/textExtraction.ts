@@ -225,9 +225,39 @@ async function extractDOCXText(
   try {
     const arrayBuffer = await fileResponse.arrayBuffer();
     
-    // Note: In Deno environment, we'll use enhanced XML parsing
-    // since mammoth.js requires Node.js modules
-    debugInfo.libraryUsed = 'enhanced_xml_parser';
+    // Import mammoth dynamically for Deno edge function compatibility
+    const mammoth = await import('npm:mammoth@1.9.1');
+    console.log(`📋 Mammoth.js imported successfully`);
+    
+    // Convert ArrayBuffer to Buffer for mammoth.js
+    const buffer = new Uint8Array(arrayBuffer);
+    console.log(`📄 Converting DOCX buffer (${Math.round(buffer.length/1024)}KB)`);
+    
+    // Extract raw text using mammoth.js
+    const result = await mammoth.extractRawText({ buffer });
+    let text = result.value || "";
+    
+    // Clean up whitespace and normalize text
+    text = text.replace(/\s+/g, " ").trim();
+    
+    console.log(`✅ DOCX extraction successful with mammoth.js`);
+    console.log(`📋 Extracted text preview: "${text.slice(0, 200)}..."`);
+    
+    if (!text || text.length < 10) {
+      debugInfo.warnings.push('DOCX extraction resulted in very short text');
+      console.log(`⚠️ Warning: Extracted text is very short (${text.length} chars)`);
+    }
+    
+    debugInfo.textLength = text.length;
+    return { text };
+    
+  } catch (mammothError) {
+    debugInfo.errors.push(`Mammoth.js extraction failed: ${(mammothError as Error).message}`);
+    console.log(`❌ Mammoth.js extraction failed: ${(mammothError as Error).message}`);
+    
+    // Fallback to enhanced XML parsing if mammoth fails
+    debugInfo.libraryUsed = 'enhanced_xml_parser_fallback';
+    console.log(`🔄 Falling back to XML parsing...`);
     debugInfo.extractionMethod = 'docx_enhanced_xml';
     
     const text = new TextDecoder().decode(arrayBuffer);
