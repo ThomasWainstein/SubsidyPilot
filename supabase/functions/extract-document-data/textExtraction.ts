@@ -260,83 +260,86 @@ async function extractDOCXText(
     console.log(`🔄 Falling back to XML parsing...`);
     debugInfo.extractionMethod = 'docx_enhanced_xml';
     
-    const text = new TextDecoder().decode(arrayBuffer);
-    
-    // Enhanced DOCX text extraction with multiple strategies
-    const extractors = [
-      // Word 2016+ format
-      /<w:t[^>]*>(.*?)<\/w:t>/g,
-      // Word 2010-2013 format  
-      /<t[^>]*>(.*?)<\/t>/g,
-      // Alternative text nodes
-      /<text[^>]*>(.*?)<\/text>/g,
-      // Paragraph content
-      /<w:p[^>]*>.*?<w:t[^>]*>(.*?)<\/w:t>.*?<\/w:p>/g,
-    ];
-    
-    let extractedText = '';
-    let bestExtraction = '';
-    
-    for (const regex of extractors) {
-      const matches = Array.from(text.matchAll(regex));
-      if (matches.length > 0) {
-        const currentExtraction = matches
-          .map(match => match[1])
-          .filter(text => text && text.trim().length > 0)
-          .join(' ');
-        
-        if (currentExtraction.length > bestExtraction.length) {
-          bestExtraction = currentExtraction;
-        }
-      }
-    }
-    
-    extractedText = bestExtraction;
-    
-    // Enhanced fallback with document structure awareness
-    if (extractedText.length < 100) {
-      debugInfo.warnings.push('Primary DOCX extraction yielded insufficient text, using enhanced fallback');
+    try {
+      const arrayBuffer = await fileResponse.arrayBuffer();
+      const text = new TextDecoder().decode(arrayBuffer);
       
-      // Look for document.xml content specifically
-      const documentMatch = text.match(/<document[^>]*>(.*?)<\/document>/s);
-      if (documentMatch) {
-        const documentContent = documentMatch[1];
-        
-        // Extract all text content from document structure
-        const allTextMatches = documentContent.match(/>([^<]+)</g);
-        if (allTextMatches) {
-          extractedText = allTextMatches
-            .map(match => match.slice(1, -1).trim())
-            .filter(text => text.length > 2 && /[a-zA-Z]/.test(text))
+      // Enhanced DOCX text extraction with multiple strategies
+      const extractors = [
+        // Word 2016+ format
+        /<w:t[^>]*>(.*?)<\/w:t>/g,
+        // Word 2010-2013 format  
+        /<t[^>]*>(.*?)<\/t>/g,
+        // Alternative text nodes
+        /<text[^>]*>(.*?)<\/text>/g,
+        // Paragraph content
+        /<w:p[^>]*>.*?<w:t[^>]*>(.*?)<\/w:t>.*?<\/w:p>/g,
+      ];
+      
+      let extractedText = '';
+      let bestExtraction = '';
+      
+      for (const regex of extractors) {
+        const matches = Array.from(text.matchAll(regex));
+        if (matches.length > 0) {
+          const currentExtraction = matches
+            .map(match => match[1])
+            .filter(text => text && text.trim().length > 0)
             .join(' ');
+          
+          if (currentExtraction.length > bestExtraction.length) {
+            bestExtraction = currentExtraction;
+          }
         }
       }
       
-      // Last resort: clean XML and extract readable text
-      if (extractedText.length < 50) {
-        const cleanText = text
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+      extractedText = bestExtraction;
+      
+      // Enhanced fallback with document structure awareness
+      if (extractedText.length < 100) {
+        debugInfo.warnings.push('Primary DOCX extraction yielded insufficient text, using enhanced fallback');
         
-        const readableSegments = cleanText.match(/[a-zA-Z][a-zA-Z\s,.-]{15,}/g);
-        if (readableSegments) {
-          extractedText = readableSegments.join(' ');
+        // Look for document.xml content specifically
+        const documentMatch = text.match(/<document[^>]*>(.*?)<\/document>/s);
+        if (documentMatch) {
+          const documentContent = documentMatch[1];
+          
+          // Extract all text content from document structure
+          const allTextMatches = documentContent.match(/>([^<]+)</g);
+          if (allTextMatches) {
+            extractedText = allTextMatches
+              .map(match => match.slice(1, -1).trim())
+              .filter(text => text.length > 2 && /[a-zA-Z]/.test(text))
+              .join(' ');
+          }
+        }
+        
+        // Last resort: clean XML and extract readable text
+        if (extractedText.length < 50) {
+          const cleanText = text
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          const readableSegments = cleanText.match(/[a-zA-Z][a-zA-Z\s,.-]{15,}/g);
+          if (readableSegments) {
+            extractedText = readableSegments.join(' ');
+          }
         }
       }
+      
+      if (extractedText.length < 50) {
+        debugInfo.warnings.push('DOCX extraction yielded very little text - document may be corrupted or image-based');
+        debugInfo.errors.push('Insufficient text extracted from DOCX file');
+      }
+      
+      console.log(`✅ DOCX XML fallback extraction completed, extracted ${extractedText.length} characters`);
+      return { text: extractedText };
+      
+    } catch (xmlError) {
+      debugInfo.errors.push(`XML fallback extraction failed: ${(xmlError as Error).message}`);
+      throw new Error(`Both mammoth.js and XML fallback extraction failed: ${(mammothError as Error).message}`);
     }
-    
-    if (extractedText.length < 50) {
-      debugInfo.warnings.push('DOCX extraction yielded very little text - document may be corrupted or image-based');
-      debugInfo.errors.push('Insufficient text extracted from DOCX file');
-    }
-    
-    console.log(`✅ DOCX extraction completed, extracted ${extractedText.length} characters`);
-    return { text: extractedText };
-    
-  } catch (docxError) {
-    debugInfo.errors.push(`DOCX extraction failed: ${(docxError as Error).message}`);
-    throw docxError;
   }
 }
 
