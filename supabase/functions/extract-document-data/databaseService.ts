@@ -11,12 +11,32 @@ export async function storeExtractionResult(
 ): Promise<void> {
   console.log(`💾 Storing extraction result for document: ${documentId}`);
   
+  // Debug environment variables
+  console.log('🔧 ENV DEBUG:', {
+    supabaseUrl,
+    serviceKeyPresent: !!supabaseServiceKey,
+    serviceKeyLength: supabaseServiceKey?.length || 0
+  });
+  
   // Create supabase client with service role key to bypass RLS
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
+  });
+  
+  // Test RLS bypass before insertion
+  console.log('🔒 Testing RLS bypass with service role...');
+  const { data: testData, error: testError } = await supabase
+    .from('document_extractions')
+    .select('*')
+    .limit(1);
+  
+  console.log('🔒 RLS test result:', { 
+    success: !testError, 
+    error: testError?.message,
+    canAccess: !!testData 
   });
   
   try {
@@ -107,6 +127,13 @@ export async function logExtractionError(
 ): Promise<void> {
   console.log(`⚠️ Logging extraction error for document: ${documentId}`);
   console.log(`❌ Error message: ${errorMessage}`);
+  
+  // Debug environment variables
+  console.log('🔧 ERROR LOG ENV DEBUG:', {
+    supabaseUrl,
+    serviceKeyPresent: !!supabaseServiceKey,
+    serviceKeyLength: supabaseServiceKey?.length || 0
+  });
   
   // Create supabase client with service role key to bypass RLS
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
