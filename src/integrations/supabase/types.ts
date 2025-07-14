@@ -80,6 +80,7 @@ export type Database = {
         Row: {
           confidence_score: number | null
           created_at: string
+          debug_info: Json | null
           document_id: string
           error_message: string | null
           extracted_data: Json
@@ -91,6 +92,7 @@ export type Database = {
         Insert: {
           confidence_score?: number | null
           created_at?: string
+          debug_info?: Json | null
           document_id: string
           error_message?: string | null
           extracted_data: Json
@@ -102,6 +104,7 @@ export type Database = {
         Update: {
           confidence_score?: number | null
           created_at?: string
+          debug_info?: Json | null
           document_id?: string
           error_message?: string | null
           extracted_data?: Json
