@@ -167,29 +167,46 @@ CREATE INDEX idx_farms_matching_tags_gin ON public.farms USING GIN(matching_tags
 - **Array Filtering**: GIN indexes enable fast filtering on tag/category arrays
 - **Query Optimization**: Composite indexes for common query patterns
 
-### Latest Enhancement: Aggressive Extraction Prompt (2025-07-14)
+### Latest Enhancement: Production Readiness & API Key Fixes (2025-07-14)
 
-#### OpenAI Prompt Improvements
-- **Enhanced Field Detection**: Updated prompts to search for field variations like "Farm Name:", "FarmName:", "Name:", etc.
-- **Aggressive Pattern Matching**: Instructs AI to extract data even with unclear labels using context clues
-- **Increased Text Analysis**: Extended document analysis from 8000 to 10000 characters
-- **Better Debug Logging**: Raw text samples now stored in debug_info for troubleshooting
-- **Optimized Parameters**: Reduced temperature to 0.1 for more consistent extraction
+#### Critical API Key Fix
+- **Corrected OpenAI API Key**: Changed from `OPENAI_API_KEY` to `LOVABLE_REGULINE` throughout extraction pipeline
+- **Environment Variable Validation**: Enhanced logging to verify correct API key propagation
+- **Debug Information**: Added comprehensive environment variable checking in edge functions
 
-#### Extraction Strategy Changes
-- Scan for ANY label variation patterns
-- Extract from tables, forms, headers, lists, paragraphs  
-- Find numbers near farming keywords (hectares, area, land)
-- Accept partial matches and formatting variations
-- Look for patterns like "Name: [value]", "[Label]: [Value]", "[Label] [Value]"
+#### Enhanced Extraction Debugging
+- **Raw Text Logging**: All extractions now store raw document text samples in debug_info
+- **Full OpenAI Response Logging**: Complete model responses saved for troubleshooting failed extractions  
+- **Extraction Context**: Model parameters, prompt length, and language detection stored for analysis
+- **Failure Diagnostics**: Detailed error information including parse failures and extraction context
+
+#### RLS Policy Security Fix
+- **Service Role Permissions**: Fixed document_extractions table RLS policies for proper edge function access
+- **Optimized Policy Structure**: Removed overly broad service role policy, added specific INSERT/UPDATE policies
+- **Authentication Security**: Maintained user access controls while enabling edge function operations
+
+#### Production Performance Optimization
+- **RLS Efficiency**: Auth functions evaluated once per query instead of per row
+- **Policy Consolidation**: Reduced policy evaluation overhead by ~75%  
+- **JOIN Performance**: Foreign key indexes improve JOIN speed by 2-10x
+- **Array Filtering**: GIN indexes enable fast filtering on tag/category arrays
+- **Query Optimization**: Composite indexes for common query patterns
+
+### Extraction Strategy Enhancements
+- **Aggressive Pattern Matching**: AI searches for field variations like "Farm Name:", "FarmName:", "Name:", etc.
+- **Multi-format Support**: Extracts from tables, forms, headers, lists, paragraphs
+- **Context-based Extraction**: Finds numbers near farming keywords (hectares, area, land)
+- **Flexible Label Recognition**: Accepts partial matches and formatting variations
+- **Pattern Detection**: Recognizes "Name: [value]", "[Label]: [Value]", "[Label] [Value]" formats
 
 ### Next Steps
-1. ✅ Enhanced OpenAI prompts for better field extraction
-2. ✅ Optimized RLS policies for better performance
-3. ✅ Added comprehensive indexing for foreign keys and common queries
-4. Monitor extraction success rates and field detection accuracy
-5. Add admin analytics dashboard leveraging structured debug information
-6. Implement automated alerts for extraction failures using debug data
+1. ✅ Fixed LOVABLE_REGULINE API key usage throughout pipeline
+2. ✅ Enhanced debug logging for comprehensive troubleshooting
+3. ✅ Optimized RLS policies and service role permissions
+4. ✅ Added comprehensive indexing for production performance
+5. Monitor extraction success rates with enhanced debugging data
+6. Add admin analytics dashboard leveraging structured debug information
+7. Implement automated alerts for extraction failures using debug data
 
 ---
 **Migration completed by**: Lovable AI  

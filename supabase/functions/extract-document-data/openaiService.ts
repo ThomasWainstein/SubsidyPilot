@@ -372,6 +372,11 @@ RETURN ONLY VALID JSON WITH ACTUAL FOUND DATA - NO EXPLANATIONS, NO MARKDOWN:`;
     console.log(`✅ OpenAI API call successful`);
     console.log(`🔍 OpenAI raw response: ${extractedContent}`);
     console.log(`📊 OpenAI usage:`, aiData.usage);
+    
+    // Enhanced debug logging for troubleshooting
+    console.log(`📄 Raw text sample for debugging: ${extractedText.substring(0, 1000)}`);
+    console.log(`🤖 Model used: gpt-4o-mini`);
+    console.log(`🌍 Language detected: ${detectedLanguage}`);
 
     // Parse and validate response with enhanced error handling
     let extractedData: ExtractedFarmData;

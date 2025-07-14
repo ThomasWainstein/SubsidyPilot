@@ -7,7 +7,7 @@ import { extractTextFromFile } from './textExtraction.ts';
 import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const openAIApiKey = Deno.env.get('LOVABLE_REGULINE');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -62,15 +62,15 @@ serve(async (req) => {
 
     // Check environment variables
     addDebugLog('ENVIRONMENT_CHECK', {
-      hasOpenAIKey: !!openAIApiKey,
-      openAIKeyLength: openAIApiKey?.length || 0,
+      hasLovableRegaline: !!openAIApiKey,
+      lovableRegalineKeyLength: openAIApiKey?.length || 0,
       supabaseUrl,
       hasServiceKey: !!supabaseServiceKey,
       serviceKeyLength: supabaseServiceKey?.length || 0
     });
 
     if (!openAIApiKey) {
-      const error = 'OpenAI API key not configured';
+      const error = 'LOVABLE_REGULINE API key not configured';
       addDebugLog('OPENAI_KEY_MISSING', { error });
       throw new Error(error);
     }
