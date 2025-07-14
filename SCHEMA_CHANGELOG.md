@@ -88,11 +88,28 @@ ALTER TABLE public.document_extractions DROP COLUMN IF EXISTS debug_info;
 
 The system will automatically fall back to reading debug information from `extracted_data.debugInfo`.
 
+### Latest Enhancement: Aggressive Extraction Prompt (2025-07-14)
+
+#### OpenAI Prompt Improvements
+- **Enhanced Field Detection**: Updated prompts to search for field variations like "Farm Name:", "FarmName:", "Name:", etc.
+- **Aggressive Pattern Matching**: Instructs AI to extract data even with unclear labels using context clues
+- **Increased Text Analysis**: Extended document analysis from 8000 to 10000 characters
+- **Better Debug Logging**: Raw text samples now stored in debug_info for troubleshooting
+- **Optimized Parameters**: Reduced temperature to 0.1 for more consistent extraction
+
+#### Extraction Strategy Changes
+- Scan for ANY label variation patterns
+- Extract from tables, forms, headers, lists, paragraphs  
+- Find numbers near farming keywords (hectares, area, land)
+- Accept partial matches and formatting variations
+- Look for patterns like "Name: [value]", "[Label]: [Value]", "[Label] [Value]"
+
 ### Next Steps
-1. Monitor extraction success rates and debug data quality
-2. Consider migrating legacy debug data to new column structure
-3. Add admin analytics dashboard leveraging structured debug information
-4. Implement automated alerts for extraction failures using debug data
+1. ✅ Enhanced OpenAI prompts for better field extraction
+2. Monitor extraction success rates and field detection accuracy
+3. Consider migrating legacy debug data to new column structure
+4. Add admin analytics dashboard leveraging structured debug information
+5. Implement automated alerts for extraction failures using debug data
 
 ---
 **Migration completed by**: Lovable AI  
