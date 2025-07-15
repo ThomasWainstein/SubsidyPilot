@@ -65,15 +65,8 @@ def init_driver(
             if user_agent:
                 options.add_argument(f"user-agent={user_agent}")
 
-            driver_path = ChromeDriverManager().install()
-            print(f"[INFO] Using ChromeDriver at: {driver_path}")
-
-            if not os.access(driver_path, os.X_OK):
-                raise RuntimeError(
-                    f"Downloaded ChromeDriver is not executable: {driver_path}\n"
-                    f"Check if this file is really a binary driver. You may have a corrupted webdriver-manager cache."
-                )
-            service = ChromeService(driver_path)
+            # Only use the path returned by ChromeDriverManager().install()
+            service = ChromeService(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
             return driver
 
