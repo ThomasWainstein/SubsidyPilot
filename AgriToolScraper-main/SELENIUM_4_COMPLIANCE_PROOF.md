@@ -10,11 +10,13 @@
 
 ### ✅ 2. CURRENT DRIVER INITIALIZATION (SELENIUM 4+ COMPLIANT)
 ```python
-# AgriToolScraper-main/scraper/core.py lines 207-208
-driver = webdriver.Chrome(options=options)
+# AgriToolScraper-main/scraper/core.py lines 208-209
+service = ChromeService(driver_path)
+driver = webdriver.Chrome(options=options, service=service)
 
-# AgriToolScraper-main/scraper/core.py lines 228-229  
-driver = webdriver.Firefox(options=options)
+# AgriToolScraper-main/scraper/core.py lines 232-233  
+service = FirefoxService(driver_path)
+driver = webdriver.Firefox(options=options, service=service)
 ```
 
 ### ✅ 3. PYTHON CACHE PURGED
@@ -25,7 +27,7 @@ driver = webdriver.Firefox(options=options)
 
 ### ✅ 4. README UPDATED WITH STRICT WARNING
 ```markdown
-⚠️ **Selenium 4+ strict**: Only use `options=chrome_options`. Legacy/positional args will break the pipeline.
+⚠️ **Selenium 4+ strict**: Only use `service=Service(path), options=options` pattern. Legacy/positional args will break the pipeline.
 ```
 
 ### ✅ 5. VALIDATION SCRIPTS CREATED
@@ -44,7 +46,9 @@ driver = webdriver.Chrome(driver_path, options=options)  # ❌ MULTIPLE VALUES E
 ### AFTER (FIXED):
 ```python
 # NEW SELENIUM 4+ COMPLIANT PATTERN:
-driver = webdriver.Chrome(options=options)  # ✅ WORKS
+from selenium.webdriver.chrome.service import Service as ChromeService
+service = ChromeService(driver_path)
+driver = webdriver.Chrome(options=options, service=service)  # ✅ WORKS
 ```
 
 ## ERROR ELIMINATED
@@ -56,7 +60,7 @@ driver = webdriver.Chrome(options=options)  # ✅ WORKS
 [FIX] Global Selenium 4+ driver init, purge legacy args, enforce cache clear
 
 - Remove ALL legacy driver initialization patterns
-- Use only options=chrome_options syntax 
+- Use only service=Service(path), options=options pattern 
 - Purge Python caches to eliminate stale bytecode
 - Add strict Selenium 4+ compliance warnings
 - Create validation scripts for CI/CD

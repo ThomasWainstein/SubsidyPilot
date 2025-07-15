@@ -204,8 +204,11 @@ def init_driver(browser="chrome", headless=True):
                 log_warning(f"Version check failed: {e}")
             
             log_step("Creating Chrome WebDriver instance")
-            # Selenium 4+ only accepts options parameter
-            driver = webdriver.Chrome(options=options)
+            # [LovableAI] Refactored for Selenium 4+ compliance. Legacy positional args removed.
+            service = ChromeService(driver_path)
+            driver = webdriver.Chrome(options=options, service=service)
+            # [LovableAI] WHY: Selenium 4+ forbids multiple positional args and ignoring driver path.
+            # Only 'options=options' and 'service=Service(path)' pattern is valid.
             
             log_step("Chrome driver initialized successfully")
             return driver
@@ -225,8 +228,11 @@ def init_driver(browser="chrome", headless=True):
             driver_path = GeckoDriverManager().install()
             log_step(f"GeckoDriver path: {driver_path}")
             
-            # Selenium 4+ only accepts options parameter
-            driver = webdriver.Firefox(options=options)
+            # [LovableAI] Refactored for Selenium 4+ compliance. Legacy positional args removed.
+            service = FirefoxService(driver_path)
+            driver = webdriver.Firefox(options=options, service=service)
+            # [LovableAI] WHY: Selenium 4+ forbids multiple positional args and ignoring driver path.
+            # Only 'options=options' and 'service=Service(path)' pattern is valid.
             log_step("Firefox driver initialized successfully")
             return driver
         
