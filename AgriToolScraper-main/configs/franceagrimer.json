@@ -1,0 +1,12 @@
+{
+  "list_page": "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales",
+  "link_selector": "a[rel='bookmark']",
+  "next_page_selector": "li.pagination-next a",
+  "detail_selectors": {
+    "title": "h1", // UPDATE: Real selector for the title
+    "description": ".content--main", // UPDATE: Real selector for description
+    "eligibility": ".eligibility-section", // UPDATE: Real selector for eligibility
+    "documents": ".documents-list a", // UPDATE: Real selector for doc links
+    "deadline": ".deadline-date" // UPDATE: Real selector for deadlines
+  }
+}

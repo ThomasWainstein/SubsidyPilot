@@ -1,0 +1,10 @@
+{
+  "site_name": "afir",
+  "list_page": "https://portal.afir.info/informatii_institutionale_link-uri_utile",
+  "link_selector": "div#content a",
+  "next_page_selector": "",
+  "detail_selectors": {
+    "title": "h1",
+    "description": "div#content"
+  }
+}

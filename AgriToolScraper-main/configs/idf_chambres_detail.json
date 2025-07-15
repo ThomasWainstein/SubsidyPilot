@@ -1,0 +1,12 @@
+{
+  "site_name": "idf_chambres_detail",
+  "detail_selectors": {
+    "title": "#content .container-detail-content > h2",
+    "description": "#content .container-detail-content > p:nth-child(3)",
+    "eligibility": "#content .container-detail-content > p:nth-child(5)",
+    "documents": "#content .container-2-col-docs .b-btn a",
+    "deadline": "#content .container-detail-content > p:nth-child(8)",
+    "amount": "#content .container-detail-content > p:nth-child(6)",
+    "funding_type": "#content .container-detail-content > p:nth-child(3) > strong"
+  }
+}

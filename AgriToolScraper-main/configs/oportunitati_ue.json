@@ -1,0 +1,11 @@
+{
+  "site_name": "oportunitati_ue",
+  "list_page": "https://oportunitati-ue.gov.ro/en/apeluri/?_sfm_status=activ",
+  "link_selector": "div.lista-apeluri h4 > a",
+  "next_page_selector": "a.sfm-pager-next",
+  "detail_selectors": {
+    "title": "h1.page-title",
+    "date": "span.sfm-item-date",
+    "description": "div.sfm-item-description, div.sfm-item-content"
+  }
+}

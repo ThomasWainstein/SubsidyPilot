@@ -1,0 +1,23 @@
+# --- Web automation ---
+selenium==4.12.0
+webdriver-manager==4.0.1     # Pin for compatibility with selenium 4.12
+
+# --- HTTP/HTML parsing (optional for post-processing) ---
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=4.9
+
+# --- Data handling & progress ---
+tqdm>=4.66
+pandas>=2.0                  # Only if you use DataFrames, else remove
+
+# --- Cloud/API/AI ---
+python-dotenv>=1.0           # Only needed for .env config
+openai>=1.0                  # Update as needed for OpenAI API
+supabase==1.0.3              # Pin or update if you depend on new features
+tenacity>=8.2                # For retries, match API of your code
+langdetect>=1.0.9            # NEW: for automatic language detection
+
+
+# --- Dev (optional) ---
+pytest                       # For tests, if you use

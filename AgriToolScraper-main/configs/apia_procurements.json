@@ -1,0 +1,11 @@
+{
+  "site_name": "apia_procurements",
+  "list_page": "https://apia.org.ro/achizitii-publice/",
+  "link_selector": "article.elementor-post h3 a",
+  "next_page_selector": "a.next",
+  "detail_selectors": {
+    "title": "h1.entry-title",
+    "attachments": "div.atasamente a[href$='.pdf'], div.atasamente a[href$='.doc'], div.atasamente a[href$='.docx'], div.atasamente a[href$='.xls'], div.atasamente a[href$='.xlsx'], div.atasamente a[href$='.zip'], div.atasamente a[href$='.rar']",
+    "description": "div.entry-content"
+  }
+}

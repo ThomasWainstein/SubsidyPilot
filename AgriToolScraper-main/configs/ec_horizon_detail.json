@@ -1,0 +1,13 @@
+{
+  "site_name": "ec_horizon_detail",
+  "detail_selectors": {
+    "title": "eui-card-header-title",
+    "general_info": "div.topic-info",
+    "topic_description": "div.eui-card-content",
+    "topic_updates": "div.topic-updates",
+    "conditions_documents": "div.topic-conditions a[href$='.pdf'], div.topic-conditions a[href$='.zip']",
+    "budget_overview": "div.topic-budget",
+    "partner_search": "div.partner-search-announcements a",
+    "submission_link": "a.start-submission, button.start-submission"
+  }
+}
