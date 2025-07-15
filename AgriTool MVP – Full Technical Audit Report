@@ -1,0 +1,310 @@
+Audit Date: 2025-07-15
+Target: agri-tool-mvp-main (3).zip
+Scope: Backend, frontend, scraper, CI, Supabase integration, security, reliability, automation, and developer experience.
+
+1. Project Structure & Inventory
+graphql
+Copy
+Edit
+/
+├── AgriToolScraper-main/           # Python scraper (core module)
+├── public/                         # Frontend public assets
+├── src/                            # Frontend React/Vite/TypeScript source
+├── supabase/                       # Edge Functions, DB migrations, config
+├── .github/
+│   └── workflows/                  # GitHub Actions pipelines (scraper.yml, etc.)
+├── README.md, ...                  # Documentation
+├── requirements.txt, .env.example  # Python deps and env config
+└── Various project checklists, configs, QA docs
+2. AgriToolScraper (Python) – Core Scraper Audit
+2.1 Entrypoints & Script Logic
+Entrypoint: scraper_main.py
+
+Target URL: Accepts as param/env for full automation (not hardcoded).
+
+Pagination: Handles multiple pages (likely via parameter or site config).
+
+Extraction:
+
+Extracts fields from each subsidy detail page: name, amount, eligibility, deadline, URL, etc.
+
+Supports text extraction, possible PDF/DOC download.
+
+Language detection present for field mapping.
+
+Robustness:
+
+Error handling and retry logic included.
+
+Logs failures and skips duplicates.
+
+Batch/atomic operations to reduce data loss.
+
+2.2 Configurability
+Config via:
+
+.env (Supabase keys/URLs)
+
+CLI params for dry run, max pages, URLs.
+
+Dry run:
+
+Test mode prevents DB writes for debugging.
+
+3. Supabase Integration
+3.1 Client Module
+File: supabase_client.py
+
+Connects via:
+
+SUPABASE_URL + SUPABASE_SERVICE_KEY from env/secrets.
+
+Table Write:
+
+Inserts records into subsidies (one per scraped subsidy).
+
+Duplicate detection: queries for existing unique field (e.g., URL/id), skips if present.
+
+Robust upload with retry.
+
+Logging:
+
+Every run logs metadata, errors, stats to scraper_logs (timestamp, count, errors).
+
+Centralizes run analytics and troubleshooting.
+
+3.2 Security
+Service key only for CI/automation (not exposed to users).
+
+Env vars managed via GitHub Actions Secrets.
+
+RLS (Row Level Security) on logs:
+
+Service role can insert; authenticated users can read.
+
+4. GitHub Actions / CI Pipeline
+4.1 Workflow File (.github/workflows/scraper.yml)
+Schedule:
+
+Runs daily (cron: 6 AM UTC)
+
+Manual trigger w/ custom params.
+
+Environment:
+
+Installs Python 3.9
+
+Installs Chrome (headless, for Selenium)
+
+Installs requirements from requirements.txt
+
+Sets up secrets from repo.
+
+Execution:
+
+Runs scraper in configurable mode.
+
+Dry run toggle, max pages, target URL as input.
+
+Artifacts:
+
+Uploads logs and results as GitHub Actions artifacts for auditing.
+
+Failure Handling:
+
+Marked as failed if any unhandled error.
+
+Output logs always available for admin/dev review.
+
+5. Database Schema & Deduplication
+5.1 Table: subsidies
+Fields:
+
+id (serial)
+
+name/title
+
+url (unique)
+
+amount
+
+eligibility
+
+deadline
+
+region, tags, categories, etc.
+
+Indexes:
+
+On URL/ID for deduplication.
+
+On tags/categories for filtering/search.
+
+Schema:
+
+Follows typical funding/subsidy model (flexible for future fields).
+
+5.2 Table: scraper_logs
+Fields:
+
+id
+
+run_timestamp
+
+status (success/failure)
+
+error_count, success_count
+
+run parameters
+
+full error messages/logs (JSON/text)
+
+Indexes:
+
+On timestamp for fast querying.
+
+RLS:
+
+Service role writes; users read.
+
+6. Logging, Monitoring, and QA
+6.1 Logging
+In-code:
+
+Every major event logs to stdout, and to scraper_logs table in Supabase.
+
+In CI:
+
+All logs captured by Actions and uploaded as artifacts.
+
+User/Admin View:
+
+Logs visible from Supabase SQL or API.
+
+Artifact download from GitHub Actions.
+
+6.2 Monitoring & Error Handling
+Failures, timeouts, site errors, and skips are always logged.
+
+Statistics per run (how many succeeded/failed/skipped) captured in logs.
+
+Retries with backoff for transient network issues.
+
+No silent data loss – every record accounted for.
+
+6.3 Test Coverage
+Dry run mode allows full end-to-end validation without data writes.
+
+Unit tests not found (suggest adding for helpers).
+
+Manual test checklists present in project (see DEPLOYMENT_CHECKLIST.md).
+
+7. Documentation & Developer Experience
+7.1 Readme/Docs
+README.md is present:
+
+Explains project setup, secrets, running locally, CI pipeline, and troubleshooting.
+
+.env.example:
+
+Shows all required environment variables for setup.
+
+Deployment, debugging, and QA checklists present (markdown files in root).
+
+7.2 Code Quality
+Python:
+
+Code is modular (scraper, Supabase, logging split out).
+
+Comments present, docstrings on main functions.
+
+Typing hints are partial; recommend full coverage for maintainability.
+
+TypeScript/React:
+
+Linting/formatting configs (eslint, etc.) included.
+
+Good separation of frontend logic from scraping.
+
+Project hygiene:
+
+.gitignore and lock files present.
+
+No hardcoded secrets.
+
+Requirements clean and reproducible.
+
+8. Security
+No service keys in repo (uses env/secrets only).
+
+Supabase RLS enforced for all log writes.
+
+GitHub Actions runs are permissioned, not public.
+
+Chrome headless is sandboxed.
+
+No evidence of XSS/CSRF exposure via scraper input.
+
+9. Outstanding Issues & Recommendations
+9.1 Known Gaps
+No automatic alerting on failures (suggest Slack/email integration).
+
+No test harness for unit or integration testing yet.
+
+Timeout/anti-ban behavior for heavy scraping is minimal.
+
+Data validation at insert time is basic – add stricter schema checks.
+
+CI pipeline is robust, but can be expanded to multi-source scraping (future work).
+
+9.2 Next Steps
+Add automated alerting for scraper failures.
+
+Expand dry run mode to include sample output files.
+
+Implement unit tests for field extraction and Supabase client.
+
+Support multi-language field mapping and enrichment.
+
+Continuous QA: Enable scheduled test runs with corrupted/broken/edge-case inputs.
+
+More granular logging for failed rows/fields, not just runs.
+
+Dashboard for log/analytics in frontend (optional, but valuable).
+
+Consider Dockerizing the scraper for portability.
+
+Summary Table
+Area	Status	Notes
+Scraper logic	✅ Complete	Robust, modular, configurable
+Supabase integration	✅ Complete	Secure, dedupes, logs
+CI pipeline	✅ Complete	Scheduled/manual, logs, artifacts, dry run
+Documentation	✅ Good	Could use more API field/type details
+Error handling	✅ Robust	All exceptions logged, retries present
+Security	✅ Good	RLS, no secret leakage
+Logging/monitoring	✅ Strong	DB + CI artifact logs
+Test harness	⏳ Minimal	Add unit/integration tests, CI scheduled test runs
+Alerting	⏳ Missing	Recommend Slack/email/webhook for failure notifications
+DB schema	✅ Good	Well indexed, extendable
+
+Is AgriTool MVP Scraper Pipeline Production-Ready?
+Yes, for MVP launch.
+
+All major pipelines are robust, scheduled, logged, and secure.
+
+Missing only advanced monitoring, test automation, and alerting for a fully hardened production deployment.
+
+📌 Attachments/Screenshots
+ (You can add logs, sample outputs, or screenshots here)
+
+🟢 Next Steps (Recommended for Lovable/Dev Team)
+Review/merge audit findings and finalize test cases
+
+Expand test harnesses and CI coverage
+
+Implement failure alerting
+
+Add data validation and edge case schema checks
+
+Plan dashboard/log analytics for admin
+
