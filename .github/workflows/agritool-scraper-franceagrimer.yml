@@ -1,0 +1,53 @@
+name: AgriTool FranceAgriMer Scraper Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Start URL to scrape (defaults to FranceAgriMer)'
+        required: false
+        default: 'https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales'
+      max_pages:
+        description: 'Max pages to scrape (default: 2)'
+        required: false
+        default: '2'
+      dry_run:
+        description: 'Dry run mode (true = no DB writes)'
+        required: false
+        default: 'true'
+
+jobs:
+  scrape_franceagrimer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper (FranceAgriMer)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python AgriToolScraper-main/scraper_main.py \
+            --url "${{ github.event.inputs.target_url }}" \
+            --max-pages "${{ github.event.inputs.max_pages }}" \
+            --dry-run "${{ github.event.inputs.dry_run }}"
+
+      - name: Upload logs and artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: franceagrimer-scraper-logs
+          path: |
+            scraper.log
+            run_summary.json
