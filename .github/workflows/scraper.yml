@@ -1,0 +1,90 @@
+name: AgriTool Scraper Pipeline
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC (7 AM CET)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scrape (optional, defaults to AFIR)'
+        required: false
+        default: 'https://www.afir.info/'
+      max_pages:
+        description: 'Maximum pages to scrape (default: 0 = all)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'Dry run mode (scrape but do not upload to Supabase)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  scrape-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          chromium-browser \
+          chromium-chromedriver \
+          xvfb
+          
+    - name: Install Python dependencies
+      run: |
+        cd AgriToolScraper-main
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create data directories
+      run: |
+        mkdir -p AgriToolScraper-main/data/extracted
+        mkdir -p AgriToolScraper-main/data/logs
+        
+    - name: Run scraper pipeline
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        TARGET_URL: ${{ github.event.inputs.target_url || 'https://www.afir.info/' }}
+        MAX_PAGES: ${{ github.event.inputs.max_pages || '0' }}
+        DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        BROWSER: chrome
+        DISPLAY: :99
+      run: |
+        cd AgriToolScraper-main
+        # Start virtual display for headless browser
+        Xvfb :99 -screen 0 1920x1080x24 &
+        sleep 3
+        
+        # Run the enhanced scraper
+        python main.py
+        
+    - name: Upload artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: scraper-logs-${{ github.run_number }}
+        path: |
+          AgriToolScraper-main/data/logs/
+          AgriToolScraper-main/data/extracted/
+        retention-days: 7
+        
+    - name: Upload success summary
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: scraper-success-${{ github.run_number }}
+        path: AgriToolScraper-main/data/logs/run_summary.json
+        retention-days: 30
