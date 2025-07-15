@@ -58,29 +58,75 @@ jobs:
           sleep 3
 
           
-      - name: Run scraper (FranceAgriMer)
+      - name: Run scraper (FranceAgriMer) with Ruthless Debugging
         working-directory: ./AgriToolScraper-main
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           DISPLAY: :99
+          WDM_LOG: "1"
+          WDM_LOG_LEVEL: "DEBUG"
         run: |
+          set -e
+          
+          echo "🔥 RUTHLESS DEBUGGING ENABLED"
+          echo "Environment: $(uname -a)"
+          echo "Python: $(python --version)"
+          echo "Working dir: $(pwd)"
+          echo "Display: $DISPLAY"
+          
+          # Test display
+          echo "Testing display server..."
+          xdpyinfo || echo "Display test failed"
+          
+          # Test browser availability
+          echo "Testing browser availability..."
+          chromium-browser --version || echo "Chromium not found"
+          which chromium-browser || echo "Chromium not in PATH"
+          
+          # Create logs directory
+          mkdir -p data/logs data/extracted
+          
           args=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             args="--dry-run"
           fi
-          echo "🚀 Running FranceAgriMer scraper..."
+          
+          echo "🚀 Starting FranceAgriMer scraper with ruthless logging..."
           python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \
-            $args
+            $args || {
+            echo "❌ SCRAPER FAILED - Collecting post-mortem data"
+            echo "Process list:"
+            ps aux | grep -E "(chrome|chromium|firefox|driver|xvfb)" || true
+            echo "Memory usage:"
+            free -h || true
+            echo "Disk usage:"
+            df -h || true
+            exit 1
+          }
 
-      - name: Upload logs and artifacts
+      - name: Upload comprehensive artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: franceagrimer-scraper-logs
+          name: franceagrimer-scraper-complete-${{ github.run_number }}
           path: |
-            AgriToolScraper-main/scraper.log
-            AgriToolScraper-main/run_summary.json
+            AgriToolScraper-main/data/logs/
+            AgriToolScraper-main/data/extracted/
+            AgriToolScraper-main/data/attachments/
+            ~/.wdm/
+          retention-days: 14
+
+      - name: Upload status summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: franceagrimer-status-${{ github.run_number }}
+          path: |
+            AgriToolScraper-main/data/logs/status_*.txt
+            AgriToolScraper-main/data/logs/summary_*.txt
+            AgriToolScraper-main/data/logs/run_summary.json
+          retention-days: 30
 

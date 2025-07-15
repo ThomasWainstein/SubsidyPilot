@@ -4,6 +4,8 @@
 import os
 import time
 import requests
+import traceback
+import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
@@ -21,6 +23,9 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 import stat
 import subprocess
+
+# Import debugging system
+from debug_diagnostics import get_ruthless_debugger, ruthless_trap, log_step, log_error, log_warning
 
 FIELD_KEYWORDS_FR = {
     "title": [
@@ -116,9 +121,10 @@ def detect_language(text):
         print(f"[ERROR] Language detection failed: {e}")
         return "unknown"
 
+@ruthless_trap
 def init_driver(browser="chrome", headless=True):
     """
-    Initialize a Selenium WebDriver using webdriver-manager.
+    Initialize a Selenium WebDriver using webdriver-manager with comprehensive logging.
     
     Args:
         browser (str): Browser type (chrome, firefox). Default: chrome
@@ -127,25 +133,80 @@ def init_driver(browser="chrome", headless=True):
     Returns:
         WebDriver: Configured Selenium WebDriver instance
     """
+    debugger = get_ruthless_debugger()
+    log_step(f"Initializing {browser} driver", browser=browser, headless=headless)
+    
     try:
         if browser.lower() == "chrome":
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
             from webdriver_manager.chrome import ChromeDriverManager
             
+            log_step("Setting up Chrome options")
             options = Options()
             
             if headless:
                 options.add_argument("--headless=new")
+                log_step("Chrome headless mode enabled")
             
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--disable-features=VizDisplayCompositor")
-            options.add_argument("--window-size=1920,1080")
+            # Comprehensive Chrome options for stability
+            chrome_args = [
+                "--no-sandbox",
+                "--disable-dev-shm-usage", 
+                "--disable-gpu",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor",
+                "--window-size=1920,1080",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-images",
+                "--disable-javascript",
+                "--user-agent=AgriToolScraper/1.0"
+            ]
             
-            driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            for arg in chrome_args:
+                options.add_argument(arg)
+                log_step(f"Added Chrome arg: {arg}")
+            
+            # Log Chrome binary location if set
+            chrome_binary = os.environ.get('GOOGLE_CHROME_BIN') or os.environ.get('CHROME_BIN')
+            if chrome_binary:
+                options.binary_location = chrome_binary
+                log_step(f"Using Chrome binary: {chrome_binary}")
+            
+            log_step("Calling ChromeDriverManager().install()")
+            
+            # Install driver with webdriver-manager
+            driver_manager = ChromeDriverManager()
+            driver_path = driver_manager.install()
+            
+            log_step(f"ChromeDriver path: {driver_path}")
+            
+            # Verify driver binary
+            if not os.path.exists(driver_path):
+                raise FileNotFoundError(f"ChromeDriver not found at {driver_path}")
+            
+            # Check if it's executable
+            if not os.access(driver_path, os.X_OK):
+                raise PermissionError(f"ChromeDriver not executable at {driver_path}")
+            
+            # Log driver version
+            try:
+                version_result = subprocess.run(
+                    [driver_path, '--version'], 
+                    capture_output=True, text=True, timeout=10
+                )
+                if version_result.returncode == 0:
+                    log_step(f"ChromeDriver version: {version_result.stdout.strip()}")
+                else:
+                    log_warning(f"Could not get ChromeDriver version: {version_result.stderr}")
+            except Exception as e:
+                log_warning(f"Version check failed: {e}")
+            
+            log_step("Creating Chrome WebDriver instance")
+            driver = webdriver.Chrome(driver_path, options=options)
+            
+            log_step("Chrome driver initialized successfully")
             return driver
         
         elif browser.lower() == "firefox":
@@ -153,18 +214,37 @@ def init_driver(browser="chrome", headless=True):
             from selenium.webdriver.firefox.options import Options
             from webdriver_manager.firefox import GeckoDriverManager
             
+            log_step("Setting up Firefox options")
             options = Options()
             if headless:
                 options.add_argument("--headless")
+                log_step("Firefox headless mode enabled")
             
-            driver = webdriver.Firefox(GeckoDriverManager().install(), options=options)
+            log_step("Calling GeckoDriverManager().install()")
+            driver_path = GeckoDriverManager().install()
+            log_step(f"GeckoDriver path: {driver_path}")
+            
+            driver = webdriver.Firefox(driver_path, options=options)
+            log_step("Firefox driver initialized successfully")
             return driver
         
         else:
             raise ValueError(f"Unsupported browser: {browser}")
             
     except Exception as e:
-        print(f"[ERROR] Failed to initialize {browser} driver: {e}")
+        log_error(f"Failed to initialize {browser} driver: {e}")
+        log_error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Add to post-mortem
+        debugger.add_post_mortem_context({
+            'function': 'init_driver',
+            'browser': browser,
+            'headless': headless,
+            'exception_type': type(e).__name__,
+            'exception_message': str(e),
+            'traceback': traceback.format_exc()
+        })
+        
         raise
 
 def ensure_folder(path):

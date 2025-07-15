@@ -1,6 +1,6 @@
 # scraper_main.py
 """
-Enhanced AgriTool scraper with Supabase integration.
+Enhanced AgriTool scraper with Supabase integration and ruthless debugging.
 Combines URL collection, content extraction, and database upload.
 """
 
@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import argparse
+import traceback
 from datetime import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlparse
@@ -26,6 +27,7 @@ from scraper.core import (
 from scraper.discovery import extract_subsidy_details
 from scraper.runner import ScrapingRunner
 from supabase_client import SupabaseUploader
+from debug_diagnostics import get_ruthless_debugger, ruthless_trap, log_step, log_error, log_warning
 
 
 def save_json(data, filepath):
@@ -53,23 +55,29 @@ def save_failed_url(url, error):
 
 
 class AgriToolScraper:
-    """Main scraper class with Supabase integration."""
+    """Main scraper class with Supabase integration and ruthless debugging."""
     
+    @ruthless_trap
     def __init__(self, target_url: str, dry_run: bool = False):
         self.target_url = target_url
         self.dry_run = dry_run
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         
+        # Initialize ruthless debugger
+        self.debugger = get_ruthless_debugger(self.session_id)
+        log_step("Initializing AgriToolScraper", target_url=target_url, dry_run=dry_run, session_id=self.session_id)
+        
         # Initialize Supabase client (unless dry run)
         self.supabase = None
         if not dry_run:
             try:
+                log_step("Initializing Supabase client")
                 self.supabase = SupabaseUploader()
                 if not self.supabase.test_connection():
                     raise RuntimeError("Supabase connection test failed")
-                print("[INFO] Supabase client initialized successfully")
+                log_step("Supabase client initialized successfully")
             except Exception as e:
-                print(f"[ERROR] Failed to initialize Supabase client: {e}")
+                log_error(f"Failed to initialize Supabase client: {e}")
                 raise
         
         # Initialize results tracking
@@ -84,20 +92,36 @@ class AgriToolScraper:
             'errors': [],
             'warnings': []
         }
+        
+        log_step("AgriToolScraper initialization complete")
     
+    @ruthless_trap
     def collect_subsidy_urls(self, max_pages: int = 0) -> List[str]:
         """
-        Collect all subsidy detail page URLs from the listing pages.
+        Collect all subsidy detail page URLs from the listing pages with comprehensive logging.
         Returns list of unique URLs.
         """
-        print(f"[INFO] Starting URL collection from {self.target_url}")
+        log_step(f"Starting URL collection from {self.target_url}", max_pages=max_pages)
         
         driver = None
         try:
+            log_step("Initializing driver for URL collection")
             driver = init_driver()
+            
+            log_step(f"Navigating to target URL: {self.target_url}")
             driver.get(self.target_url)
             
-            # Wait for page load
+            # Take screenshot for debugging
+            try:
+                screenshot_path = f"data/logs/url_collection_start_{self.session_id}.png"
+                ensure_folder("data/logs")
+                driver.save_screenshot(screenshot_path)
+                log_step(f"Screenshot saved: {screenshot_path}")
+                self.debugger.diagnostics['artifacts'].append(screenshot_path)
+            except Exception as e:
+                log_warning(f"Failed to save screenshot: {e}")
+            
+            log_step("Waiting for page load (bookmark links)")
             wait_for_selector(driver, "a[rel='bookmark']", timeout=15)
             
             collected_urls = set()
@@ -105,53 +129,90 @@ class AgriToolScraper:
             
             while True:
                 page_count += 1
-                print(f"[INFO] Processing listing page {page_count}...")
+                log_step(f"Processing listing page {page_count}")
                 
                 # Collect links from current page
                 page_links = collect_links(driver, "a[rel='bookmark']")
+                initial_count = len(collected_urls)
+                
                 for link in page_links:
                     if link:
                         collected_urls.add(link)
                 
-                print(f"[INFO] Found {len(page_links)} links on page {page_count}")
+                new_links = len(collected_urls) - initial_count
+                log_step(f"Found {len(page_links)} total links, {new_links} new unique links on page {page_count}")
+                
+                # Log sample URLs for verification
+                if page_links:
+                    sample_urls = page_links[:3]
+                    log_step(f"Sample URLs: {sample_urls}")
                 
                 # Check if we should stop
                 if max_pages > 0 and page_count >= max_pages:
-                    print(f"[INFO] Reached max pages limit: {max_pages}")
+                    log_step(f"Reached max pages limit: {max_pages}")
                     break
                 
                 # Try to go to next page
+                log_step("Attempting to navigate to next page")
                 if not click_next(driver, 'li.pagination-next a'):
-                    print("[INFO] No more pages found")
+                    log_step("No more pages found - pagination ended")
                     break
                 
                 # Wait for new page to load
+                log_step("Waiting for next page to load")
                 time.sleep(2)
                 try:
                     wait_for_selector(driver, "a[rel='bookmark']", timeout=10)
+                    log_step("Next page loaded successfully")
                 except TimeoutException:
-                    print("[WARN] Timeout waiting for next page content")
+                    log_warning("Timeout waiting for next page content")
                     break
             
             urls_list = list(collected_urls)
             self.results['urls_collected'] = len(urls_list)
-            print(f"[INFO] Collected {len(urls_list)} unique URLs")
+            log_step(f"URL collection complete: {len(urls_list)} unique URLs collected")
             
             # Save URLs for debugging
             ensure_folder("data/extracted")
-            with open(f"data/extracted/urls_{self.session_id}.txt", 'w', encoding='utf-8') as f:
+            urls_file = f"data/extracted/urls_{self.session_id}.txt"
+            with open(urls_file, 'w', encoding='utf-8') as f:
                 for url in urls_list:
                     f.write(f"{url}\n")
+            
+            log_step(f"URLs saved to: {urls_file}")
+            self.debugger.diagnostics['artifacts'].append(urls_file)
+            
+            # Take final screenshot
+            try:
+                final_screenshot = f"data/logs/url_collection_end_{self.session_id}.png"
+                driver.save_screenshot(final_screenshot)
+                log_step(f"Final screenshot saved: {final_screenshot}")
+                self.debugger.diagnostics['artifacts'].append(final_screenshot)
+            except Exception as e:
+                log_warning(f"Failed to save final screenshot: {e}")
             
             return urls_list
             
         except Exception as e:
             error_msg = f"URL collection failed: {e}"
-            print(f"[ERROR] {error_msg}")
+            log_error(error_msg)
+            log_error(f"Full traceback: {traceback.format_exc()}")
             self.results['errors'].append(error_msg)
+            
+            # Save error screenshot
+            if driver:
+                try:
+                    error_screenshot = f"data/logs/url_collection_error_{self.session_id}.png"
+                    driver.save_screenshot(error_screenshot)
+                    log_error(f"Error screenshot saved: {error_screenshot}")
+                    self.debugger.diagnostics['artifacts'].append(error_screenshot)
+                except Exception as screenshot_e:
+                    log_error(f"Failed to save error screenshot: {screenshot_e}")
+            
             return []
         finally:
             if driver:
+                log_step("Quitting driver after URL collection")
                 driver.quit()
     
     def extract_subsidy_content(self, urls: List[str]) -> List[Dict]:
@@ -255,47 +316,75 @@ class AgriToolScraper:
             self.results['errors'].append(error_msg)
             return {'inserted': 0, 'errors': [error_msg]}
     
+    @ruthless_trap
     def run_full_pipeline(self, max_pages: int = 0):
-        """Run the complete scraping and upload pipeline."""
-        print(f"[INFO] Starting AgriTool scraper pipeline")
-        print(f"[INFO] Target: {self.target_url}")
-        print(f"[INFO] Max pages: {max_pages if max_pages > 0 else 'unlimited'}")
-        print(f"[INFO] Dry run: {self.dry_run}")
-        print(f"[INFO] Session ID: {self.session_id}")
+        """Run the complete scraping and upload pipeline with comprehensive logging."""
+        log_step("🚀 STARTING AGRITOOL SCRAPER PIPELINE", 
+                target=self.target_url,
+                max_pages=max_pages if max_pages > 0 else 'unlimited',
+                dry_run=self.dry_run,
+                session_id=self.session_id)
+        
+        pipeline_success = False
         
         try:
             # Step 1: Collect URLs
+            log_step("📋 PIPELINE STEP 1: Collecting subsidy URLs")
             urls = self.collect_subsidy_urls(max_pages)
             if not urls:
-                raise RuntimeError("No URLs collected")
+                raise RuntimeError("No URLs collected - pipeline cannot continue")
+            log_step(f"✅ Step 1 complete: {len(urls)} URLs collected")
             
             # Step 2: Extract content
+            log_step("🔍 PIPELINE STEP 2: Extracting subsidy content")
             subsidies = self.extract_subsidy_content(urls)
             if not subsidies:
-                raise RuntimeError("No subsidies extracted")
+                raise RuntimeError("No subsidies extracted - pipeline cannot continue")
+            log_step(f"✅ Step 2 complete: {len(subsidies)} subsidies extracted")
             
             # Step 3: Upload to Supabase
+            log_step("☁️ PIPELINE STEP 3: Uploading to Supabase")
             upload_results = self.upload_to_supabase(subsidies)
+            log_step(f"✅ Step 3 complete: {upload_results.get('inserted', 0)} subsidies uploaded")
             
             # Step 4: Generate summary
+            log_step("📊 PIPELINE STEP 4: Generating final summary")
             self.results['end_time'] = datetime.utcnow().isoformat()
             self.results['success'] = True
             self.results['upload_results'] = upload_results
+            pipeline_success = True
+            log_step("✅ Pipeline completed successfully")
             
         except Exception as e:
             error_msg = f"Pipeline failed: {e}"
-            print(f"[ERROR] {error_msg}")
+            log_error(error_msg)
+            log_error(f"Full pipeline traceback: {traceback.format_exc()}")
             self.results['errors'].append(error_msg)
             self.results['success'] = False
             self.results['end_time'] = datetime.utcnow().isoformat()
+            pipeline_success = False
         
-        # Save final results
+        # Save final results with ruthless logging
+        log_step("💾 Saving final results and diagnostics")
         ensure_folder("data/logs")
-        save_json(self.results, f"data/logs/run_summary_{self.session_id}.json")
+        
+        results_file = f"data/logs/run_summary_{self.session_id}.json"
+        save_json(self.results, results_file)
         save_json(self.results, "data/logs/run_summary.json")  # Latest run
+        
+        log_step(f"Results saved to: {results_file}")
+        self.debugger.diagnostics['artifacts'].append(results_file)
+        
+        # Save ruthless diagnostics
+        diagnostics_result = self.debugger.save_final_diagnostics(pipeline_success)
+        log_step(f"Diagnostics saved: {diagnostics_result}")
         
         # Print summary
         self.print_summary()
+        
+        # Final status log
+        status = "SUCCESS" if pipeline_success else "FAILED"
+        log_step(f"🎯 FINAL PIPELINE STATUS: {status}")
         
         return self.results
     

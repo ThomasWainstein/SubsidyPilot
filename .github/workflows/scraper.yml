@@ -69,7 +69,7 @@ jobs:
         sleep 3
         
         
-    - name: Run scraper pipeline
+    - name: Run scraper pipeline with Ruthless Debugging
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -78,26 +78,83 @@ jobs:
         DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         BROWSER: chrome
         DISPLAY: :99
+        WDM_LOG: "1"
+        WDM_LOG_LEVEL: "DEBUG"
       run: |
+        set -e
         cd AgriToolScraper-main
-        echo "🚀 Starting AgriTool scraper pipeline..."
-        python main.py
         
-    - name: Upload artifacts on failure
-      if: failure()
-      uses: actions/upload-artifact@v3
+        echo "🔥 RUTHLESS DEBUGGING ENABLED"
+        echo "=== SYSTEM DIAGNOSTICS ==="
+        echo "Environment: $(uname -a)"
+        echo "Python: $(python --version)"
+        echo "Working dir: $(pwd)"
+        echo "Display: $DISPLAY"
+        echo "User: $(whoami)"
+        echo "Home: $HOME"
+        
+        echo "=== BROWSER DIAGNOSTICS ==="
+        chromium-browser --version || echo "Chromium not found"
+        which chromium-browser || echo "Chromium not in PATH"
+        ls -la /usr/bin/chromium* || echo "No chromium binaries found"
+        
+        echo "=== DISPLAY DIAGNOSTICS ==="
+        xdpyinfo || echo "Display test failed"
+        echo "DISPLAY=$DISPLAY"
+        
+        echo "=== PYTHON ENVIRONMENT ==="
+        pip freeze | head -20
+        
+        # Create all necessary directories
+        mkdir -p data/logs data/extracted data/attachments
+        
+        echo "🚀 Starting AgriTool scraper pipeline with full logging..."
+        python main.py || {
+          echo "❌ SCRAPER FAILED - Collecting emergency diagnostics"
+          echo "=== POST-MORTEM DIAGNOSTICS ==="
+          echo "Process list:"
+          ps aux | grep -E "(chrome|chromium|firefox|driver|xvfb)" || true
+          echo "Memory usage:"
+          free -h || true
+          echo "Disk usage:"
+          df -h || true
+          echo "Open files:"
+          lsof 2>/dev/null | head -50 || true
+          echo "webdriver-manager cache:"
+          find ~/.wdm -type f -exec file {} \; 2>/dev/null || true
+          exit 1
+        }
+        
+    - name: Upload comprehensive debugging artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: scraper-logs-${{ github.run_number }}
+        name: scraper-complete-debug-${{ github.run_number }}
         path: |
           AgriToolScraper-main/data/logs/
           AgriToolScraper-main/data/extracted/
-        retention-days: 7
+          AgriToolScraper-main/data/attachments/
+          ~/.wdm/
+        retention-days: 14
         
-    - name: Upload success summary
-      if: success()
-      uses: actions/upload-artifact@v3
+    - name: Upload critical status files
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: scraper-success-${{ github.run_number }}
-        path: AgriToolScraper-main/data/logs/run_summary.json
+        name: scraper-status-${{ github.run_number }}
+        path: |
+          AgriToolScraper-main/data/logs/status_*.txt
+          AgriToolScraper-main/data/logs/summary_*.txt
+          AgriToolScraper-main/data/logs/diagnostics_*.json
+          AgriToolScraper-main/data/logs/run_summary.json
         retention-days: 30
+
+    - name: Upload pip freeze for debugging
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-environment-${{ github.run_number }}
+        path: |
+          AgriToolScraper-main/data/logs/pip_freeze_*.txt
+        retention-days: 7
         

@@ -186,6 +186,27 @@ Edit `scraper/core.py` and update `FIELD_KEYWORDS_FR` for French sources or crea
 3. Review browser dependencies installation
 4. Check for website structure changes
 
+## 🔥 Ruthless Debugging System
+
+**ZERO BLACK-BOX FAILURES**: Every error is completely debuggable remotely.
+
+### Comprehensive Diagnostics
+- System environment, browser versions, dependencies
+- Real-time step logging with file/line context
+- Screenshots at key points and failures
+- Complete exception tracebacks with post-mortem analysis
+- webdriver-manager cache analysis
+
+### Artifact Collection
+All runs generate complete debugging artifacts:
+- `data/logs/ruthless_debug_*.log` - Complete execution trace
+- `data/logs/diagnostics_*.json` - System state snapshot
+- `data/logs/*.png` - Screenshots at key points
+- `data/logs/status_*.txt` - Final SUCCESS/FAILED status
+
+### CI/CD Integration
+GitHub Actions automatically uploads ALL debugging artifacts for remote analysis.
+
 ## Driver Management
 
 This project uses webdriver-manager exclusively. No manual setup required.
