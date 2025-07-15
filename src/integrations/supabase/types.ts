@@ -278,6 +278,39 @@ export type Database = {
           },
         ]
       }
+      scraper_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          id: string
+          message: string
+          run_start: string | null
+          session_id: string
+          status: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message: string
+          run_start?: string | null
+          session_id: string
+          status: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message?: string
+          run_start?: string | null
+          session_id?: string
+          status?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       subsidies: {
         Row: {
           amount_max: number | null

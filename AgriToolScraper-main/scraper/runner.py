@@ -1,10 +1,20 @@
-import json
-import sys
-import csv
+# scraper/runner.py
+"""
+Robust scraping runner with error handling and rate limiting.
+"""
+
 import time
+import random
+import json
+import csv
 import os
 import argparse
-from scraper.core import (
+from typing import List, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin, urlparse
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from .core import (
     init_driver,
     ensure_folder,
     collect_links,
@@ -16,10 +26,9 @@ from scraper.core import (
     FIELD_KEYWORDS_FR,
     log_unmapped_label
 )
-
-from tenacity import retry, stop_after_attempt, wait_exponential
-from scraper.discovery import extract_text_from_urls
+from .discovery import extract_text_from_urls
 from selenium.webdriver.common.by import By
+
 
 CANONICAL_FIELDS = [
     "url", "title", "description", "eligibility", "documents", "deadline",
@@ -31,18 +40,94 @@ CANONICAL_FIELDS = [
 ]
 
 
+class ScrapingRunner:
+    """
+    Manages the execution of scraping tasks with rate limiting,
+    error handling, and respectful crawling practices.
+    """
+    
+    def __init__(self, base_url: str, max_workers: int = 3, delay_range: tuple = (1, 3)):
+        self.base_url = base_url
+        self.max_workers = max_workers
+        self.delay_range = delay_range
+        self.domain = urlparse(base_url).netloc
+        
+    def respectful_delay(self):
+        """Add a random delay to be respectful to the target server."""
+        delay = random.uniform(*self.delay_range)
+        time.sleep(delay)
+    
+    def is_same_domain(self, url: str) -> bool:
+        """Check if URL belongs to the same domain."""
+        return urlparse(url).netloc == self.domain
+    
+    def process_url_batch(self, urls: List[str], processor_func) -> List[Dict]:
+        """
+        Process a batch of URLs with the given processor function.
+        Includes error handling and rate limiting.
+        """
+        results = []
+        
+        # Filter URLs to same domain for politeness
+        same_domain_urls = [url for url in urls if self.is_same_domain(url)]
+        
+        if len(same_domain_urls) < len(urls):
+            print(f"[INFO] Filtered {len(urls) - len(same_domain_urls)} cross-domain URLs")
+        
+        # Process URLs with threading but controlled concurrency
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all tasks
+            future_to_url = {
+                executor.submit(self._safe_process_url, url, processor_func): url 
+                for url in same_domain_urls
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_url):
+                url = future_to_url[future]
+                try:
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    print(f"[ERROR] Processing failed for {url}: {e}")
+                
+                # Add delay between completions to be respectful
+                self.respectful_delay()
+        
+        return results
+    
+    def _safe_process_url(self, url: str, processor_func):
+        """
+        Safely process a single URL with error handling.
+        """
+        try:
+            return processor_func(url)
+        except Exception as e:
+            print(f"[ERROR] Safe processing failed for {url}: {e}")
+            return None
 
+
+# Legacy functions for backward compatibility
 def normalize_record(raw_record):
     """Ensure every record matches the canonical schema, filling missing fields with 'N/A'."""
     return {k: raw_record.get(k, "N/A") for k in CANONICAL_FIELDS}
 
+
 def load_config(site_name):
-    with open(f"configs/{site_name}.json", "r", encoding="utf-8") as f:
+    """Load configuration for a specific site."""
+    config_path = f"configs/{site_name}.json"
+    if not os.path.exists(config_path):
+        print(f"[ERROR] Config file not found: {config_path}")
+        return {}
+    
+    with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def map_site_fields_to_canonical(raw_record, site_name):
-    # --- Existing site mappings (keep as needed) ---
 
+def map_site_fields_to_canonical(raw_record, site_name):
+    """Map site-specific fields to canonical field names."""
+    # Keep existing mappings for backward compatibility
     if site_name == "afir":
         pass
 
@@ -98,11 +183,8 @@ def map_site_fields_to_canonical(raw_record, site_name):
         if "submission_link" in raw_record:
             raw_record["application_method"] = raw_record.pop("submission_link")
 
-    # --- NEW: idf_chambres_detail mapping ---
     if site_name == "idf_chambres_detail":
-        # Typical selectors: "title", "description", "eligibility", "documents", "deadline", "amount", "program", "agency", "region", "sector", "funding_type", etc.
-        # Map any source-specific keys here if needed.
-        # (Assume your selectors use canonical fieldnames, if not, add per-field remapping as above)
+        # Add any specific mappings for IDF chambres
         pass
 
     return raw_record
@@ -110,22 +192,34 @@ def map_site_fields_to_canonical(raw_record, site_name):
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=2, max=10))
 def robust_get(driver, url, screenshot_path=None):
+    """Robust page loading with retry logic."""
     try:
         driver.get(url)
     except Exception as e:
         if screenshot_path:
-            driver.save_screenshot(screenshot_path)
+            try:
+                driver.save_screenshot(screenshot_path)
+            except:
+                pass
         raise
 
+
+# Legacy runner functions for backward compatibility
 def run_discovery(site_name, limit=6, browser=None):
+    """Run discovery mode for a specific site."""
     config = load_config(site_name)
+    if not config:
+        return
+        
     driver = init_driver(browser=browser)
     driver.get(config["list_page"])
+    
     try:
         wait_for_selector(driver, config["link_selector"], timeout=10)
     except Exception:
         print(f"[WARN] Timeout on list_page. Falling back to sleep(5).")
         time.sleep(5)
+        
     urls = []
     while len(urls) < limit:
         page_links = collect_links(driver, config["link_selector"])
@@ -139,20 +233,29 @@ def run_discovery(site_name, limit=6, browser=None):
                 break
         else:
             break
+            
     driver.quit()
     extract_text_from_urls(urls, browser=browser)
 
+
 def run_extract_links(site_name, browser=None):
+    """Extract links from a specific site."""
     config = load_config(site_name)
+    if not config:
+        return
+        
     driver = init_driver(browser=browser)
     driver.get(config["list_page"])
+    
     try:
         wait_for_selector(driver, config["link_selector"], timeout=10)
     except Exception:
         print(f"[WARN] Timeout on list_page. Falling back to sleep(5).")
         time.sleep(5)
+        
     links = collect_links(driver, config["link_selector"])
     driver.quit()
+    
     ensure_folder("data/extracted")
     output_file = f"data/extracted/{site_name}_external_links.txt"
     with open(output_file, "w", encoding="utf-8") as f:
@@ -160,19 +263,23 @@ def run_extract_links(site_name, browser=None):
             f.write(link + "\n")
     print(f"Extracted {len(links)} links from {site_name} and saved to {output_file}")
 
-def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
-    from scraper.core import log_unmapped_label  # <-- Make sure this is imported!
 
+def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
+    """Legacy smart extraction function."""
     ensure_folder("data/extracted")
     ensure_folder("data/attachments")
     output_file = output_file or "data/extracted/consultant_data.csv"
+    
     with open(feeder_file, "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f.readlines()]
+        
     driver = init_driver(browser=browser)
     extracted = []
+    
     for idx, url in enumerate(urls, start=1):
         print(f"[{idx}/{len(urls)}] Processing: {url}")
         screenshot_file = f"data/extracted/error_{idx}.png"
+        
         try:
             robust_get(driver, url, screenshot_path=screenshot_file)
             time.sleep(2)
@@ -183,9 +290,10 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
             print(f"[WARN] Screenshot saved to {screenshot_file}")
             continue
 
-        # ------- HEADER PREFERENCE LOGIC -------
+        # Basic extraction logic (simplified)
         raw_record = {"url": url}
-        # Title: Prefer h1, fallback to h2
+        
+        # Extract title
         try:
             title_el = None
             for sel in ["h1", "h2"]:
@@ -196,9 +304,9 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
             if title_el:
                 raw_record["title"] = title_el.text.strip()
         except Exception as e:
-            print(f"[WARN] Could not extract title header: {e}")
+            print(f"[WARN] Could not extract title: {e}")
 
-        # Description: First meaningful <p> after header
+        # Extract description
         try:
             desc_el = None
             p_tags = driver.find_elements(By.CSS_SELECTOR, "p")
@@ -213,7 +321,8 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
         except Exception as e:
             print(f"[WARN] Could not extract description: {e}")
 
-        # Robust config_name detection (update as needed for your sources)
+        # Determine config based on URL
+        config_name = "afir"  # Default
         if "idf.chambres-agriculture.fr" in url:
             config_name = "idf_chambres_detail"
         elif "oportunitati-ue.gov.ro" in url:
@@ -224,23 +333,14 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
             config_name = "franceagrimer"
         elif "apia.org.ro" in url:
             config_name = "apia_procurements"
-        elif "afir.info" in url:
-            config_name = "afir"
-        elif "oportunitati-ue" in url:
-            config_name = "oportunitati_ue"
-        else:
-            print(f"[WARN] Unknown domain: {url}")
-            continue
 
-        print(f"DEBUG: Chosen config_name for mapping: {config_name}")
         config = load_config(config_name)
         selectors = config.get("detail_selectors") or config.get("selectors") or {}
 
-        # --- MAIN EXTRACTION LOOP (with logging) ---
+        # Extract additional fields based on selectors
         for field, selector in selectors.items():
-            if field in ["attachments", "documents", "conditions_documents"]:
-                # Download all files
-                try:
+            try:
+                if field in ["attachments", "documents", "conditions_documents"]:
                     links = driver.find_elements(By.CSS_SELECTOR, selector)
                     doc_paths = set()
                     for link in links:
@@ -252,47 +352,34 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
                             else:
                                 doc_paths.add(href)
                     raw_record[field] = ";".join(sorted(doc_paths)) if doc_paths else "N/A"
-                except Exception as e:
-                    print(f"[ERROR] Failed to process documents for {url}: {e}")
-                    raw_record[field] = "N/A"
-            else:
-                try:
-                    value = driver.find_element(By.CSS_SELECTOR, selector).text.strip()
-                except Exception:
-                    value = "N/A"
-                # --- SMART AUTO-MAPPING + LOGGING ---
-                if value != "N/A":
-                    if field in ["title", "description"] and raw_record.get(field):
-                        continue  # Don't overwrite header-extracted title/description
-                    field_guess = guess_canonical_field_fr(value, FIELD_KEYWORDS_FR)
-                    if field_guess and field_guess not in raw_record:
-                        print(f"[DEBUG] Auto-mapped '{value[:40]}...' to '{field_guess}'")
-                        raw_record[field_guess] = value
-                    elif field_guess is None:
-                        log_unmapped_label(value, url)
-                        raw_record[field] = value
-                    else:
-                        raw_record[field] = value
                 else:
-                    raw_record[field] = value
+                    try:
+                        value = driver.find_element(By.CSS_SELECTOR, selector).text.strip()
+                        raw_record[field] = value if value else "N/A"
+                    except:
+                        raw_record[field] = "N/A"
+            except Exception as e:
+                print(f"[ERROR] Failed to extract {field}: {e}")
+                raw_record[field] = "N/A"
 
+        # Map and normalize
         mapped_record = map_site_fields_to_canonical(raw_record.copy(), config_name)
         normalized_record = normalize_record(mapped_record)
+        
+        # Detect language
         all_text = " ".join([
             normalized_record.get("title", ""),
             normalized_record.get("description", ""),
             normalized_record.get("eligibility", ""),
         ])
         normalized_record["language"] = detect_language(all_text)
+        
         extracted.append(normalized_record)
         print(f"✅ Extracted [{idx}]: {normalized_record.get('title', '')} [{normalized_record['language']}]")
 
     driver.quit()
-    if extracted:
-        print("DEBUG output fields (first record):", extracted[0].keys())
-    else:
-        print("[INFO] No records extracted.")
-
+    
+    # Save results
     with open(output_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CANONICAL_FIELDS, extrasaction='ignore')
         writer.writeheader()
@@ -300,9 +387,8 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
     print(f"🔥 Consultant-grade dataset saved to {output_file}")
 
 
-
-
 def parse_args():
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="AgriToolScraper Runner")
     parser.add_argument("site_or_file", help="Site config name or feeder file")
     parser.add_argument("mode", choices=["discovery", "extract_links", "fetch_and_extract_smart"], help="Scraping mode")
@@ -310,6 +396,7 @@ def parse_args():
     parser.add_argument("--output", default=None, help="Custom output file (fetch_and_extract_smart mode)")
     parser.add_argument("--limit", type=int, default=6, help="Discovery/extract_links: Max records/pages to process")
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
