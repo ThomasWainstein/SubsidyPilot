@@ -1,3 +1,4 @@
+
 # scraper/core.py
 
 import os
@@ -18,6 +19,8 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
+import stat
+import subprocess
 
 FIELD_KEYWORDS_FR = {
     "title": [
@@ -113,28 +116,92 @@ def detect_language(text):
         print(f"[ERROR] Language detection failed: {e}")
         return "unknown"
 
+def validate_driver_binary(driver_path):
+    """
+    Validate that the driver path points to an actual executable binary.
+    This prevents [Errno 8] Exec format error by catching text files.
+    """
+    print(f"[VALIDATION] Checking driver binary: {driver_path}")
+    
+    if not os.path.exists(driver_path):
+        print(f"[ERROR] Driver file does not exist: {driver_path}")
+        return False
+    
+    # Check if file is executable
+    if not os.access(driver_path, os.X_OK):
+        print(f"[ERROR] Driver file is not executable: {driver_path}")
+        return False
+    
+    # Check file type using the 'file' command
+    try:
+        result = subprocess.run(['file', driver_path], capture_output=True, text=True, timeout=10)
+        file_type = result.stdout.strip()
+        print(f"[VALIDATION] File type: {file_type}")
+        
+        # Must be an executable (ELF on Linux, Mach-O on macOS, PE on Windows)
+        if any(x in file_type.lower() for x in ['executable', 'elf', 'mach-o', 'pe32']):
+            print(f"[VALIDATION] ✅ Binary validation passed")
+            return True
+        else:
+            print(f"[ERROR] ❌ File is not a binary executable: {file_type}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print(f"[WARN] File type check timed out, assuming valid")
+        return True
+    except FileNotFoundError:
+        print(f"[WARN] 'file' command not found, skipping binary validation")
+        return True
+    except Exception as e:
+        print(f"[WARN] Binary validation failed: {e}, assuming valid")
+        return True
+
+def purge_corrupted_wdm_cache():
+    """
+    Remove corrupted webdriver-manager cache to force fresh download.
+    This solves most [Errno 8] issues in CI environments.
+    """
+    import shutil
+    wdm_cache = os.path.expanduser("~/.wdm")
+    
+    if os.path.exists(wdm_cache):
+        print(f"[CLEANUP] Removing corrupted .wdm cache: {wdm_cache}")
+        try:
+            shutil.rmtree(wdm_cache)
+            print(f"[CLEANUP] ✅ Cache purged successfully")
+        except Exception as e:
+            print(f"[CLEANUP] ⚠️ Failed to remove cache: {e}")
+    else:
+        print(f"[CLEANUP] No .wdm cache found to purge")
+
 def init_driver(
     browser="chrome",
     user_agent=None,
     headless=True,
-    window_size="1200,800"
+    window_size="1200,800",
+    force_cache_purge=False
 ):
     """
-    Initialize and return a Selenium WebDriver using only webdriver-manager.
+    Initialize and return a Selenium WebDriver using ONLY webdriver-manager.
     
     CRITICAL: This function uses ONLY webdriver-manager and NO manual path logic.
-    Never add custom path handling, directory scanning, or manual driver logic.
+    Added bulletproof validation to prevent [Errno 8] Exec format error.
     
     Args:
         browser (str): Browser type - 'chrome', 'firefox', or 'edge'
         user_agent (str): Optional custom user agent string
         headless (bool): Run browser in headless mode (required for CI)
         window_size (str): Window size in format "width,height"
+        force_cache_purge (bool): Force .wdm cache purge before init
     
     Returns:
         WebDriver: Configured browser driver instance
     """
     try:
+        # Purge cache if requested or if we're in CI
+        if force_cache_purge or os.getenv('CI') or os.getenv('GITHUB_ACTIONS'):
+            purge_corrupted_wdm_cache()
+        
         if browser == "chrome":
             options = ChromeOptions()
             if headless:
@@ -151,29 +218,39 @@ def init_driver(
             if user_agent:
                 options.add_argument(f"--user-agent={user_agent}")
 
-            # Use webdriver-manager ONLY - no manual path handling
+            # Use webdriver-manager with bulletproof validation
             print("[DEBUG] Installing ChromeDriver via webdriver-manager...")
-            driver_path = ChromeDriverManager().install()
-            print(f"[DEBUG] ChromeDriver installed at: {driver_path}")
             
-            # Verify the driver file exists and is executable
-            if os.path.exists(driver_path):
-                file_stat = os.stat(driver_path)
-                print(f"[DEBUG] Driver file size: {file_stat.st_size} bytes")
-                print(f"[DEBUG] Driver file mode: {oct(file_stat.st_mode)}")
-                
-                # List directory contents to debug any path issues
-                driver_dir = os.path.dirname(driver_path)
-                if os.path.exists(driver_dir):
-                    files = os.listdir(driver_dir)
-                    print(f"[DEBUG] Driver directory contents: {files}")
-            else:
-                print(f"[ERROR] Driver file not found at: {driver_path}")
-            
-            service = ChromeService(driver_path)
-            driver = webdriver.Chrome(service=service, options=options)
-            print("[DEBUG] ChromeDriver started successfully")
-            return driver
+            # Retry logic for webdriver-manager
+            max_retries = 3
+            for attempt in range(1, max_retries + 1):
+                try:
+                    driver_path = ChromeDriverManager().install()
+                    print(f"[DEBUG] ChromeDriver installed at: {driver_path}")
+                    
+                    # CRITICAL: Validate the binary before using it
+                    if not validate_driver_binary(driver_path):
+                        print(f"[ERROR] Attempt {attempt}: Invalid driver binary, retrying...")
+                        if attempt < max_retries:
+                            purge_corrupted_wdm_cache()  # Force fresh download
+                            continue
+                        else:
+                            raise Exception("All attempts failed - webdriver-manager returned invalid binary")
+                    
+                    # Binary is valid, proceed with driver creation
+                    service = ChromeService(driver_path)
+                    driver = webdriver.Chrome(service=service, options=options)
+                    print("[DEBUG] ✅ ChromeDriver started successfully")
+                    return driver
+                    
+                except Exception as e:
+                    print(f"[ERROR] Attempt {attempt} failed: {e}")
+                    if attempt < max_retries:
+                        print(f"[RETRY] Retrying in 5 seconds...")
+                        time.sleep(5)
+                        purge_corrupted_wdm_cache()
+                    else:
+                        raise
 
         elif browser == "firefox":
             options = FirefoxOptions()
@@ -213,7 +290,7 @@ def init_driver(
 
         else:
             print(f"[WARN] Unsupported browser '{browser}', using Chrome as fallback.")
-            return init_driver("chrome", user_agent, headless, window_size)
+            return init_driver("chrome", user_agent, headless, window_size, force_cache_purge)
 
     except WebDriverException as e:
         print(f"[ERROR] Failed to initialize driver ({browser}): {e}")

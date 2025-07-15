@@ -1,3 +1,4 @@
+
 name: AgriTool FranceAgriMer Scraper Test
 
 on:
@@ -31,8 +32,11 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser xvfb
-          # NOTE: No manual chromedriver installation - using webdriver-manager only
+          sudo apt-get install -y \
+            chromium-browser \
+            xvfb \
+            file
+          # NOTE: NO manual chromedriver installation - webdriver-manager only
 
       - name: Install dependencies
         working-directory: ./AgriToolScraper-main
@@ -40,10 +44,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Debug system Chrome setup
+        run: |
+          echo "🔍 Chrome/Chromium debugging..."
+          which chromium-browser || echo "chromium-browser not found"
+          chromium-browser --version || echo "Cannot get version"
+          
+          echo "🔍 Checking for existing chromedriver..."
+          which chromedriver && echo "⚠️ chromedriver in PATH!" || echo "✅ No chromedriver in PATH"
+
       - name: Audit manual driver logic (CRITICAL)
         working-directory: ./AgriToolScraper-main
         run: |
-          echo "🔍 Running critical audit for manual driver logic..."
+          echo "🔍 Running enhanced audit for manual driver logic..."
           python audit_manual_driver_logic.py
           
       - name: Test driver initialization (CRITICAL)
@@ -55,8 +68,24 @@ jobs:
           Xvfb :99 -screen 0 1920x1080x24 &
           sleep 3
           
-          echo "🧪 Testing ChromeDriver initialization..."
+          echo "🧪 Testing enhanced ChromeDriver initialization..."
           python test_driver_init.py
+
+      - name: Debug .wdm cache structure
+        working-directory: ./AgriToolScraper-main
+        run: |
+          echo "🔍 Analyzing webdriver-manager cache..."
+          if [ -d ~/.wdm ]; then
+            echo "Cache exists, analyzing structure:"
+            find ~/.wdm -type f -name "*chromedriver*" -exec ls -la {} \;
+            echo "Checking for text files that could cause [Errno 8]:"
+            find ~/.wdm -name "*THIRD_PARTY*" -o -name "*LICENSE*" | while read file; do
+              echo "⚠️ Text file found: $file"
+              file "$file"
+            done
+          else
+            echo "No .wdm cache found"
+          fi
           
       - name: Run scraper (FranceAgriMer)
         working-directory: ./AgriToolScraper-main
@@ -71,7 +100,7 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             args="--dry-run"
           fi
-          echo "🚀 Running FranceAgriMer scraper..."
+          echo "🚀 Running FranceAgriMer scraper with enhanced validation..."
           python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \
@@ -85,11 +114,21 @@ jobs:
           path: |
             AgriToolScraper-main/scraper.log
             AgriToolScraper-main/run_summary.json
+            ~/.wdm/
 
-      - name: Verify webdriver-manager cache (debug)
+      - name: Final cache and environment analysis
         if: always()
         run: |
-          echo "Listing webdriver-manager cache:"
-          ls -la ~/.wdm/ || echo "No .wdm directory found"
-          echo "Checking for any chromedriver processes:"
-          ps aux | grep chrome || echo "No chrome processes found"
+          echo "📊 Final environment analysis..."
+          echo "Chrome processes:"
+          ps aux | grep chrome || echo "No chrome processes"
+          
+          echo "WebDriver cache:"
+          if [ -d ~/.wdm ]; then
+            du -sh ~/.wdm
+            echo "Binary vs text files in cache:"
+            find ~/.wdm -type f -exec file {} \; | grep -E "(executable|text)" | head -20
+          fi
+          
+          echo "Environment variables:"
+          env | grep -E "(DISPLAY|CHROME|DRIVER)" || true

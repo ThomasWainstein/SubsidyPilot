@@ -1,3 +1,4 @@
+
 name: AgriTool Scraper Pipeline
 
 on:
@@ -39,8 +40,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y \
           chromium-browser \
-          xvfb
-        # NOTE: chromium-chromedriver removed - using webdriver-manager only
+          xvfb \
+          file
+        # NOTE: NO manual chromedriver installation - webdriver-manager handles it
           
     - name: Install Python dependencies
       run: |
@@ -56,8 +58,21 @@ jobs:
     - name: Audit manual driver logic (CRITICAL)
       run: |
         cd AgriToolScraper-main
-        echo "🔍 Running critical audit for manual driver logic..."
+        echo "🔍 Running enhanced audit for manual driver logic..."
         python audit_manual_driver_logic.py
+        
+    - name: Debug system Chrome installation
+      run: |
+        echo "🔍 Debugging Chrome/Chromium installation..."
+        which chromium-browser || echo "chromium-browser not found"
+        which google-chrome || echo "google-chrome not found"
+        which chrome || echo "chrome not found"
+        
+        # Check Chrome version
+        chromium-browser --version || echo "Cannot get chromium version"
+        
+        # Check for any existing chromedriver (should be none)
+        which chromedriver && echo "⚠️ WARNING: chromedriver found in PATH!" || echo "✅ No chromedriver in PATH (good)"
         
     - name: Test driver initialization (CRITICAL) 
       env:
@@ -68,8 +83,16 @@ jobs:
         Xvfb :99 -screen 0 1920x1080x24 &
         sleep 3
         
-        echo "🧪 Testing ChromeDriver initialization..."
+        echo "🧪 Testing enhanced ChromeDriver initialization..."
         python test_driver_init.py
+        
+    - name: Debug webdriver-manager cache (post-test)
+      run: |
+        cd AgriToolScraper-main
+        echo "🔍 Debugging .wdm cache after test..."
+        ls -la ~/.wdm/ || echo "No .wdm directory found"
+        find ~/.wdm -name "*chromedriver*" -type f -exec ls -la {} \; || echo "No chromedriver files found"
+        find ~/.wdm -name "*THIRD_PARTY*" -type f -exec echo "⚠️ Found text file: {}" \; || true
         
     - name: Run scraper pipeline
       env:
@@ -95,6 +118,7 @@ jobs:
         path: |
           AgriToolScraper-main/data/logs/
           AgriToolScraper-main/data/extracted/
+          ~/.wdm/
         retention-days: 7
         
     - name: Upload success summary
@@ -104,3 +128,18 @@ jobs:
         name: scraper-success-${{ github.run_number }}
         path: AgriToolScraper-main/data/logs/run_summary.json
         retention-days: 30
+        
+    - name: Final webdriver-manager cache analysis
+      if: always()
+      run: |
+        echo "📊 Final .wdm cache analysis..."
+        if [ -d ~/.wdm ]; then
+          echo "Cache size:"
+          du -sh ~/.wdm
+          echo "Cache structure:"
+          find ~/.wdm -type f -exec ls -la {} \;
+          echo "Potential problematic files:"
+          find ~/.wdm -name "*THIRD_PARTY*" -o -name "*LICENSE*" -o -name "*.txt" | head -10
+        else
+          echo "No .wdm cache found"
+        fi
