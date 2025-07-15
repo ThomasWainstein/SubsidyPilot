@@ -3,8 +3,18 @@
 Test script to verify Selenium 4+ driver initialization compliance.
 ABSOLUTE REQUIREMENT: No legacy driver patterns allowed.
 """
-import sys
-import os
+import sys, traceback, logging, os
+logging.basicConfig(level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s")
+def excepthook(exc_type, exc_value, exc_traceback):
+    logging.critical("Uncaught exception",
+        exc_info=(exc_type, exc_value, exc_traceback))
+    print("="*40 + " ENVIRONMENT " + "="*40)
+    for k, v in sorted(os.environ.items()):
+        print(f"{k}={v}")
+    print("="*40 + " TRACEBACK END " + "="*40)
+sys.excepthook = excepthook
+
 sys.path.append(os.path.dirname(__file__))
 
 from scraper.core import init_driver
@@ -34,7 +44,21 @@ def test_driver_init():
     except Exception as e:
         log_error(f"❌ SELENIUM 4+ COMPLIANCE TEST FAILED: {e}")
         import traceback
-        log_error(f"Full traceback: {traceback.format_exc()}")
+        logging.critical("SELENIUM 4+ VALIDATION FAILED: %s", e, exc_info=True)
+        print("="*40 + " ERROR " + "="*40)
+        traceback.print_exc()
+        print("="*40 + " FILE DUMP " + "="*40)
+        for fname in os.listdir("."):
+            if fname.endswith(".md") or fname.endswith(".log"):
+                print(f"\n--- {fname} ---\n")
+                try:
+                    with open(fname) as f:
+                        print(f.read()[-2000:])
+                except:
+                    print("Could not read file")
+        print("="*40 + " ENV " + "="*40)
+        for k, v in os.environ.items():
+            print(f"{k}={v}")
         return False
 
 if __name__ == "__main__":

@@ -27,6 +27,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Print runner/system context
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "RUNNER_OS: $RUNNER_OS"
+          echo "HOSTNAME: $(hostname)"
+          lsb_release -a || true
+          env | sort
+          df -h
+          free -h
+          which python3
+          python3 --version
+          pip --version
+
       - name: Checkout repository
         uses: actions/checkout@v4
         
@@ -65,20 +78,24 @@ jobs:
       - name: Clear Python cache
         working-directory: ./AgriToolScraper-main
         run: |
-          python clear_cache.py
+          set -xe
+          python clear_cache.py >clear_cache.log 2>&1 || (cat clear_cache.log; exit 1)
           
       - name: Run Selenium compliance test
         working-directory: ./AgriToolScraper-main
         run: |
-          python test_driver_compliance.py
+          set -xe
+          python test_driver_compliance.py >compliance_test.log 2>&1 || (cat compliance_test.log; exit 1)
           
       - name: Execute FranceAgriMer scraper
         working-directory: ./AgriToolScraper-main
         run: |
+          set -xe
           python main.py \
             --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
             --max_pages ${{ github.event.inputs.max_pages || '0' }} \
-            --dry_run ${{ github.event.inputs.dry_run || 'false' }}
+            --dry_run ${{ github.event.inputs.dry_run || 'false' }} \
+            >scraper_main.log 2>&1 || (cat scraper_main.log; exit 1)
             
       - name: Upload scraper logs
         uses: actions/upload-artifact@v4
@@ -100,6 +117,26 @@ jobs:
             AgriToolScraper-main/data/extracted/error_*.png
           retention-days: 7
           
+      - name: Print log tail on failure
+        if: failure()
+        run: |
+          echo "===== LOG TAILS (last 50 lines each) ====="
+          tail -n 50 AgriToolScraper-main/logs/* || true
+          tail -n 50 AgriToolScraper-main/data/extracted/*log* || true
+          tail -n 50 AgriToolScraper-main/*.log || true
+          echo "===== Directory structure ====="
+          find AgriToolScraper-main/
+
+      - name: Dump all outputs and logs on failure
+        if: failure()
+        run: |
+          echo "======= DIRECTORY STRUCTURE ======="
+          find AgriToolScraper-main/
+          echo "======= LOG DUMP ======="
+          for f in AgriToolScraper-main/logs/*; do echo "=== $f ==="; tail -n 100 "$f" || true; done
+          for f in AgriToolScraper-main/data/extracted/*; do echo "=== $f ==="; tail -n 100 "$f" || true; done
+          for f in AgriToolScraper-main/*.log; do echo "=== $f ==="; tail -n 100 "$f" || true; done
+
       - name: Notify on completion
         if: always()
         run: |

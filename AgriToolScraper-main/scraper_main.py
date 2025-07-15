@@ -4,12 +4,21 @@ Enhanced AgriTool scraper with Supabase integration and ruthless debugging.
 Combines URL collection, content extraction, and database upload.
 """
 
-import os
-import sys
+import sys, traceback, logging, os
+logging.basicConfig(level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s")
+def excepthook(exc_type, exc_value, exc_traceback):
+    logging.critical("Uncaught exception",
+        exc_info=(exc_type, exc_value, exc_traceback))
+    print("="*40 + " ENVIRONMENT " + "="*40)
+    for k, v in sorted(os.environ.items()):
+        print(f"{k}={v}")
+    print("="*40 + " TRACEBACK END " + "="*40)
+sys.excepthook = excepthook
+
 import json
 import time
 import argparse
-import traceback
 from datetime import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urljoin, urlparse
@@ -423,6 +432,8 @@ class AgriToolScraper:
 
 def main():
     """Main entry point with CLI argument parsing."""
+    print("ARGS:", sys.argv)
+    logging.info("Starting AgriTool scraper main function")
     parser = argparse.ArgumentParser(description='AgriTool Scraper with Supabase Integration')
     parser.add_argument('--url', default='https://www.afir.info/', 
                        help='Target URL to scrape (default: AFIR)')
