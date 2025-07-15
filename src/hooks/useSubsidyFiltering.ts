@@ -28,9 +28,10 @@ interface SubsidyWithMatch {
   amount_max: number;
   matching_tags: string[];
   matchConfidence: number;
+  created_at?: string;
 }
 
-export const useSubsidyFiltering = (farmId: string, filters: FilterState, searchQuery: string) => {
+export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterState, searchQuery: string) => {
   const [subsidies, setSubsidies] = useState<SubsidyWithMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,20 +43,26 @@ export const useSubsidyFiltering = (farmId: string, filters: FilterState, search
         setLoading(true);
         setError(null);
 
-        // Get farm data for matching
-        const { data: farm, error: farmError } = await supabase
-          .from('farms')
-          .select('*')
-          .eq('id', farmId)
-          .single();
+        let farm = null;
+        
+        // Get farm data for matching only if farmId is provided
+        if (farmId) {
+          const { data: farmData, error: farmError } = await supabase
+            .from('farms')
+            .select('*')
+            .eq('id', farmId)
+            .single();
 
-        if (farmError) {
-          console.error('Farm fetch error:', farmError);
-          setError('Failed to load farm data');
-          return;
+          if (farmError) {
+            console.error('Farm fetch error:', farmError);
+            // Don't return error for farm not found - just proceed without farm matching
+            console.warn('Proceeding without farm data for matching');
+          } else {
+            farm = farmData;
+          }
         }
 
-        // Get all subsidies
+        // Get all subsidies - always fetch regardless of farm presence
         const { data: subsidiesData, error: subsidiesError } = await supabase
           .from('subsidies')
           .select('*')
@@ -71,7 +78,8 @@ export const useSubsidyFiltering = (farmId: string, filters: FilterState, search
         const subsidiesWithMatches = (subsidiesData || []).map(subsidy => {
           const farmTags = farm?.matching_tags || [];
           const subsidyTags = subsidy.matching_tags || [];
-          const matchConfidence = calculateMatchConfidence(farmTags, subsidyTags);
+          // If no farm, default to 0% match confidence (no farm-specific matching)
+          const matchConfidence = farm ? calculateMatchConfidence(farmTags, subsidyTags) : 0;
 
           return {
             ...subsidy,
@@ -88,17 +96,16 @@ export const useSubsidyFiltering = (farmId: string, filters: FilterState, search
       }
     };
 
-    if (farmId) {
-      fetchData();
-    }
+    // Always fetch data, regardless of farmId presence
+    fetchData();
   }, [farmId]);
 
   // Apply filters and search
   const filteredSubsidies = useMemo(() => {
     let filtered = [...subsidies];
 
-    // Apply confidence filter
-    if (filters.confidenceFilter.length > 0) {
+    // Apply confidence filter only if we have farm context (farmId exists)
+    if (filters.confidenceFilter.length > 0 && farmId) {
       const minConfidence = filters.confidenceFilter[0];
       filtered = filtered.filter(s => s.matchConfidence >= minConfidence);
     }
@@ -155,10 +162,10 @@ export const useSubsidyFiltering = (farmId: string, filters: FilterState, search
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(s => {
         const title = typeof s.title === 'object' ? 
-          (s.title.en || s.title.ro || Object.values(s.title)[0] || '') : 
+          (s.title.en || s.title.ro || s.title.fr || Object.values(s.title)[0] || '') : 
           (s.title || '');
         const description = typeof s.description === 'object' ? 
-          (s.description.en || s.description.ro || Object.values(s.description)[0] || '') : 
+          (s.description.en || s.description.ro || s.description.fr || Object.values(s.description)[0] || '') : 
           (s.description || '');
         
         return title.toLowerCase().includes(query) || 
@@ -166,9 +173,13 @@ export const useSubsidyFiltering = (farmId: string, filters: FilterState, search
       });
     }
 
-    // Sort by match confidence
-    return filtered.sort((a, b) => b.matchConfidence - a.matchConfidence);
-  }, [subsidies, filters, searchQuery]);
+    // Sort by match confidence if farm context exists, otherwise sort by creation date
+    if (farmId) {
+      return filtered.sort((a, b) => b.matchConfidence - a.matchConfidence);
+    } else {
+      return filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    }
+  }, [subsidies, filters, searchQuery, farmId]);
 
   return {
     subsidies: filteredSubsidies,

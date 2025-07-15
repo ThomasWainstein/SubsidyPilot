@@ -29,20 +29,20 @@ interface SearchResultsPanelProps {
   filteredCount: number;
   loading: boolean;
   error: string | null;
-  farmId: string;
+  farmId?: string; // Now optional
 }
 
-const SubsidyCard = ({ subsidy }: { subsidy: Subsidy }) => {
+const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const getTitle = () => {
     if (typeof subsidy.title === 'object' && subsidy.title) {
-      return subsidy.title.en || subsidy.title.ro || Object.values(subsidy.title)[0] || 'Untitled';
+      return subsidy.title.en || subsidy.title.ro || subsidy.title.fr || Object.values(subsidy.title)[0] || 'Untitled';
     }
     return subsidy.title || 'Untitled';
   };
 
   const getDescription = () => {
     if (typeof subsidy.description === 'object' && subsidy.description) {
-      return subsidy.description.en || subsidy.description.ro || Object.values(subsidy.description)[0] || 'No description';
+      return subsidy.description.en || subsidy.description.ro || subsidy.description.fr || Object.values(subsidy.description)[0] || 'No description';
     }
     return subsidy.description || 'No description';
   };
@@ -54,12 +54,14 @@ const SubsidyCard = ({ subsidy }: { subsidy: Subsidy }) => {
           <h3 className="font-semibold text-lg mb-1">{getTitle()}</h3>
           <p className="text-gray-600 text-sm line-clamp-2">{getDescription()}</p>
         </div>
-        <Badge 
-          variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
-          className="ml-2"
-        >
-          {subsidy.matchConfidence}% match
-        </Badge>
+        {showMatchScore && (
+          <Badge 
+            variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
+            className="ml-2"
+          >
+            {subsidy.matchConfidence}% match
+          </Badge>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
@@ -214,7 +216,11 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {subsidies.map((subsidy) => (
-              <SubsidyCard key={subsidy.id} subsidy={subsidy} />
+              <SubsidyCard 
+                key={subsidy.id} 
+                subsidy={subsidy} 
+                showMatchScore={!!farmId} // Only show match score if farm context exists
+              />
             ))}
           </div>
         )}

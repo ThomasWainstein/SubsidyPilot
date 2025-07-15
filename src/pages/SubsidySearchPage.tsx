@@ -36,14 +36,14 @@ const SubsidySearchPage = () => {
     deadlineStatuses: [] as string[],
   });
 
-  // Use the new filtering hook
+  // Use the new filtering hook - farmId is now optional
   const { 
     subsidies, 
     loading, 
     error, 
     totalCount, 
     filteredCount 
-  } = useSubsidyFiltering(farmId || '', filters, searchQuery);
+  } = useSubsidyFiltering(farmId, filters, searchQuery);
 
   // Get filter options from database
   const { 
@@ -92,26 +92,8 @@ const SubsidySearchPage = () => {
     setSavedFilterSets(savedFilterSets.filter(set => set.id !== id));
   };
 
-  if (!farmId) {
-    return (
-      <PageErrorBoundary pageName="Subsidy Search">
-        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-          <Navbar />
-          <main className="flex-grow py-6 px-4">
-            <div className="container mx-auto">
-              <EmptyState
-                icon={AlertCircle}
-                title="Farm ID Required"
-                description="Please navigate to this page from a farm profile to search for matching subsidies."
-                actionLabel="Go to Dashboard"
-                onAction={() => window.location.href = '/dashboard'}
-              />
-            </div>
-          </main>
-        </div>
-      </PageErrorBoundary>
-    );
-  }
+  // Farm ID is now optional - if present, it enables farm-specific matching
+  // If not present, show all subsidies without farm matching
 
   if (loading) {
     return <SearchLoadingState />;
