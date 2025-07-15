@@ -11,7 +11,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from langdetect import detect, LangDetectException
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -62,18 +61,22 @@ def init_driver(
             options.add_argument("--disable-gpu")
             options.add_argument(f"--window-size={window_size}")
             options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             if user_agent:
                 options.add_argument(f"user-agent={user_agent}")
 
-            # Only use the path returned by ChromeDriverManager().install()
-            service = ChromeService(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=options)
+            # Let webdriver-manager handle ChromeDriver
+            driver = webdriver.Chrome(
+                ChromeDriverManager().install(), options=options
+            )
             return driver
 
         elif browser == "firefox":
             options = FirefoxOptions()
             if headless:
                 options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             if user_agent:
                 options.set_preference("general.useragent.override", user_agent)
             service = FirefoxService(GeckoDriverManager().install())
@@ -85,6 +88,8 @@ def init_driver(
             if headless:
                 options.add_argument("--headless")
             options.add_argument(f"--window-size={window_size}")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             if user_agent:
                 options.add_argument(f"user-agent={user_agent}")
             service = EdgeService(EdgeChromiumDriverManager().install())

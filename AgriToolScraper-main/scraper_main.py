@@ -4,9 +4,6 @@ Enhanced AgriTool scraper with Supabase integration.
 Combines URL collection, content extraction, and database upload.
 """
 
-import shutil, os
-shutil.rmtree(os.path.expanduser("~/.wdm/drivers"), ignore_errors=True)
-
 import os
 import sys
 import json
