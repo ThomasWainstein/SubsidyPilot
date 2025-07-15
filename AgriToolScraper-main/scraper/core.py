@@ -10,6 +10,105 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from langdetect import detect, LangDetectException
 
+
+def init_driver(browser: str = "chrome", user_agent: str | None = None,
+                headless: bool = True, window_size: str = "1920,1080"):
+    """Initialize a Selenium driver using webdriver-manager.
+
+    This function prints the path webdriver-manager returns, verifies that it
+    points to an executable driver binary, and attempts to locate the correct
+    binary in the same directory when a non-executable path is returned (e.g.
+    a *THIRD_PARTY_NOTICES.chromedriver* file).
+    """
+    try:
+        if browser == "chrome":
+            from webdriver_manager.chrome import ChromeDriverManager
+            from selenium.webdriver.chrome.options import Options as ChromeOptions
+            from selenium.webdriver.chrome.service import Service as ChromeService
+
+            options = ChromeOptions()
+            if headless:
+                # Use the new headless mode which does not require a display
+                options.add_argument("--headless=new")
+            options.add_argument("--disable-gpu")
+            options.add_argument(f"--window-size={window_size}")
+            options.add_argument("--no-sandbox")
+            if user_agent:
+                options.add_argument(f"user-agent={user_agent}")
+
+            driver_path = ChromeDriverManager().install()
+            print(f"[INFO] webdriver-manager returned: {driver_path}")
+
+            # webdriver-manager sometimes returns a text file path; verify it
+            if not os.access(driver_path, os.X_OK):
+                folder = os.path.dirname(driver_path)
+                candidate = os.path.join(folder, "chromedriver")
+                if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+                    print(
+                        f"[WARN] '{driver_path}' not executable, using '{candidate}'"
+                    )
+                    driver_path = candidate
+                else:
+                    for fname in os.listdir(folder):
+                        fp = os.path.join(folder, fname)
+                        if fname.startswith("chromedriver") and os.access(fp, os.X_OK):
+                            print(
+                                f"[WARN] '{driver_path}' invalid, found executable '{fp}'"
+                            )
+                            driver_path = fp
+                            break
+            # Ensure execute bit just in case
+            if os.path.exists(driver_path) and not os.access(driver_path, os.X_OK):
+                os.chmod(driver_path, 0o755)
+
+            service = ChromeService(driver_path)
+            driver = webdriver.Chrome(service=service, options=options)
+        elif browser == "firefox":
+            from webdriver_manager.firefox import GeckoDriverManager
+            from selenium.webdriver.firefox.options import Options as FirefoxOptions
+            from selenium.webdriver.firefox.service import Service as FirefoxService
+
+            options = FirefoxOptions()
+            if headless:
+                options.add_argument("--headless")
+            if user_agent:
+                options.set_preference("general.useragent.override", user_agent)
+
+            driver_path = GeckoDriverManager().install()
+            print(f"[INFO] webdriver-manager returned: {driver_path}")
+            if not os.access(driver_path, os.X_OK):
+                os.chmod(driver_path, 0o755)
+
+            service = FirefoxService(driver_path)
+            driver = webdriver.Firefox(service=service, options=options)
+        elif browser == "edge":
+            from webdriver_manager.microsoft import EdgeChromiumDriverManager
+            from selenium.webdriver.edge.options import Options as EdgeOptions
+            from selenium.webdriver.edge.service import Service as EdgeService
+
+            options = EdgeOptions()
+            if headless:
+                options.add_argument("--headless")
+            options.add_argument(f"--window-size={window_size}")
+            if user_agent:
+                options.add_argument(f"user-agent={user_agent}")
+
+            driver_path = EdgeChromiumDriverManager().install()
+            print(f"[INFO] webdriver-manager returned: {driver_path}")
+            if not os.access(driver_path, os.X_OK):
+                os.chmod(driver_path, 0o755)
+
+            service = EdgeService(driver_path)
+            driver = webdriver.Edge(service=service, options=options)
+        else:
+            print(f"[WARN] Unsupported browser '{browser}', defaulting to Chrome")
+            return init_driver("chrome", user_agent, headless, window_size)
+    except WebDriverException as e:
+        print(f"[ERROR] Failed to initialize driver ({browser}): {e}")
+        raise
+
+    return driver
+
 FIELD_KEYWORDS_FR = {
     "title": [
         "titre de l’aide", "intitulé", "nom de l’aide", "titre", "titre principal",
@@ -163,62 +262,6 @@ def detect_language(text):
         print(f"[ERROR] Language detection failed: {e}")
         return "unknown"
 
-if browser == "chrome":
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.chrome.options import Options as ChromeOptions
-    from selenium.webdriver.chrome.service import Service as ChromeService
-    options = ChromeOptions()
-    if headless:
-        options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument(f"--window-size={window_size}")
-    options.add_argument("--no-sandbox")
-    if user_agent:
-        options.add_argument(f"user-agent={user_agent}")
-
-    driver_path = ChromeDriverManager().install()
-    print(f"[INFO] Using ChromeDriver at: {driver_path}")
-    service = ChromeService(driver_path)
-    driver = webdriver.Chrome(service=service, options=options)
-
-    # NEW: Ensure the path is actually executable (binary) and not a txt file!
-    if not os.access(driver_path, os.X_OK):
-        raise RuntimeError(
-            f"Downloaded ChromeDriver is not executable: {driver_path}\n"
-            f"Check if this file is really a binary driver. You may have a corrupted webdriver-manager cache."
-        )
-    service = ChromeService(driver_path)
-    driver = webdriver.Chrome(service=service, options=options)
-        elif browser == "firefox":
-            from webdriver_manager.firefox import GeckoDriverManager
-            from selenium.webdriver.firefox.options import Options as FirefoxOptions
-            from selenium.webdriver.firefox.service import Service as FirefoxService
-            options = FirefoxOptions()
-            if headless:
-                options.add_argument("--headless")
-            if user_agent:
-                options.set_preference("general.useragent.override", user_agent)
-            service = FirefoxService(GeckoDriverManager().install())
-            driver = webdriver.Firefox(service=service, options=options)
-        elif browser == "edge":
-            from webdriver_manager.microsoft import EdgeChromiumDriverManager
-            from selenium.webdriver.edge.options import Options as EdgeOptions
-            from selenium.webdriver.edge.service import Service as EdgeService
-            options = EdgeOptions()
-            if headless:
-                options.add_argument("--headless")
-            options.add_argument(f"--window-size={window_size}")
-            if user_agent:
-                options.add_argument(f"user-agent={user_agent}")
-            service = EdgeService(EdgeChromiumDriverManager().install())
-            driver = webdriver.Edge(service=service, options=options)
-        else:
-            print(f"[WARN] Unsupported browser '{browser}', using Chrome as fallback.")
-            return init_driver("chrome", user_agent, headless, window_size)
-    except WebDriverException as e:
-        print(f"[ERROR] Failed to initialize driver ({browser}): {e}")
-        raise
-    return driver
 
 
 def ensure_folder(path):
