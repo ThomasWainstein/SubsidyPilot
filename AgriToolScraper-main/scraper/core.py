@@ -204,6 +204,7 @@ def init_driver(browser="chrome", headless=True):
                 log_warning(f"Version check failed: {e}")
             
             log_step("Creating Chrome WebDriver instance")
+            # Selenium 4+ only accepts options parameter
             driver = webdriver.Chrome(options=options)
             
             log_step("Chrome driver initialized successfully")
@@ -224,6 +225,7 @@ def init_driver(browser="chrome", headless=True):
             driver_path = GeckoDriverManager().install()
             log_step(f"GeckoDriver path: {driver_path}")
             
+            # Selenium 4+ only accepts options parameter
             driver = webdriver.Firefox(options=options)
             log_step("Firefox driver initialized successfully")
             return driver

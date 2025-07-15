@@ -211,6 +211,8 @@ GitHub Actions automatically uploads ALL debugging artifacts for remote analysis
 
 This project uses webdriver-manager exclusively. No manual setup required.
 
+⚠️ **Selenium 4+ Compatibility**: Only accepts `options=chrome_options`, not both `options` and `chrome_options` parameters.
+
 ### Local Development Issues
 
 1. **Browser Requirements**: Chrome/Chromium installed (webdriver-manager handles the driver)
