@@ -152,8 +152,27 @@ def init_driver(
                 options.add_argument(f"--user-agent={user_agent}")
 
             # Use webdriver-manager ONLY - no manual path handling
-            service = ChromeService(ChromeDriverManager().install())
+            print("[DEBUG] Installing ChromeDriver via webdriver-manager...")
+            driver_path = ChromeDriverManager().install()
+            print(f"[DEBUG] ChromeDriver installed at: {driver_path}")
+            
+            # Verify the driver file exists and is executable
+            if os.path.exists(driver_path):
+                file_stat = os.stat(driver_path)
+                print(f"[DEBUG] Driver file size: {file_stat.st_size} bytes")
+                print(f"[DEBUG] Driver file mode: {oct(file_stat.st_mode)}")
+                
+                # List directory contents to debug any path issues
+                driver_dir = os.path.dirname(driver_path)
+                if os.path.exists(driver_dir):
+                    files = os.listdir(driver_dir)
+                    print(f"[DEBUG] Driver directory contents: {files}")
+            else:
+                print(f"[ERROR] Driver file not found at: {driver_path}")
+            
+            service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
+            print("[DEBUG] ChromeDriver started successfully")
             return driver
 
         elif browser == "firefox":

@@ -40,6 +40,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Audit manual driver logic (CRITICAL)
+        working-directory: ./AgriToolScraper-main
+        run: |
+          echo "🔍 Running critical audit for manual driver logic..."
+          python audit_manual_driver_logic.py
+          
+      - name: Test driver initialization (CRITICAL)
+        working-directory: ./AgriToolScraper-main
+        env:
+          DISPLAY: :99
+        run: |
+          # Start virtual display for headless browser
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 3
+          
+          echo "🧪 Testing ChromeDriver initialization..."
+          python test_driver_init.py
+          
       - name: Run scraper (FranceAgriMer)
         working-directory: ./AgriToolScraper-main
         env:
@@ -47,14 +65,13 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           DISPLAY: :99
         run: |
-          # Start virtual display for headless browser
-          Xvfb :99 -screen 0 1920x1080x24 &
-          sleep 3
+          # Virtual display already started in test step
           
           args=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             args="--dry-run"
           fi
+          echo "🚀 Running FranceAgriMer scraper..."
           python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \

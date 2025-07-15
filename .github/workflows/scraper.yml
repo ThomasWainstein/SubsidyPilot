@@ -53,6 +53,24 @@ jobs:
         mkdir -p AgriToolScraper-main/data/extracted
         mkdir -p AgriToolScraper-main/data/logs
         
+    - name: Audit manual driver logic (CRITICAL)
+      run: |
+        cd AgriToolScraper-main
+        echo "🔍 Running critical audit for manual driver logic..."
+        python audit_manual_driver_logic.py
+        
+    - name: Test driver initialization (CRITICAL) 
+      env:
+        DISPLAY: :99
+      run: |
+        cd AgriToolScraper-main
+        # Start virtual display for headless browser
+        Xvfb :99 -screen 0 1920x1080x24 &
+        sleep 3
+        
+        echo "🧪 Testing ChromeDriver initialization..."
+        python test_driver_init.py
+        
     - name: Run scraper pipeline
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -64,11 +82,9 @@ jobs:
         DISPLAY: :99
       run: |
         cd AgriToolScraper-main
-        # Start virtual display for headless browser
-        Xvfb :99 -screen 0 1920x1080x24 &
-        sleep 3
+        # Virtual display already started in test step
         
-        # Run the enhanced scraper
+        echo "🚀 Starting AgriTool scraper pipeline..."
         python main.py
         
     - name: Upload artifacts on failure

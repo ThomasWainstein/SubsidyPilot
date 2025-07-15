@@ -221,6 +221,42 @@ driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 ### Why This Matters:
 Previous issues included `[Errno 8] Exec format error` when the system attempted to execute non-binary files (like `THIRD_PARTY_NOTICES.chromedriver`) as the driver executable. **webdriver-manager** handles all cross-platform compatibility automatically.
 
+## 🛡️ Validation & Testing
+
+### Critical Tests (Run Before Deployment)
+
+The project includes critical validation tools to prevent ChromeDriver issues:
+
+```bash
+# 1. Audit for forbidden manual driver logic
+python audit_manual_driver_logic.py
+
+# 2. Test driver initialization 
+python test_driver_init.py
+```
+
+These tests are automatically run in CI and will fail the build if any manual driver logic is detected.
+
+### CI/CD Integration
+
+Both GitHub Actions workflows include:
+- **Pre-flight audit**: Scans codebase for forbidden patterns
+- **Driver initialization test**: Verifies webdriver-manager works correctly  
+- **Artifact collection**: Captures logs and debug info on failures
+
+### What the Audit Catches
+
+❌ **FORBIDDEN** (will cause `[Errno 8]`):
+- `os.listdir()` for driver files
+- `executable_path=` assignments  
+- Manual `.wdm` directory manipulation
+- Hardcoded driver paths (`/usr/bin/chromedriver`)
+- `THIRD_PARTY_NOTICES.chromedriver` references
+
+✅ **ALLOWED** (safe patterns):
+- `ChromeDriverManager().install()`
+- `webdriver.Chrome(service=service, options=options)`
+
 ### Local Development Issues
 
 1. **Browser Requirements**: Chrome/Chromium installed (webdriver-manager handles the driver)
