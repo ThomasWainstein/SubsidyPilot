@@ -66,7 +66,9 @@ def init_driver(
                 options.add_argument(f"user-agent={user_agent}")
 
             # Only use the path returned by ChromeDriverManager().install()
-            service = ChromeService(ChromeDriverManager().install())
+            chromedriver_path = ChromeDriverManager().install()
+            print(f"[DEBUG] Using chromedriver at: {chromedriver_path}")
+            service = ChromeService(chromedriver_path)
             driver = webdriver.Chrome(service=service, options=options)
             return driver
 
