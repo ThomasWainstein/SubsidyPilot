@@ -81,7 +81,7 @@ jobs:
             --dry_run ${{ github.event.inputs.dry_run || 'false' }}
             
       - name: Upload scraper logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: scraper-logs-${{ github.run_number }}
@@ -92,7 +92,7 @@ jobs:
           retention-days: 30
           
       - name: Upload error screenshots
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: error-screenshots-${{ github.run_number }}
