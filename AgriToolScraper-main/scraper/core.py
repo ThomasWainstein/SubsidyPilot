@@ -116,175 +116,55 @@ def detect_language(text):
         print(f"[ERROR] Language detection failed: {e}")
         return "unknown"
 
-def validate_driver_binary(driver_path):
+def init_driver(browser="chrome", headless=True):
     """
-    Validate that the driver path points to an actual executable binary.
-    This prevents [Errno 8] Exec format error by catching text files.
-    """
-    print(f"[VALIDATION] Checking driver binary: {driver_path}")
-    
-    if not os.path.exists(driver_path):
-        print(f"[ERROR] Driver file does not exist: {driver_path}")
-        return False
-    
-    # Check if file is executable
-    if not os.access(driver_path, os.X_OK):
-        print(f"[ERROR] Driver file is not executable: {driver_path}")
-        return False
-    
-    # Check file type using the 'file' command
-    try:
-        result = subprocess.run(['file', driver_path], capture_output=True, text=True, timeout=10)
-        file_type = result.stdout.strip()
-        print(f"[VALIDATION] File type: {file_type}")
-        
-        # Must be an executable (ELF on Linux, Mach-O on macOS, PE on Windows)
-        if any(x in file_type.lower() for x in ['executable', 'elf', 'mach-o', 'pe32']):
-            print(f"[VALIDATION] ✅ Binary validation passed")
-            return True
-        else:
-            print(f"[ERROR] ❌ File is not a binary executable: {file_type}")
-            return False
-            
-    except subprocess.TimeoutExpired:
-        print(f"[WARN] File type check timed out, assuming valid")
-        return True
-    except FileNotFoundError:
-        print(f"[WARN] 'file' command not found, skipping binary validation")
-        return True
-    except Exception as e:
-        print(f"[WARN] Binary validation failed: {e}, assuming valid")
-        return True
-
-def purge_corrupted_wdm_cache():
-    """
-    Remove corrupted webdriver-manager cache to force fresh download.
-    This solves most [Errno 8] issues in CI environments.
-    """
-    import shutil
-    wdm_cache = os.path.expanduser("~/.wdm")
-    
-    if os.path.exists(wdm_cache):
-        print(f"[CLEANUP] Removing corrupted .wdm cache: {wdm_cache}")
-        try:
-            shutil.rmtree(wdm_cache)
-            print(f"[CLEANUP] ✅ Cache purged successfully")
-        except Exception as e:
-            print(f"[CLEANUP] ⚠️ Failed to remove cache: {e}")
-    else:
-        print(f"[CLEANUP] No .wdm cache found to purge")
-
-def init_driver(
-    browser="chrome",
-    user_agent=None,
-    headless=True,
-    window_size="1200,800",
-    force_cache_purge=False
-):
-    """
-    Initialize and return a Selenium WebDriver using ONLY webdriver-manager.
-    
-    CRITICAL: This function uses ONLY webdriver-manager and NO manual path logic.
-    Added bulletproof validation to prevent [Errno 8] Exec format error.
+    Initialize a Selenium WebDriver using webdriver-manager.
     
     Args:
-        browser (str): Browser type - 'chrome', 'firefox', or 'edge'
-        user_agent (str): Optional custom user agent string
-        headless (bool): Run browser in headless mode (required for CI)
-        window_size (str): Window size in format "width,height"
-        force_cache_purge (bool): Force .wdm cache purge before init
-    
+        browser (str): Browser type (chrome, firefox). Default: chrome
+        headless (bool): Run in headless mode. Default: True
+        
     Returns:
-        WebDriver: Configured browser driver instance
+        WebDriver: Configured Selenium WebDriver instance
     """
     try:
-        # Purge cache if requested or if we're in CI
-        if force_cache_purge or os.getenv('CI') or os.getenv('GITHUB_ACTIONS'):
-            purge_corrupted_wdm_cache()
-        
-        if browser == "chrome":
-            options = ChromeOptions()
-            if headless:
-                options.add_argument("--headless")
+        if browser.lower() == "chrome":
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from webdriver_manager.chrome import ChromeDriverManager
             
-            # Essential arguments for CI/CD stability - DO NOT REMOVE
+            options = Options()
+            
+            if headless:
+                options.add_argument("--headless=new")
+            
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-gpu")
             options.add_argument("--disable-web-security")
             options.add_argument("--disable-features=VizDisplayCompositor")
-            options.add_argument(f"--window-size={window_size}")
+            options.add_argument("--window-size=1920,1080")
             
-            if user_agent:
-                options.add_argument(f"--user-agent={user_agent}")
-
-            # Use webdriver-manager with bulletproof validation
-            print("[DEBUG] Installing ChromeDriver via webdriver-manager...")
+            driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            return driver
+        
+        elif browser.lower() == "firefox":
+            from selenium import webdriver
+            from selenium.webdriver.firefox.options import Options
+            from webdriver_manager.firefox import GeckoDriverManager
             
-            # Retry logic for webdriver-manager
-            max_retries = 3
-            for attempt in range(1, max_retries + 1):
-                try:
-                     driver_path = ChromeDriverManager().install()
-                     print(f"[DEBUG] ChromeDriver initialized via webdriver-manager: {driver_path}")
-                     
-                     # Binary is valid, proceed with driver creation
-                    service = ChromeService(driver_path)
-                    driver = webdriver.Chrome(service=service, options=options)
-                    print("[DEBUG] ✅ ChromeDriver started successfully")
-                    return driver
-                    
-                except Exception as e:
-                    print(f"[ERROR] Attempt {attempt} failed: {e}")
-                    if attempt < max_retries:
-                        print(f"[RETRY] Retrying in 5 seconds...")
-                        time.sleep(5)
-                        purge_corrupted_wdm_cache()
-                    else:
-                        raise
-
-        elif browser == "firefox":
-            options = FirefoxOptions()
+            options = Options()
             if headless:
                 options.add_argument("--headless")
             
-            # Essential Firefox arguments for CI stability
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            
-            if user_agent:
-                options.set_preference("general.useragent.override", user_agent)
-            
-            # Use webdriver-manager ONLY - no manual path handling
-            service = FirefoxService(GeckoDriverManager().install())
-            driver = webdriver.Firefox(service=service, options=options)
+            driver = webdriver.Firefox(GeckoDriverManager().install(), options=options)
             return driver
-
-        elif browser == "edge":
-            options = EdgeOptions()
-            if headless:
-                options.add_argument("--headless")
-            
-            # Essential Edge arguments for CI stability
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            options.add_argument(f"--window-size={window_size}")
-            
-            if user_agent:
-                options.add_argument(f"--user-agent={user_agent}")
-            
-            # Use webdriver-manager ONLY - no manual path handling
-            service = EdgeService(EdgeChromiumDriverManager().install())
-            driver = webdriver.Edge(service=service, options=options)
-            return driver
-
+        
         else:
-            print(f"[WARN] Unsupported browser '{browser}', using Chrome as fallback.")
-            return init_driver("chrome", user_agent, headless, window_size, force_cache_purge)
-
-    except WebDriverException as e:
-        print(f"[ERROR] Failed to initialize driver ({browser}): {e}")
+            raise ValueError(f"Unsupported browser: {browser}")
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize {browser} driver: {e}")
         raise
 
 def ensure_folder(path):

@@ -186,30 +186,9 @@ Edit `scraper/core.py` and update `FIELD_KEYWORDS_FR` for French sources or crea
 3. Review browser dependencies installation
 4. Check for website structure changes
 
-## WebDriver Management
+## Driver Management
 
-This project uses `webdriver-manager` exclusively for all ChromeDriver installation and management.
-
-### Usage
-
-```python
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-
-options = Options()
-options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-
-driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-```
-
-### Important Notes
-
-- Driver installation and management is 100% handled by webdriver-manager
-- No manual driver install, path, or cache logic is allowed or required, even in CI
-- webdriver-manager handles all cross-platform compatibility automatically
+This project uses webdriver-manager exclusively. No manual setup required.
 
 ### Local Development Issues
 

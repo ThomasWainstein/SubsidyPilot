@@ -42,7 +42,6 @@ jobs:
           chromium-browser \
           xvfb \
           file
-        # NOTE: NO manual chromedriver installation - webdriver-manager handles it
           
     - name: Install Python dependencies
       run: |
@@ -55,41 +54,20 @@ jobs:
         mkdir -p AgriToolScraper-main/data/extracted
         mkdir -p AgriToolScraper-main/data/logs
         
-    - name: Audit manual driver logic (CRITICAL)
-      run: |
-        cd AgriToolScraper-main
-        echo "🔍 Running enhanced audit for manual driver logic..."
-        python audit_manual_driver_logic.py
         
     - name: Debug system Chrome installation
       run: |
         echo "🔍 Debugging Chrome/Chromium installation..."
         which chromium-browser || echo "chromium-browser not found"
-        which google-chrome || echo "google-chrome not found"
-        which chrome || echo "chrome not found"
-        
-        # Check Chrome version
         chromium-browser --version || echo "Cannot get chromium version"
         
-        # Check for any existing chromedriver (should be none)
-        which chromedriver && echo "⚠️ WARNING: chromedriver found in PATH!" || echo "✅ No chromedriver in PATH (good)"
-        
-    - name: Test driver initialization (CRITICAL) 
+    - name: Setup virtual display
       env:
         DISPLAY: :99
       run: |
-        cd AgriToolScraper-main
-        # Start virtual display for headless browser
         Xvfb :99 -screen 0 1920x1080x24 &
         sleep 3
         
-        echo "🧪 Testing enhanced ChromeDriver initialization..."
-        python test_driver_init.py
-        
-    - name: Verify webdriver-manager setup
-      run: |
-        cd AgriToolScraper-main
-        echo "✅ webdriver-manager handles all driver installation automatically"
         
     - name: Run scraper pipeline
       env:
@@ -102,8 +80,6 @@ jobs:
         DISPLAY: :99
       run: |
         cd AgriToolScraper-main
-        # Virtual display already started in test step
-        
         echo "🚀 Starting AgriTool scraper pipeline..."
         python main.py
         
@@ -125,7 +101,3 @@ jobs:
         path: AgriToolScraper-main/data/logs/run_summary.json
         retention-days: 30
         
-    - name: Final verification
-      if: always()
-      run: |
-        echo "✅ webdriver-manager handles all driver installation automatically"

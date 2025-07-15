@@ -36,7 +36,6 @@ jobs:
             chromium-browser \
             xvfb \
             file
-          # NOTE: NO manual chromedriver installation - webdriver-manager only
 
       - name: Install dependencies
         working-directory: ./AgriToolScraper-main
@@ -49,32 +48,15 @@ jobs:
           echo "🔍 Chrome/Chromium debugging..."
           which chromium-browser || echo "chromium-browser not found"
           chromium-browser --version || echo "Cannot get version"
-          
-          echo "🔍 Checking for existing chromedriver..."
-          which chromedriver && echo "⚠️ chromedriver in PATH!" || echo "✅ No chromedriver in PATH"
 
-      - name: Audit manual driver logic (CRITICAL)
-        working-directory: ./AgriToolScraper-main
-        run: |
-          echo "🔍 Running enhanced audit for manual driver logic..."
-          python audit_manual_driver_logic.py
           
-      - name: Test driver initialization (CRITICAL)
-        working-directory: ./AgriToolScraper-main
+      - name: Setup virtual display
         env:
           DISPLAY: :99
         run: |
-          # Start virtual display for headless browser
           Xvfb :99 -screen 0 1920x1080x24 &
           sleep 3
-          
-          echo "🧪 Testing enhanced ChromeDriver initialization..."
-          python test_driver_init.py
 
-      - name: Verify webdriver-manager setup
-        working-directory: ./AgriToolScraper-main
-        run: |
-          echo "✅ webdriver-manager handles all driver installation automatically"
           
       - name: Run scraper (FranceAgriMer)
         working-directory: ./AgriToolScraper-main
@@ -83,13 +65,11 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           DISPLAY: :99
         run: |
-          # Virtual display already started in test step
-          
           args=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             args="--dry-run"
           fi
-          echo "🚀 Running FranceAgriMer scraper with enhanced validation..."
+          echo "🚀 Running FranceAgriMer scraper..."
           python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \
@@ -104,10 +84,3 @@ jobs:
             AgriToolScraper-main/scraper.log
             AgriToolScraper-main/run_summary.json
 
-      - name: Final environment check
-        if: always()
-        run: |
-          echo "✅ Environment summary:"
-          echo "Chrome processes:"
-          ps aux | grep chrome || echo "No chrome processes"
-          echo "webdriver-manager handles all driver installation automatically"
