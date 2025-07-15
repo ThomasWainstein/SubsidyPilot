@@ -313,6 +313,7 @@ export type Database = {
       }
       subsidies: {
         Row: {
+          agency: string | null
           amount_max: number | null
           amount_min: number | null
           categories: string[] | null
@@ -320,19 +321,24 @@ export type Database = {
           created_at: string | null
           deadline: string | null
           description: Json
+          documents: Json | null
+          domain: string | null
           eligibility_criteria: Json | null
           funding_type: string | null
           id: string
           language: string[] | null
           legal_entities: string[] | null
           matching_tags: string[] | null
+          raw_content: Json | null
           region: string[] | null
+          source_url: string | null
           status: string | null
           tags: string[] | null
           title: Json
           updated_at: string | null
         }
         Insert: {
+          agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
           categories?: string[] | null
@@ -340,19 +346,24 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description: Json
+          documents?: Json | null
+          domain?: string | null
           eligibility_criteria?: Json | null
           funding_type?: string | null
           id?: string
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
+          raw_content?: Json | null
           region?: string[] | null
+          source_url?: string | null
           status?: string | null
           tags?: string[] | null
           title: Json
           updated_at?: string | null
         }
         Update: {
+          agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
           categories?: string[] | null
@@ -360,13 +371,17 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description?: Json
+          documents?: Json | null
+          domain?: string | null
           eligibility_criteria?: Json | null
           funding_type?: string | null
           id?: string
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
+          raw_content?: Json | null
           region?: string[] | null
+          source_url?: string | null
           status?: string | null
           tags?: string[] | null
           title?: Json

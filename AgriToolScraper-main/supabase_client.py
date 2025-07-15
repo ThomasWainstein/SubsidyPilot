@@ -59,28 +59,27 @@ class SupabaseUploader:
     def validate_subsidy_data(self, data: Dict) -> Dict:
         """
         Validate and transform scraped data to match Supabase subsidies schema.
-        Returns cleaned data ready for insertion.
+        Returns cleaned data ready for insertion with all 26 fields mapped.
         """
         # Map common scraper fields to Supabase schema
         mapped_data = {}
         
-        # Required fields
+        # Required fields with multilingual JSON transformation
         if 'title' in data:
-            # Handle multilingual title
             if isinstance(data['title'], str):
-                mapped_data['title'] = {'en': data['title']}
+                mapped_data['title'] = {'fr': data['title']}  # FranceAgriMer = French
             else:
                 mapped_data['title'] = data['title']
         else:
-            mapped_data['title'] = {'en': 'Untitled Subsidy'}
+            mapped_data['title'] = {'fr': 'Aide sans titre'}
             
         if 'description' in data:
             if isinstance(data['description'], str):
-                mapped_data['description'] = {'en': data['description']}
+                mapped_data['description'] = {'fr': data['description']}  # FranceAgriMer = French
             else:
                 mapped_data['description'] = data['description']
         else:
-            mapped_data['description'] = {'en': 'No description available'}
+            mapped_data['description'] = {'fr': 'Description non disponible'}
             
         # Code (required, generate if missing)
         mapped_data['code'] = data.get('code', f"AUTO_{uuid.uuid4().hex[:8].upper()}")
@@ -90,42 +89,66 @@ class SupabaseUploader:
             try:
                 mapped_data['amount_min'] = float(data['amount_min'])
             except (ValueError, TypeError):
-                pass
+                mapped_data['amount_min'] = None
                 
         if 'amount_max' in data:
             try:
                 mapped_data['amount_max'] = float(data['amount_max'])
             except (ValueError, TypeError):
-                pass
+                mapped_data['amount_max'] = None
         
-        # Date fields
-        if 'deadline' in data:
+        # Date fields - ensure proper format
+        if 'deadline' in data and data['deadline']:
             try:
-                # Assume ISO format or convert as needed
                 mapped_data['deadline'] = data['deadline']
             except:
-                pass
+                mapped_data['deadline'] = None
         
         # Array fields
         array_fields = ['categories', 'language', 'tags', 'region', 'legal_entities', 'matching_tags']
         for field in array_fields:
-            if field in data:
+            if field in data and data[field]:
                 if isinstance(data[field], list):
                     mapped_data[field] = data[field]
                 elif isinstance(data[field], str):
                     mapped_data[field] = [data[field]]
+            else:
+                mapped_data[field] = []
         
-        # Default language
-        if 'language' not in mapped_data:
-            mapped_data['language'] = ['fr']  # Default for AFIR
+        # Default language for FranceAgriMer
+        if not mapped_data.get('language'):
+            mapped_data['language'] = ['fr']
             
-        # Status
+        # Status and funding type
         mapped_data['status'] = data.get('status', 'open')
         mapped_data['funding_type'] = data.get('funding_type', 'public')
         
-        # Eligibility criteria (JSON field)
-        if 'eligibility' in data:
-            mapped_data['eligibility_criteria'] = {'criteria': data['eligibility']}
+        # Eligibility criteria (JSON field) - Fixed mapping
+        if 'eligibility' in data and data['eligibility']:
+            if isinstance(data['eligibility'], str):
+                mapped_data['eligibility_criteria'] = {'fr': data['eligibility']}
+            else:
+                mapped_data['eligibility_criteria'] = data['eligibility']
+        
+        # NEW FIELDS - Map previously missing scraped fields
+        # Raw content (all unmapped text blocks)
+        if 'raw_content' in data:
+            mapped_data['raw_content'] = data['raw_content']
+        
+        # Agency/organization
+        if 'agency' in data:
+            mapped_data['agency'] = data['agency']
+        
+        # Documents list (download links)
+        if 'documents' in data:
+            mapped_data['documents'] = data['documents']
+        
+        # Source metadata
+        if 'source_url' in data:
+            mapped_data['source_url'] = data['source_url']
+            
+        if 'domain' in data:
+            mapped_data['domain'] = data['domain']
             
         return mapped_data
     
