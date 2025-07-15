@@ -29,10 +29,7 @@ const DashboardNavigationPanel = ({ onAddFarm }: DashboardNavigationPanelProps) 
             Find Subsidies
           </Button>
           
-          <Button variant="outline" onClick={() => navigate('/regulations')} className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Regulations
-          </Button>
+          {/* Regulations button removed per business requirements */}
         </div>
       </CardContent>
     </Card>

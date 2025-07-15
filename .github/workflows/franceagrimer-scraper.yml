@@ -1,0 +1,112 @@
+name: FranceAgriMer Subsidy Scraper
+
+on:
+  # Weekly schedule: Every Sunday at 01:00 UTC
+  schedule:
+    - cron: '0 1 * * 0'
+  
+  # Manual trigger for immediate execution
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: 'Maximum pages to scrape (0 = unlimited)'
+        required: false
+        default: '0'
+        type: string
+      dry_run:
+        description: 'Dry run mode (no database writes)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  scrape-franceagrimer:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            chromium-browser \
+            chromium-chromedriver \
+            python3-pip \
+            python3-venv
+            
+      - name: Install Python dependencies
+        working-directory: ./AgriToolScraper-main
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Configure Chrome for headless operation
+        run: |
+          export CHROME_BIN=/usr/bin/chromium-browser
+          export CHROMEDRIVER_BIN=/usr/bin/chromedriver
+          
+      - name: Set up environment variables
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> $GITHUB_ENV
+          echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
+          echo "CHROMEDRIVER_BIN=/usr/bin/chromedriver" >> $GITHUB_ENV
+          
+      - name: Clear Python cache
+        working-directory: ./AgriToolScraper-main
+        run: |
+          python clear_cache.py
+          
+      - name: Run Selenium compliance test
+        working-directory: ./AgriToolScraper-main
+        run: |
+          python test_driver_compliance.py
+          
+      - name: Execute FranceAgriMer scraper
+        working-directory: ./AgriToolScraper-main
+        run: |
+          python main.py \
+            --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
+            --max_pages ${{ github.event.inputs.max_pages || '0' }} \
+            --dry_run ${{ github.event.inputs.dry_run || 'false' }}
+            
+      - name: Upload scraper logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: scraper-logs-${{ github.run_number }}
+          path: |
+            AgriToolScraper-main/logs/
+            AgriToolScraper-main/data/extracted/
+            AgriToolScraper-main/data/raw_pages/
+          retention-days: 30
+          
+      - name: Upload error screenshots
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: error-screenshots-${{ github.run_number }}
+          path: |
+            AgriToolScraper-main/data/extracted/error_*.png
+          retention-days: 7
+          
+      - name: Notify on completion
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ FranceAgriMer scraper completed successfully"
+            echo "📊 Check Supabase database for new subsidy records"
+          else
+            echo "❌ FranceAgriMer scraper failed"
+            echo "🔍 Check artifacts for logs and error details"
+          fi

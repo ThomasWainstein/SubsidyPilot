@@ -55,11 +55,10 @@ const Navbar = () => {
     return email.split('@')[0].substring(0, 2).toUpperCase();
   };
 
-  // Only show navigation items when user is authenticated
   const navItems = user ? [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
     { path: '/search', label: 'Search Subsidies', icon: Search },
-    { path: '/regulations', label: 'Regulations', icon: FileText },
+    // Regulations tab removed per business requirements
   ] : [];
 
   // Add admin item if user is admin

@@ -14,7 +14,7 @@ import SubsidySearchPage from '@/pages/SubsidySearchPage';
 import CalendarPage from '@/pages/CalendarPage';
 import ApplicationFormPage from '@/pages/ApplicationFormPage';
 import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
-import RegulationsPage from '@/pages/RegulationsPage';
+// import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
 import AdminPage from '@/pages/AdminPage';
 import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
@@ -117,14 +117,7 @@ function App() {
                       </ProtectedRoute>
                     } 
                   />
-                  <Route 
-                    path="/regulations" 
-                    element={
-                      <ProtectedRoute>
-                        <RegulationsPage />
-                      </ProtectedRoute>
-                    } 
-                  />
+                    {/* Regulations route removed per business requirements */}
                   <Route 
                     path="/admin" 
                     element={
