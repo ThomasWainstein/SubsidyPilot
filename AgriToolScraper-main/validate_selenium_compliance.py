@@ -50,20 +50,54 @@ FORBIDDEN_PATTERNS = {
     }
 }
 
+# Documentation files with educational examples (excluded from violations)
+EXCLUDED_DOC_FILES = {
+    'README.md',
+    'SELENIUM_4_COMPLIANCE_ENFORCEMENT.md', 
+    'SELENIUM_4_COMPLIANCE_PROOF.md',
+    'SELENIUM_4_AUDIT_SUMMARY.md'
+}
+
 def scan_file(file_path: str) -> List[Tuple[str, int, str, str]]:
     """
     Scan a single file for forbidden patterns.
+    Excludes documentation files with educational examples.
     
     Returns:
         List of (pattern_name, line_number, line_content, severity)
     """
     violations = []
     
+    # Skip documentation files that contain educational examples
+    filename = os.path.basename(file_path)
+    if filename in EXCLUDED_DOC_FILES:
+        return violations
+    
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            for line_num, line in enumerate(f, 1):
+            lines = f.readlines()
+            in_code_block = False
+            
+            for line_num, line in enumerate(lines, 1):
+                # Track if we're in a code block in markdown files
+                if file_path.endswith('.md'):
+                    if line.strip().startswith('```'):
+                        in_code_block = not in_code_block
+                        continue
+                    # Skip lines that are clearly documentation examples
+                    if in_code_block and ('# ❌' in line or '# FORBIDDEN' in line or '# WRONG' in line):
+                        continue
+                
+                # Check for forbidden patterns in actual code
                 for pattern_name, pattern_info in FORBIDDEN_PATTERNS.items():
                     if re.search(pattern_info['regex'], line):
+                        # Additional context check for .py files
+                        if file_path.endswith('.py'):
+                            # Skip commented examples
+                            stripped = line.strip()
+                            if stripped.startswith('#') and ('example' in stripped.lower() or 'wrong' in stripped.lower() or 'forbidden' in stripped.lower()):
+                                continue
+                        
                         violations.append((
                             pattern_name,
                             line_num,
