@@ -1,12 +1,14 @@
 {
   "list_page": "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales",
-  "link_selector": "a[rel='bookmark']",
-  "next_page_selector": "li.pagination-next a",
+  "link_selector": "a[href*='/Accompagner/Dispositifs-par-filiere/']",
+  "next_page_selector": ".pagination .next a",
   "detail_selectors": {
-    "title": "h1", // UPDATE: Real selector for the title
-    "description": ".content--main", // UPDATE: Real selector for description
-    "eligibility": ".eligibility-section", // UPDATE: Real selector for eligibility
-    "documents": ".documents-list a", // UPDATE: Real selector for doc links
-    "deadline": ".deadline-date" // UPDATE: Real selector for deadlines
+    "title": "h1.page-title, .page-header h1",
+    "description": ".field-name-body .field-item, .content-main .field-item",
+    "eligibility": ".field-name-field-eligibility, .eligibility-criteria",
+    "documents": ".field-name-field-documents a, .attachment-list a",
+    "deadline": ".field-name-field-deadline, .deadline-info",
+    "agency": ".field-name-field-agency, .agency-info",
+    "amount": ".field-name-field-amount, .amount-info, .montant"
   }
 }
