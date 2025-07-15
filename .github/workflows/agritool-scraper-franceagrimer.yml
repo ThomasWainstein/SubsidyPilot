@@ -28,6 +28,12 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser xvfb
+          # NOTE: No manual chromedriver installation - using webdriver-manager only
+
       - name: Install dependencies
         working-directory: ./AgriToolScraper-main
         run: |
@@ -39,7 +45,12 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DISPLAY: :99
         run: |
+          # Start virtual display for headless browser
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 3
+          
           args=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             args="--dry-run"
@@ -58,5 +69,10 @@ jobs:
             AgriToolScraper-main/scraper.log
             AgriToolScraper-main/run_summary.json
 
-      - name: List driver files
-        run: ls -lR ~/.wdm/
+      - name: Verify webdriver-manager cache (debug)
+        if: always()
+        run: |
+          echo "Listing webdriver-manager cache:"
+          ls -la ~/.wdm/ || echo "No .wdm directory found"
+          echo "Checking for any chromedriver processes:"
+          ps aux | grep chrome || echo "No chrome processes found"

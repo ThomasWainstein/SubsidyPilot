@@ -2,10 +2,11 @@
 """
 Enhanced AgriTool scraper with Supabase integration.
 Combines URL collection, content extraction, and database upload.
-"""
 
-import shutil, os
-shutil.rmtree(os.path.expanduser("~/.wdm/drivers"), ignore_errors=True)
+CRITICAL: This module uses ONLY webdriver-manager for driver management.
+No manual driver path handling, .wdm directory manipulation, or custom 
+driver logic is permitted. All drivers are managed automatically.
+"""
 
 import os
 import sys

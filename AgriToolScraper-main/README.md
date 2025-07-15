@@ -186,9 +186,44 @@ Edit `scraper/core.py` and update `FIELD_KEYWORDS_FR` for French sources or crea
 3. Review browser dependencies installation
 4. Check for website structure changes
 
+## 🚨 CRITICAL: WebDriver Management Rules
+
+**NEVER ADD MANUAL CHROMEDRIVER LOGIC - ALWAYS USE WEBDRIVER-MANAGER**
+
+This project uses **ONLY** `webdriver-manager` for all browser driver management. Manual path handling, directory scanning, or custom driver logic is **STRICTLY FORBIDDEN** and will cause CI failures.
+
+### ✅ Correct WebDriver Usage:
+```python
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+
+options = Options()
+options.add_argument('--headless')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+
+driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+```
+
+### ❌ FORBIDDEN Practices:
+- Manual driver path references (`/usr/bin/chromedriver`, `~/.wdm/...`)
+- Directory scanning (`os.listdir()` for drivers)
+- Custom driver download logic
+- Platform-specific path handling
+- Hardcoded driver locations
+
+### CI Stability Flags (Required):
+- `--no-sandbox`: Prevents sandbox issues in containers
+- `--disable-dev-shm-usage`: Avoids shared memory issues
+- `--headless`: Required for CI runners without displays
+
+### Why This Matters:
+Previous issues included `[Errno 8] Exec format error` when the system attempted to execute non-binary files (like `THIRD_PARTY_NOTICES.chromedriver`) as the driver executable. **webdriver-manager** handles all cross-platform compatibility automatically.
+
 ### Local Development Issues
 
-1. Ensure Chrome/Chromium is installed for Selenium
+1. **Browser Requirements**: Chrome/Chromium installed (webdriver-manager handles the driver)
 2. Verify Python version compatibility (3.8+)
 3. Check network connectivity to target sites
 4. Validate Supabase credentials

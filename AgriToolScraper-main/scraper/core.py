@@ -20,9 +20,77 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 
 FIELD_KEYWORDS_FR = {
-    # ... (your FIELD_KEYWORDS_FR dictionary here, unchanged) ...
-    # To save space, copy as-is from your own snippet above
-    # ...
+    "title": [
+        "titre de l'aide", "intitulé", "nom de l'aide", "titre", "titre principal", 
+        "nom", "titre du dispositif", "titre de la mesure", "intitulé de la mesure", 
+        "libellé", "nom complet", "dénomination"
+    ],
+    "description": [
+        "description", "présentation", "objectif", "contexte", "but", "synthèse", 
+        "texte principal", "résumé", "explication", "informations", "texte descriptif", 
+        "détail", "objet", "présentation générale", "texte explicatif"
+    ],
+    "eligibility": [
+        "bénéficiaire", "critère d'éligibilité", "qui peut en bénéficier", "public visé", 
+        "conditions d'accès", "admissibilité", "public éligible", "qui est concerné", 
+        "cible", "éligibilité", "personnes concernées", "catégories bénéficiaires", 
+        "profil éligible", "critères de sélection", "profil visé", 
+        "conditions de participation", "public concerné", "personnes éligibles", "statut éligible"
+    ],
+    "deadline": [
+        "date limite", "clôture", "date de dépôt", "fin de dépôt", "délai", 
+        "date butoir", "date de clôture", "date d'échéance"
+    ],
+    "amount": [
+        "montant", "budget", "financement", "subvention", "aide financière", 
+        "allocation", "dotation", "enveloppe", "plafond", "minimum", "maximum"
+    ],
+    "documents": [
+        "documents", "pièces justificatives", "annexes", "formulaires", 
+        "dossier de candidature", "pièces à fournir", "documents requis"
+    ],
+    "application_method": [
+        "candidature", "comment postuler", "procédure de candidature", 
+        "dépôt de dossier", "modalités de candidature", "mode de dépôt", 
+        "comment candidater", "demande", "procédure de demande", 
+        "soumission de dossier", "dépôt en ligne", "inscription"
+    ],
+    "evaluation_criteria": [
+        "critères d'évaluation", "grille d'évaluation", "méthode de sélection", 
+        "barème", "critères de notation", "système d'évaluation", 
+        "critères d'examen", "critères de choix"
+    ],
+    "previous_acceptance_rate": [
+        "taux de réussite", "taux d'acceptation", "projets financés", 
+        "statistiques d'acceptation", "historique d'attribution", "taux de sélection"
+    ],
+    "priority_groups": [
+        "public prioritaire", "groupes cibles", "publics prioritaires", 
+        "priorités", "groupes bénéficiaires", "public cible", "catégories prioritaires"
+    ],
+    "legal_entity_type": [
+        "statut juridique", "type de structure", "forme juridique", 
+        "entité bénéficiaire", "catégorie juridique", "personnalité juridique", 
+        "type d'organisation"
+    ],
+    "funding_source": [
+        "source de financement", "origine des fonds", "financeur", 
+        "partenaire financier", "institution financière", "organisme financeur", 
+        "bailleur de fonds"
+    ],
+    "compliance_requirements": [
+        "conditions de conformité", "réglementation applicable", "respect des normes", 
+        "obligations légales", "critères de conformité", "exigences réglementaires", 
+        "obligations de conformité"
+    ],
+    "language": [
+        "langue", "langue de dépôt", "langue de la demande", "langue d'instruction", 
+        "langue du formulaire", "langue exigée"
+    ],
+    "matching_algorithm_score": [
+        "score d'éligibilité", "niveau de correspondance", "indice de matching", 
+        "score de pertinence", "note de correspondance"
+    ]
 }
 
 def log_unmapped_label(label, url=None):
@@ -51,29 +119,40 @@ def init_driver(
     headless=True,
     window_size="1200,800"
 ):
-    import os
-
+    """
+    Initialize and return a Selenium WebDriver using only webdriver-manager.
+    
+    CRITICAL: This function uses ONLY webdriver-manager and NO manual path logic.
+    Never add custom path handling, directory scanning, or manual driver logic.
+    
+    Args:
+        browser (str): Browser type - 'chrome', 'firefox', or 'edge'
+        user_agent (str): Optional custom user agent string
+        headless (bool): Run browser in headless mode (required for CI)
+        window_size (str): Window size in format "width,height"
+    
+    Returns:
+        WebDriver: Configured browser driver instance
+    """
     try:
         if browser == "chrome":
             options = ChromeOptions()
             if headless:
                 options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            options.add_argument(f"--window-size={window_size}")
+            
+            # Essential arguments for CI/CD stability - DO NOT REMOVE
             options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--disable-features=VizDisplayCompositor")
+            options.add_argument(f"--window-size={window_size}")
+            
             if user_agent:
-                options.add_argument(f"user-agent={user_agent}")
+                options.add_argument(f"--user-agent={user_agent}")
 
-            chromedriver_path = ChromeDriverManager().install()
-            # Ensure we are pointing to the ACTUAL chromedriver binary
-            if not os.path.basename(chromedriver_path) == "chromedriver":
-                chromedriver_dir = os.path.dirname(chromedriver_path)
-                for fname in os.listdir(chromedriver_dir):
-                    if fname == "chromedriver":
-                        chromedriver_path = os.path.join(chromedriver_dir, fname)
-                        break
-            print(f"[DEBUG] Using chromedriver at: {chromedriver_path}")
-            service = ChromeService(chromedriver_path)
+            # Use webdriver-manager ONLY - no manual path handling
+            service = ChromeService(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
             return driver
 
@@ -81,8 +160,15 @@ def init_driver(
             options = FirefoxOptions()
             if headless:
                 options.add_argument("--headless")
+            
+            # Essential Firefox arguments for CI stability
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            
             if user_agent:
                 options.set_preference("general.useragent.override", user_agent)
+            
+            # Use webdriver-manager ONLY - no manual path handling
             service = FirefoxService(GeckoDriverManager().install())
             driver = webdriver.Firefox(service=service, options=options)
             return driver
@@ -91,9 +177,17 @@ def init_driver(
             options = EdgeOptions()
             if headless:
                 options.add_argument("--headless")
+            
+            # Essential Edge arguments for CI stability
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
             options.add_argument(f"--window-size={window_size}")
+            
             if user_agent:
-                options.add_argument(f"user-agent={user_agent}")
+                options.add_argument(f"--user-agent={user_agent}")
+            
+            # Use webdriver-manager ONLY - no manual path handling
             service = EdgeService(EdgeChromiumDriverManager().install())
             driver = webdriver.Edge(service=service, options=options)
             return driver
