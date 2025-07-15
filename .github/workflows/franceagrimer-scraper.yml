@@ -75,27 +75,52 @@ jobs:
           echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
           echo "CHROMEDRIVER_BIN=/usr/bin/chromedriver" >> $GITHUB_ENV
           
-      - name: Clear Python cache
+      - name: 🔥 STEP 1 - SELENIUM 4+ COMPLIANCE CHECK
         working-directory: ./AgriToolScraper-main
         run: |
           set -xe
+          echo "🔥 VERIFYING SELENIUM 4+ COMPLIANCE"
+          python validate_selenium_compliance.py || (echo "❌ SELENIUM COMPLIANCE FAILED"; exit 1)
+          echo "✅ SELENIUM 4+ COMPLIANCE VERIFIED"
+
+      - name: 🔥 STEP 2 - CLEAR PYTHON CACHES  
+        working-directory: ./AgriToolScraper-main
+        run: |
+          set -xe
+          echo "🔥 CLEARING PYTHON CACHES"
           python clear_cache.py >clear_cache.log 2>&1 || (cat clear_cache.log; exit 1)
-          
-      - name: Run Selenium compliance test
+          echo "✅ PYTHON CACHES CLEARED"
+
+      - name: 🔥 STEP 3 - DRIVER COMPLIANCE TEST
         working-directory: ./AgriToolScraper-main
         run: |
           set -xe
+          echo "🔥 TESTING DRIVER INITIALIZATION"
           python test_driver_compliance.py >compliance_test.log 2>&1 || (cat compliance_test.log; exit 1)
-          
-      - name: Execute FranceAgriMer scraper
+          echo "✅ DRIVER COMPLIANCE VERIFIED"
+
+      - name: 🔥 STEP 4 - FRANCEAGRIMER SCRAPER EXECUTION
         working-directory: ./AgriToolScraper-main
         run: |
           set -xe
+          echo "🔥 STARTING FRANCEAGRIMER SUBSIDY SCRAPER"
+          echo "📊 SCRAPER PARAMETERS:"
+          echo "   Max Pages: ${{ github.event.inputs.max_pages || '0' }}"  
+          echo "   Dry Run: ${{ github.event.inputs.dry_run || 'false' }}"
+          echo ""
+          
           python main.py \
             --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
             --max_pages ${{ github.event.inputs.max_pages || '0' }} \
             --dry_run ${{ github.event.inputs.dry_run || 'false' }} \
-            >scraper_main.log 2>&1 || (cat scraper_main.log; exit 1)
+            >scraper_main.log 2>&1 || (
+              echo "❌ SCRAPER EXECUTION FAILED"
+              echo "📋 SCRAPER LOG TAIL:"
+              tail -n 100 scraper_main.log
+              exit 1
+            )
+          
+          echo "✅ FRANCEAGRIMER SCRAPER COMPLETED SUCCESSFULLY"
             
       - name: Upload scraper logs
         uses: actions/upload-artifact@v4
@@ -137,13 +162,36 @@ jobs:
           for f in AgriToolScraper-main/data/extracted/*; do echo "=== $f ==="; tail -n 100 "$f" || true; done
           for f in AgriToolScraper-main/*.log; do echo "=== $f ==="; tail -n 100 "$f" || true; done
 
-      - name: Notify on completion
-        if: always()
+      - name: ✅ SUCCESS NOTIFICATION
+        if: success()
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ FranceAgriMer scraper completed successfully"
-            echo "📊 Check Supabase database for new subsidy records"
-          else
-            echo "❌ FranceAgriMer scraper failed"
-            echo "🔍 Check artifacts for logs and error details"
-          fi
+          echo "🎉 FRANCEAGRIMER SCRAPER JOB COMPLETED SUCCESSFULLY"
+          echo "="*60
+          echo "📊 EXECUTION SUMMARY:"
+          echo "   - Selenium 4+ Compliance: ✅ VERIFIED" 
+          echo "   - Python Caches: ✅ CLEARED"
+          echo "   - Driver Initialization: ✅ TESTED"
+          echo "   - FranceAgriMer Scraping: ✅ COMPLETED"
+          echo "="*60
+          echo "📁 ARTIFACTS UPLOADED:"
+          echo "   - Scraper logs and results"
+          echo "   - Error screenshots (if any)"
+          echo "   - Raw extracted data"
+          echo "="*60
+          echo "🚀 JOB STATUS: SUCCESS - READY FOR PRODUCTION"
+
+      - name: ❌ FAILURE NOTIFICATION  
+        if: failure()
+        run: |
+          echo "💥 FRANCEAGRIMER SCRAPER JOB FAILED"
+          echo "="*60
+          echo "❌ FAILURE ANALYSIS REQUIRED"
+          echo "📋 CHECK THE FOLLOWING:"
+          echo "   1. Selenium 4+ compliance violations"
+          echo "   2. Driver initialization issues"
+          echo "   3. Website structure changes"
+          echo "   4. Network connectivity problems"
+          echo "   5. Supabase credentials/permissions"
+          echo "="*60
+          echo "📁 DEBUG ARTIFACTS UPLOADED FOR ANALYSIS"
+          echo "🔧 FIX ISSUES BEFORE RETRY"
