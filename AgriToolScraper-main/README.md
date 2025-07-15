@@ -211,7 +211,32 @@ GitHub Actions automatically uploads ALL debugging artifacts for remote analysis
 
 This project uses webdriver-manager exclusively. No manual setup required.
 
-⚠️ **Selenium 4+ strict**: Only use `options=chrome_options`. Legacy/positional args will break the pipeline.
+⚠️ **Selenium 4+ strict**: Only use `service=Service(path), options=options` pattern. Legacy/positional args will break the pipeline.
+
+### FORBIDDEN PATTERNS (WILL CAUSE CI FAILURE)
+```python
+# ❌ NEVER USE - Multiple positional arguments
+driver = webdriver.Chrome(driver_path, options=options)
+
+# ❌ NEVER USE - Legacy options keywords  
+driver = webdriver.Chrome(chrome_options=options)
+driver = webdriver.Firefox(firefox_options=options)
+
+# ❌ NEVER USE - executable_path parameter
+driver = webdriver.Chrome(executable_path=path, options=options)
+```
+
+### REQUIRED PATTERN (SELENIUM 4+ COMPLIANT)
+```python
+# ✅ ONLY ALLOWED PATTERN
+from selenium.webdriver.chrome.service import Service as ChromeService
+service = ChromeService(driver_path)
+driver = webdriver.Chrome(service=service, options=options)
+
+from selenium.webdriver.firefox.service import Service as FirefoxService  
+service = FirefoxService(driver_path)
+driver = webdriver.Firefox(service=service, options=options)
+```
 
 ### Local Development Issues
 

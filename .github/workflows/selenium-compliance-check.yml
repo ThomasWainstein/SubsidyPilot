@@ -1,0 +1,66 @@
+name: Selenium 4+ Compliance Enforcement
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  selenium-compliance:
+    runs-on: ubuntu-latest
+    name: 🔥 Ruthless Selenium 4+ Compliance Check
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r AgriToolScraper-main/requirements.txt
+          
+      - name: 🔥 RUTHLESS SELENIUM 4+ COMPLIANCE SCAN
+        run: |
+          echo "🔥 SCANNING ENTIRE CODEBASE FOR FORBIDDEN PATTERNS"
+          python AgriToolScraper-main/validate_selenium_compliance.py
+          
+      - name: 🔥 CACHE CLEAR AND DRIVER TEST
+        run: |
+          echo "🔥 CLEARING PYTHON CACHES"
+          python AgriToolScraper-main/clear_cache.py
+          echo "🔥 TESTING DRIVER INITIALIZATION"
+          python AgriToolScraper-main/test_driver_compliance.py
+          
+      - name: 🔥 FULL COMPLIANCE CHECK
+        run: |
+          echo "🔥 RUNNING COMPLETE COMPLIANCE VALIDATION"
+          python AgriToolScraper-main/run_compliance_check.py
+          
+      - name: ✅ COMPLIANCE SUCCESS
+        if: success()
+        run: |
+          echo "🔥 SELENIUM 4+ COMPLIANCE ENFORCEMENT PASSED"
+          echo "✅ ZERO VIOLATIONS DETECTED"
+          echo "✅ 100% SELENIUM 4+ COMPLIANT"
+          echo "✅ READY FOR MERGE"
+          
+      - name: ❌ COMPLIANCE FAILURE
+        if: failure()
+        run: |
+          echo "❌ SELENIUM 4+ COMPLIANCE VIOLATIONS DETECTED"
+          echo "❌ BUILD FAILED - VIOLATIONS MUST BE FIXED"
+          echo "❌ DO NOT MERGE UNTIL ALL ISSUES RESOLVED"
+          echo ""
+          echo "📋 REQUIRED ACTIONS:"
+          echo "1. Review SELENIUM_4_COMPLIANCE_ENFORCEMENT.md"
+          echo "2. Fix all forbidden patterns identified"
+          echo "3. Run local validation: python AgriToolScraper-main/validate_selenium_compliance.py"
+          echo "4. Commit fixes and re-run this check"
+          exit 1

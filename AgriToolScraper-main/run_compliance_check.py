@@ -14,16 +14,23 @@ def run_cache_clear():
                           cwd="AgriToolScraper-main")
     return result.returncode == 0
 
+def run_selenium_compliance_scan():
+    """Scan entire codebase for Selenium 4+ compliance violations."""
+    print("🔥 STEP 2: SCANNING FOR SELENIUM 4+ COMPLIANCE VIOLATIONS")
+    result = subprocess.run([sys.executable, "validate_selenium_compliance.py"], 
+                          cwd="AgriToolScraper-main")
+    return result.returncode == 0
+
 def run_driver_test():
     """Test driver initialization."""
-    print("🔥 STEP 2: TESTING DRIVER INITIALIZATION")
+    print("🔥 STEP 3: TESTING DRIVER INITIALIZATION")
     result = subprocess.run([sys.executable, "test_driver_compliance.py"], 
                           cwd="AgriToolScraper-main")
     return result.returncode == 0
 
 def run_pipeline_test():
     """Run a minimal pipeline test."""
-    print("🔥 STEP 3: TESTING SCRAPER PIPELINE")
+    print("🔥 STEP 4: TESTING SCRAPER PIPELINE")
     result = subprocess.run([sys.executable, "scraper_main.py", "--test-mode"], 
                           cwd="AgriToolScraper-main")
     return result.returncode == 0
@@ -35,6 +42,10 @@ if __name__ == "__main__":
     
     if not run_cache_clear():
         print("❌ CACHE CLEAR FAILED")
+        all_passed = False
+    
+    if not run_selenium_compliance_scan():
+        print("❌ SELENIUM 4+ COMPLIANCE SCAN FAILED")
         all_passed = False
     
     if not run_driver_test():
