@@ -40,7 +40,7 @@ def extract_amount_from_text(text: str) -> Dict[str, Optional[float]]:
         r'(?:€|euros?)\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)',  # €10 000
         r'(\d{1,3}(?:\s?\d{3})*)\s*(?:euros?)',  # 10000 euros
         r'maximum?\s*(?:de\s*)?(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)',  # maximum de 50000
-        r'jusqu[\'']?à\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)',  # jusqu'à 75000
+        r"jusqu['\"]?à\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)",  # jusqu'à 75000
         r'plafond\s*(?:de\s*)?(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)',  # plafond de 100000
     ]
     
