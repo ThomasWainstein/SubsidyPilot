@@ -178,6 +178,8 @@ if browser == "chrome":
 
     driver_path = ChromeDriverManager().install()
     print(f"[INFO] Using ChromeDriver at: {driver_path}")
+    service = ChromeService(driver_path)
+    driver = webdriver.Chrome(service=service, options=options)
 
     # NEW: Ensure the path is actually executable (binary) and not a txt file!
     if not os.access(driver_path, os.X_OK):
