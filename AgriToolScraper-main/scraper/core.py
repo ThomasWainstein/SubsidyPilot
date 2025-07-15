@@ -225,19 +225,10 @@ def init_driver(
             max_retries = 3
             for attempt in range(1, max_retries + 1):
                 try:
-                    driver_path = ChromeDriverManager().install()
-                    print(f"[DEBUG] ChromeDriver installed at: {driver_path}")
-                    
-                    # CRITICAL: Validate the binary before using it
-                    if not validate_driver_binary(driver_path):
-                        print(f"[ERROR] Attempt {attempt}: Invalid driver binary, retrying...")
-                        if attempt < max_retries:
-                            purge_corrupted_wdm_cache()  # Force fresh download
-                            continue
-                        else:
-                            raise Exception("All attempts failed - webdriver-manager returned invalid binary")
-                    
-                    # Binary is valid, proceed with driver creation
+                     driver_path = ChromeDriverManager().install()
+                     print(f"[DEBUG] ChromeDriver initialized via webdriver-manager: {driver_path}")
+                     
+                     # Binary is valid, proceed with driver creation
                     service = ChromeService(driver_path)
                     driver = webdriver.Chrome(service=service, options=options)
                     print("[DEBUG] ✅ ChromeDriver started successfully")

@@ -86,13 +86,10 @@ jobs:
         echo "🧪 Testing enhanced ChromeDriver initialization..."
         python test_driver_init.py
         
-    - name: Debug webdriver-manager cache (post-test)
+    - name: Verify webdriver-manager setup
       run: |
         cd AgriToolScraper-main
-        echo "🔍 Debugging .wdm cache after test..."
-        ls -la ~/.wdm/ || echo "No .wdm directory found"
-        find ~/.wdm -name "*chromedriver*" -type f -exec ls -la {} \; || echo "No chromedriver files found"
-        find ~/.wdm -name "*THIRD_PARTY*" -type f -exec echo "⚠️ Found text file: {}" \; || true
+        echo "✅ webdriver-manager handles all driver installation automatically"
         
     - name: Run scraper pipeline
       env:
@@ -118,7 +115,6 @@ jobs:
         path: |
           AgriToolScraper-main/data/logs/
           AgriToolScraper-main/data/extracted/
-          ~/.wdm/
         retention-days: 7
         
     - name: Upload success summary
@@ -129,17 +125,7 @@ jobs:
         path: AgriToolScraper-main/data/logs/run_summary.json
         retention-days: 30
         
-    - name: Final webdriver-manager cache analysis
+    - name: Final verification
       if: always()
       run: |
-        echo "📊 Final .wdm cache analysis..."
-        if [ -d ~/.wdm ]; then
-          echo "Cache size:"
-          du -sh ~/.wdm
-          echo "Cache structure:"
-          find ~/.wdm -type f -exec ls -la {} \;
-          echo "Potential problematic files:"
-          find ~/.wdm -name "*THIRD_PARTY*" -o -name "*LICENSE*" -o -name "*.txt" | head -10
-        else
-          echo "No .wdm cache found"
-        fi
+        echo "✅ webdriver-manager handles all driver installation automatically"

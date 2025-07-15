@@ -116,12 +116,10 @@ def main():
         sys.exit(0)
     else:
         print("RESULT: ❌ Test failed - driver initialization has issues")
-        print("\nENHANCED DEBUGGING TIPS:")
-        print("1. Check the cache debug output above for text files")
-        print("2. Look for THIRD_PARTY_NOTICES.chromedriver files")
-        print("3. Verify that executable files are marked as such")
-        print("4. Force cache purge and retry if needed")
-        print("5. Check Ubuntu/Chromium snap compatibility")
+        print("\nDEBUGGING TIPS:")
+        print("1. Verify webdriver-manager installation")
+        print("2. Check Chrome/Chromium browser availability")
+        print("3. Ensure CI environment has display setup")
         sys.exit(1)
 
 if __name__ == "__main__":

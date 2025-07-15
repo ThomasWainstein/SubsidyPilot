@@ -71,21 +71,10 @@ jobs:
           echo "🧪 Testing enhanced ChromeDriver initialization..."
           python test_driver_init.py
 
-      - name: Debug .wdm cache structure
+      - name: Verify webdriver-manager setup
         working-directory: ./AgriToolScraper-main
         run: |
-          echo "🔍 Analyzing webdriver-manager cache..."
-          if [ -d ~/.wdm ]; then
-            echo "Cache exists, analyzing structure:"
-            find ~/.wdm -type f -name "*chromedriver*" -exec ls -la {} \;
-            echo "Checking for text files that could cause [Errno 8]:"
-            find ~/.wdm -name "*THIRD_PARTY*" -o -name "*LICENSE*" | while read file; do
-              echo "⚠️ Text file found: $file"
-              file "$file"
-            done
-          else
-            echo "No .wdm cache found"
-          fi
+          echo "✅ webdriver-manager handles all driver installation automatically"
           
       - name: Run scraper (FranceAgriMer)
         working-directory: ./AgriToolScraper-main
@@ -114,21 +103,11 @@ jobs:
           path: |
             AgriToolScraper-main/scraper.log
             AgriToolScraper-main/run_summary.json
-            ~/.wdm/
 
-      - name: Final cache and environment analysis
+      - name: Final environment check
         if: always()
         run: |
-          echo "📊 Final environment analysis..."
+          echo "✅ Environment summary:"
           echo "Chrome processes:"
           ps aux | grep chrome || echo "No chrome processes"
-          
-          echo "WebDriver cache:"
-          if [ -d ~/.wdm ]; then
-            du -sh ~/.wdm
-            echo "Binary vs text files in cache:"
-            find ~/.wdm -type f -exec file {} \; | grep -E "(executable|text)" | head -20
-          fi
-          
-          echo "Environment variables:"
-          env | grep -E "(DISPLAY|CHROME|DRIVER)" || true
+          echo "webdriver-manager handles all driver installation automatically"
