@@ -21,6 +21,9 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AgriToolScraper-main  # <--- change this if your folder name is different
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
