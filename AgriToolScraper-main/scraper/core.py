@@ -51,9 +51,8 @@ def init_driver(
     headless=True,
     window_size="1200,800"
 ):
-    """
-    Initialize and return a Selenium WebDriver for the specified browser.
-    """
+    import os
+
     try:
         if browser == "chrome":
             options = ChromeOptions()
@@ -65,8 +64,14 @@ def init_driver(
             if user_agent:
                 options.add_argument(f"user-agent={user_agent}")
 
-            # Only use the path returned by ChromeDriverManager().install()
             chromedriver_path = ChromeDriverManager().install()
+            # Ensure we are pointing to the ACTUAL chromedriver binary
+            if not os.path.basename(chromedriver_path) == "chromedriver":
+                chromedriver_dir = os.path.dirname(chromedriver_path)
+                for fname in os.listdir(chromedriver_dir):
+                    if fname == "chromedriver":
+                        chromedriver_path = os.path.join(chromedriver_dir, fname)
+                        break
             print(f"[DEBUG] Using chromedriver at: {chromedriver_path}")
             service = ChromeService(chromedriver_path)
             driver = webdriver.Chrome(service=service, options=options)
