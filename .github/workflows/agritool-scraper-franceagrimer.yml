@@ -40,10 +40,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
+          args=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            args="--dry-run"
+          fi
           python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \
-            --dry-run "${{ github.event.inputs.dry_run }}"
+            $args
 
       - name: Upload logs and artifacts
         if: always()
