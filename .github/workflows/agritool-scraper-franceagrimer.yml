@@ -29,16 +29,18 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
+        working-directory: ./AgriToolScraper-main
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run scraper (FranceAgriMer)
+        working-directory: ./AgriToolScraper-main
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          python AgriToolScraper-main/scraper_main.py \
+          python scraper_main.py \
             --url "${{ github.event.inputs.target_url }}" \
             --max-pages "${{ github.event.inputs.max_pages }}" \
             --dry-run "${{ github.event.inputs.dry_run }}"
@@ -49,5 +51,5 @@ jobs:
         with:
           name: franceagrimer-scraper-logs
           path: |
-            scraper.log
-            run_summary.json
+            AgriToolScraper-main/scraper.log
+            AgriToolScraper-main/run_summary.json
