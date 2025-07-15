@@ -57,3 +57,6 @@ jobs:
           path: |
             AgriToolScraper-main/scraper.log
             AgriToolScraper-main/run_summary.json
+
+  - name: List driver files
+  run: ls -lR ~/.wdm/
