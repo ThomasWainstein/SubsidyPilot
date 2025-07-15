@@ -199,16 +199,42 @@ CREATE INDEX idx_farms_matching_tags_gin ON public.farms USING GIN(matching_tags
 - **Flexible Label Recognition**: Accepts partial matches and formatting variations
 - **Pattern Detection**: Recognizes "Name: [value]", "[Label]: [Value]", "[Label] [Value]" formats
 
+### 🚨 CRITICAL ISSUE IDENTIFIED: July 15, 2025
+
+#### Root Cause Analysis for Extraction Failures
+After comprehensive investigation of production extraction failures:
+
+**Problem**: All extractions failing with `LOVABLE_REGULINE API key not configured`
+**Root Cause**: Missing `LOVABLE_REGULINE` secret in Supabase project configuration
+**Evidence**: Debug logs show `hasLovableRegaline: false`, `lovableRegalineKeyLength: 0`
+
+#### Investigation Results
+✅ **Code Implementation**: Correctly uses `LOVABLE_REGULINE` throughout extraction pipeline  
+✅ **Database Setup**: RLS policies and service role permissions working correctly  
+✅ **Edge Function Logic**: Properly structured with comprehensive error handling  
+✅ **Debug System**: Successfully captured the missing API key issue  
+❌ **Critical Missing**: `LOVABLE_REGULINE` secret not configured in Supabase
+
+#### Secondary Issues Resolved by Root Cause
+- **Edge Function 500 Errors**: Will resolve once API key is configured
+- **Database 403 Errors**: Secondary failures due to extraction never completing
+- **Frontend UI Errors**: "Edge Function returned non-2xx status" will resolve
+
 ### Next Steps
 1. ✅ Fixed LOVABLE_REGULINE API key usage throughout pipeline
 2. ✅ Enhanced debug logging for comprehensive troubleshooting
 3. ✅ Optimized RLS policies and service role permissions
 4. ✅ Added comprehensive indexing for production performance
-5. Monitor extraction success rates with enhanced debugging data
-6. Add admin analytics dashboard leveraging structured debug information
-7. Implement automated alerts for extraction failures using debug data
+5. ✅ **IDENTIFIED ROOT CAUSE**: Missing API key in Supabase secrets
+6. 🚨 **IMMEDIATE ACTION**: Configure `LOVABLE_REGULINE` secret with valid OpenAI API key
+7. Verify extraction functionality after secret configuration
+8. Monitor production logs for remaining issues
+
+### Critical Action Required
+**The `LOVABLE_REGULINE` secret must be configured in Supabase Edge Function secrets with a valid OpenAI API key before extractions will work.**
 
 ---
 **Migration completed by**: Lovable AI  
 **Date**: 2025-07-14  
-**Reviewed by**: [Pending team review]
+**Critical Issue Identified**: 2025-07-15  
+**Status**: BLOCKED - Missing API Key
