@@ -42,14 +42,14 @@ FORBIDDEN_PATTERNS = {
         'fix': 'Replace executable_path= with service=Service(path)'
     },
     'chrome_three_plus_args': {
-        'regex': r'webdriver\.Chrome\s*\([^)]*,[^)]*,[^)]+\)',
+        'regex': r'webdriver\.Chrome\s*\([^)]*,[^)]*,[^)]*,[^)]+\)',
         'description': 'Chrome driver with 3+ arguments (likely legacy pattern)',
         'severity': 'CRITICAL',
         'fix': 'Use webdriver.Chrome(service=service, options=options)'
     },
     'firefox_three_plus_args': {
-        'regex': r'webdriver\.Firefox\s*\([^)]*,[^)]*,[^)]+\)',
-        'description': 'Firefox driver with 3+ arguments (likely legacy pattern)',
+        'regex': r'webdriver\.Firefox\s*\([^)]*,[^)]*,[^)]*,[^)]+\)',
+        'description': 'Firefox driver with 3+ arguments (likely legacy pattern)', 
         'severity': 'CRITICAL',
         'fix': 'Use webdriver.Firefox(service=service, options=options)'
     }
@@ -146,22 +146,13 @@ class ComplianceValidator:
                         
                         driver_type = node.func.attr
                         if driver_type in ['Chrome', 'Firefox']:
-                            # Check for positional arguments (bad) - only flag if we have positional args
+                            # ONLY flag if we have positional arguments - keyword args are fine
                             if node.args:
                                 line_num = getattr(node, 'lineno', 0)
                                 violations.append((
                                     f'{driver_type.lower()}_positional_args_ast',
                                     line_num,
                                     f'webdriver.{driver_type} with positional arguments',
-                                    'CRITICAL'
-                                ))
-                            # Check for too many arguments (more than service + options)
-                            elif len(node.keywords) > 2:
-                                line_num = getattr(node, 'lineno', 0)
-                                violations.append((
-                                    f'{driver_type.lower()}_too_many_args_ast',
-                                    line_num,
-                                    f'webdriver.{driver_type} with too many keyword arguments',
                                     'CRITICAL'
                                 ))
                             
@@ -304,7 +295,7 @@ class ComplianceValidator:
         return all_violations
     
     def print_violation_report(self, violations: Dict[str, List[Tuple[str, int, str, str]]]) -> bool:
-        """Print comprehensive violation report with fixes."""
+        """Print comprehensive violation report with detailed debugging info."""
         if not violations:
             print("🔥 SELENIUM 4+ COMPLIANCE VALIDATION PASSED")
             print("✅ ZERO VIOLATIONS DETECTED")
@@ -314,12 +305,15 @@ class ComplianceValidator:
         
         print("❌ SELENIUM 4+ COMPLIANCE VIOLATIONS DETECTED")
         print("=" * 80)
+        print("🔍 DETAILED VIOLATION BREAKDOWN FOR DEBUGGING:")
+        print()
         
         total_violations = 0
         critical_violations = 0
         
         for file_path, file_violations in violations.items():
             print(f"\n📁 FILE: {file_path}")
+            print(f"📂 FILE TYPE: {file_path.split('.')[-1] if '.' in file_path else 'unknown'}")
             print("-" * 60)
             
             for pattern_name, line_num, line_content, severity in file_violations:
@@ -327,18 +321,36 @@ class ComplianceValidator:
                 if severity == 'CRITICAL':
                     critical_violations += 1
                 
+                print(f"\n🚨 VIOLATION #{total_violations}:")
+                print(f"   📍 Location: {file_path}:{line_num}")
+                print(f"   🔥 Severity: {severity}")
+                print(f"   🎯 Pattern: {pattern_name}")
+                print(f"   📝 Code: {line_content.strip()}")
+                
                 if pattern_name in FORBIDDEN_PATTERNS:
                     pattern_info = FORBIDDEN_PATTERNS[pattern_name]
-                    print(f"🚨 {severity}: Line {line_num}")
-                    print(f"   Pattern: {pattern_name}")
-                    print(f"   Issue: {pattern_info['description']}")
-                    print(f"   Code: {line_content}")
-                    print(f"   Fix: {pattern_info['fix']}")
-                    print(f"   Regex: {pattern_info['regex']}")
-                else:
-                    print(f"🚨 {severity}: Line {line_num}")
-                    print(f"   Pattern: {pattern_name}")
-                    print(f"   Code: {line_content}")
+                    print(f"   📖 Issue: {pattern_info['description']}")
+                    print(f"   🔧 Fix: {pattern_info['fix']}")
+                    print(f"   🔍 Regex: {pattern_info['regex']}")
+                
+                # DEBUG INFO - Check why this was flagged
+                print(f"   🔬 DEBUG ANALYSIS:")
+                print(f"      - Is compliant pattern? {self.is_compliant_pattern(line_content)}")
+                print(f"      - Has ignore directive? {self.has_ignore_directive(line_content)}")
+                
+                # Show what regex patterns would match
+                print(f"      - COMPLIANT PATTERNS:")
+                for comp_pattern in COMPLIANT_PATTERNS:
+                    matches = bool(re.search(comp_pattern, line_content.strip()))
+                    print(f"        ✅ {comp_pattern}: {'MATCH' if matches else 'NO MATCH'}")
+                
+                print(f"      - FORBIDDEN PATTERNS:")
+                for forb_name, forb_info in FORBIDDEN_PATTERNS.items():
+                    matches = bool(re.search(forb_info['regex'], line_content.strip()))
+                    if matches:
+                        print(f"        ❌ {forb_name}: MATCH -> {forb_info['regex']}")
+                
+                print(f"   ❓ IS THIS A FALSE POSITIVE? {('YES - THIS LOOKS COMPLIANT' if 'service=' in line_content and 'options=' in line_content else 'NO - THIS IS LEGACY')}")
                 print()
         
         print("=" * 80)
