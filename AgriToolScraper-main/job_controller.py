@@ -63,7 +63,7 @@ def main():
     
     # Step 1: Selenium 4+ Compliance Enforcement
     step1_success, step1_output = run_command(
-        [sys.executable, "AgriToolScraper-main/validate_selenium_compliance.py"],
+        [sys.executable, "AgriToolScraper-main/selenium_compliance_validator.py"],
         "SELENIUM 4+ COMPLIANCE VALIDATION"
     )
     job_log["steps"].append({

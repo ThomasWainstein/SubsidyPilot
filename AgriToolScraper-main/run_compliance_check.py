@@ -17,7 +17,7 @@ def run_cache_clear():
 def run_selenium_compliance_scan():
     """Scan entire codebase for Selenium 4+ compliance violations."""
     print("🔥 STEP 2: SCANNING FOR SELENIUM 4+ COMPLIANCE VIOLATIONS")
-    result = subprocess.run([sys.executable, "validate_selenium_compliance.py"], 
+    result = subprocess.run([sys.executable, "selenium_compliance_validator.py"], 
                           cwd="AgriToolScraper-main")
     return result.returncode == 0
 
