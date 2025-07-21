@@ -207,36 +207,67 @@ All runs generate complete debugging artifacts:
 ### CI/CD Integration
 GitHub Actions automatically uploads ALL debugging artifacts for remote analysis.
 
-## Driver Management
+## 🔥 Selenium 4+ Compliance - MANDATORY
 
-This project uses webdriver-manager exclusively. No manual setup required.
+This project maintains **ZERO TOLERANCE** for legacy Selenium WebDriver patterns. All code contributions must follow strict compliance rules.
 
-⚠️ **Selenium 4+ strict**: Only use `service=Service(path), options=options` pattern. Legacy/positional args will break the pipeline.
+### ✅ Required Patterns (ONLY ALLOWED)
 
-### FORBIDDEN PATTERNS (WILL CAUSE CI FAILURE)
+All WebDriver instantiations must use the service pattern exclusively:
+
+### ❌ Forbidden Patterns (WILL CAUSE BUILD FAILURE)
+
+These patterns cause **immediate CI failure** and **blocked merges**:
+
 ```python
-# ❌ NEVER USE - Multiple positional arguments
+# ❌ FORBIDDEN - Multiple positional arguments
 driver = webdriver.Chrome(driver_path, options=options)
+driver = webdriver.Firefox(driver_path, options=options)
 
-# ❌ NEVER USE - Legacy options keywords  
+# ❌ FORBIDDEN - Legacy options keywords
 driver = webdriver.Chrome(chrome_options=options)
 driver = webdriver.Firefox(firefox_options=options)
 
-# ❌ NEVER USE - executable_path parameter
+# ❌ FORBIDDEN - Deprecated executable_path
 driver = webdriver.Chrome(executable_path=path, options=options)
+driver = webdriver.Firefox(executable_path=path, options=options)
 ```
 
-### REQUIRED PATTERN (SELENIUM 4+ COMPLIANT)
+### ✅ Required Patterns (ONLY ALLOWED)
+
 ```python
-# ✅ ONLY ALLOWED PATTERN
+# Chrome Driver - REQUIRED PATTERN
+from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+
+options = ChromeOptions()
 service = ChromeService(driver_path)
 driver = webdriver.Chrome(service=service, options=options)
 
-from selenium.webdriver.firefox.service import Service as FirefoxService  
+# Firefox Driver - REQUIRED PATTERN
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+
+options = FirefoxOptions()
 service = FirefoxService(driver_path)
 driver = webdriver.Firefox(service=service, options=options)
 ```
+
+### Enforcement
+
+**All PRs and new scripts are scanned by ruthless validator. Violations block all merges and deploys.**
+
+**MANDATORY PRE-COMMIT VALIDATION**:
+```bash
+python AgriToolScraper-main/validate_selenium_compliance.py
+```
+
+See `COMPLIANCE_MANIFEST.md` for complete requirements.
+
+## Driver Management
+
+This project uses webdriver-manager exclusively. No manual setup required.
 
 ### Local Development Issues
 
@@ -251,6 +282,16 @@ driver = webdriver.Firefox(service=service, options=options)
 2. Check language detection accuracy
 3. Validate extracted amounts and dates
 4. Monitor duplicate detection effectiveness
+
+## Onboarding for New Contributors
+
+**IMPORTANT**: All code contributions must follow the Selenium 4+ compliance rules above.
+
+- **Pre-commit hook and CI pipeline block any legacy WebDriver code**
+- **Zero tolerance policy**: Any forbidden pattern causes immediate build failure
+- **Required validation**: Run compliance check before each commit
+
+See `COMPLIANCE_MANIFEST.md` for exact requirements.
 
 ## Support
 

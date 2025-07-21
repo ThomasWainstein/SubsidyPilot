@@ -60,6 +60,68 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## 🔥 Selenium 4+ Compliance
+
+This project maintains **ZERO TOLERANCE** for legacy Selenium WebDriver patterns. All code contributions must follow strict compliance rules.
+
+### ✅ Required Patterns (ONLY ALLOWED)
+
+```python
+# Chrome Driver - REQUIRED PATTERN
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+
+options = ChromeOptions()
+service = ChromeService(driver_path)
+driver = webdriver.Chrome(service=service, options=options)
+
+# Firefox Driver - REQUIRED PATTERN
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+
+options = FirefoxOptions()
+service = FirefoxService(driver_path)
+driver = webdriver.Firefox(service=service, options=options)
+```
+
+### ❌ Forbidden Patterns (WILL CAUSE BUILD FAILURE)
+
+```python
+# ❌ FORBIDDEN - Multiple positional arguments
+driver = webdriver.Chrome(driver_path, options=options)
+driver = webdriver.Firefox(driver_path, options=options)
+
+# ❌ FORBIDDEN - Legacy options keywords
+driver = webdriver.Chrome(chrome_options=options)
+driver = webdriver.Firefox(firefox_options=options)
+
+# ❌ FORBIDDEN - Deprecated executable_path
+driver = webdriver.Chrome(executable_path=path, options=options)
+driver = webdriver.Firefox(executable_path=path, options=options)
+```
+
+### Enforcement
+
+**All PRs and new scripts are scanned by ruthless validator. Violations block all merges and deploys.**
+
+Run validation before committing:
+```bash
+python AgriToolScraper-main/validate_selenium_compliance.py
+```
+
+See `COMPLIANCE_MANIFEST.md` for complete requirements.
+
+## Onboarding for New Contributors
+
+**IMPORTANT**: All code contributions must follow the Selenium 4+ compliance rules above.
+
+- **Pre-commit hook and CI pipeline block any legacy WebDriver code**
+- **Zero tolerance policy**: Any forbidden pattern causes immediate build failure
+- **Required validation**: Run compliance check before each commit
+
+See `COMPLIANCE_MANIFEST.md` for exact requirements.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/3707732f-d16c-415b-9774-90470307d385) and click on Share -> Publish.
