@@ -28,8 +28,8 @@ class RunIsolationManager:
             "data/attachments"
         ]
         
-        # Define session-scoped file patterns
-        self.session_file_pattern = f"{self.target_domain}_{session_id}"
+        # Define session-scoped file patterns (workflow-compatible)
+        self.session_file_pattern = f"franceagrimer_{session_id}"
     
     def purge_all_artifacts(self) -> dict:
         """
@@ -130,13 +130,13 @@ class RunIsolationManager:
     def create_session_paths(self) -> dict:
         """Create session-scoped paths for all output files."""
         session_paths = {
-            'urls_file': f"data/extracted/urls_{self.session_file_pattern}.txt",
-            'failed_urls_file': f"data/extracted/failed_urls_{self.session_file_pattern}.txt", 
-            'external_links_file': f"data/extracted/external_links_{self.session_file_pattern}.txt",
-            'subsidies_file': f"data/extracted/subsidies_{self.session_file_pattern}.json",
-            'consultant_data_file': f"data/extracted/consultant_data_{self.session_file_pattern}.csv",
-            'logs_dir': f"data/logs/{self.session_file_pattern}",
-            'screenshots_dir': f"data/extracted/screenshots_{self.session_file_pattern}"
+            'urls_file': f"data/extracted/franceagrimer_urls_{self.session_id}.txt",
+            'failed_urls_file': f"data/extracted/franceagrimer_failed_urls_{self.session_id}.txt", 
+            'external_links_file': f"data/extracted/franceagrimer_external_links_{self.session_id}.txt",
+            'subsidies_file': f"data/extracted/franceagrimer_subsidies_{self.session_id}.json",
+            'consultant_data_file': f"data/extracted/franceagrimer_consultant_data_{self.session_id}.csv",
+            'logs_dir': f"data/logs/franceagrimer_{self.session_id}",
+            'screenshots_dir': f"data/extracted/franceagrimer_screenshots_{self.session_id}"
         }
         
         # Create directories

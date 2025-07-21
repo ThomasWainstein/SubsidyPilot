@@ -82,7 +82,7 @@ jobs:
           echo "🔥 RUTHLESS SELENIUM 4+ COMPLIANCE VALIDATION"
           echo "🔍 SCANNING ENTIRE CODEBASE FOR FORBIDDEN PATTERNS"
           echo "❌ BUILD WILL FAIL ON ANY VIOLATION"
-          python validate_selenium_compliance.py || (
+          python selenium_compliance_validator.py || (
             echo "❌ SELENIUM 4+ COMPLIANCE FAILED - VIOLATIONS DETECTED"
             echo "❌ SCRAPER EXECUTION BLOCKED"
             echo "❌ Review SELENIUM_4_COMPLIANCE_ENFORCEMENT.md"
@@ -92,13 +92,15 @@ jobs:
           echo "✅ SELENIUM 4+ COMPLIANCE VERIFIED - ZERO VIOLATIONS"
           echo "✅ Proceeding with enhanced scraper pipeline"
 
-      - name: 🔥 STEP 2 - CLEAR PYTHON CACHES  
+      - name: 🔥 STEP 2 - PURGE CONTAMINATION & CLEAR CACHES
         working-directory: ./AgriToolScraper-main
         run: |
           set -xe
+          echo "🔥 PURGING CROSS-DOMAIN CONTAMINATION"
+          python purge_contamination.py >purge.log 2>&1 || (cat purge.log; exit 1)
           echo "🔥 CLEARING PYTHON CACHES"
           python clear_cache.py >clear_cache.log 2>&1 || (cat clear_cache.log; exit 1)
-          echo "✅ PYTHON CACHES CLEARED"
+          echo "✅ CONTAMINATION PURGED & CACHES CLEARED"
 
       - name: 🔥 STEP 3 - DRIVER COMPLIANCE TEST
         working-directory: ./AgriToolScraper-main
@@ -137,10 +139,9 @@ jobs:
         with:
           name: franceagrimer-logs-${{ github.run_number }}
           path: |
-            AgriToolScraper-main/data/logs/franceagrimer*
-            AgriToolScraper-main/data/extracted/*franceagrimer*
-            AgriToolScraper-main/data/extracted/subsidies_*.json
-            AgriToolScraper-main/data/extracted/urls_*.txt
+            AgriToolScraper-main/data/logs/franceagrimer_*
+            AgriToolScraper-main/data/extracted/franceagrimer_*
+            AgriToolScraper-main/*.log
           retention-days: 30
           
       - name: Upload FranceAgriMer error screenshots  
@@ -149,8 +150,8 @@ jobs:
         with:
           name: franceagrimer-errors-${{ github.run_number }}
           path: |
-            AgriToolScraper-main/data/extracted/screenshots_franceagrimer*
-            AgriToolScraper-main/data/logs/*error*.png
+            AgriToolScraper-main/data/extracted/franceagrimer_screenshots_*
+            AgriToolScraper-main/data/logs/franceagrimer_*error*.png
           retention-days: 7
           
       - name: Print log tail on failure

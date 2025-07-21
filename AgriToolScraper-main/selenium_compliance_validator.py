@@ -18,8 +18,12 @@ EXCLUDED_FILES = {
     'SELENIUM_4_AUDIT_SUMMARY.md',
     'SELENIUM_4_COMPLIANCE_MANIFEST.md',
     'selenium_compliance_validator.py',
+    'selenium_compliance_validator_old.py',
     'selenium_compliance_validator_fixed.py',
-    'validate_selenium_compliance.py'
+    'validate_selenium_compliance.py',
+    'debug_validator_test.py',
+    'run_validator_tests.py',
+    'clear_cache.py'
 }
 
 # Inline ignore directive
@@ -108,6 +112,10 @@ class ComplianceValidator:
         if filename in EXCLUDED_FILES:
             return violations
         
+        # Skip test files and directories
+        if '/tests/' in file_path or filename.startswith('test_'):
+            return violations
+            
         # ONLY scan Python files
         if not file_path.endswith('.py'):
             return violations

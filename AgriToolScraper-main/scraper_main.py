@@ -146,10 +146,10 @@ class AgriToolScraper:
             log_step(f"Navigating to target URL: {self.target_url}")
             driver.get(self.target_url)
             
-            # Take screenshot for debugging
+            # Take screenshot for debugging using session-scoped path
             try:
-                screenshot_path = f"data/logs/url_collection_start_{self.session_id}.png"
-                ensure_folder("data/logs")
+                screenshot_path = f"{self.session_paths['logs_dir']}/url_collection_start.png" if self.session_paths else f"data/logs/franceagrimer_url_collection_start_{self.session_id}.png"
+                ensure_folder(os.path.dirname(screenshot_path))
                 driver.save_screenshot(screenshot_path)
                 log_step(f"Screenshot saved: {screenshot_path}")
                 self.debugger.diagnostics['artifacts'].append(screenshot_path)
@@ -232,9 +232,10 @@ class AgriToolScraper:
             log_step(f"URLs saved to: {urls_file}")
             self.debugger.diagnostics['artifacts'].append(urls_file)
             
-            # Take final screenshot
+            # Take final screenshot using session-scoped path
             try:
-                final_screenshot = f"data/logs/url_collection_end_{self.session_id}.png"
+                final_screenshot = f"{self.session_paths['logs_dir']}/url_collection_end.png" if self.session_paths else f"data/logs/franceagrimer_url_collection_end_{self.session_id}.png"
+                ensure_folder(os.path.dirname(final_screenshot))
                 driver.save_screenshot(final_screenshot)
                 log_step(f"Final screenshot saved: {final_screenshot}")
                 self.debugger.diagnostics['artifacts'].append(final_screenshot)
@@ -249,10 +250,11 @@ class AgriToolScraper:
             log_error(f"Full traceback: {traceback.format_exc()}")
             self.results['errors'].append(error_msg)
             
-            # Save error screenshot
+            # Save error screenshot using session-scoped path
             if driver:
                 try:
-                    error_screenshot = f"data/logs/url_collection_error_{self.session_id}.png"
+                    error_screenshot = f"{self.session_paths['logs_dir']}/url_collection_error.png" if self.session_paths else f"data/logs/franceagrimer_url_collection_error_{self.session_id}.png"
+                    ensure_folder(os.path.dirname(error_screenshot))
                     driver.save_screenshot(error_screenshot)
                     log_error(f"Error screenshot saved: {error_screenshot}")
                     self.debugger.diagnostics['artifacts'].append(error_screenshot)
