@@ -41,29 +41,17 @@ FORBIDDEN_PATTERNS = {
         'severity': 'CRITICAL',
         'fix': 'Replace executable_path= with service=Service(path)'
     },
-    'chrome_positional_only': {
-        'regex': r'webdriver\.Chrome\s*\(\s*[^=,)]+\s*\)',
-        'description': 'Chrome driver with single positional argument (use keywords)',
+    'chrome_three_plus_args': {
+        'regex': r'webdriver\.Chrome\s*\([^)]*,[^)]*,[^)]+\)',
+        'description': 'Chrome driver with 3+ arguments (likely legacy pattern)',
         'severity': 'CRITICAL',
         'fix': 'Use webdriver.Chrome(service=service, options=options)'
     },
-    'firefox_positional_only': {
-        'regex': r'webdriver\.Firefox\s*\(\s*[^=,)]+\s*\)',
-        'description': 'Firefox driver with single positional argument (use keywords)',
+    'firefox_three_plus_args': {
+        'regex': r'webdriver\.Firefox\s*\([^)]*,[^)]*,[^)]+\)',
+        'description': 'Firefox driver with 3+ arguments (likely legacy pattern)',
         'severity': 'CRITICAL',
         'fix': 'Use webdriver.Firefox(service=service, options=options)'
-    },
-    'chrome_multiple_positional': {
-        'regex': r'webdriver\.Chrome\s*\(\s*[^=,)]+\s*,\s*[^=,)]+\s*[,)]',
-        'description': 'Chrome driver with multiple positional arguments',
-        'severity': 'CRITICAL',
-        'fix': 'Use keyword arguments: webdriver.Chrome(service=service, options=options)'
-    },
-    'firefox_multiple_positional': {
-        'regex': r'webdriver\.Firefox\s*\(\s*[^=,)]+\s*,\s*[^=,)]+\s*[,)]',
-        'description': 'Firefox driver with multiple positional arguments',
-        'severity': 'CRITICAL',
-        'fix': 'Use keyword arguments: webdriver.Firefox(service=service, options=options)'
     }
 }
 
@@ -158,13 +146,22 @@ class ComplianceValidator:
                         
                         driver_type = node.func.attr
                         if driver_type in ['Chrome', 'Firefox']:
-                            # Check for positional arguments (bad)
+                            # Check for positional arguments (bad) - only flag if we have positional args
                             if node.args:
                                 line_num = getattr(node, 'lineno', 0)
                                 violations.append((
                                     f'{driver_type.lower()}_positional_args_ast',
                                     line_num,
                                     f'webdriver.{driver_type} with positional arguments',
+                                    'CRITICAL'
+                                ))
+                            # Check for too many arguments (more than service + options)
+                            elif len(node.keywords) > 2:
+                                line_num = getattr(node, 'lineno', 0)
+                                violations.append((
+                                    f'{driver_type.lower()}_too_many_args_ast',
+                                    line_num,
+                                    f'webdriver.{driver_type} with too many keyword arguments',
                                     'CRITICAL'
                                 ))
                             
