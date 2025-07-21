@@ -115,11 +115,11 @@ def main():
         print(json.dumps(job_log, indent=2))
         sys.exit(1)
     
-    # Step 4: FranceAgriMer Scraper Execution
+    # Step 4: FranceAgriMer Scraper Execution  
     scraper_command = [
         sys.executable, 
         "AgriToolScraper-main/main.py",
-        "--target-url", "https://www.afir.info/",
+        "--url", "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales",
         "--max-pages", "0"
     ]
     

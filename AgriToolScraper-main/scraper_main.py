@@ -33,6 +33,7 @@ from scraper.core import (
     init_driver, ensure_folder, collect_links, wait_for_selector, 
     click_next, guess_canonical_field_fr, detect_language
 )
+from utils.domain_isolation import enforce_domain_isolation, validate_scraper_isolation
 from scraper.discovery import extract_subsidy_details
 from scraper.runner import ScrapingRunner
 from supabase_client import SupabaseUploader
@@ -178,8 +179,23 @@ class AgriToolScraper:
                     break
             
             urls_list = list(collected_urls)
+            
+            # ENFORCE DOMAIN ISOLATION - CRITICAL FOR WORKFLOW SEPARATION
+            original_count = len(urls_list)
+            urls_list = enforce_domain_isolation(urls_list, self.target_url)
+            filtered_count = original_count - len(urls_list)
+            
+            if filtered_count > 0:
+                log_step(f"DOMAIN ISOLATION: Filtered out {filtered_count} cross-domain URLs")
+                log_step(f"DOMAIN ISOLATION: Kept {len(urls_list)} URLs from target domain")
+            
+            # Validate isolation was successful
+            if not validate_scraper_isolation(urls_list, self.target_url):
+                raise RuntimeError("Domain isolation validation failed - cross-domain URLs detected")
+            
             self.results['urls_collected'] = len(urls_list)
-            log_step(f"URL collection complete: {len(urls_list)} unique URLs collected")
+            self.results['urls_filtered'] = filtered_count
+            log_step(f"URL collection complete: {len(urls_list)} domain-isolated URLs collected")
             
             # Save URLs for debugging
             ensure_folder("data/extracted")
@@ -435,8 +451,8 @@ def main():
     print("ARGS:", sys.argv)
     logging.info("Starting AgriTool scraper main function")
     parser = argparse.ArgumentParser(description='AgriTool Scraper with Supabase Integration')
-    parser.add_argument('--url', default='https://www.afir.info/', 
-                       help='Target URL to scrape (default: AFIR)')
+    parser.add_argument('--url', default='https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales', 
+                       help='Target URL to scrape (default: FranceAgriMer)')
     parser.add_argument('--max-pages', type=int, default=0,
                        help='Maximum pages to scrape (0 = unlimited)')
     parser.add_argument('--dry-run', action='store_true',
