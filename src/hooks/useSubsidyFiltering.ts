@@ -40,6 +40,7 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('useSubsidyFiltering: Starting fetch, farmId:', farmId);
         setLoading(true);
         setError(null);
 
@@ -63,10 +64,13 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
         }
 
         // Get all subsidies - always fetch regardless of farm presence
+        console.log('useSubsidyFiltering: Fetching subsidies from database...');
         const { data: subsidiesData, error: subsidiesError } = await supabase
           .from('subsidies')
           .select('*')
           .order('created_at', { ascending: false });
+        
+        console.log('useSubsidyFiltering: Raw subsidies response:', { subsidiesData, subsidiesError });
 
         if (subsidiesError) {
           console.error('Subsidies fetch error:', subsidiesError);
@@ -87,6 +91,7 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
           };
         });
 
+        console.log('useSubsidyFiltering: Final subsidies with matches:', subsidiesWithMatches);
         setSubsidies(subsidiesWithMatches);
       } catch (err) {
         console.error('Data fetch error:', err);
