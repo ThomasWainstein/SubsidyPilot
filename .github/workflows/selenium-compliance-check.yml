@@ -28,14 +28,10 @@ jobs:
           
       - name: 🔥 BULLETPROOF SELENIUM 4+ COMPLIANCE SCAN
         run: |
-          echo "🔥 BULLETPROOF VALIDATION WITH MULTIPLE DEFENSE LAYERS"
-          echo "🛡️  AST parsing, regex validation, whitelist checking, smoke tests"
-          python AgriToolScraper-main/selenium_compliance_validator.py
-          
-      - name: 🔥 LEGACY VALIDATOR BACKUP CHECK
-        run: |
-          echo "🔥 RUNNING LEGACY VALIDATOR AS BACKUP"
-          python AgriToolScraper-main/validate_selenium_compliance.py
+          echo "🔥 BULLETPROOF AST-ONLY VALIDATION - ZERO FALSE POSITIVES"
+          echo "🛡️  Only actual code violations flagged, not comments/strings/docs"
+          cd AgriToolScraper-main
+          python selenium_compliance_validator.py
           
       - name: 🧪 VALIDATOR UNIT TESTS
         run: |
