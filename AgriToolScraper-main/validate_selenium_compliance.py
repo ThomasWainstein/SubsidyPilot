@@ -14,16 +14,6 @@ from typing import List, Tuple, Dict
 
 # Forbidden patterns that cause build failure
 FORBIDDEN_PATTERNS = {
-    'multiple_args_chrome': {
-        'regex': r'webdriver\.Chrome\([^,)]*\s*,\s*[^,)]*\s*,',
-        'description': 'Multiple positional arguments to webdriver.Chrome() (3+ args)',
-        'severity': 'CRITICAL'
-    },
-    'multiple_args_firefox': {
-        'regex': r'webdriver\.Firefox\([^,)]*\s*,\s*[^,)]*\s*,',
-        'description': 'Multiple positional arguments to webdriver.Firefox() (3+ args)',
-        'severity': 'CRITICAL'
-    },
     'chrome_options_keyword': {
         'regex': r'chrome_options\s*=',
         'description': 'Legacy chrome_options keyword parameter',
@@ -39,15 +29,15 @@ FORBIDDEN_PATTERNS = {
         'description': 'Deprecated executable_path parameter',
         'severity': 'CRITICAL'
     },
-    'webdriver_chrome_legacy_order': {
-        'regex': r'webdriver\.Chrome\([^)]*options\s*=[^)]*service\s*=',
-        'description': 'Legacy Chrome instantiation - options before service',
-        'severity': 'HIGH'
+    'chrome_positional_args': {
+        'regex': r'webdriver\.Chrome\s*\(\s*[^=,)]+\s*,\s*[^=,)]+',
+        'description': 'Chrome driver with positional arguments (non-keyword)',
+        'severity': 'CRITICAL'
     },
-    'webdriver_firefox_legacy_order': {
-        'regex': r'webdriver\.Firefox\([^)]*options\s*=[^)]*service\s*=',
-        'description': 'Legacy Firefox instantiation - options before service',
-        'severity': 'HIGH'
+    'firefox_positional_args': {
+        'regex': r'webdriver\.Firefox\s*\(\s*[^=,)]+\s*,\s*[^=,)]+',
+        'description': 'Firefox driver with positional arguments (non-keyword)',
+        'severity': 'CRITICAL'
     }
 }
 
