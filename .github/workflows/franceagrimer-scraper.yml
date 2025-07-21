@@ -131,24 +131,26 @@ jobs:
           
           echo "✅ FRANCEAGRIMER SCRAPER COMPLETED SUCCESSFULLY"
             
-      - name: Upload scraper logs
+      - name: Upload FranceAgriMer-only scraper logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: scraper-logs-${{ github.run_number }}
+          name: franceagrimer-logs-${{ github.run_number }}
           path: |
-            AgriToolScraper-main/logs/
-            AgriToolScraper-main/data/extracted/
-            AgriToolScraper-main/data/raw_pages/
+            AgriToolScraper-main/data/logs/franceagrimer*
+            AgriToolScraper-main/data/extracted/*franceagrimer*
+            AgriToolScraper-main/data/extracted/subsidies_*.json
+            AgriToolScraper-main/data/extracted/urls_*.txt
           retention-days: 30
           
-      - name: Upload error screenshots
+      - name: Upload FranceAgriMer error screenshots  
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: error-screenshots-${{ github.run_number }}
+          name: franceagrimer-errors-${{ github.run_number }}
           path: |
-            AgriToolScraper-main/data/extracted/error_*.png
+            AgriToolScraper-main/data/extracted/screenshots_franceagrimer*
+            AgriToolScraper-main/data/logs/*error*.png
           retention-days: 7
           
       - name: Print log tail on failure

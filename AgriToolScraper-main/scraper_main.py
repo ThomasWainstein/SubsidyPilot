@@ -1,7 +1,7 @@
 # scraper_main.py
 """
-Enhanced AgriTool scraper with Supabase integration and ruthless debugging.
-Combines URL collection, content extraction, and database upload.
+Enhanced AgriTool scraper with STRICT DOMAIN ISOLATION and Supabase integration.
+Ensures zero cross-contamination between domain-specific scraper runs.
 """
 
 import sys, traceback, logging, os
@@ -34,6 +34,8 @@ from scraper.core import (
     click_next, guess_canonical_field_fr, detect_language
 )
 from utils.domain_isolation import enforce_domain_isolation, validate_scraper_isolation
+from utils.run_isolation import RunIsolationManager
+from config_manager import SecureConfigManager
 from scraper.discovery import extract_subsidy_details
 from scraper.runner import ScrapingRunner
 from supabase_client import SupabaseUploader
@@ -57,21 +59,37 @@ def load_failed_urls():
         return [line.strip() for line in f if line.strip()]
 
 
-def save_failed_url(url, error):
+def save_failed_url(url, error, session_paths=None):
     """Save failed URL with error for later analysis."""
-    ensure_folder("data/extracted")
-    with open("data/extracted/failed_urls.txt", 'a', encoding='utf-8') as f:
+    if session_paths and 'failed_urls_file' in session_paths:
+        failed_urls_file = session_paths['failed_urls_file']
+    else:
+        ensure_folder("data/extracted")
+        failed_urls_file = "data/extracted/failed_urls.txt"
+    
+    ensure_folder(os.path.dirname(failed_urls_file))
+    with open(failed_urls_file, 'a', encoding='utf-8') as f:
         f.write(f"{url}\t{error}\n")
 
 
 class AgriToolScraper:
-    """Main scraper class with Supabase integration and ruthless debugging."""
+    """Main scraper class with STRICT DOMAIN ISOLATION, Supabase integration and ruthless debugging."""
     
     @ruthless_trap
     def __init__(self, target_url: str, dry_run: bool = False):
         self.target_url = target_url
         self.dry_run = dry_run
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # CRITICAL: Validate domain isolation BEFORE any processing
+        if not SecureConfigManager.validate_domain_isolation(target_url):
+            raise ValueError(f"Domain isolation validation failed for: {target_url}")
+        
+        # Initialize secure config manager
+        self.config_manager = SecureConfigManager(target_url, self.session_id)
+        
+        # Initialize run isolation manager  
+        self.isolation_manager = RunIsolationManager(target_url, self.session_id)
         
         # Initialize ruthless debugger
         self.debugger = get_ruthless_debugger(self.session_id)
@@ -90,18 +108,25 @@ class AgriToolScraper:
                 log_error(f"Failed to initialize Supabase client: {e}")
                 raise
         
-        # Initialize results tracking
+        # Initialize results tracking with isolation info
         self.results = {
             'session_id': self.session_id,
             'start_time': datetime.utcnow().isoformat(),
             'target_url': target_url,
+            'target_domain': self.isolation_manager.target_domain,
+            'isolation_verified': False,
+            'config_validated': False,
             'urls_collected': 0,
+            'urls_filtered': 0,
             'pages_processed': 0,
             'subsidies_extracted': 0,
             'subsidies_uploaded': 0,
             'errors': [],
             'warnings': []
         }
+        
+        # Session-scoped file paths (set during run)
+        self.session_paths = None
         
         log_step("AgriToolScraper initialization complete")
     
@@ -197,9 +222,9 @@ class AgriToolScraper:
             self.results['urls_filtered'] = filtered_count
             log_step(f"URL collection complete: {len(urls_list)} domain-isolated URLs collected")
             
-            # Save URLs for debugging
-            ensure_folder("data/extracted")
-            urls_file = f"data/extracted/urls_{self.session_id}.txt"
+            # Save URLs for debugging using session-scoped paths
+            urls_file = self.session_paths['urls_file'] if self.session_paths else f"data/extracted/urls_{self.session_id}.txt"
+            ensure_folder(os.path.dirname(urls_file))
             with open(urls_file, 'w', encoding='utf-8') as f:
                 for url in urls_list:
                     f.write(f"{url}\n")
@@ -278,14 +303,14 @@ class AgriToolScraper:
                     self.results['subsidies_extracted'] += 1
                 else:
                     failed_count += 1
-                    save_failed_url(url, "No data extracted")
+                    save_failed_url(url, "No data extracted", self.session_paths)
                     
             except Exception as e:
                 failed_count += 1
                 error_msg = f"Extraction failed for {url}: {e}"
                 print(f"[ERROR] {error_msg}")
                 self.results['errors'].append(error_msg)
-                save_failed_url(url, str(e))
+                save_failed_url(url, str(e), self.session_paths)
             
             self.results['pages_processed'] += 1
             
@@ -297,9 +322,10 @@ class AgriToolScraper:
         print(f"[INFO] Content extraction complete. "
               f"Successfully extracted: {len(subsidies)}, Failed: {failed_count}")
         
-        # Save extracted data for debugging
+        # Save extracted data for debugging using session-scoped paths
         if subsidies:
-            save_json(subsidies, f"data/extracted/subsidies_{self.session_id}.json")
+            subsidies_file = self.session_paths['subsidies_file'] if self.session_paths else f"data/extracted/subsidies_{self.session_id}.json"
+            save_json(subsidies, subsidies_file)
         
         return subsidies
     
@@ -343,51 +369,93 @@ class AgriToolScraper:
     
     @ruthless_trap
     def run_full_pipeline(self, max_pages: int = 0):
-        """Run the complete scraping and upload pipeline with comprehensive logging."""
-        log_step("🚀 STARTING AGRITOOL SCRAPER PIPELINE", 
+        """Run the complete scraping and upload pipeline with STRICT ISOLATION."""
+        log_step("🚀 STARTING AGRITOOL SCRAPER PIPELINE WITH STRICT DOMAIN ISOLATION", 
                 target=self.target_url,
+                target_domain=self.isolation_manager.target_domain,
                 max_pages=max_pages if max_pages > 0 else 'unlimited',
                 dry_run=self.dry_run,
                 session_id=self.session_id)
         
         pipeline_success = False
         
-        try:
-            # Step 1: Collect URLs
-            log_step("📋 PIPELINE STEP 1: Collecting subsidy URLs")
-            urls = self.collect_subsidy_urls(max_pages)
-            if not urls:
-                raise RuntimeError("No URLs collected - pipeline cannot continue")
-            log_step(f"✅ Step 1 complete: {len(urls)} URLs collected")
+        # Use isolation manager context for complete run isolation
+        with self.isolation_manager as isolation:
+            self.session_paths = isolation.session_paths
             
-            # Step 2: Extract content
-            log_step("🔍 PIPELINE STEP 2: Extracting subsidy content")
-            subsidies = self.extract_subsidy_content(urls)
-            if not subsidies:
-                raise RuntimeError("No subsidies extracted - pipeline cannot continue")
-            log_step(f"✅ Step 2 complete: {len(subsidies)} subsidies extracted")
+            # Activate legacy function isolation
+            from legacy_isolation import set_active_isolation, clear_active_isolation
+            set_active_isolation(isolation.target_domain, self.session_id)
             
-            # Step 3: Upload to Supabase
-            log_step("☁️ PIPELINE STEP 3: Uploading to Supabase")
-            upload_results = self.upload_to_supabase(subsidies)
-            log_step(f"✅ Step 3 complete: {upload_results.get('inserted', 0)} subsidies uploaded")
+            try:
+                # STEP 0: Validate complete isolation setup
+                log_step("🔒 PIPELINE STEP 0: Validating domain isolation setup")
+                
+                # Validate config isolation
+                if not isolation.validate_config_isolation():
+                    raise RuntimeError("Config isolation validation failed")
+                self.results['config_validated'] = True
+                
+                # Load and validate config
+                self.config_manager.load_config()
+                log_step("✅ Step 0 complete: Domain isolation validated")
+                
+                # Step 1: Collect URLs with isolation
+                log_step("📋 PIPELINE STEP 1: Collecting domain-isolated subsidy URLs")
+                urls = self.collect_subsidy_urls(max_pages)
+                if not urls:
+                    raise RuntimeError("No URLs collected - pipeline cannot continue")
+                
+                # Validate URL isolation
+                if not isolation.validate_domain_isolation(urls):
+                    raise RuntimeError("URL domain isolation validation failed")
+                self.results['isolation_verified'] = True
+                log_step(f"✅ Step 1 complete: {len(urls)} domain-isolated URLs collected")
             
-            # Step 4: Generate summary
-            log_step("📊 PIPELINE STEP 4: Generating final summary")
-            self.results['end_time'] = datetime.utcnow().isoformat()
-            self.results['success'] = True
-            self.results['upload_results'] = upload_results
-            pipeline_success = True
-            log_step("✅ Pipeline completed successfully")
+                # Step 2: Extract content with domain validation
+                log_step("🔍 PIPELINE STEP 2: Extracting domain-isolated subsidy content")
+                subsidies = self.extract_subsidy_content(urls)
+                if not subsidies:
+                    raise RuntimeError("No subsidies extracted - pipeline cannot continue")
+                log_step(f"✅ Step 2 complete: {len(subsidies)} subsidies extracted")
             
-        except Exception as e:
-            error_msg = f"Pipeline failed: {e}"
-            log_error(error_msg)
-            log_error(f"Full pipeline traceback: {traceback.format_exc()}")
-            self.results['errors'].append(error_msg)
-            self.results['success'] = False
-            self.results['end_time'] = datetime.utcnow().isoformat()
-            pipeline_success = False
+                # Step 3: Upload to Supabase
+                log_step("☁️ PIPELINE STEP 3: Uploading to Supabase")
+                upload_results = self.upload_to_supabase(subsidies)
+                log_step(f"✅ Step 3 complete: {upload_results.get('inserted', 0)} subsidies uploaded")
+                
+                # Step 4: Validate output purity
+                log_step("🔍 PIPELINE STEP 4: Validating output purity")
+                output_files = [
+                    self.session_paths['subsidies_file'],
+                    self.session_paths['urls_file'],
+                    self.session_paths['failed_urls_file']
+                ]
+                
+                if not isolation.validate_output_purity(output_files):
+                    log_error("❌ Output purity validation failed - cross-domain content detected")
+                    self.results['warnings'].append("Cross-domain content detected in outputs")
+                
+                # Step 5: Generate final summary
+                log_step("📊 PIPELINE STEP 5: Generating final summary")
+                self.results['end_time'] = datetime.utcnow().isoformat()
+                self.results['success'] = True
+                self.results['upload_results'] = upload_results
+                pipeline_success = True
+                log_step("✅ Pipeline completed successfully with domain isolation verified")
+                
+            except Exception as e:
+                error_msg = f"Pipeline failed: {e}"
+                log_error(error_msg)
+                log_error(f"Full pipeline traceback: {traceback.format_exc()}")
+                self.results['errors'].append(error_msg)
+                self.results['success'] = False
+                self.results['end_time'] = datetime.utcnow().isoformat()
+                pipeline_success = False
+            
+            finally:
+                # Deactivate legacy function isolation
+                clear_active_isolation()
         
         # Save final results with ruthless logging
         log_step("💾 Saving final results and diagnostics")

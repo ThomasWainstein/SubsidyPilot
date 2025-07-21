@@ -115,14 +115,20 @@ def normalize_record(raw_record):
 
 
 def load_config(site_name):
-    """Load configuration for a specific site."""
-    config_path = f"configs/{site_name}.json"
-    if not os.path.exists(config_path):
-        print(f"[ERROR] Config file not found: {config_path}")
-        return {}
-    
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """Load configuration for a specific site with domain isolation validation."""
+    # Import here to avoid circular imports
+    try:
+        from legacy_isolation import validate_legacy_function_call, isolated_config_loader
+        return isolated_config_loader(site_name)
+    except ImportError:
+        # Fallback for non-isolated runs
+        config_path = f"configs/{site_name}.json"
+        if not os.path.exists(config_path):
+            print(f"[ERROR] Config file not found: {config_path}")
+            return {}
+        
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
 
 def map_site_fields_to_canonical(raw_record, site_name):
@@ -207,6 +213,13 @@ def robust_get(driver, url, screenshot_path=None):
 # Legacy runner functions for backward compatibility
 def run_discovery(site_name, limit=6, browser=None):
     """Run discovery mode for a specific site."""
+    # Validate against domain isolation
+    try:
+        from legacy_isolation import validate_legacy_function_call
+        validate_legacy_function_call('run_discovery', site_name=site_name)
+    except ImportError:
+        pass  # No isolation active
+    
     config = load_config(site_name)
     if not config:
         return
@@ -240,6 +253,13 @@ def run_discovery(site_name, limit=6, browser=None):
 
 def run_extract_links(site_name, browser=None):
     """Extract links from a specific site."""
+    # Validate against domain isolation
+    try:
+        from legacy_isolation import validate_legacy_function_call
+        validate_legacy_function_call('run_extract_links', site_name=site_name)
+    except ImportError:
+        pass  # No isolation active
+    
     config = load_config(site_name)
     if not config:
         return
@@ -266,6 +286,13 @@ def run_extract_links(site_name, browser=None):
 
 def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
     """Legacy smart extraction function."""
+    # Validate against domain isolation
+    try:
+        from legacy_isolation import validate_legacy_function_call
+        validate_legacy_function_call('run_fetch_and_extract_smart')
+    except ImportError:
+        pass  # No isolation active
+    
     ensure_folder("data/extracted")
     ensure_folder("data/attachments")
     output_file = output_file or "data/extracted/consultant_data.csv"
