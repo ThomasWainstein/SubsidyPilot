@@ -1,3 +1,4 @@
+
 # 🔥 SELENIUM 4+ COMPLIANCE MANIFEST
 
 ## COMPLIANCE STATUS
@@ -33,12 +34,11 @@
 
 ### 🛡️ Protected Patterns
 All instances of these patterns cause **immediate build failure**:
-1. `webdriver.Chrome(path, options=...)` - Multiple positional args
-2. `webdriver.Firefox(path, options=...)` - Multiple positional args  
-3. `chrome_options=` - Legacy Chrome options keyword
-4. `firefox_options=` - Legacy Firefox options keyword
-5. `executable_path=` - Deprecated path parameter
-6. Mixed argument patterns - Inconsistent usage
+1. Multiple positional args to webdriver constructors
+2. Legacy Chrome options keyword `chrome_options=`
+3. Legacy Firefox options keyword `firefox_options=` 
+4. Deprecated path parameter `executable_path=`
+5. Mixed argument patterns - Inconsistent usage
 
 ### 📋 Required Pattern (ONLY ALLOWED)
 ```python
@@ -48,6 +48,7 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 options = ChromeOptions()
 service = ChromeService(driver_path)
+# ✅ CORRECT: service first, then options
 driver = webdriver.Chrome(service=service, options=options)
 ```
 
@@ -98,14 +99,6 @@ AgriToolScraper-main/.pre-commit-selenium-check.sh
 ```
 
 ## CONTRIBUTOR GUIDELINES
-
-### ❌ FORBIDDEN - WILL BREAK BUILD
-```python
-# These patterns cause immediate CI failure:
-driver = webdriver.Chrome(driver_path, options=options)
-driver = webdriver.Chrome(chrome_options=options)  
-driver = webdriver.Chrome(executable_path=path, options=options)
-```
 
 ### ✅ REQUIRED - ONLY ALLOWED PATTERN
 ```python

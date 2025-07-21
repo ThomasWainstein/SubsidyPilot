@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 RUTHLESS SELENIUM 4+ COMPLIANCE VALIDATOR
@@ -55,7 +56,8 @@ EXCLUDED_DOC_FILES = {
     'README.md',
     'SELENIUM_4_COMPLIANCE_ENFORCEMENT.md', 
     'SELENIUM_4_COMPLIANCE_PROOF.md',
-    'SELENIUM_4_AUDIT_SUMMARY.md'
+    'SELENIUM_4_AUDIT_SUMMARY.md',
+    'SELENIUM_4_COMPLIANCE_MANIFEST.md'
 }
 
 def scan_file(file_path: str) -> List[Tuple[str, int, str, str]]:
@@ -86,6 +88,12 @@ def scan_file(file_path: str) -> List[Tuple[str, int, str, str]]:
                         continue
                     # Skip lines that are clearly documentation examples
                     if in_code_block and ('# ❌' in line or '# FORBIDDEN' in line or '# WRONG' in line):
+                        continue
+                
+                # Skip this validator's own output messages that contain examples
+                if file_path.endswith('validate_selenium_compliance.py'):
+                    if (line.strip().startswith('print(') and 
+                        ('Replace all webdriver.Chrome' in line or 'with service pattern' in line)):
                         continue
                 
                 # Check for forbidden patterns in actual code
@@ -195,10 +203,10 @@ def print_violation_report(violations: Dict[str, List[Tuple[str, int, str, str]]
         print("❌ ALL CRITICAL ISSUES MUST BE FIXED BEFORE PROCEEDING")
     
     print("\n📋 REQUIRED FIXES:")
-    print("1. Replace all webdriver.Chrome(path, options=opts) with service pattern")
-    print("2. Replace all chrome_options= with options=")
-    print("3. Replace all executable_path= with service=Service(path)")
-    print("4. Update documentation to show only compliant patterns")
+    print("✅ Use service=Service(path), options=options pattern ONLY")
+    print("❌ Never use multiple positional arguments")
+    print("❌ Never use chrome_options= or firefox_options=")
+    print("❌ Never use executable_path=")
     print()
     print("📖 See SELENIUM_4_COMPLIANCE_ENFORCEMENT.md for examples")
     

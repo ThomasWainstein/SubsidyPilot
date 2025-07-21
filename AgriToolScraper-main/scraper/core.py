@@ -1,4 +1,5 @@
 
+
 # scraper/core.py
 
 import os
@@ -204,11 +205,9 @@ def init_driver(browser="chrome", headless=True):
                 log_warning(f"Version check failed: {e}")
             
             log_step("Creating Chrome WebDriver instance")
-            # [LovableAI] Refactored for Selenium 4+ compliance. Legacy positional args removed.
+            # ✅ SELENIUM 4+ COMPLIANT - service first, then options
             service = ChromeService(driver_path)
-            driver = webdriver.Chrome(options=options, service=service)
-            # [LovableAI] WHY: Selenium 4+ forbids multiple positional args and ignoring driver path.
-            # Only 'options=options' and 'service=Service(path)' pattern is valid.
+            driver = webdriver.Chrome(service=service, options=options)
             
             log_step("Chrome driver initialized successfully")
             return driver
@@ -228,11 +227,10 @@ def init_driver(browser="chrome", headless=True):
             driver_path = GeckoDriverManager().install()
             log_step(f"GeckoDriver path: {driver_path}")
             
-            # [LovableAI] Refactored for Selenium 4+ compliance. Legacy positional args removed.
+            # ✅ SELENIUM 4+ COMPLIANT - service first, then options
             service = FirefoxService(driver_path)
-            driver = webdriver.Firefox(options=options, service=service)
-            # [LovableAI] WHY: Selenium 4+ forbids multiple positional args and ignoring driver path.
-            # Only 'options=options' and 'service=Service(path)' pattern is valid.
+            driver = webdriver.Firefox(service=service, options=options)
+            
             log_step("Firefox driver initialized successfully")
             return driver
         
@@ -333,3 +331,4 @@ def guess_canonical_field_fr(text, field_keywords=FIELD_KEYWORDS_FR):
             if word in lower:
                 return field
     return None
+
