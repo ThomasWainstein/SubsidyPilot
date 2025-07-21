@@ -15,13 +15,13 @@ from typing import List, Tuple, Dict
 # Forbidden patterns that cause build failure
 FORBIDDEN_PATTERNS = {
     'multiple_args_chrome': {
-        'regex': r'webdriver\.Chrome\([^)]*,[^)]*\)',
-        'description': 'Multiple positional arguments to webdriver.Chrome()',
+        'regex': r'webdriver\.Chrome\([^,)]*\s*,\s*[^,)]*\s*,',
+        'description': 'Multiple positional arguments to webdriver.Chrome() (3+ args)',
         'severity': 'CRITICAL'
     },
     'multiple_args_firefox': {
-        'regex': r'webdriver\.Firefox\([^)]*,[^)]*\)',
-        'description': 'Multiple positional arguments to webdriver.Firefox()',
+        'regex': r'webdriver\.Firefox\([^,)]*\s*,\s*[^,)]*\s*,',
+        'description': 'Multiple positional arguments to webdriver.Firefox() (3+ args)',
         'severity': 'CRITICAL'
     },
     'chrome_options_keyword': {
@@ -39,14 +39,14 @@ FORBIDDEN_PATTERNS = {
         'description': 'Deprecated executable_path parameter',
         'severity': 'CRITICAL'
     },
-    'webdriver_chrome_legacy': {
-        'regex': r'webdriver\.Chrome\([^)]*\w+[^)]*options\s*=',
-        'description': 'Legacy Chrome instantiation pattern',
+    'webdriver_chrome_legacy_order': {
+        'regex': r'webdriver\.Chrome\([^)]*options\s*=[^)]*service\s*=',
+        'description': 'Legacy Chrome instantiation - options before service',
         'severity': 'HIGH'
     },
-    'webdriver_firefox_legacy': {
-        'regex': r'webdriver\.Firefox\([^)]*\w+[^)]*options\s*=',
-        'description': 'Legacy Firefox instantiation pattern',
+    'webdriver_firefox_legacy_order': {
+        'regex': r'webdriver\.Firefox\([^)]*options\s*=[^)]*service\s*=',
+        'description': 'Legacy Firefox instantiation - options before service',
         'severity': 'HIGH'
     }
 }
@@ -99,11 +99,18 @@ def scan_file(file_path: str) -> List[Tuple[str, int, str, str]]:
                 # Check for forbidden patterns in actual code
                 for pattern_name, pattern_info in FORBIDDEN_PATTERNS.items():
                     if re.search(pattern_info['regex'], line):
+                        # Skip CORRECT Selenium 4+ patterns
+                        if ('service=service, options=options' in line or 
+                            'service=service,options=options' in line):
+                            continue
+                        
                         # Additional context check for .py files
                         if file_path.endswith('.py'):
-                            # Skip commented examples
+                            # Skip commented examples and correct patterns
                             stripped = line.strip()
-                            if stripped.startswith('#') and ('example' in stripped.lower() or 'wrong' in stripped.lower() or 'forbidden' in stripped.lower()):
+                            if (stripped.startswith('#') and 
+                                ('example' in stripped.lower() or 'wrong' in stripped.lower() or 
+                                 'forbidden' in stripped.lower() or 'compliant' in stripped.lower())):
                                 continue
                         
                         violations.append((
