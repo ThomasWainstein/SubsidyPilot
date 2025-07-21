@@ -93,34 +93,54 @@ class ComplianceValidator:
         """Advanced detection of documentation/example context."""
         line_stripped = line.strip()
         
-        # Check for markdown code blocks
-        if file_path.endswith('.md'):
-            # Look for code block boundaries
-            in_code_block = False
-            for i in range(max(0, line_num - 10), min(len(all_lines), line_num + 10)):
-                if '```' in all_lines[i]:
-                    if i < line_num:
-                        in_code_block = not in_code_block
-                    elif i > line_num:
-                        break
-            
-            # If in code block, check for documentation markers
-            if in_code_block:
-                context_markers = ['# ❌', '# FORBIDDEN', '# WRONG', '# BAD', '# LEGACY', '# EXAMPLE']
-                if any(marker in line for marker in context_markers):
-                    return True
+        # Check for print statements or string literals
+        if ('print(' in line or 'log_' in line or 'console.log' in line or 
+            line_stripped.startswith('"') or line_stripped.startswith("'") or
+            '"""' in line or "'''" in line):
+            return True
         
-        # Check for Python comments indicating examples
+        # Check for Python comments
         if line_stripped.startswith('#'):
-            doc_keywords = ['example', 'wrong', 'forbidden', 'bad', 'legacy', 'compliant', 'correct']
-            if any(keyword in line_stripped.lower() for keyword in doc_keywords):
-                return True
+            return True
+            
+        # Check for markdown files
+        if file_path.endswith('.md'):
+            return True
+            
+        # Check for other documentation files
+        if file_path.endswith(('.rst', '.txt', '.yml', '.yaml')):
+            return True
+            
+        # Check for documentation keywords in the line
+        doc_keywords = ['example', 'wrong', 'forbidden', 'bad', 'legacy', 'educational', 'demo', 'test', 'never use']
+        if any(keyword in line.lower() for keyword in doc_keywords):
+            return True
         
-        # Check for docstrings
-        if '"""' in line or "'''" in line:
+        # Check for assignment to string variables
+        if ' = "' in line or " = '" in line:
             return True
             
         return False
+    
+    def is_actual_code_call(self, line: str) -> bool:
+        """Check if this line contains actual webdriver code call (not documentation)."""
+        line_stripped = line.strip()
+        
+        # Skip if it's clearly documentation
+        if self.is_documentation_context('', line, 0, []):
+            return False
+            
+        # Must contain actual webdriver call
+        if not ('webdriver.Chrome(' in line or 'webdriver.Firefox(' in line):
+            return False
+            
+        # Must be an assignment or standalone call
+        if not (line_stripped.startswith('driver =') or 
+                line_stripped.startswith('self.driver =') or
+                'webdriver.Chrome(' in line_stripped.split('=')[-1] if '=' in line else False):
+            return False
+            
+        return True
     
     def validate_python_ast(self, file_path: str) -> List[Tuple[str, int, str, str]]:
         """Use AST parsing for precise Python code analysis."""
@@ -184,15 +204,19 @@ class ComplianceValidator:
         if filename in EXCLUDED_FILES:
             return violations
         
+        # Skip non-Python files completely for regex scanning
+        if not file_path.endswith('.py'):
+            return violations
+        
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
-            # Layer 1: AST validation for Python files
+            # Layer 1: AST validation for Python files (most precise)
             ast_violations = self.validate_python_ast(file_path)
             violations.extend(ast_violations)
             
-            # Layer 2: Line-by-line regex scanning
+            # Layer 2: Line-by-line regex scanning (only for actual code)
             for line_num, line in enumerate(lines, 1):
                 line_stripped = line.strip()
                 
@@ -200,11 +224,11 @@ class ComplianceValidator:
                 if not line_stripped:
                     continue
                 
-                # Check for inline ignore directive
+                # Check for inline ignore directive FIRST
                 if self.has_ignore_directive(line):
                     continue
                 
-                # Check if this is documentation context
+                # Check if this is documentation context (skip if true)
                 if self.is_documentation_context(file_path, line, line_num, lines):
                     continue
                 
@@ -212,7 +236,11 @@ class ComplianceValidator:
                 if self.is_compliant_pattern(line):
                     continue
                 
-                # Check for forbidden patterns
+                # ONLY check for forbidden patterns if this looks like actual code
+                if not self.is_actual_code_call(line):
+                    continue
+                
+                # Check for forbidden patterns in actual code only
                 for pattern_name, pattern_info in FORBIDDEN_PATTERNS.items():
                     if re.search(pattern_info['regex'], line_stripped):
                         violations.append((

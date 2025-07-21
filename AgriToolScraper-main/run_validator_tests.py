@@ -74,6 +74,23 @@ def test_documentation_examples():
     
     return True
 
+def test_print_statements():
+    """Test that print statements and documentation don't trigger violations."""
+    print("🧪 Testing print statements and documentation...")
+    
+    validator = ComplianceValidator()
+    violations = validator.scan_file('tests/test_print_statements.py')
+    
+    if violations:
+        print(f"❌ FALSE POSITIVE: Print statements/docs were flagged")
+        print(f"   Violations found: {len(violations)}")
+        for violation in violations:
+            print(f"   - Line {violation[1]}: {violation[2]}")
+        return False
+    else:
+        print("✅ Print statements and docs validation passed")
+        return True
+
 def test_smoke_test():
     """Test the built-in smoke test functionality."""
     print("🧪 Testing built-in smoke test...")
@@ -97,7 +114,8 @@ def main():
         ("Smoke Test", test_smoke_test),
         ("Compliant Code", test_compliant_code),
         ("Legacy Violations", test_legacy_violations),
-        ("Documentation Examples", test_documentation_examples)
+        ("Documentation Examples", test_documentation_examples),
+        ("Print Statements", test_print_statements)
     ]
     
     passed = 0
