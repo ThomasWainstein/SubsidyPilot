@@ -135,51 +135,85 @@ def find_executable_driver(driver_dir, driver_name):
     Raises:
         FileNotFoundError: If no valid executable driver is found
     """
+    # AGGRESSIVE FORCED CRASH TEST - UNCOMMENT TO PROVE FUNCTION IS CALLED
+    # raise Exception(f"🚨 FORCED CRASH: find_executable_driver CALLED with {driver_name}")
+    
     # EXECUTION PROOF: Log that this function is being called
-    log_step(f"🔥 PROOF: find_executable_driver() CALLED with driver_dir='{driver_dir}', driver_name='{driver_name}'")
-    log_step(f"🔥 PROOF: Call stack trace: {[frame.filename + ':' + str(frame.lineno) for frame in inspect.currentframe().f_back]}")
+    log_step(f"🚨 AGGRESSIVE: 🔥 PROOF: find_executable_driver() CALLED with driver_dir='{driver_dir}', driver_name='{driver_name}'")
     
-    log_step(f"Searching for {driver_name} in {driver_dir}")
+    # AGGRESSIVE STACK TRACE LOGGING
+    current_frame = inspect.currentframe()
+    call_stack = []
+    frame = current_frame.f_back
+    while frame and len(call_stack) < 5:  # Limit to prevent infinite loops
+        frame_info = inspect.getframeinfo(frame)
+        call_stack.append(f"{frame_info.filename}:{frame_info.lineno}:{frame_info.function}")
+        frame = frame.f_back
+    log_step(f"🚨 AGGRESSIVE: 🔥 PROOF: Call stack trace: {call_stack}")
     
-    # List all files in the driver directory for debugging
+    log_step(f"🚨 AGGRESSIVE: Searching for {driver_name} in {driver_dir}")
+    
+    # AGGRESSIVE DIRECTORY ANALYSIS: List all files in the driver directory for debugging
     try:
         dir_contents = os.listdir(driver_dir)
-        log_step(f"Directory contents: {dir_contents}")
+        log_step(f"🚨 AGGRESSIVE: 📁 INSIDE FUNCTION Directory contents: {dir_contents}")
+        
+        # AGGRESSIVE FILE ANALYSIS: Log details for each file
+        for analysis_file in dir_contents:
+            analysis_file_path = os.path.join(driver_dir, analysis_file)
+            analysis_is_file = os.path.isfile(analysis_file_path)
+            analysis_is_executable = os.access(analysis_file_path, os.X_OK)
+            try:
+                analysis_file_stat = os.stat(analysis_file_path)
+                analysis_permissions = stat.filemode(analysis_file_stat.st_mode)
+                analysis_size = analysis_file_stat.st_size
+            except Exception as e:
+                analysis_permissions = f"ERROR: {e}"
+                analysis_size = 0
+            log_step(f"🚨 AGGRESSIVE: 📄 ANALYSIS File: {analysis_file} | File: {analysis_is_file} | Executable: {analysis_is_executable} | Permissions: {analysis_permissions} | Size: {analysis_size}")
+            
+            # AGGRESSIVE CRASH: If THIRD_PARTY_NOTICES is present, warn loudly
+            if "THIRD_PARTY_NOTICES" in analysis_file:
+                log_error(f"🚨 AGGRESSIVE: ❌ WARNING: THIRD_PARTY_NOTICES file detected in directory: {analysis_file}")
+                
     except Exception as e:
-        log_error(f"Could not list driver directory: {e}")
+        log_error(f"🚨 AGGRESSIVE: ❌ Could not list driver directory: {e}")
         raise FileNotFoundError(f"Could not access driver directory: {driver_dir}")
     
-    # Look for the exact driver binary name
+    # AGGRESSIVE SEARCH: Look for the exact driver binary name
+    found_candidates = []
     for file in dir_contents:
         file_path = os.path.join(driver_dir, file)
-        log_step(f"Checking file: {file} at {file_path}")
+        log_step(f"🚨 AGGRESSIVE: Checking file: {file} at {file_path}")
         
         # STRICT CHECK: Must be exactly named as expected (no extensions, no prefixes)
         if file == driver_name and os.path.isfile(file_path):
-            log_step(f"Found potential {driver_name} binary: {file_path}")
+            log_step(f"🚨 AGGRESSIVE: Found potential {driver_name} binary: {file_path}")
+            found_candidates.append(file_path)
             
             # Check if executable
             if os.access(file_path, os.X_OK):
-                log_step(f"✅ {file_path} is executable")
+                log_step(f"🚨 AGGRESSIVE: ✅ {file_path} is executable - SELECTING THIS FILE")
                 return file_path
             else:
-                log_warning(f"⚠️ {file_path} is not executable, attempting to fix permissions")
+                log_warning(f"🚨 AGGRESSIVE: ⚠️ {file_path} is not executable, attempting to fix permissions")
                 try:
                     os.chmod(file_path, 0o755)
                     if os.access(file_path, os.X_OK):
-                        log_step(f"✅ Fixed permissions for {file_path}")
+                        log_step(f"🚨 AGGRESSIVE: ✅ Fixed permissions for {file_path} - SELECTING THIS FILE")
                         return file_path
                     else:
-                        log_error(f"❌ Could not make {file_path} executable")
+                        log_error(f"🚨 AGGRESSIVE: ❌ Could not make {file_path} executable")
                 except Exception as e:
-                    log_error(f"❌ chmod failed for {file_path}: {e}")
+                    log_error(f"🚨 AGGRESSIVE: ❌ chmod failed for {file_path}: {e}")
         else:
-            log_step(f"Skipping {file} (not exactly '{driver_name}' or not a file)")
+            log_step(f"🚨 AGGRESSIVE: Skipping {file} (not exactly '{driver_name}' or not a file)")
     
-    # If we get here, no valid executable was found
+    # AGGRESSIVE ERROR REPORTING: If we get here, no valid executable was found
     error_msg = (
-        f"❌ CRITICAL: No executable '{driver_name}' binary found in {driver_dir}. "
+        f"🚨 AGGRESSIVE: ❌ CRITICAL: No executable '{driver_name}' binary found in {driver_dir}. "
         f"Directory contents: {dir_contents}. "
+        f"Found candidates: {found_candidates}. "
         f"Expected exactly one file named '{driver_name}' with executable permissions."
     )
     log_error(error_msg)
@@ -188,7 +222,7 @@ def find_executable_driver(driver_dir, driver_name):
 @ruthless_trap
 def init_driver(browser="chrome", headless=True):
     """
-    Initialize a Selenium WebDriver using webdriver-manager with comprehensive logging.
+    Initialize a Selenium WebDriver using webdriver-manager with AGGRESSIVE validation and crash logic.
     
     Args:
         browser (str): Browser type (chrome, firefox). Default: chrome
@@ -198,7 +232,12 @@ def init_driver(browser="chrome", headless=True):
         WebDriver: Configured Selenium WebDriver instance
     """
     debugger = get_ruthless_debugger()
-    log_step(f"Initializing {browser} driver", browser=browser, headless=headless)
+    log_step(f"🚨 AGGRESSIVE INIT: Starting {browser} driver initialization", browser=browser, headless=headless)
+    
+    # STACK TRACE: Log entry point
+    current_frame = inspect.currentframe()
+    stack_trace = inspect.getframeinfo(current_frame)
+    log_step(f"🔍 STACK TRACE AT ENTRY: {stack_trace.filename}:{stack_trace.lineno}")
     
     try:
         if browser.lower() == "chrome":
@@ -206,12 +245,12 @@ def init_driver(browser="chrome", headless=True):
             from selenium.webdriver.chrome.options import Options
             from webdriver_manager.chrome import ChromeDriverManager
             
-            log_step("Setting up Chrome options")
+            log_step("🚨 AGGRESSIVE: Setting up Chrome options")
             options = Options()
             
             if headless:
                 options.add_argument("--headless=new")
-                log_step("Chrome headless mode enabled")
+                log_step("🚨 AGGRESSIVE: Chrome headless mode enabled")
             
             # Comprehensive Chrome options for stability
             chrome_args = [
@@ -230,73 +269,157 @@ def init_driver(browser="chrome", headless=True):
             
             for arg in chrome_args:
                 options.add_argument(arg)
-                log_step(f"Added Chrome arg: {arg}")
+                log_step(f"🚨 AGGRESSIVE: Added Chrome arg: {arg}")
             
             # Log Chrome binary location if set
             chrome_binary = os.environ.get('GOOGLE_CHROME_BIN') or os.environ.get('CHROME_BIN')
             if chrome_binary:
                 options.binary_location = chrome_binary
-                log_step(f"Using Chrome binary: {chrome_binary}")
+                log_step(f"🚨 AGGRESSIVE: Using Chrome binary: {chrome_binary}")
             
-            log_step("Calling ChromeDriverManager().install()")
+            log_step("🚨 AGGRESSIVE: Calling ChromeDriverManager().install()")
             
             # Install driver with webdriver-manager
             driver_manager = ChromeDriverManager()
             initial_path = driver_manager.install()
             
-            log_step(f"⚠️ INITIAL (POTENTIALLY WRONG) ChromeDriver path from webdriver-manager: {initial_path}")
-            log_step(f"📝 VARIABLE TRACE: initial_path = '{initial_path}'")
+            # AGGRESSIVE LOGGING: Stack trace at assignment
+            assignment_frame = inspect.currentframe()
+            assignment_info = inspect.getframeinfo(assignment_frame)
+            log_step(f"🔍 STACK TRACE AT initial_path ASSIGNMENT: {assignment_info.filename}:{assignment_info.lineno}")
+            
+            log_step(f"🚨 AGGRESSIVE: ⚠️ INITIAL (POTENTIALLY WRONG) ChromeDriver path from webdriver-manager: {initial_path}")
+            log_step(f"🚨 AGGRESSIVE: 📝 VARIABLE TRACE: initial_path = '{initial_path}'")
+            
+            # AGGRESSIVE CRASH TEST: Immediate crash if initial path contains wrong file
+            if "THIRD_PARTY_NOTICES" in initial_path:
+                crash_msg = f"❌ IMMEDIATE CRASH: webdriver-manager returned THIRD_PARTY_NOTICES file! initial_path='{initial_path}'"
+                log_error(crash_msg)
+                raise ValueError(crash_msg)
             
             # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
-            log_step(f"Driver directory: {driver_dir}")
-            log_step(f"📝 VARIABLE TRACE: driver_dir = '{driver_dir}'")
+            log_step(f"🚨 AGGRESSIVE: Driver directory: {driver_dir}")
+            log_step(f"🚨 AGGRESSIVE: 📝 VARIABLE TRACE: driver_dir = '{driver_dir}'")
+            
+            # AGGRESSIVE DIRECTORY ANALYSIS: Log all files before our function call
+            log_step(f"🚨 AGGRESSIVE: 📁 DIRECTORY ANALYSIS BEFORE find_executable_driver()")
+            try:
+                pre_dir_contents = os.listdir(driver_dir)
+                log_step(f"🚨 AGGRESSIVE: 📁 PRE-FUNCTION Directory contents: {pre_dir_contents}")
+                for pre_file in pre_dir_contents:
+                    pre_file_path = os.path.join(driver_dir, pre_file)
+                    pre_is_file = os.path.isfile(pre_file_path)
+                    pre_is_executable = os.access(pre_file_path, os.X_OK)
+                    pre_file_stat = os.stat(pre_file_path)
+                    pre_permissions = stat.filemode(pre_file_stat.st_mode)
+                    log_step(f"🚨 AGGRESSIVE: 📄 PRE-FUNCTION File: {pre_file} | File: {pre_is_file} | Executable: {pre_is_executable} | Permissions: {pre_permissions}")
+                    
+                    # AGGRESSIVE CRASH: If this is THIRD_PARTY_NOTICES and it would be selected, crash now
+                    if "THIRD_PARTY_NOTICES" in pre_file and pre_file == os.path.basename(initial_path):
+                        crash_msg = f"❌ PRE-FUNCTION CRASH: THIRD_PARTY_NOTICES file detected as selected binary! File: {pre_file}, initial_path basename: {os.path.basename(initial_path)}"
+                        log_error(crash_msg)
+                        raise ValueError(crash_msg)
+            except Exception as e:
+                log_error(f"🚨 AGGRESSIVE: ❌ Error in pre-function directory analysis: {e}")
             
             # FORCED CRASH TEST: Add execution proof for bulletproof function
-            log_step(f"🔥 ABOUT TO CALL find_executable_driver('{driver_dir}', 'chromedriver')")
+            log_step(f"🚨 AGGRESSIVE: 🔥 ABOUT TO CALL find_executable_driver('{driver_dir}', 'chromedriver')")
             
             # CRITICAL: Use bulletproof binary selection - NEVER use initial_path directly
             driver_path = find_executable_driver(driver_dir, "chromedriver")
-            log_step(f"🎯 FINAL SELECTED CHROMEDRIVER BINARY: {driver_path}")
-            log_step(f"📝 VARIABLE TRACE: driver_path = '{driver_path}'")
             
-            # SANITY CHECK: Ensure we never use the wrong file
-            if "THIRD_PARTY_NOTICES" in driver_path or "LICENSE" in driver_path:
-                error_msg = f"❌ FATAL: Bulletproof selection failed! Selected wrong file: {driver_path}"
-                log_error(error_msg)
-                raise ValueError(error_msg)
+            # AGGRESSIVE LOGGING: Stack trace at driver_path assignment
+            driver_assignment_frame = inspect.currentframe()
+            driver_assignment_info = inspect.getframeinfo(driver_assignment_frame)
+            log_step(f"🔍 STACK TRACE AT driver_path ASSIGNMENT: {driver_assignment_info.filename}:{driver_assignment_info.lineno}")
             
-            # ADDITIONAL SANITY CHECK: Verify driver_path is not initial_path
-            if driver_path == initial_path and "THIRD_PARTY_NOTICES" in initial_path:
-                error_msg = f"❌ FATAL: driver_path equals wrong initial_path! driver_path='{driver_path}', initial_path='{initial_path}'"
-                log_error(error_msg)
-                raise ValueError(error_msg)
+            log_step(f"🚨 AGGRESSIVE: 🎯 FINAL SELECTED CHROMEDRIVER BINARY: {driver_path}")
+            log_step(f"🚨 AGGRESSIVE: 📝 VARIABLE TRACE: driver_path = '{driver_path}'")
             
-            # Log driver version
+            # AGGRESSIVE ASSERTION: Multiple crash checks
+            assert driver_path is not None, f"❌ ASSERTION FAILED: driver_path is None!"
+            assert isinstance(driver_path, str), f"❌ ASSERTION FAILED: driver_path is not string: {type(driver_path)}"
+            assert len(driver_path) > 0, f"❌ ASSERTION FAILED: driver_path is empty string!"
+            assert "chromedriver" in driver_path, f"❌ ASSERTION FAILED: 'chromedriver' not in driver_path: {driver_path}"
+            assert "THIRD_PARTY_NOTICES" not in driver_path, f"❌ ASSERTION FAILED: THIRD_PARTY_NOTICES found in driver_path: {driver_path}"
+            assert "LICENSE" not in driver_path, f"❌ ASSERTION FAILED: LICENSE found in driver_path: {driver_path}"
+            assert os.path.isfile(driver_path), f"❌ ASSERTION FAILED: driver_path is not a file: {driver_path}"
+            assert os.access(driver_path, os.X_OK), f"❌ ASSERTION FAILED: driver_path is not executable: {driver_path}"
+            
+            log_step(f"🚨 AGGRESSIVE: ✅ ALL ASSERTIONS PASSED for driver_path: {driver_path}")
+            
+            # AGGRESSIVE BYPASS DETECTION: Ensure we never use initial_path
+            if driver_path == initial_path:
+                log_step(f"🚨 AGGRESSIVE: ⚠️ WARNING: driver_path equals initial_path - this could indicate bypass!")
+                if "THIRD_PARTY_NOTICES" in initial_path:
+                    crash_msg = f"❌ BYPASS DETECTION CRASH: driver_path equals wrong initial_path! driver_path='{driver_path}', initial_path='{initial_path}'"
+                    log_error(crash_msg)
+                    raise ValueError(crash_msg)
+            
+            # AGGRESSIVE FILE VERIFICATION: Double-check the selected file
             try:
+                selected_file_stat = os.stat(driver_path)
+                selected_permissions = stat.filemode(selected_file_stat.st_mode)
+                selected_size = selected_file_stat.st_size
+                log_step(f"🚨 AGGRESSIVE: 📊 SELECTED FILE VERIFICATION:")
+                log_step(f"🚨 AGGRESSIVE: 📊   Path: {driver_path}")
+                log_step(f"🚨 AGGRESSIVE: 📊   Permissions: {selected_permissions}")
+                log_step(f"🚨 AGGRESSIVE: 📊   Size: {selected_size} bytes")
+                log_step(f"🚨 AGGRESSIVE: 📊   Is file: {os.path.isfile(driver_path)}")
+                log_step(f"🚨 AGGRESSIVE: 📊   Is executable: {os.access(driver_path, os.X_OK)}")
+                
+                # AGGRESSIVE SIZE CHECK: ChromeDriver should be reasonably large
+                if selected_size < 1000:  # Less than 1KB is suspicious
+                    crash_msg = f"❌ SIZE CHECK CRASH: Selected file too small ({selected_size} bytes), likely not a binary: {driver_path}"
+                    log_error(crash_msg)
+                    raise ValueError(crash_msg)
+                    
+            except Exception as e:
+                crash_msg = f"❌ FILE VERIFICATION CRASH: Could not verify selected file: {e}"
+                log_error(crash_msg)
+                raise ValueError(crash_msg)
+            
+            # Log driver version with aggressive error handling
+            try:
+                log_step(f"🚨 AGGRESSIVE: 🔍 Testing driver execution with --version")
                 version_result = subprocess.run(
                     [driver_path, '--version'], 
                     capture_output=True, text=True, timeout=10
                 )
                 if version_result.returncode == 0:
-                    log_step(f"ChromeDriver version: {version_result.stdout.strip()}")
+                    log_step(f"🚨 AGGRESSIVE: ✅ ChromeDriver version: {version_result.stdout.strip()}")
                 else:
-                    log_warning(f"Could not get ChromeDriver version: {version_result.stderr}")
+                    error_msg = f"🚨 AGGRESSIVE: ❌ Version check failed with return code {version_result.returncode}: {version_result.stderr}"
+                    log_error(error_msg)
+                    raise ValueError(error_msg)
+            except subprocess.TimeoutExpired:
+                crash_msg = f"❌ VERSION TIMEOUT CRASH: Driver execution timed out, likely wrong binary: {driver_path}"
+                log_error(crash_msg)
+                raise ValueError(crash_msg)
             except Exception as e:
-                log_warning(f"Version check failed: {e}")
+                crash_msg = f"❌ VERSION EXECUTION CRASH: Cannot execute driver binary: {e}"
+                log_error(crash_msg)
+                raise ValueError(crash_msg)
             
-            log_step("Creating Chrome WebDriver instance")
-            log_step(f"🔥 FINAL TRACE: About to call ChromeService(driver_path='{driver_path}')")
+            log_step("🚨 AGGRESSIVE: Creating Chrome WebDriver instance")
+            log_step(f"🚨 AGGRESSIVE: 🔥 FINAL TRACE: About to call ChromeService(driver_path='{driver_path}')")
+            
+            # AGGRESSIVE PRE-SERVICE CHECK: Last chance to catch wrong path
+            if not driver_path.endswith('chromedriver'):
+                crash_msg = f"❌ PRE-SERVICE CRASH: driver_path does not end with 'chromedriver': {driver_path}"
+                log_error(crash_msg)
+                raise ValueError(crash_msg)
             
             # ✅ SELENIUM 4+ COMPLIANT - service first, then options
             service = ChromeService(driver_path)
-            log_step(f"🔥 FINAL TRACE: ChromeService created successfully with path: {driver_path}")
+            log_step(f"🚨 AGGRESSIVE: 🔥 FINAL TRACE: ChromeService created successfully with path: {driver_path}")
             
-            log_step(f"🔥 FINAL TRACE: About to call webdriver.Chrome(service=service, options=options)")
+            log_step(f"🚨 AGGRESSIVE: 🔥 FINAL TRACE: About to call webdriver.Chrome(service=service, options=options)")
             driver = webdriver.Chrome(service=service, options=options)
-            log_step(f"🔥 FINAL TRACE: webdriver.Chrome() called successfully")
+            log_step(f"🚨 AGGRESSIVE: 🔥 FINAL TRACE: webdriver.Chrome() called successfully")
             
-            log_step("Chrome driver initialized successfully")
+            log_step("🚨 AGGRESSIVE: ✅ Chrome driver initialized successfully with bulletproof validation")
             return driver
         
         elif browser.lower() == "firefox":
