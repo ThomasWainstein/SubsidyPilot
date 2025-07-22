@@ -239,15 +239,21 @@ def init_driver(browser="chrome", headless=True):
             driver_manager = ChromeDriverManager()
             initial_path = driver_manager.install()
             
-            log_step(f"Initial ChromeDriver path from webdriver-manager: {initial_path}")
+            log_step(f"⚠️ INITIAL (POTENTIALLY WRONG) ChromeDriver path from webdriver-manager: {initial_path}")
             
             # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
             log_step(f"Driver directory: {driver_dir}")
             
-            # Use bulletproof binary selection
+            # CRITICAL: Use bulletproof binary selection - NEVER use initial_path directly
             driver_path = find_executable_driver(driver_dir, "chromedriver")
-            log_step(f"🎯 SELECTED CHROMEDRIVER BINARY: {driver_path}")
+            log_step(f"🎯 FINAL SELECTED CHROMEDRIVER BINARY: {driver_path}")
+            
+            # SANITY CHECK: Ensure we never use the wrong file
+            if "THIRD_PARTY_NOTICES" in driver_path or "LICENSE" in driver_path:
+                error_msg = f"❌ FATAL: Bulletproof selection failed! Selected wrong file: {driver_path}"
+                log_error(error_msg)
+                raise ValueError(error_msg)
             
             # Log driver version
             try:
