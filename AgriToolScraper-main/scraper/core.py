@@ -179,15 +179,58 @@ def init_driver(browser="chrome", headless=True):
             
             # Install driver with webdriver-manager
             driver_manager = ChromeDriverManager()
-            driver_path = driver_manager.install()
+            initial_path = driver_manager.install()
             
-            log_step(f"ChromeDriver path: {driver_path}")
+            log_step(f"Initial ChromeDriver path from webdriver-manager: {initial_path}")
             
-            # Verify driver binary
+            # Get the driver directory and find the actual executable
+            driver_dir = os.path.dirname(initial_path)
+            log_step(f"Driver directory: {driver_dir}")
+            
+            # List all files in the driver directory for debugging
+            try:
+                dir_contents = os.listdir(driver_dir)
+                log_step(f"Driver directory contents: {dir_contents}")
+            except Exception as e:
+                log_error(f"Could not list driver directory: {e}")
+                dir_contents = []
+            
+            # Find the actual chromedriver executable
+            chromedriver_candidates = []
+            for file in dir_contents:
+                file_path = os.path.join(driver_dir, file)
+                # Look for files named 'chromedriver' that are executable
+                if (file == "chromedriver" or file.startswith("chromedriver")) and os.access(file_path, os.X_OK):
+                    chromedriver_candidates.append(file_path)
+            
+            if not chromedriver_candidates:
+                # If no executable found, also check for files without extension
+                for file in dir_contents:
+                    file_path = os.path.join(driver_dir, file)
+                    if file == "chromedriver" and os.path.isfile(file_path):
+                        # Try to make it executable if it's not
+                        try:
+                            os.chmod(file_path, 0o755)
+                            if os.access(file_path, os.X_OK):
+                                chromedriver_candidates.append(file_path)
+                        except Exception as e:
+                            log_warning(f"Could not make {file_path} executable: {e}")
+            
+            if not chromedriver_candidates:
+                raise FileNotFoundError(
+                    f"No executable chromedriver found in {driver_dir}. "
+                    f"Contents: {dir_contents}. "
+                    f"Initial path was: {initial_path}"
+                )
+            
+            # Use the first (and ideally only) candidate
+            driver_path = chromedriver_candidates[0]
+            log_step(f"Selected ChromeDriver executable: {driver_path}")
+            
+            # Final verification
             if not os.path.exists(driver_path):
                 raise FileNotFoundError(f"ChromeDriver not found at {driver_path}")
             
-            # Check if it's executable
             if not os.access(driver_path, os.X_OK):
                 raise PermissionError(f"ChromeDriver not executable at {driver_path}")
             
@@ -224,8 +267,52 @@ def init_driver(browser="chrome", headless=True):
                 log_step("Firefox headless mode enabled")
             
             log_step("Calling GeckoDriverManager().install()")
-            driver_path = GeckoDriverManager().install()
-            log_step(f"GeckoDriver path: {driver_path}")
+            initial_path = GeckoDriverManager().install()
+            log_step(f"Initial GeckoDriver path from webdriver-manager: {initial_path}")
+            
+            # Get the driver directory and find the actual executable
+            driver_dir = os.path.dirname(initial_path)
+            log_step(f"Firefox driver directory: {driver_dir}")
+            
+            # List all files in the driver directory for debugging
+            try:
+                dir_contents = os.listdir(driver_dir)
+                log_step(f"Firefox driver directory contents: {dir_contents}")
+            except Exception as e:
+                log_error(f"Could not list Firefox driver directory: {e}")
+                dir_contents = []
+            
+            # Find the actual geckodriver executable
+            geckodriver_candidates = []
+            for file in dir_contents:
+                file_path = os.path.join(driver_dir, file)
+                # Look for files named 'geckodriver' that are executable
+                if (file == "geckodriver" or file.startswith("geckodriver")) and os.access(file_path, os.X_OK):
+                    geckodriver_candidates.append(file_path)
+            
+            if not geckodriver_candidates:
+                # If no executable found, also check for files without extension
+                for file in dir_contents:
+                    file_path = os.path.join(driver_dir, file)
+                    if file == "geckodriver" and os.path.isfile(file_path):
+                        # Try to make it executable if it's not
+                        try:
+                            os.chmod(file_path, 0o755)
+                            if os.access(file_path, os.X_OK):
+                                geckodriver_candidates.append(file_path)
+                        except Exception as e:
+                            log_warning(f"Could not make {file_path} executable: {e}")
+            
+            if not geckodriver_candidates:
+                raise FileNotFoundError(
+                    f"No executable geckodriver found in {driver_dir}. "
+                    f"Contents: {dir_contents}. "
+                    f"Initial path was: {initial_path}"
+                )
+            
+            # Use the first (and ideally only) candidate
+            driver_path = geckodriver_candidates[0]
+            log_step(f"Selected GeckoDriver executable: {driver_path}")
             
             # ✅ SELENIUM 4+ COMPLIANT - service first, then options
             service = FirefoxService(driver_path)
