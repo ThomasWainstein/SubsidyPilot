@@ -5,6 +5,7 @@ Manages execution of Selenium compliance and scraper operations
 """
 
 import sys
+import os
 import subprocess
 import json
 import time
@@ -16,9 +17,10 @@ def print_banner(message: str, symbol: str = "🔥"):
     print(f"\n{symbol} {message}")
     print("=" * 80)
 
-def run_command(command: list, description: str) -> tuple[bool, str]:
+def run_command(command: list, description: str, critical: bool = True) -> tuple[bool, str]:
     """
     Run a command and return success status with output
+    critical: If False, command failure won't stop the pipeline
     """
     print_banner(f"EXECUTING: {description}")
     print(f"Command: {' '.join(command)}")
@@ -35,9 +37,14 @@ def run_command(command: list, description: str) -> tuple[bool, str]:
             print(f"✅ {description} - SUCCESS")
             return True, result.stdout
         else:
-            print(f"❌ {description} - FAILED")
-            print(f"STDERR: {result.stderr}")
-            print(f"STDOUT: {result.stdout}")
+            if critical:
+                print(f"❌ {description} - FAILED")
+                print(f"STDERR: {result.stderr}")
+                print(f"STDOUT: {result.stdout}")
+            else:
+                print(f"⚠️ {description} - COMPLETED WITH WARNINGS")
+                print(f"STDERR: {result.stderr}")
+                print(f"STDOUT: {result.stdout}")
             return False, result.stderr
             
     except subprocess.TimeoutExpired:
@@ -79,23 +86,43 @@ def main():
         print(json.dumps(job_log, indent=2))
         sys.exit(1)
     
-    # Step 2: Cache Clear
-    step2_success, step2_output = run_command(
+    # Step 2a: Cache Clear (always runs, never blocks)
+    step2a_success, step2a_output = run_command(
         [sys.executable, "AgriToolScraper-main/clear_cache.py"],
-        "PYTHON CACHE CLEARING"
+        "PYTHON CACHE CLEARING",
+        critical=False
     )
     job_log["steps"].append({
         "step": "cache_clear", 
-        "success": step2_success,
-        "output": step2_output[:1000]
+        "success": step2a_success,
+        "output": step2a_output[:1000]
     })
     
-    if not step2_success:
-        print_banner("PIPELINE FAILED - CACHE CLEAR ERROR", "❌")
-        job_log["status"] = "FAILED"
-        job_log["failure_reason"] = "Python cache clearing failed"
-        print(json.dumps(job_log, indent=2))
-        sys.exit(1)
+    # Step 2b: Contamination Purge (conditional, never blocks)
+    force_purge = os.environ.get('FORCE_PURGE', '').lower() in ['true', '1', 'yes']
+    purge_skipped = False
+    
+    if force_purge:
+        print_banner("FORCE_PURGE=true - Running contamination purge", "🧹")
+        step2b_success, step2b_output = run_command(
+            [sys.executable, "AgriToolScraper-main/purge_contamination.py"],
+            "CONTAMINATION PURGE",
+            critical=False
+        )
+        job_log["steps"].append({
+            "step": "contamination_purge",
+            "success": step2b_success,
+            "output": step2b_output[:1000]
+        })
+    else:
+        print_banner("FORCE_PURGE not set - Skipping contamination purge", "ℹ️")
+        print("💡 Use FORCE_PURGE=true to enable full artifact cleanup")
+        purge_skipped = True
+        job_log["steps"].append({
+            "step": "contamination_purge",
+            "success": True,
+            "output": "Skipped - FORCE_PURGE not set"
+        })
     
     # Step 3: Driver Compliance Test
     step3_success, step3_output = run_command(
