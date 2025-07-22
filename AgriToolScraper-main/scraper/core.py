@@ -136,6 +136,7 @@ def find_executable_driver(driver_dir, driver_name):
         FileNotFoundError: If no valid executable driver is found
     """
     # AGGRESSIVE FORCED CRASH TEST - UNCOMMENT TO PROVE FUNCTION IS CALLED
+    # To enable forced crash test, uncomment the next line:
     # raise Exception(f"🚨 FORCED CRASH: find_executable_driver CALLED with {driver_name}")
     
     # EXECUTION PROOF: Log that this function is being called
@@ -295,7 +296,12 @@ def init_driver(browser="chrome", headless=True):
             if "THIRD_PARTY_NOTICES" in initial_path:
                 crash_msg = f"❌ IMMEDIATE CRASH: webdriver-manager returned THIRD_PARTY_NOTICES file! initial_path='{initial_path}'"
                 log_error(crash_msg)
+                # FORCED CRASH TO PROVE DETECTION
                 raise ValueError(crash_msg)
+            
+            # FORCED EXECUTION CRASH TEST - Enable this to prove the function runs
+            # Uncomment this line to crash and prove execution reaches here:
+            # raise Exception(f"🚨 FORCED EXECUTION PROOF: init_driver reached assignment point with initial_path='{initial_path}'")
             
             # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
@@ -352,6 +358,12 @@ def init_driver(browser="chrome", headless=True):
             # AGGRESSIVE BYPASS DETECTION: Ensure we never use initial_path
             if driver_path == initial_path:
                 log_step(f"🚨 AGGRESSIVE: ⚠️ WARNING: driver_path equals initial_path - this could indicate bypass!")
+                log_step(f"🚨 AGGRESSIVE: 📝 COMPARISON: driver_path='{driver_path}' vs initial_path='{initial_path}'")
+                # Only warn if they're equal but the initial path was not the chromedriver binary
+                if "THIRD_PARTY_NOTICES" in initial_path:
+                    crash_msg = f"❌ BYPASS DETECTED: driver_path equals bad initial_path! Both contain THIRD_PARTY_NOTICES: {driver_path}"
+                    log_error(crash_msg)
+                    raise ValueError(crash_msg)
                 if "THIRD_PARTY_NOTICES" in initial_path:
                     crash_msg = f"❌ BYPASS DETECTION CRASH: driver_path equals wrong initial_path! driver_path='{driver_path}', initial_path='{initial_path}'"
                     log_error(crash_msg)
