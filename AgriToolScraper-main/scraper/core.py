@@ -1,5 +1,3 @@
-
-
 # scraper/core.py
 
 import os
@@ -122,6 +120,66 @@ def detect_language(text):
         print(f"[ERROR] Language detection failed: {e}")
         return "unknown"
 
+def find_executable_driver(driver_dir, driver_name):
+    """
+    Find the executable driver binary in the given directory.
+    
+    Args:
+        driver_dir (str): Directory containing the driver files
+        driver_name (str): Expected name of the driver binary (e.g., 'chromedriver', 'geckodriver')
+        
+    Returns:
+        str: Full path to the executable driver binary
+        
+    Raises:
+        FileNotFoundError: If no valid executable driver is found
+    """
+    log_step(f"Searching for {driver_name} in {driver_dir}")
+    
+    # List all files in the driver directory for debugging
+    try:
+        dir_contents = os.listdir(driver_dir)
+        log_step(f"Directory contents: {dir_contents}")
+    except Exception as e:
+        log_error(f"Could not list driver directory: {e}")
+        raise FileNotFoundError(f"Could not access driver directory: {driver_dir}")
+    
+    # Look for the exact driver binary name
+    for file in dir_contents:
+        file_path = os.path.join(driver_dir, file)
+        log_step(f"Checking file: {file} at {file_path}")
+        
+        # STRICT CHECK: Must be exactly named as expected (no extensions, no prefixes)
+        if file == driver_name and os.path.isfile(file_path):
+            log_step(f"Found potential {driver_name} binary: {file_path}")
+            
+            # Check if executable
+            if os.access(file_path, os.X_OK):
+                log_step(f"✅ {file_path} is executable")
+                return file_path
+            else:
+                log_warning(f"⚠️ {file_path} is not executable, attempting to fix permissions")
+                try:
+                    os.chmod(file_path, 0o755)
+                    if os.access(file_path, os.X_OK):
+                        log_step(f"✅ Fixed permissions for {file_path}")
+                        return file_path
+                    else:
+                        log_error(f"❌ Could not make {file_path} executable")
+                except Exception as e:
+                    log_error(f"❌ chmod failed for {file_path}: {e}")
+        else:
+            log_step(f"Skipping {file} (not exactly '{driver_name}' or not a file)")
+    
+    # If we get here, no valid executable was found
+    error_msg = (
+        f"❌ CRITICAL: No executable '{driver_name}' binary found in {driver_dir}. "
+        f"Directory contents: {dir_contents}. "
+        f"Expected exactly one file named '{driver_name}' with executable permissions."
+    )
+    log_error(error_msg)
+    raise FileNotFoundError(error_msg)
+
 @ruthless_trap
 def init_driver(browser="chrome", headless=True):
     """
@@ -183,69 +241,13 @@ def init_driver(browser="chrome", headless=True):
             
             log_step(f"Initial ChromeDriver path from webdriver-manager: {initial_path}")
             
-            # BULLETPROOF BINARY SELECTION: Never use the returned path directly
-            # webdriver-manager can return paths to text files, not the actual binary
+            # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
             log_step(f"Driver directory: {driver_dir}")
             
-            # List all files in the driver directory for debugging
-            try:
-                dir_contents = os.listdir(driver_dir)
-                log_step(f"Driver directory contents: {dir_contents}")
-            except Exception as e:
-                log_error(f"Could not list driver directory: {e}")
-                dir_contents = []
-                
-            # CRITICAL: Find ONLY the exact 'chromedriver' binary (no extensions, no prefixes)
-            chromedriver_binary = None
-            for file in dir_contents:
-                file_path = os.path.join(driver_dir, file)
-                log_step(f"Checking file: {file} at {file_path}")
-                
-                # STRICT CHECK: Must be exactly named 'chromedriver' (not THIRD_PARTY_NOTICES.chromedriver)
-                if file == "chromedriver" and os.path.isfile(file_path):
-                    log_step(f"Found potential chromedriver binary: {file_path}")
-                    
-                    # Check if executable
-                    if os.access(file_path, os.X_OK):
-                        log_step(f"✅ {file_path} is executable")
-                        chromedriver_binary = file_path
-                        break
-                    else:
-                        log_warning(f"⚠️ {file_path} is not executable, attempting to fix permissions")
-                        try:
-                            os.chmod(file_path, 0o755)
-                            if os.access(file_path, os.X_OK):
-                                log_step(f"✅ Fixed permissions for {file_path}")
-                                chromedriver_binary = file_path
-                                break
-                            else:
-                                log_error(f"❌ Could not make {file_path} executable")
-                        except Exception as e:
-                            log_error(f"❌ chmod failed for {file_path}: {e}")
-                else:
-                    log_step(f"Skipping {file} (not exactly 'chromedriver' or not a file)")
-            
-            # FAIL HARD if no valid binary found
-            if not chromedriver_binary:
-                error_msg = (
-                    f"❌ CRITICAL: No executable 'chromedriver' binary found in {driver_dir}. "
-                    f"Directory contents: {dir_contents}. "
-                    f"webdriver-manager returned: {initial_path}. "
-                    f"This usually means webdriver-manager returned a path to a text file instead of the binary."
-                )
-                log_error(error_msg)
-                raise FileNotFoundError(error_msg)
-            
-            driver_path = chromedriver_binary
+            # Use bulletproof binary selection
+            driver_path = find_executable_driver(driver_dir, "chromedriver")
             log_step(f"🎯 SELECTED CHROMEDRIVER BINARY: {driver_path}")
-            
-            # Final verification
-            if not os.path.exists(driver_path):
-                raise FileNotFoundError(f"ChromeDriver not found at {driver_path}")
-            
-            if not os.access(driver_path, os.X_OK):
-                raise PermissionError(f"ChromeDriver not executable at {driver_path}")
             
             # Log driver version
             try:
@@ -283,61 +285,12 @@ def init_driver(browser="chrome", headless=True):
             initial_path = GeckoDriverManager().install()
             log_step(f"Initial GeckoDriver path from webdriver-manager: {initial_path}")
             
-            # BULLETPROOF BINARY SELECTION: Never use the returned path directly
-            # webdriver-manager can return paths to text files, not the actual binary
+            # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
             log_step(f"Firefox driver directory: {driver_dir}")
             
-            # List all files in the driver directory for debugging
-            try:
-                dir_contents = os.listdir(driver_dir)
-                log_step(f"Firefox driver directory contents: {dir_contents}")
-            except Exception as e:
-                log_error(f"Could not list Firefox driver directory: {e}")
-                dir_contents = []
-                
-            # CRITICAL: Find ONLY the exact 'geckodriver' binary (no extensions, no prefixes)
-            geckodriver_binary = None
-            for file in dir_contents:
-                file_path = os.path.join(driver_dir, file)
-                log_step(f"Checking Firefox file: {file} at {file_path}")
-                
-                # STRICT CHECK: Must be exactly named 'geckodriver' (not geckodriver.exe or other)
-                if file == "geckodriver" and os.path.isfile(file_path):
-                    log_step(f"Found potential geckodriver binary: {file_path}")
-                    
-                    # Check if executable
-                    if os.access(file_path, os.X_OK):
-                        log_step(f"✅ {file_path} is executable")
-                        geckodriver_binary = file_path
-                        break
-                    else:
-                        log_warning(f"⚠️ {file_path} is not executable, attempting to fix permissions")
-                        try:
-                            os.chmod(file_path, 0o755)
-                            if os.access(file_path, os.X_OK):
-                                log_step(f"✅ Fixed permissions for {file_path}")
-                                geckodriver_binary = file_path
-                                break
-                            else:
-                                log_error(f"❌ Could not make {file_path} executable")
-                        except Exception as e:
-                            log_error(f"❌ chmod failed for {file_path}: {e}")
-                else:
-                    log_step(f"Skipping {file} (not exactly 'geckodriver' or not a file)")
-            
-            # FAIL HARD if no valid binary found
-            if not geckodriver_binary:
-                error_msg = (
-                    f"❌ CRITICAL: No executable 'geckodriver' binary found in {driver_dir}. "
-                    f"Directory contents: {dir_contents}. "
-                    f"webdriver-manager returned: {initial_path}. "
-                    f"This usually means webdriver-manager returned a path to a text file instead of the binary."
-                )
-                log_error(error_msg)
-                raise FileNotFoundError(error_msg)
-            
-            driver_path = geckodriver_binary
+            # Use bulletproof binary selection
+            driver_path = find_executable_driver(driver_dir, "geckodriver")
             log_step(f"🎯 SELECTED GECKODRIVER BINARY: {driver_path}")
             
             # ✅ SELENIUM 4+ COMPLIANT - service first, then options
@@ -444,4 +397,3 @@ def guess_canonical_field_fr(text, field_keywords=FIELD_KEYWORDS_FR):
             if word in lower:
                 return field
     return None
-
