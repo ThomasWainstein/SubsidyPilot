@@ -292,6 +292,26 @@ def init_driver(browser="chrome", headless=True):
             log_step(f"🚨 AGGRESSIVE: ⚠️ INITIAL (POTENTIALLY WRONG) ChromeDriver path from webdriver-manager: {initial_path}")
             log_step(f"🚨 AGGRESSIVE: 📝 VARIABLE TRACE: initial_path = '{initial_path}'")
             
+            # MANDATORY DIRECTORY ANALYSIS: Log all files in driver directory with full properties
+            driver_dir = os.path.dirname(initial_path)
+            log_step(f"🚨 AGGRESSIVE: 📁 Driver directory: {driver_dir}")
+            
+            try:
+                dir_files = os.listdir(driver_dir)
+                log_step(f"🚨 AGGRESSIVE: 📋 Directory contains {len(dir_files)} files")
+                
+                for filename in dir_files:
+                    filepath = os.path.join(driver_dir, filename)
+                    if os.path.isfile(filepath):
+                        file_stat = os.stat(filepath)
+                        is_executable = os.access(filepath, os.X_OK)
+                        log_step(f"🚨 AGGRESSIVE: 📄 File: {filename} (size={file_stat.st_size}, exec={is_executable})")
+                    else:
+                        log_step(f"🚨 AGGRESSIVE: 📁 Directory: {filename}")
+                        
+            except Exception as dir_error:
+                log_error(f"🚨 AGGRESSIVE: ❌ Failed to list directory: {dir_error}")
+            
             # AGGRESSIVE CRASH TEST: Immediate crash if initial path contains wrong file
             if "THIRD_PARTY_NOTICES" in initial_path:
                 crash_msg = f"❌ IMMEDIATE CRASH: webdriver-manager returned THIRD_PARTY_NOTICES file! initial_path='{initial_path}'"
