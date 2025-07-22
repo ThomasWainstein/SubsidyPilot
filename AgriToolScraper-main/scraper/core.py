@@ -22,6 +22,7 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 import stat
 import subprocess
+import inspect
 
 # Import debugging system
 from debug_diagnostics import get_ruthless_debugger, ruthless_trap, log_step, log_error, log_warning
@@ -134,6 +135,10 @@ def find_executable_driver(driver_dir, driver_name):
     Raises:
         FileNotFoundError: If no valid executable driver is found
     """
+    # EXECUTION PROOF: Log that this function is being called
+    log_step(f"🔥 PROOF: find_executable_driver() CALLED with driver_dir='{driver_dir}', driver_name='{driver_name}'")
+    log_step(f"🔥 PROOF: Call stack trace: {[frame.filename + ':' + str(frame.lineno) for frame in inspect.currentframe().f_back]}")
+    
     log_step(f"Searching for {driver_name} in {driver_dir}")
     
     # List all files in the driver directory for debugging
@@ -240,18 +245,30 @@ def init_driver(browser="chrome", headless=True):
             initial_path = driver_manager.install()
             
             log_step(f"⚠️ INITIAL (POTENTIALLY WRONG) ChromeDriver path from webdriver-manager: {initial_path}")
+            log_step(f"📝 VARIABLE TRACE: initial_path = '{initial_path}'")
             
             # Get the directory containing the driver files
             driver_dir = os.path.dirname(initial_path)
             log_step(f"Driver directory: {driver_dir}")
+            log_step(f"📝 VARIABLE TRACE: driver_dir = '{driver_dir}'")
+            
+            # FORCED CRASH TEST: Add execution proof for bulletproof function
+            log_step(f"🔥 ABOUT TO CALL find_executable_driver('{driver_dir}', 'chromedriver')")
             
             # CRITICAL: Use bulletproof binary selection - NEVER use initial_path directly
             driver_path = find_executable_driver(driver_dir, "chromedriver")
             log_step(f"🎯 FINAL SELECTED CHROMEDRIVER BINARY: {driver_path}")
+            log_step(f"📝 VARIABLE TRACE: driver_path = '{driver_path}'")
             
             # SANITY CHECK: Ensure we never use the wrong file
             if "THIRD_PARTY_NOTICES" in driver_path or "LICENSE" in driver_path:
                 error_msg = f"❌ FATAL: Bulletproof selection failed! Selected wrong file: {driver_path}"
+                log_error(error_msg)
+                raise ValueError(error_msg)
+            
+            # ADDITIONAL SANITY CHECK: Verify driver_path is not initial_path
+            if driver_path == initial_path and "THIRD_PARTY_NOTICES" in initial_path:
+                error_msg = f"❌ FATAL: driver_path equals wrong initial_path! driver_path='{driver_path}', initial_path='{initial_path}'"
                 log_error(error_msg)
                 raise ValueError(error_msg)
             
@@ -269,9 +286,15 @@ def init_driver(browser="chrome", headless=True):
                 log_warning(f"Version check failed: {e}")
             
             log_step("Creating Chrome WebDriver instance")
+            log_step(f"🔥 FINAL TRACE: About to call ChromeService(driver_path='{driver_path}')")
+            
             # ✅ SELENIUM 4+ COMPLIANT - service first, then options
             service = ChromeService(driver_path)
+            log_step(f"🔥 FINAL TRACE: ChromeService created successfully with path: {driver_path}")
+            
+            log_step(f"🔥 FINAL TRACE: About to call webdriver.Chrome(service=service, options=options)")
             driver = webdriver.Chrome(service=service, options=options)
+            log_step(f"🔥 FINAL TRACE: webdriver.Chrome() called successfully")
             
             log_step("Chrome driver initialized successfully")
             return driver
