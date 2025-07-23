@@ -1,11 +1,8 @@
 name: FranceAgriMer Subsidy Scraper
 
 on:
-  # Weekly schedule: Every Sunday at 01:00 UTC
   schedule:
     - cron: '0 1 * * 0'
-  
-  # Manual trigger for immediate execution
   workflow_dispatch:
     inputs:
       max_pages:
@@ -34,11 +31,12 @@ jobs:
   scrape-franceagrimer:
     runs-on: ubuntu-latest
 
-env:
-  SUPABASE_URL: https://gvfgvbztagafjykncwto.supabase.co
-  SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2Zmd2Ynp0YWdhZmp5a25jd3RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODcwODE3MywiZXhwIjoyMDY0Mjg0MTczfQ.j3KEkFJLrDKbmyCHPPHW67zjzMlua4Gff4hzvqW_LZY
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CHROME_BIN: /usr/bin/chromium-browser
+      CHROMEDRIVER_BIN: /usr/bin/chromedriver
 
-    
     steps:
       - name: Print runner/system context
         run: |
@@ -55,12 +53,12 @@ env:
 
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -69,81 +67,39 @@ env:
             chromium-chromedriver \
             python3-pip \
             python3-venv
-            
+
       - name: Install Python dependencies
         working-directory: ./AgriToolScraper-main
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          
-      - name: Configure Chrome for headless operation
-        run: |
-          export CHROME_BIN=/usr/bin/chromium-browser
-          export CHROMEDRIVER_BIN=/usr/bin/chromedriver
-          
-      - name: Set up environment variables
-        run: |
-          echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
-          echo "CHROMEDRIVER_BIN=/usr/bin/chromedriver" >> $GITHUB_ENV
-          echo "FORCE_PURGE=${{ github.event.inputs.force_purge || 'false' }}" >> $GITHUB_ENV
-          
+
       - name: 🔥 STEP 1 - SELENIUM 4+ COMPLIANCE VALIDATION
         working-directory: ./AgriToolScraper-main  
         run: |
-          echo "🔥 SELENIUM 4+ COMPLIANCE VALIDATION (AST-ONLY)"
-          echo "🔍 SCANNING EXECUTABLE CODE FOR SELENIUM VIOLATIONS"
-          python selenium_compliance_validator.py || (
-            echo "❌ SELENIUM 4+ COMPLIANCE FAILED - VIOLATIONS DETECTED"
-            echo "❌ SCRAPER EXECUTION BLOCKED"
-            echo "❌ Review SELENIUM_4_COMPLIANCE_ENFORCEMENT.md"
-            echo "❌ Fix all violations before re-running"
-            exit 1
-          )
-          echo "✅ SELENIUM 4+ COMPLIANCE VERIFIED - ZERO VIOLATIONS"
-          echo "✅ Proceeding with enhanced scraper pipeline"
+          python selenium_compliance_validator.py
 
       - name: 🔄 STEP 2 - CACHE CLEARING & CONDITIONAL PURGE
         working-directory: ./AgriToolScraper-main
-        env:
-          FORCE_PURGE: ${{ github.event.inputs.force_purge || 'false' }}
         run: |
-          echo "🔄 STEP 2A - CLEARING PYTHON RUNTIME CACHES"
           python clear_cache.py
-          
-          echo "🔄 STEP 2B - CONDITIONAL CONTAMINATION PURGE"
-          if [ "$FORCE_PURGE" = "true" ]; then
-            echo "🧹 FORCE_PURGE=true - Running full contamination purge"
+          if [ "${{ github.event.inputs.force_purge || 'false' }}" = "true" ]; then
             python purge_contamination.py
-          else
-            echo "ℹ️ FORCE_PURGE not set - Skipping contamination purge"
-            echo "💡 Use FORCE_PURGE=true in workflow inputs to enable"
           fi
-          echo "✅ STEP 2 COMPLETE"
 
       - name: 🚗 STEP 3 - DRIVER COMPLIANCE TEST
         working-directory: ./AgriToolScraper-main
         run: |
-          echo "🚗 TESTING DRIVER COMPLIANCE AND INITIALIZATION"
-          echo "🔍 ENSURING SELENIUM 4+ DRIVERS WORK CORRECTLY"
           python test_driver_compliance.py
-          echo "✅ DRIVER COMPLIANCE VERIFIED"
 
       - name: 🇫🇷 STEP 4 - FRANCEAGRIMER SCRAPER EXECUTION
         working-directory: ./AgriToolScraper-main
         run: |
-          echo "🇫🇷 EXECUTING FRANCEAGRIMER SUBSIDY SCRAPER"
-          echo "🎯 TARGET: https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales"
-          echo "📄 MAX_PAGES: ${{ github.event.inputs.max_pages || '0' }}"
-          echo "🔥 DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}"
-          echo "🧹 FORCE_PURGE: ${{ github.event.inputs.force_purge || 'false' }}"
-          
           python main.py \
             --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
             --max-pages "${{ github.event.inputs.max_pages || '0' }}" \
             --dry-run="${{ github.event.inputs.dry_run || 'false' }}"
-          
-          echo "✅ FRANCEAGRIMER SCRAPER COMPLETED SUCCESSFULLY"
-            
+
       - name: 📦 Upload logs and extracted data
         if: always()
         uses: actions/upload-artifact@v4
@@ -155,7 +111,7 @@ env:
             AgriToolScraper-main/job_execution_log.json
             AgriToolScraper-main/*.log
           retention-days: 30
-          
+
       - name: Upload FranceAgriMer error screenshots  
         uses: actions/upload-artifact@v4
         if: failure()
@@ -165,15 +121,13 @@ env:
             AgriToolScraper-main/data/extracted/franceagrimer_screenshots_*
             AgriToolScraper-main/data/logs/franceagrimer_*error*.png
           retention-days: 7
-          
+
       - name: Print debug information on failure
         if: failure()
         run: |
           echo "===== DEBUG INFORMATION ====="
-          echo "Working directory structure:"
           find AgriToolScraper-main/ -type f -name "*.log" || true
           find AgriToolScraper-main/data/ || true
-          echo "===== LOG TAILS (last 50 lines each) ====="
           tail -n 50 AgriToolScraper-main/*.log || true
           tail -n 50 AgriToolScraper-main/data/logs/*.log || true
           tail -n 50 AgriToolScraper-main/data/extracted/*.log || true
@@ -182,33 +136,14 @@ env:
         if: success()
         run: |
           echo "🎉 FRANCEAGRIMER SCRAPER JOB COMPLETED SUCCESSFULLY"
-          echo "="*60
-          echo "📊 EXECUTION SUMMARY:"
-          echo "   - Selenium 4+ Compliance: ✅ VERIFIED" 
-          echo "   - Cache Clearing: ✅ COMPLETED"
-          echo "   - Contamination Purge: ✅ CONDITIONAL"
-          echo "   - Driver Initialization: ✅ TESTED"
-          echo "   - FranceAgriMer Scraping: ✅ COMPLETED"
-          echo "="*60
-          echo "📁 ARTIFACTS UPLOADED:"
-          echo "   - FranceAgriMer logs and results"
-          echo "   - Error screenshots (if any)"
-          echo "   - Raw extracted data"
-          echo "="*60
-          echo "🚀 JOB STATUS: SUCCESS - READY FOR PRODUCTION"
 
       - name: ❌ FAILURE NOTIFICATION  
         if: failure()
         run: |
           echo "💥 FRANCEAGRIMER SCRAPER JOB FAILED"
-          echo "="*60
           echo "❌ FAILURE ANALYSIS REQUIRED"
-          echo "📋 CHECK THE FOLLOWING:"
           echo "   1. Selenium 4+ compliance violations"
           echo "   2. Driver initialization issues"
           echo "   3. Website structure changes"
           echo "   4. Network connectivity problems"
           echo "   5. Supabase credentials/permissions"
-          echo "="*60
-          echo "📁 DEBUG ARTIFACTS UPLOADED FOR ANALYSIS"
-          echo "🔧 FIX ISSUES BEFORE RETRY"
