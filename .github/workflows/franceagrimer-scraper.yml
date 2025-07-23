@@ -34,6 +34,8 @@ jobs:
     env:
       CHROME_BIN: /usr/bin/chromium-browser
       CHROMEDRIVER_BIN: /usr/bin/chromedriver
+      SUPABASE_URL: https://gvfgvbztagafjykncwto.supabase.co
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
     steps:
       - name: Print runner/system context
