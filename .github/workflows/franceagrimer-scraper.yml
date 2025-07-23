@@ -33,6 +33,11 @@ on:
 jobs:
   scrape-franceagrimer:
     runs-on: ubuntu-latest
+
+env:
+  SUPABASE_URL: https://gvfgvbztagafjykncwto.supabase.co
+  SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2Zmd2Ynp0YWdhZmp5a25jd3RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODcwODE3MywiZXhwIjoyMDY0Mjg0MTczfQ.j3KEkFJLrDKbmyCHPPHW67zjzMlua4Gff4hzvqW_LZY
+
     
     steps:
       - name: Print runner/system context
