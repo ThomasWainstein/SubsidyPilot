@@ -324,12 +324,16 @@ def init_driver(browser="chrome", headless=True):
             except Exception as dir_error:
                 log_error(f"🚨 AGGRESSIVE: ❌ Failed to list directory: {dir_error}")
             
-            # AGGRESSIVE CRASH TEST: Immediate crash if initial path contains wrong file
+            # Fix webdriver-manager path if it points to wrong file
             if "THIRD_PARTY_NOTICES" in initial_path:
-                crash_msg = f"❌ IMMEDIATE CRASH: webdriver-manager returned THIRD_PARTY_NOTICES file! initial_path='{initial_path}'"
-                log_error(crash_msg)
-                # FORCED CRASH TO PROVE DETECTION
-                raise ValueError(crash_msg)
+                # webdriver-manager sometimes returns wrong file, find the actual chromedriver
+                driver_dir = os.path.dirname(initial_path)
+                chromedriver_path = os.path.join(driver_dir, "chromedriver")
+                if os.path.exists(chromedriver_path):
+                    initial_path = chromedriver_path
+                    log_step(f"🚨 AGGRESSIVE: Fixed path to actual chromedriver: {initial_path}")
+                else:
+                    log_error(f"❌ Could not find chromedriver in {driver_dir}, using original path")
             
             # FORCED EXECUTION CRASH TEST - Enable this to prove the function runs
             # Uncomment this line to crash and prove execution reaches here:

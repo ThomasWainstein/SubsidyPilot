@@ -54,6 +54,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Chrome and ChromeDriver (official, pinned version)
+        run: |
+          mkdir -p bin
+          curl -L "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.168/linux64/chrome-linux64.zip" -o bin/chrome-linux64.zip
+          unzip -o bin/chrome-linux64.zip -d bin/
+          cp -r bin/chrome-linux64/* bin/
+          rm -rf bin/chrome-linux64 bin/chrome-linux64.zip
+
+          curl -L "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.168/linux64/chromedriver-linux64.zip" -o bin/chromedriver-linux64.zip
+          unzip -o bin/chromedriver-linux64.zip -d bin/
+          cp -r bin/chromedriver-linux64/* bin/
+          rm -rf bin/chromedriver-linux64 bin/chromedriver-linux64.zip
+
+          chmod +x bin/chrome bin/chromedriver
+
+      - name: Export Chrome and ChromeDriver binary paths
+        run: |
+          echo "CHROME_BIN=$(pwd)/bin/chrome" >> $GITHUB_ENV
+          echo "CHROMEDRIVER_BIN=$(pwd)/bin/chromedriver" >> $GITHUB_ENV
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
@@ -63,8 +83,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            chromium-browser \
-            chromium-chromedriver \
             python3-pip \
             python3-venv
 
