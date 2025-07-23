@@ -83,8 +83,6 @@ env:
           
       - name: Set up environment variables
         run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> $GITHUB_ENV
           echo "CHROME_BIN=/usr/bin/chromium-browser" >> $GITHUB_ENV
           echo "CHROMEDRIVER_BIN=/usr/bin/chromedriver" >> $GITHUB_ENV
           echo "FORCE_PURGE=${{ github.event.inputs.force_purge || 'false' }}" >> $GITHUB_ENV
