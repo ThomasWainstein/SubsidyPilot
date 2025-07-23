@@ -167,27 +167,30 @@ def main():
     job_log["end_time"] = end_time.isoformat()
     job_log["duration_seconds"] = duration
     
-    try:
-        if step4_success:
-            job_log["status"] = "SUCCESS"
-            print_banner("PIPELINE COMPLETED SUCCESSFULLY", "🎉")
-            print(f"✅ All steps completed")
-            print(f"⏱️ Total duration: {duration:.2f} seconds")
-            print(f"🇫🇷 FranceAgriMer scraper executed successfully")
-            sys.exit(0)
-        else:
-            job_log["status"] = "FAILED"
-            job_log["failure_reason"] = "FranceAgriMer scraper execution failed"
-            print_banner("PIPELINE FAILED - SCRAPER ERROR", "❌")
-            print(f"❌ Scraper execution failed")
-            print(f"⏱️ Duration before failure: {duration:.2f} seconds")
-            sys.exit(1)
+    if step4_success:
+        job_log["status"] = "SUCCESS"
+        print_banner("PIPELINE COMPLETED SUCCESSFULLY", "🎉")
+        print(f"✅ All steps completed")
+        print(f"⏱️ Total duration: {duration:.2f} seconds")
+        print(f"🇫🇷 FranceAgriMer scraper executed successfully")
+        exit_code = 0
+    else:
+        job_log["status"] = "FAILED"
+        job_log["failure_reason"] = "FranceAgriMer scraper execution failed"
+        print_banner("PIPELINE FAILED - SCRAPER ERROR", "❌")
+        print(f"❌ Scraper execution failed")
+        print(f"⏱️ Duration before failure: {duration:.2f} seconds")
+        exit_code = 1
     
-    finally:
-        # Save job log
+    # Save job log
+    try:
         with open("job_execution_log.json", "w") as f:
             json.dump(job_log, f, indent=2)
         print(f"\n📋 Job log saved to: job_execution_log.json")
+    except Exception as e:
+        print(f"⚠️ Failed to save job log: {e}")
+    
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

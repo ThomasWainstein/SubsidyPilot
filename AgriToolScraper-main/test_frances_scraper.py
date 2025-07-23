@@ -8,11 +8,13 @@ import sys
 
 def setup_environment():
     """Set up environment variables for scraper."""
-    print("🔧 Setting up environment variables...")
+    print("🔧 Checking environment variables...")
     
-    # Set Supabase credentials
-    os.environ['SUPABASE_URL'] = 'https://gvfgvbztagafjykncwto.supabase.co'
-    os.environ['SUPABASE_SERVICE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2Zmd2Ynp0YWdhZmp5a25jd3RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODcwODE3MywiZXhwIjoyMDY0Mjg0MTczfQ.j3KEkFJLrDKbmyCHPPHW67zjzMlua4Gff4hzvqW_LZY'
+    # Check if required environment variables are set
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_SERVICE_KEY'):
+        raise EnvironmentError(
+            "Missing Supabase credentials. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables."
+        )
     
     print("✅ Environment variables set")
 

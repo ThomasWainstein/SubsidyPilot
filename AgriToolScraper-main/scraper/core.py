@@ -244,6 +244,7 @@ def init_driver(browser="chrome", headless=True):
         if browser.lower() == "chrome":
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
             from webdriver_manager.chrome import ChromeDriverManager
             
             log_step("🚨 AGGRESSIVE: Setting up Chrome options")
@@ -278,6 +279,17 @@ def init_driver(browser="chrome", headless=True):
                 options.binary_location = chrome_binary
                 log_step(f"🚨 AGGRESSIVE: Using Chrome binary: {chrome_binary}")
             
+            # 🔥 FIX: Check for pre-installed ChromeDriver first (CI compatibility)
+            chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
+            if chromedriver_bin and os.path.exists(chromedriver_bin):
+                log_step(f"🚨 AGGRESSIVE: Using pre-installed ChromeDriver: {chromedriver_bin}")
+                service = Service(chromedriver_bin)
+                driver = webdriver.Chrome(service=service, options=options)
+                log_step("🚨 AGGRESSIVE: ✅ Chrome driver initialized with pre-installed binary")
+                return driver
+            else:
+                log_step("🚨 AGGRESSIVE: No pre-installed ChromeDriver found, downloading via webdriver-manager")
+                
             log_step("🚨 AGGRESSIVE: Calling ChromeDriverManager().install()")
             
             # Install driver with webdriver-manager

@@ -263,7 +263,8 @@ function detectDocumentLanguage(text: string): string {
 export async function extractFarmDataWithOpenAI(
   extractedText: string,
   openAIApiKey: string,
-  debugInfo?: any
+  debugInfo?: any,
+  model: string = 'gpt-4o-mini'
 ): Promise<ExtractedFarmData> {
   console.log(`🤖 Starting enhanced OpenAI extraction analysis...`);
   console.log(`📄 Document text length: ${extractedText.length} characters`);
@@ -342,7 +343,7 @@ RETURN ONLY VALID JSON WITH ACTUAL FOUND DATA - NO EXPLANATIONS, NO MARKDOWN:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model,
         messages: [
           {
             role: 'system',

@@ -539,16 +539,13 @@ def main():
     
     # Validate required environment variables for non-dry runs
     if not dry_run:
-        # Set default Supabase credentials if not already set
-        if not os.environ.get('SUPABASE_URL'):
-            os.environ['SUPABASE_URL'] = 'https://gvfgvbztagafjykncwto.supabase.co'
-        if not os.environ.get('SUPABASE_SERVICE_KEY'):
-            os.environ['SUPABASE_SERVICE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2Zmd2Ynp0YWdhZmp5a25jd3RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODcwODE3MywiZXhwIjoyMDY0Mjg0MTczfQ.j3KEkFJLrDKbmyCHPPHW67zjzMlua4Gff4hzvqW_LZY'
-        
         required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
         missing_vars = [var for var in required_vars if not os.environ.get(var)]
         if missing_vars:
             print(f"[ERROR] Missing required environment variables: {missing_vars}")
+            print("Please set the following environment variables:")
+            for var in missing_vars:
+                print(f"  export {var}=your_value_here")
             sys.exit(1)
     
     # Initialize and run scraper

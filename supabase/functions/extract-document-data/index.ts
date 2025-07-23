@@ -31,7 +31,23 @@ serve(async (req) => {
       data
     };
     debugLog.push(logEntry);
-    console.log(`🔍 DEBUG [${step}]:`, data);
+    // Only log in development/debug mode
+    if (Deno.env.get('DEBUG_LOGGING') === '1' || Deno.env.get('ENVIRONMENT') === 'development') {
+      console.log(`🔍 DEBUG [${step}]:`, data);
+    }
+  }
+  
+  function validateFileUrl(fileUrl: string): boolean {
+    try {
+      const url = new URL(fileUrl);
+      const allowedDomains = [
+        'gvfgvbztagafjykncwto.supabase.co',
+        'supabase.co'
+      ];
+      return allowedDomains.some(domain => url.hostname.endsWith(domain));
+    } catch {
+      return false;
+    }
   }
   
   try {
@@ -57,6 +73,13 @@ serve(async (req) => {
     if (!documentId || !fileUrl || !fileName) {
       const error = `Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`;
       addDebugLog('VALIDATION_FAILED', { error });
+      throw new Error(error);
+    }
+
+    // 🔥 FIX: Validate file URL for SSRF prevention
+    if (!validateFileUrl(fileUrl)) {
+      const error = 'Invalid file URL - only Supabase storage URLs are allowed';
+      addDebugLog('URL_VALIDATION_FAILED', { error, fileUrl });
       throw new Error(error);
     }
 
@@ -109,10 +132,14 @@ serve(async (req) => {
       textSample: extractionResult.text.substring(0, 200)
     });
     
+    // 🔥 FIX: Make OpenAI model configurable
+    const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini';
+    
     const extractedData = await extractFarmDataWithOpenAI(
       extractionResult.text, 
       openAIApiKey, 
-      extractionResult.debugInfo
+      extractionResult.debugInfo,
+      openAIModel
     );
 
     addDebugLog('OPENAI_EXTRACTION_COMPLETE', {
