@@ -20,7 +20,9 @@ A robust web scraper for agricultural subsidy data with direct Supabase database
    - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
 
-   **Security Note:** Only these two variables are required. Never use deprecated `SUPABASE_URL` or `SUPABASE_SERVICE_KEY`.
+   These backend variables allow the scraper to connect to Supabase.
+   The React frontend instead uses `VITE_SUPABASE_URL` and
+   `VITE_SUPABASE_ANON_KEY`.
 
 2. **Trigger the workflow**:
    - Automatically: Runs daily at 6 AM UTC
@@ -62,6 +64,9 @@ python main.py
 | `TARGET_URL` | Website to scrape | `https://www.afir.info/` |
 | `MAX_PAGES` | Max pages to scrape (0=all) | `0` |
 | `DRY_RUN` | Test mode (no upload) | `false` |
+
+These values configure backend scraping. The frontend loads its own
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at build time.
 | `BROWSER` | Browser for scraping | `chrome` |
 
 ### GitHub Actions Inputs

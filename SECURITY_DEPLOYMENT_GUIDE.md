@@ -11,6 +11,10 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Scraper Supabase project URL | `https://xxxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Backend service key | `eyJhbGciOiJIUz...` |
 
+The `VITE_` variables configure the public frontend client. The
+`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` variables are used
+only by server-side code such as the scraper and should be kept secret.
+
 ### Security Best Practices
 
 1. **Never hardcode credentials** in source code

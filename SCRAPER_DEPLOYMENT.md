@@ -14,6 +14,10 @@ To enable the automated scraper, add the following secrets to your GitHub reposi
    - Value: [Service role key from Supabase dashboard]
    - Purpose: Full database access for scraper operations
 
+These backend variables are distinct from the frontend credentials
+(`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`) which are loaded only by the
+web application.
+
 ### How to Add Secrets
 
 1. Go to your GitHub repository

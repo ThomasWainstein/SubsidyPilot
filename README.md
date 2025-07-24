@@ -60,6 +60,22 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Environment Variables
+
+This project uses two sets of Supabase credentials:
+
+### Frontend (Vite)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+### Backend / Scraper
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Frontend variables are safe to expose in the browser. Backend variables must
+remain secret and are used only by server-side code and the Python scraper.
+See `.env.example` for a full template.
+
 ## 🔥 Selenium 4+ Compliance
 
 This project maintains **ZERO TOLERANCE** for legacy Selenium WebDriver patterns. All code contributions must follow strict compliance rules.

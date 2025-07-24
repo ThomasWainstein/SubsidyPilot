@@ -64,6 +64,9 @@ export OPENAI_MODEL="gpt-4o-mini"  # OpenAI model selection
 export CHROMEDRIVER_BIN="/usr/bin/chromedriver"  # Pre-installed driver path
 ```
 
+These credentials are used by backend processes. The frontend loads its own
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` values.
+
 ## 🔒 Security Improvements
 
 1. **No more secrets in source code** - All credentials must be provided via environment

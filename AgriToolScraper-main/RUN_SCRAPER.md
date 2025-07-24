@@ -42,6 +42,9 @@ python job_controller.py
 
 The scraper now includes default values but you can override them:
 
+These variables are for backend operations. The frontend web app loads
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` instead.
+
 ```bash
 export DB_GITHUB_SCRAPER="your_db_github_scraper_here"
 export NEXT_PUBLIC_SUPABASE_ANON_KEY="your_anon_key_here"
