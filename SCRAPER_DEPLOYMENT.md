@@ -6,7 +6,7 @@ To enable the automated scraper, add the following secrets to your GitHub reposi
 
 ### Required Secrets
 
-1. **SUPABASE_URL**
+1. **NEXT_PUBLIC_SUPABASE_URL**
    - Value: `https://gvfgvbztagafjykncwto.supabase.co`
    - Purpose: Supabase project endpoint
 

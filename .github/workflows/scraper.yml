@@ -70,9 +70,7 @@ jobs:
         
         
     - name: Run scraper pipeline with Ruthless Debugging
-      env:
-        DB_GITHUB_SCRAPER: ${{ secrets.DB_GITHUB_SCRAPER }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        env:
         NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         TARGET_URL: ${{ github.event.inputs.target_url || 'https://www.afir.info/' }}

@@ -95,8 +95,6 @@ jobs:
       - name: 🇫🇷 STEP 4 - FRANCEAGRIMER SCRAPER EXECUTION
         working-directory: ./AgriToolScraper-main
         env:
-          DB_GITHUB_SCRAPER: ${{ secrets.DB_GITHUB_SCRAPER }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DISPLAY: :99

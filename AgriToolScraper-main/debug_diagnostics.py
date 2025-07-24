@@ -133,16 +133,18 @@ class RuthlessDebugger:
         """Log critical environment variables."""
         critical_vars = [
             'DISPLAY', 'BROWSER', 'WDM_LOG', 'HOME', 'PATH',
-            'DB_GITHUB_SCRAPER', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'TARGET_URL',
+            'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'TARGET_URL',
             'MAX_PAGES', 'DRY_RUN', 'CHROME_BIN', 'GOOGLE_CHROME_BIN'
         ]
         
         self.logger.info("🔧 Environment Variables:")
+        # Mask sensitive variables
+        sensitive_patterns = ['KEY', 'SECRET', 'TOKEN', 'PASSWORD']
         for var in critical_vars:
             value = os.environ.get(var, 'NOT_SET')
             # Mask sensitive variables
-            if 'KEY' in var or 'SECRET' in var:
-                value = '***MASKED***' if value != 'NOT_SET' else 'NOT_SET'
+            if any(pattern in var for pattern in sensitive_patterns) and value != 'NOT_SET':
+                value = '***MASKED***'
             self.logger.info(f"  {var}={value}")
     
     def collect_system_info(self):
