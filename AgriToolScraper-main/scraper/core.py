@@ -55,7 +55,7 @@ FIELD_KEYWORDS_FR = {
     ],
     "documents": [
         "documents", "pièces justificatives", "annexes", "formulaires", 
-        "dossier de candidature", "pièces à fournir", "documents requis"
+        "dossier de candidature", "pièces à fournir", "documents requis", "pièces jointes"
     ],
     "application_method": [
         "candidature", "comment postuler", "procédure de candidature", 

@@ -6,8 +6,9 @@
 
 | Variable | Type | Description | Example |
 |----------|------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL | `https://xxxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Frontend anonymous key | `eyJhbGciOiJIUz...` |
+| `VITE_SUPABASE_URL` | Public | Frontend Supabase project URL | `https://xxxxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Public | Frontend anonymous key | `eyJhbGciOiJIUz...` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Scraper Supabase project URL | `https://xxxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Backend service key | `eyJhbGciOiJIUz...` |
 
 ### Security Best Practices
@@ -22,6 +23,8 @@
 In your repository settings → Secrets and variables → Actions, add:
 
 ```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
@@ -36,8 +39,8 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 The frontend automatically loads environment variables at build time using:
 ```typescript
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 ```
 
 ### Scraper Deployment
