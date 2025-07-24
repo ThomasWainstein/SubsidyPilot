@@ -14,6 +14,12 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import requests
 
 
+def get_supabase_client():
+    """Legacy helper function for backward compatibility."""
+    uploader = SupabaseUploader()
+    return uploader.client
+
+
 class SupabaseUploader:
     """Handles all Supabase operations for the scraper."""
     
