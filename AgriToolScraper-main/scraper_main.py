@@ -539,7 +539,7 @@ def main():
     
     # Validate required environment variables for non-dry runs
     if not dry_run:
-        required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
+        required_vars = ['DB_GITHUB_SCRAPER', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
         missing_vars = [var for var in required_vars if not os.environ.get(var)]
         if missing_vars:
             print(f"[ERROR] Missing required environment variables: {missing_vars}")
