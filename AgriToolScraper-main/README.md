@@ -17,8 +17,10 @@ A robust web scraper for agricultural subsidy data with direct Supabase database
 ### 1. GitHub Actions Setup (Recommended)
 
 1. **Set up secrets** in your GitHub repository:
-   - `SUPABASE_URL`: Your Supabase project URL
-   - `SUPABASE_SERVICE_KEY`: Your Supabase service role key
+   - `DB_GITHUB_SCRAPER`: GitHub scraper access key
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
 
 2. **Trigger the workflow**:
    - Automatically: Runs daily at 6 AM UTC
@@ -55,8 +57,10 @@ python main.py
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SUPABASE_URL` | Supabase project URL | Required |
-| `SUPABASE_SERVICE_KEY` | Service role key | Required |
+| `DB_GITHUB_SCRAPER` | GitHub scraper access key | Required |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Required |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key | Required |
 | `TARGET_URL` | Website to scrape | `https://www.afir.info/` |
 | `MAX_PAGES` | Max pages to scrape (0=all) | `0` |
 | `DRY_RUN` | Test mode (no upload) | `false` |

@@ -43,8 +43,10 @@ python job_controller.py
 The scraper now includes default values but you can override them:
 
 ```bash
-export SUPABASE_URL="your_supabase_project_url_here"
-export SUPABASE_SERVICE_KEY="your_service_key_here"
+export DB_GITHUB_SCRAPER="your_db_github_scraper_here"
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="your_anon_key_here"
+export NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url_here"
+export SUPABASE_SERVICE_ROLE_KEY="your_service_key_here"
 ```
 
 ## Expected Results

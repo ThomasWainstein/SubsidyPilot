@@ -11,9 +11,9 @@ def setup_environment():
     print("🔧 Checking environment variables...")
     
     # Check if required environment variables are set
-    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_SERVICE_KEY'):
+    if not os.environ.get('NEXT_PUBLIC_SUPABASE_URL') or not os.environ.get('SUPABASE_SERVICE_ROLE_KEY'):
         raise EnvironmentError(
-            "Missing Supabase credentials. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables."
+            "Missing Supabase credentials. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables."
         )
     
     print("✅ Environment variables set")

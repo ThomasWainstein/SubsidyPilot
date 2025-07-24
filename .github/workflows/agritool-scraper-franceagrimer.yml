@@ -61,8 +61,10 @@ jobs:
       - name: Run scraper (FranceAgriMer) with Ruthless Debugging
         working-directory: ./AgriToolScraper-main
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DB_GITHUB_SCRAPER: ${{ secrets.DB_GITHUB_SCRAPER }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DISPLAY: :99
           WDM_LOG: "1"
           WDM_LOG_LEVEL: "DEBUG"

@@ -8,7 +8,7 @@ import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 
 const openAIApiKey = Deno.env.get('lovable_reguline');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {

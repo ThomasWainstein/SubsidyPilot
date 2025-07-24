@@ -133,7 +133,7 @@ class RuthlessDebugger:
         """Log critical environment variables."""
         critical_vars = [
             'DISPLAY', 'BROWSER', 'WDM_LOG', 'HOME', 'PATH',
-            'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'TARGET_URL',
+            'DB_GITHUB_SCRAPER', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'TARGET_URL',
             'MAX_PAGES', 'DRY_RUN', 'CHROME_BIN', 'GOOGLE_CHROME_BIN'
         ]
         

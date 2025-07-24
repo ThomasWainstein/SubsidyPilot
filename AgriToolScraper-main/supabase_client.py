@@ -18,11 +18,11 @@ class SupabaseUploader:
     """Handles all Supabase operations for the scraper."""
     
     def __init__(self):
-        self.url = os.environ.get('SUPABASE_URL')
-        self.key = os.environ.get('SUPABASE_SERVICE_KEY')
+        self.url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
+        self.key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
         
         if not self.url or not self.key:
-            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in environment")
+            raise ValueError("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are REQUIRED environment variables")
             
         self.client: Client = create_client(self.url, self.key)
         self.session_id = str(uuid.uuid4())
