@@ -16,11 +16,11 @@ A robust web scraper for agricultural subsidy data with direct Supabase database
 
 ### 1. GitHub Actions Setup (Recommended)
 
-1. **Set up secrets** in your GitHub repository:
-   - `DB_GITHUB_SCRAPER`: GitHub scraper access key
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
+1. **Set up secrets** in your GitHub repository (Settings → Secrets and variables → Actions):
    - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+
+   **Security Note:** Only these two variables are required. Never use deprecated `SUPABASE_URL` or `SUPABASE_SERVICE_KEY`.
 
 2. **Trigger the workflow**:
    - Automatically: Runs daily at 6 AM UTC
@@ -57,10 +57,8 @@ python main.py
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DB_GITHUB_SCRAPER` | GitHub scraper access key | Required |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Required |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Required |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key | Required |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | **Required** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key | **Required** |
 | `TARGET_URL` | Website to scrape | `https://www.afir.info/` |
 | `MAX_PAGES` | Max pages to scrape (0=all) | `0` |
 | `DRY_RUN` | Test mode (no upload) | `false` |
