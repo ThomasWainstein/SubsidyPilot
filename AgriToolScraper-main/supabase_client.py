@@ -79,13 +79,16 @@ class SupabaseUploader:
         else:
             mapped_data['title'] = {'fr': 'Aide sans titre'}
             
-        if 'description' in data:
+        # Primary Fix: Ensure description is never null with explicit validation
+        if 'description' in data and data['description']:
             if isinstance(data['description'], str):
                 mapped_data['description'] = {'fr': data['description']}  # FranceAgriMer = French
             else:
                 mapped_data['description'] = data['description']
         else:
+            # Fallback: Always provide default description if missing or null
             mapped_data['description'] = {'fr': 'Description non disponible'}
+            print(f"[WARN] Description missing for subsidy code {data.get('code', 'unknown')}, using fallback")
             
         # Code (required, generate if missing)
         mapped_data['code'] = data.get('code', f"AUTO_{uuid.uuid4().hex[:8].upper()}")
@@ -189,6 +192,12 @@ class SupabaseUploader:
                 for subsidy in batch:
                     try:
                         validated = self.validate_subsidy_data(subsidy)
+                        
+                        # Secondary Failsafe Fix: Final check before insertion
+                        if not validated.get('description'):
+                            validated['description'] = {'fr': 'Description non disponible'}
+                            print(f"[WARN] Failsafe: Fixed null description for subsidy code {validated.get('code', 'unknown')}")
+                        
                         validated_batch.append(validated)
                     except Exception as e:
                         results['errors'].append(f"Validation error: {e}")
