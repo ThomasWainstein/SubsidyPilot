@@ -50,7 +50,6 @@ jobs:
             python3-pip \
             python3-venv \
             file
-
       - name: Setup virtual display
         run: |
           Xvfb :99 -screen 0 1920x1080x24 &
@@ -102,10 +101,16 @@ jobs:
           WDM_LOG: "1"
           WDM_LOG_LEVEL: "DEBUG"
         run: |
-          python main.py \
-            --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
-            --max-pages "${{ github.event.inputs.max_pages || '0' }}" \
-            --dry-run="${{ github.event.inputs.dry_run || 'false' }}"
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            python main.py \
+              --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
+              --max-pages "${{ github.event.inputs.max_pages || '0' }}" \
+              --dry-run
+          else
+            python main.py \
+              --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
+              --max-pages "${{ github.event.inputs.max_pages || '0' }}"
+          fi
 
       - name: 📦 Upload logs and extracted data
         if: always()
