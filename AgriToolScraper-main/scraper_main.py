@@ -537,9 +537,9 @@ def main():
     max_pages = int(os.environ.get('MAX_PAGES', args.max_pages))
     dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true' or args.dry_run
     
-    # Validate required environment variables for non-dry runs
+    # Validate required environment variables for non-dry runs (only what SupabaseUploader actually needs)
     if not dry_run:
-        required_vars = ['DB_GITHUB_SCRAPER', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+        required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
         missing_vars = [var for var in required_vars if not os.environ.get(var)]
         if missing_vars:
             print(f"[ERROR] Missing required environment variables: {missing_vars}")
