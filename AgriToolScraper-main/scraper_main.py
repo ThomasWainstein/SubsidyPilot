@@ -168,19 +168,23 @@ class AgriToolScraper:
             except Exception as e:
                 log_warning(f"Failed to save screenshot: {e}")
             
-            # Wait for results to load
+            # Wait for results to load using config-driven selector
             log_step("Waiting for search results to load")
-            wait_for_selector(driver, ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6", timeout=15)
+            config = self.config_manager.get_config()
+            total_results_selector = config.get('total_results_selector', 'h2:contains(\'résultat\')')
+            wait_for_selector(driver, total_results_selector, timeout=15)
             
-            # Parse total results from the results counter with multiple selector fallbacks
+            # Parse total results from the results counter with config-driven selectors
             try:
-                # Try multiple selectors for DSFR compatibility
+                # Get selector from config and add DSFR fallbacks
+                config = self.config_manager.get_config()
+                total_results_selector = config.get('total_results_selector', 'h2:contains(\'résultat\')')
                 selectors_to_try = [
-                    ".fr-search__results .fr-h6",
-                    ".fr-mb-2v.fr-h6", 
-                    ".fr-search-bar__results",
-                    "[data-fr-js-search-results]",
-                    ".search-results-count"
+                    total_results_selector,
+                    "h2:contains('résultat')",
+                    ".fr-container h2", 
+                    ".search-results-count",
+                    "[data-fr-js-search-results]"
                 ]
                 
                 results_element = None
@@ -236,7 +240,9 @@ class AgriToolScraper:
                 
                 # Wait for subsidy cards to load using config-driven selector
                 config = self.config_manager.get_config()
-                link_selector = config.get('link_selector', 'a.fr-card__link')
+                link_selector = config.get('link_selector', 'h3.fr-card__title a')
+                # Wait for card containers first, then specific links
+                wait_for_selector(driver, ".fr-card", timeout=10)
                 wait_for_selector(driver, link_selector, timeout=10)
                 
                 # Collect links from current page using config-driven selector

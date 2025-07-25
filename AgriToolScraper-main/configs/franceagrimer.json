@@ -1,9 +1,10 @@
 {
+  "_comment": "FranceAgriMer selectors verified on 2025-01-25 - Updated to match actual DSFR card structure with h3.fr-card__title links and h2 results counter",
   "list_page": "https://www.franceagrimer.fr/rechercher-une-aide?page={page}",
-  "link_selector": "h3 a[href*='/aides/'], a.fr-card__link",
+  "link_selector": "h3.fr-card__title a, .fr-card h3 a",
   "pagination_mode": "by_index",
   "results_per_page": 6,
-  "total_results_selector": ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6",
+  "total_results_selector": "h2:contains('résultat'), .fr-container h2",
   "detail_selectors": {
     "title": "h1.page-title, .page-header h1, h1, .fr-h2",
     "description": ".fr-card__desc, .content-main p, .page-content p, .content-wrapper p",
