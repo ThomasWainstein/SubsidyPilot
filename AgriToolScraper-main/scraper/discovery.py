@@ -86,7 +86,7 @@ def extract_dates_from_text(text: str) -> List[str]:
 def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
     """
     Extract structured content from a subsidy detail page.
-    Uses heuristics to identify and map content fields.
+    Uses heuristics to identify and map content fields with DSFR support.
     """
     extracted = {
         'title': None,
@@ -102,13 +102,80 @@ def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
         'raw_content': {}
     }
     
-    # Extract title
-    title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
-    for selector in title_selectors:
-        title_elem = soup.select_one(selector)
-        if title_elem and title_elem.get_text(strip=True):
-            extracted['title'] = clean_text(title_elem.get_text())
-            break
+    # First try DSFR tab-based extraction
+    extracted = extract_dsfr_tabs(soup, extracted)
+    
+    # Then supplement with generic extraction (only for missing fields)
+    extracted = extract_generic_content(soup, extracted, url)
+    
+    return extracted
+
+
+def extract_dsfr_tabs(soup: BeautifulSoup, extracted: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract content from DSFR tab panels, only setting non-empty values."""
+    
+    # Map DSFR tab labels to our field names
+    dsfr_field_mapping = {
+        'description': ['description', 'présentation', 'objectifs'],
+        'eligibility': ['éligibilité', 'conditions', 'bénéficiaires'],
+        'deadline': ['délais', 'calendrier', 'dates'],
+        'documents': ['documents', 'pièces jointes', 'formulaires'],
+        'agency': ['organisme', 'contact', 'administration']
+    }
+    
+    # Look for DSFR tab panels
+    tab_panels = soup.select('.fr-tabs__panel, [role="tabpanel"]')
+    
+    for panel in tab_panels:
+        # Get panel text content
+        panel_text = clean_text(panel.get_text())
+        
+        # Skip empty panels
+        if not panel_text.strip():
+            continue
+        
+        # Try to match panel to a field based on tab label or content
+        panel_id = panel.get('id', '')
+        tab_button = soup.select_one(f'[aria-controls="{panel_id}"]')
+        tab_label = clean_text(tab_button.get_text()) if tab_button else ''
+        
+        # Match tab label to field
+        for field_name, keywords in dsfr_field_mapping.items():
+            if any(keyword in tab_label.lower() for keyword in keywords):
+                # Only set if field is currently empty and panel has content
+                if not extracted.get(field_name) and panel_text:
+                    if field_name == 'documents':
+                        # Extract document links from panel
+                        doc_links = []
+                        for link in panel.find_all('a', href=True):
+                            href = link['href']
+                            link_text = clean_text(link.get_text())
+                            if any(ext in href.lower() for ext in ['.pdf', '.doc', '.docx', '.xlsx', '.xls']):
+                                doc_links.append({
+                                    'url': href,
+                                    'text': link_text
+                                })
+                        if doc_links:
+                            extracted[field_name] = doc_links
+                    else:
+                        # Set text content
+                        extracted[field_name] = panel_text
+                break
+    
+    return extracted
+
+
+def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url: str) -> Dict[str, Any]:
+    """Extract content using generic selectors, only filling missing fields."""
+    
+    # Extract title (only if not already set)
+    if not extracted.get('title'):
+        title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
+        for selector in title_selectors:
+            title_elem = soup.select_one(selector)
+            if title_elem and title_elem.get_text(strip=True):
+                extracted['title'] = clean_text(title_elem.get_text())
+                break
     
     # Extract main content
     content_selectors = [
@@ -136,10 +203,11 @@ def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
     # Combine all text for analysis
     full_text = ' '.join(text_blocks)
     
-    # Extract description (usually the longest text block or first substantial paragraph)
-    description_candidates = [block for block in text_blocks if len(block) > 100]
-    if description_candidates:
-        extracted['description'] = description_candidates[0]
+    # Extract description (only if not already set)
+    if not extracted.get('description'):
+        description_candidates = [block for block in text_blocks if len(block) > 100]
+        if description_candidates:
+            extracted['description'] = description_candidates[0]
     
     # Use field mapping to categorize content
     for text_block in text_blocks:
@@ -153,68 +221,76 @@ def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
             if len(text_block) > 50:  # Only log substantial unmapped text
                 log_unmapped_label(text_block[:100] + "...", url)
     
-    # Extract specific information using patterns
-    amounts = extract_amount_from_text(full_text)
-    extracted['amount_min'] = amounts['min']
-    extracted['amount_max'] = amounts['max']
+    # Extract specific information using patterns (only if not already set)
+    if not extracted.get('amount_min') and not extracted.get('amount_max'):
+        amounts = extract_amount_from_text(full_text)
+        extracted['amount_min'] = amounts['min']
+        extracted['amount_max'] = amounts['max']
     
-    # Extract dates
-    dates = extract_dates_from_text(full_text)
-    if dates:
-        extracted['deadline'] = dates[0]  # First date found
+    # Extract dates (only if not already set)
+    if not extracted.get('deadline'):
+        dates = extract_dates_from_text(full_text)
+        if dates:
+            extracted['deadline'] = dates[0]  # First date found
     
-    # Extract agency/organization
-    agency_keywords = ['franceagrimer', 'ministère', 'préfecture', 'conseil régional', 'chambre d\'agriculture']
-    for keyword in agency_keywords:
-        if keyword in full_text.lower():
-            # Try to extract the full organization name
-            pattern = rf'(\w+\s+)*{keyword}(\s+\w+)*'
-            match = re.search(pattern, full_text, re.IGNORECASE)
-            if match:
-                extracted['agency'] = clean_text(match.group())
-                break
+    # Extract agency/organization (only if not already set)
+    if not extracted.get('agency'):
+        agency_keywords = ['franceagrimer', 'ministère', 'préfecture', 'conseil régional', 'chambre d\'agriculture']
+        for keyword in agency_keywords:
+            if keyword in full_text.lower():
+                # Try to extract the full organization name
+                pattern = rf'(\w+\s+)*{keyword}(\s+\w+)*'
+                match = re.search(pattern, full_text, re.IGNORECASE)
+                if match:
+                    extracted['agency'] = clean_text(match.group())
+                    break
     
-    # Extract document links
-    doc_links = []
-    for link in main_content.find_all('a', href=True):
-        href = link['href']
-        link_text = clean_text(link.get_text())
-        if any(ext in href.lower() for ext in ['.pdf', '.doc', '.docx', '.xlsx', '.xls']):
-            doc_links.append({
-                'url': urljoin(url, href),
-                'text': link_text
-            })
+    # Extract document links (only if not already set)
+    if not extracted.get('documents'):
+        doc_links = []
+        for link in main_content.find_all('a', href=True):
+            href = link['href']
+            link_text = clean_text(link.get_text())
+            if any(ext in href.lower() for ext in ['.pdf', '.doc', '.docx', '.xlsx', '.xls']):
+                doc_links.append({
+                    'url': urljoin(url, href),
+                    'text': link_text
+                })
+        
+        if doc_links:
+            extracted['documents'] = doc_links
     
-    extracted['documents'] = doc_links
+    # Extract categories/tags from classes, breadcrumbs, or metadata (only if not already set)
+    if not extracted.get('categories'):
+        categories = set()
+        
+        # Check breadcrumbs
+        breadcrumb_selectors = ['.breadcrumb', '.breadcrumbs', 'nav[aria-label="breadcrumb"]']
+        for selector in breadcrumb_selectors:
+            breadcrumb = soup.select_one(selector)
+            if breadcrumb:
+                for link in breadcrumb.find_all('a'):
+                    category = clean_text(link.get_text())
+                    if category and len(category) > 2:
+                        categories.add(category)
+        
+        # Check meta tags
+        for meta in soup.find_all('meta'):
+            if meta.get('name') in ['keywords', 'category']:
+                content = meta.get('content', '')
+                if content:
+                    categories.update([cat.strip() for cat in content.split(',') if cat.strip()])
+        
+        if categories:
+            extracted['categories'] = list(categories)
     
-    # Extract categories/tags from classes, breadcrumbs, or metadata
-    categories = set()
-    
-    # Check breadcrumbs
-    breadcrumb_selectors = ['.breadcrumb', '.breadcrumbs', 'nav[aria-label="breadcrumb"]']
-    for selector in breadcrumb_selectors:
-        breadcrumb = soup.select_one(selector)
-        if breadcrumb:
-            for link in breadcrumb.find_all('a'):
-                category = clean_text(link.get_text())
-                if category and len(category) > 2:
-                    categories.add(category)
-    
-    # Check meta tags
-    for meta in soup.find_all('meta'):
-        if meta.get('name') in ['keywords', 'category']:
-            content = meta.get('content', '')
-            if content:
-                categories.update([cat.strip() for cat in content.split(',') if cat.strip()])
-    
-    extracted['categories'] = list(categories)
-    
-    # Detect language
-    if extracted['description']:
-        detected_lang = detect_language(extracted['description'])
-        extracted['language'] = [detected_lang] if detected_lang != 'unknown' else ['fr']
-    else:
-        extracted['language'] = ['fr']  # Default for French sites
+    # Detect language (only if not already set)
+    if not extracted.get('language'):
+        if extracted['description']:
+            detected_lang = detect_language(extracted['description'])
+            extracted['language'] = [detected_lang] if detected_lang != 'unknown' else ['fr']
+        else:
+            extracted['language'] = ['fr']  # Default for French sites
     
     return extracted
 

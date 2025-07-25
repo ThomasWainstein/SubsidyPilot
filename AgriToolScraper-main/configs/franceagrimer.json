@@ -1,6 +1,6 @@
 {
   "list_page": "https://www.franceagrimer.fr/rechercher-une-aide?page={page}",
-  "link_selector": "a.fr-card__link, a.fr-card__body, .fr-card__link",
+  "link_selector": "h3 a[href*='/aides/'], a.fr-card__link",
   "pagination_mode": "by_index",
   "results_per_page": 6,
   "total_results_selector": ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6",

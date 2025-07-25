@@ -162,20 +162,40 @@ class AgriToolScraper:
             log_step("Waiting for search results to load")
             wait_for_selector(driver, ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6", timeout=15)
             
-            # Parse total results from the results counter
+            # Parse total results from the results counter with multiple selector fallbacks
             try:
-                results_element = driver.find_element(By.CSS_SELECTOR, ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6")
-                results_text = results_element.text
-                log_step(f"Found results text: {results_text}")
+                # Try multiple selectors for DSFR compatibility
+                selectors_to_try = [
+                    ".fr-search__results .fr-h6",
+                    ".fr-mb-2v.fr-h6", 
+                    ".fr-search-bar__results",
+                    "[data-fr-js-search-results]",
+                    ".search-results-count"
+                ]
                 
-                # Extract number from text like "154 résultat(s)"
-                import re
-                match = re.search(r'(\d+)', results_text)
-                if match:
-                    total_results = int(match.group(1))
-                    log_step(f"Total results found: {total_results}")
+                results_element = None
+                for selector in selectors_to_try:
+                    try:
+                        results_element = driver.find_element(By.CSS_SELECTOR, selector)
+                        break
+                    except NoSuchElementException:
+                        continue
+                
+                if results_element:
+                    results_text = results_element.text
+                    log_step(f"Found results text: {results_text}")
+                    
+                    # Extract number from text like "154 résultat(s)"
+                    import re
+                    match = re.search(r'(\d+)', results_text)
+                    if match:
+                        total_results = int(match.group(1))
+                        log_step(f"Total results found: {total_results}")
+                    else:
+                        log_warning(f"Could not parse total results from: {results_text}")
+                        total_results = 6  # Fallback to single page
                 else:
-                    log_warning(f"Could not parse total results from: {results_text}")
+                    log_warning("No results counter element found, falling back to single page")
                     total_results = 6  # Fallback to single page
             except Exception as e:
                 log_warning(f"Failed to get total results: {e}")
@@ -202,11 +222,13 @@ class AgriToolScraper:
                 log_step(f"Loading page: {page_url}")
                 driver.get(page_url)
                 
-                # Wait for subsidy cards to load
-                wait_for_selector(driver, "a.fr-card__link", timeout=10)
+                # Wait for subsidy cards to load using config-driven selector
+                config = self.config_manager.get_config()
+                link_selector = config.get('link_selector', 'a.fr-card__link')
+                wait_for_selector(driver, link_selector, timeout=10)
                 
-                # Collect links from current page
-                page_links = collect_links(driver, "a.fr-card__link")
+                # Collect links from current page using config-driven selector
+                page_links = collect_links(driver, link_selector)
                 initial_count = len(collected_urls)
                 
                 for link in page_links:

@@ -1,0 +1,19 @@
+# Test dependencies for AgriTool scraper
+# Install with: pip install -r requirements-test.txt
+
+# Core testing framework
+pytest>=7.0
+pytest-cov>=4.0  # Coverage reporting
+pytest-mock>=3.0  # Mocking support
+
+# Dependencies needed for tests to run
+requests>=2.31
+selenium==4.15.2
+webdriver-manager==4.0.1
+langdetect>=1.0.9
+beautifulsoup4>=4.12
+lxml>=4.9
+
+# Additional test utilities
+responses>=0.23.0  # HTTP mocking
+freezegun>=1.2.0   # Time mocking for date tests
