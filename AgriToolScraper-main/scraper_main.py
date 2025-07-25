@@ -133,7 +133,7 @@ class AgriToolScraper:
     @ruthless_trap
     def collect_subsidy_urls(self, max_pages: int = 0) -> List[str]:
         """
-        Collect all subsidy detail page URLs from the listing pages with comprehensive logging.
+        Collect all subsidy detail page URLs using index-based pagination for FranceAgriMer.
         Returns list of unique URLs.
         """
         log_step(f"Starting URL collection from {self.target_url}", max_pages=max_pages)
@@ -143,10 +143,12 @@ class AgriToolScraper:
             log_step("Initializing driver for URL collection")
             driver = init_driver()
             
-            log_step(f"Navigating to target URL: {self.target_url}")
-            driver.get(self.target_url)
+            # Load first page to get total results
+            first_page_url = self.target_url.replace("{page}", "0")
+            log_step(f"Navigating to first page: {first_page_url}")
+            driver.get(first_page_url)
             
-            # Take screenshot for debugging using session-scoped path
+            # Take screenshot for debugging
             try:
                 screenshot_path = f"{self.session_paths['logs_dir']}/url_collection_start.png" if self.session_paths else f"data/logs/franceagrimer_url_collection_start_{self.session_id}.png"
                 ensure_folder(os.path.dirname(screenshot_path))
@@ -156,18 +158,55 @@ class AgriToolScraper:
             except Exception as e:
                 log_warning(f"Failed to save screenshot: {e}")
             
-            log_step("Waiting for page load (bookmark links)")
-            wait_for_selector(driver, "a[rel='bookmark']", timeout=15)
+            # Wait for results to load
+            log_step("Waiting for search results to load")
+            wait_for_selector(driver, ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6", timeout=15)
+            
+            # Parse total results from the results counter
+            try:
+                results_element = driver.find_element(By.CSS_SELECTOR, ".fr-search__results .fr-h6, .fr-mb-2v.fr-h6")
+                results_text = results_element.text
+                log_step(f"Found results text: {results_text}")
+                
+                # Extract number from text like "154 résultat(s)"
+                import re
+                match = re.search(r'(\d+)', results_text)
+                if match:
+                    total_results = int(match.group(1))
+                    log_step(f"Total results found: {total_results}")
+                else:
+                    log_warning(f"Could not parse total results from: {results_text}")
+                    total_results = 6  # Fallback to single page
+            except Exception as e:
+                log_warning(f"Failed to get total results: {e}")
+                total_results = 6  # Fallback to single page
+            
+            # Calculate number of pages (6 results per page)
+            results_per_page = 6
+            total_pages = (total_results + results_per_page - 1) // results_per_page  # Ceiling division
+            log_step(f"Calculated {total_pages} pages to process ({results_per_page} results per page)")
+            
+            # Apply max_pages limit if specified
+            if max_pages > 0 and total_pages > max_pages:
+                total_pages = max_pages
+                log_step(f"Limited to {max_pages} pages due to max_pages setting")
             
             collected_urls = set()
-            page_count = 0
             
-            while True:
-                page_count += 1
-                log_step(f"Processing listing page {page_count}")
+            # Process each page
+            for page_idx in range(total_pages):
+                log_step(f"Processing page {page_idx + 1} of {total_pages}")
+                
+                # Construct page URL
+                page_url = self.target_url.replace("{page}", str(page_idx))
+                log_step(f"Loading page: {page_url}")
+                driver.get(page_url)
+                
+                # Wait for subsidy cards to load
+                wait_for_selector(driver, "a.fr-card__link", timeout=10)
                 
                 # Collect links from current page
-                page_links = collect_links(driver, "a[rel='bookmark']")
+                page_links = collect_links(driver, "a.fr-card__link")
                 initial_count = len(collected_urls)
                 
                 for link in page_links:
@@ -175,33 +214,16 @@ class AgriToolScraper:
                         collected_urls.add(link)
                 
                 new_links = len(collected_urls) - initial_count
-                log_step(f"Found {len(page_links)} total links, {new_links} new unique links on page {page_count}")
+                log_step(f"Found {len(page_links)} total links, {new_links} new unique links on page {page_idx + 1}")
                 
                 # Log sample URLs for verification
                 if page_links:
                     sample_urls = page_links[:3]
                     log_step(f"Sample URLs: {sample_urls}")
                 
-                # Check if we should stop
-                if max_pages > 0 and page_count >= max_pages:
-                    log_step(f"Reached max pages limit: {max_pages}")
-                    break
-                
-                # Try to go to next page
-                log_step("Attempting to navigate to next page")
-                if not click_next(driver, 'li.pagination-next a'):
-                    log_step("No more pages found - pagination ended")
-                    break
-                
-                # Wait for new page to load
-                log_step("Waiting for next page to load")
-                time.sleep(2)
-                try:
-                    wait_for_selector(driver, "a[rel='bookmark']", timeout=10)
-                    log_step("Next page loaded successfully")
-                except TimeoutException:
-                    log_warning("Timeout waiting for next page content")
-                    break
+                # Small delay between pages to be respectful
+                if page_idx < total_pages - 1:
+                    time.sleep(1)
             
             urls_list = list(collected_urls)
             
