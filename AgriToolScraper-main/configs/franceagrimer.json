@@ -1,7 +1,7 @@
 {
   "list_page": "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales",
   "link_selector": "h3 a[href*='/aides/']",
-  "next_page_selector": ".pagination .next a, .page-item.next a",
+  "next_page_selector": "a[rel=\"next\"], .fr-pagination__link--next",
   "detail_selectors": {
     "title": "h1.page-title, .page-header h1, h1",
     "description": ".field-name-body .field-item, .content-main .field-item, .field-item, .content-wrapper p",
