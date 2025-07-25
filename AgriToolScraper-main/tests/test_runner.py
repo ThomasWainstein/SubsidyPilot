@@ -12,11 +12,13 @@ CANONICAL_FIELDS = [
 ]
 
 def test_consultant_data_csv_exists():
-    assert os.path.exists("data/extracted/consultant_data.csv"), \
-        "consultant_data.csv was not found. Run a scrape first!"
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "extracted", "consultant_data.csv")
+    assert os.path.exists(csv_path), \
+        f"consultant_data.csv was not found at {csv_path}. Run a scrape first!"
 
 def test_consultant_data_csv_fields():
-    with open("data/extracted/consultant_data.csv", newline='', encoding='utf-8') as f:
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "extracted", "consultant_data.csv")
+    with open(csv_path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         header = reader.fieldnames
 

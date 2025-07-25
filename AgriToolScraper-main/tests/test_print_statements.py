@@ -42,9 +42,13 @@ def test_educational_content():
     import logging
     logging.error("Legacy chrome_options parameter detected")
     
-    # Actual compliant code
+    # Actual compliant code with isolated user data directory
+    options = webdriver.chrome.options.Options()
+    options.add_argument("--user-data-dir=/tmp/chrome_test_profile")
+    options.add_argument("--no-first-run")
+    options.add_argument("--disable-default-apps")
     return webdriver.Chrome(service=webdriver.chrome.service.Service(), 
-                           options=webdriver.chrome.options.Options())
+                           options=options)
 
 if __name__ == "__main__":
     driver = documentation_examples()
