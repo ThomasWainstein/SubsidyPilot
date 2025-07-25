@@ -29,77 +29,106 @@ from debug_diagnostics import get_ruthless_debugger, ruthless_trap, log_step, lo
 
 FIELD_KEYWORDS_FR = {
     "title": [
-        "titre de l'aide", "intitulé", "nom de l'aide", "titre", "titre principal", 
-        "nom", "titre du dispositif", "titre de la mesure", "intitulé de la mesure", 
-        "libellé", "nom complet", "dénomination"
+        "titre de l'aide", "intitulé", "nom de l'aide", "titre", "titre principal",
+        "nom", "titre du dispositif", "titre de la mesure", "intitulé de la mesure",
+        "libellé", "nom complet", "dénomination", "dénomination de l'aide", "nom du dispositif", "nom complet de l’aide", "titre officiel", "nom de l’action",
+        "nom complet du dispositif"
     ],
     "description": [
-        "description", "présentation", "objectif", "contexte", "but", "synthèse", 
-        "texte principal", "résumé", "explication", "informations", "texte descriptif", 
-        "détail", "objet", "présentation générale", "texte explicatif"
+        "description", "présentation", "objectif", "contexte", "but", "synthèse",
+        "texte principal", "résumé", "explication", "informations", "texte descriptif",
+        "détail", "objet", "présentation générale", "texte explicatif", 
+        "présentation synthétique", "introduction", "aperçu", "exposé", "références d’application",
+        "texte d’introduction", "description de la mesure", "présentation du dispositif", "aperçu du dispositif"
     ],
     "eligibility": [
-        "bénéficiaire", "critère d'éligibilité", "qui peut en bénéficier", "public visé", 
-        "conditions d'accès", "admissibilité", "public éligible", "qui est concerné", 
-        "cible", "éligibilité", "personnes concernées", "catégories bénéficiaires", 
-        "profil éligible", "critères de sélection", "profil visé", 
-        "conditions de participation", "public concerné", "personnes éligibles", "statut éligible"
+        "bénéficiaire", "critère d'éligibilité", "qui peut en bénéficier", "public visé",
+        "conditions d'accès", "admissibilité", "public éligible", "qui est concerné",
+        "cible", "éligibilité", "personnes concernées", "catégories bénéficiaires",
+        "profil éligible", "critères de sélection", "profil visé",
+        "conditions de participation", "public concerné", "personnes éligibles", "statut éligible",
+        "bénéficiaires", "destinataires", "public cible", "public bénéficiaire", "public admissible",
+        "conditions requises", "critères d’admission", "qui peut candidater", "profil du bénéficiaire", "statut du bénéficiaire"
     ],
     "deadline": [
-        "date limite", "clôture", "date de dépôt", "fin de dépôt", "délai", 
-        "date butoir", "date de clôture", "date d'échéance"
+        "date limite", "clôture", "date de dépôt", "fin de dépôt", "délai",
+        "date butoir", "date de clôture", "date d'échéance",
+        "date d’envoi", "date limite d’envoi", "date de fin", "date d’ouverture", "date d’expiration",
+        "dates à retenir", "clôture des dépôts", "période de dépôt", "fin de la période de dépôt", "limite d’inscription"
     ],
     "amount": [
-        "montant", "budget", "financement", "subvention", "aide financière", 
-        "allocation", "dotation", "enveloppe", "plafond", "minimum", "maximum"
+        "montant", "budget", "financement", "subvention", "aide financière",
+        "allocation", "dotation", "enveloppe", "plafond", "minimum", "maximum",
+        "montant maximal", "montant minimum", "taux d’aide", "montant de l’aide", "montant accordé", "montant total",
+        "budget alloué", "taux de financement", "aide accordée", "montant plafonné"
     ],
     "documents": [
-        "documents", "pièces justificatives", "annexes", "formulaires", 
-        "dossier de candidature", "pièces à fournir", "documents requis", "pièces jointes"
+        "documents", "pièces justificatives", "annexes", "formulaires",
+        "dossier de candidature", "pièces à fournir", "documents requis", "pièces jointes",
+        "dossier", "dossier à constituer", "formulaire de demande", "documents à joindre", "pièces justificatives à joindre",
+        "ensemble des documents", "pièces complémentaires", "dossier à déposer"
     ],
     "application_method": [
-        "candidature", "comment postuler", "procédure de candidature", 
-        "dépôt de dossier", "modalités de candidature", "mode de dépôt", 
-        "comment candidater", "demande", "procédure de demande", 
-        "soumission de dossier", "dépôt en ligne", "inscription"
+        "candidature", "comment postuler", "procédure de candidature",
+        "dépôt de dossier", "modalités de candidature", "mode de dépôt",
+        "comment candidater", "demande", "procédure de demande",
+        "soumission de dossier", "dépôt en ligne", "inscription",
+        "modalités de dépôt", "comment effectuer la demande", "comment déposer un dossier", "procédure à suivre",
+        "téléchargement du formulaire", "mode de transmission", "comment présenter la demande", "procédure de dépôt",
+        "envoi du dossier", "où déposer le dossier", "processus de dépôt", "saisir une demande"
     ],
     "evaluation_criteria": [
-        "critères d'évaluation", "grille d'évaluation", "méthode de sélection", 
-        "barème", "critères de notation", "système d'évaluation", 
-        "critères d'examen", "critères de choix"
+        "critères d'évaluation", "grille d'évaluation", "méthode de sélection",
+        "barème", "critères de notation", "système d'évaluation",
+        "critères d'examen", "critères de choix",
+        "modalités d’évaluation", "modes de sélection", "procédure de sélection", "gradation",
+        "points attribués", "principes de sélection", "critères d’attribution", "critères d’appréciation",
+        "critères d’examen des candidatures"
     ],
     "previous_acceptance_rate": [
-        "taux de réussite", "taux d'acceptation", "projets financés", 
-        "statistiques d'acceptation", "historique d'attribution", "taux de sélection"
+        "taux de réussite", "taux d'acceptation", "projets financés",
+        "statistiques d'acceptation", "historique d'attribution", "taux de sélection",
+        "résultats précédents", "taux de financement", "nombre de projets retenus", "bilan des acceptations",
+        "données sur la sélection", "statistiques de réussite", "nombre d’aides allouées"
     ],
     "priority_groups": [
-        "public prioritaire", "groupes cibles", "publics prioritaires", 
-        "priorités", "groupes bénéficiaires", "public cible", "catégories prioritaires"
+        "public prioritaire", "groupes cibles", "publics prioritaires",
+        "priorités", "groupes bénéficiaires", "public cible", "catégories prioritaires",
+        "public particulièrement visé", "population prioritaire", "publics concernés",
+        "cibles prioritaires", "groupes à privilégier", "publics à cibler", "public visé prioritairement"
     ],
     "legal_entity_type": [
-        "statut juridique", "type de structure", "forme juridique", 
-        "entité bénéficiaire", "catégorie juridique", "personnalité juridique", 
-        "type d'organisation"
+        "statut juridique", "type de structure", "forme juridique",
+        "entité bénéficiaire", "catégorie juridique", "personnalité juridique",
+        "type d'organisation",
+        "nature de l’entité", "forme de la structure", "type d’établissement", "organisation éligible",
+        "statut du candidat", "profil juridique", "catégorie de bénéficiaire"
     ],
     "funding_source": [
-        "source de financement", "origine des fonds", "financeur", 
-        "partenaire financier", "institution financière", "organisme financeur", 
-        "bailleur de fonds"
+        "source de financement", "origine des fonds", "financeur",
+        "partenaire financier", "institution financière", "organisme financeur",
+        "bailleur de fonds",
+        "organisme attributaire", "source budgétaire", "institution de financement", "partenaire de financement",
+        "structure porteuse", "financeur principal"
     ],
     "compliance_requirements": [
-        "conditions de conformité", "réglementation applicable", "respect des normes", 
-        "obligations légales", "critères de conformité", "exigences réglementaires", 
-        "obligations de conformité"
+        "conditions de conformité", "réglementation applicable", "respect des normes",
+        "obligations légales", "critères de conformité", "exigences réglementaires",
+        "obligations de conformité",
+        "normes applicables", "respect de la législation", "conformité à la réglementation",
+        "critères réglementaires", "conformité exigée"
     ],
     "language": [
-        "langue", "langue de dépôt", "langue de la demande", "langue d'instruction", 
-        "langue du formulaire", "langue exigée"
+        "langue", "langue de dépôt", "langue de la demande", "langue d'instruction",
+        "langue du formulaire", "langue exigée",
+        "langue acceptée", "langue obligatoire", "idiome"
     ],
     "matching_algorithm_score": [
-        "score d'éligibilité", "niveau de correspondance", "indice de matching", 
+        "score d'éligibilité", "niveau de correspondance", "indice de matching",
         "score de pertinence", "note de correspondance"
     ]
 }
+
 
 def log_unmapped_label(label, url=None):
     """Logs any unmapped field label for later review."""
