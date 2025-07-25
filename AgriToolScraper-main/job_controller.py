@@ -146,7 +146,7 @@ def main():
     scraper_command = [
         sys.executable, 
         "AgriToolScraper-main/main.py",
-        "--url", "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales",
+        "--url", "https://www.franceagrimer.fr/rechercher-une-aide",
         "--max-pages", "0"
     ]
     

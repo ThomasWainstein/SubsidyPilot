@@ -151,8 +151,10 @@ class AgriToolScraper:
             log_step("Initializing driver for URL collection")
             driver = init_driver()
             
-            # Load first page to get total results
-            first_page_url = self.target_url.replace("{page}", "0")
+            # Load first page to get total results using config list_page
+            config = self.config_manager.get_config()
+            list_page_template = config.get('list_page', self.target_url + "?page={page}")
+            first_page_url = list_page_template.replace("{page}", "0")
             log_step(f"Navigating to first page: {first_page_url}")
             driver.get(first_page_url)
             
@@ -225,8 +227,10 @@ class AgriToolScraper:
             for page_idx in range(total_pages):
                 log_step(f"Processing page {page_idx + 1} of {total_pages}")
                 
-                # Construct page URL
-                page_url = self.target_url.replace("{page}", str(page_idx))
+                # Construct page URL using config list_page template
+                config = self.config_manager.get_config()
+                list_page_template = config.get('list_page', self.target_url + "?page={page}")
+                page_url = list_page_template.replace("{page}", str(page_idx))
                 log_step(f"Loading page: {page_url}")
                 driver.get(page_url)
                 
@@ -573,7 +577,7 @@ def main():
     print("ARGS:", sys.argv)
     logging.info("Starting AgriTool scraper main function")
     parser = argparse.ArgumentParser(description='AgriTool Scraper with Supabase Integration')
-    parser.add_argument('--url', default='https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales', 
+    parser.add_argument('--url', default='https://www.franceagrimer.fr/rechercher-une-aide', 
                        help='Target URL to scrape (default: FranceAgriMer)')
     parser.add_argument('--max-pages', type=int, default=0,
                        help='Maximum pages to scrape (0 = unlimited)')

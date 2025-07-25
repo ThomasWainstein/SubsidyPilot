@@ -103,12 +103,12 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             python main.py \
-              --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
+              --url "https://www.franceagrimer.fr/rechercher-une-aide" \
               --max-pages "${{ github.event.inputs.max_pages || '0' }}" \
               --dry-run
           else
             python main.py \
-              --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" \
+              --url "https://www.franceagrimer.fr/rechercher-une-aide" \
               --max-pages "${{ github.event.inputs.max_pages || '0' }}"
           fi
 

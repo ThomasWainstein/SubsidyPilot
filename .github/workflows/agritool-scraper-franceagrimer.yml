@@ -7,7 +7,7 @@ on:
       target_url:
         description: 'Start URL to scrape (defaults to FranceAgriMer)'
         required: false
-        default: 'https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales'
+        default: 'https://www.franceagrimer.fr/rechercher-une-aide'
       max_pages:
         description: 'Max pages to scrape (default: 2)'
         required: false

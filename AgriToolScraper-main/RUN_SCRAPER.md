@@ -21,7 +21,7 @@ python test_frances_scraper.py
 ### Option 1: Direct Script
 ```bash
 cd AgriToolScraper-main
-python scraper_main.py --url "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales" --max-pages 2
+python scraper_main.py --url "https://www.franceagrimer.fr/rechercher-une-aide" --max-pages 2
 ```
 
 ### Option 2: Job Controller

@@ -25,7 +25,7 @@ def test_scraper():
     # Import after setting environment
     from scraper_main import AgriToolScraper
     
-    target_url = "https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales"
+    target_url = "https://www.franceagrimer.fr/rechercher-une-aide"
     
     try:
         # Create scraper instance
@@ -61,7 +61,7 @@ def main():
     
     if success:
         print("\n✅ Test completed successfully!")
-        print("💡 To run full scraper: python scraper_main.py --url https://www.franceagrimer.fr/Accompagner/Dispositifs-par-filiere/Aides-nationales")
+        print("💡 To run full scraper: python scraper_main.py --url https://www.franceagrimer.fr/rechercher-une-aide")
     else:
         print("\n❌ Test failed!")
         sys.exit(1)
