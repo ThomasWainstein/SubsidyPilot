@@ -148,6 +148,13 @@ class SecureConfigManager:
         config = self.load_config()
         return config.get('next_page_selector')
     
+    def get_config(self) -> Dict:
+        """
+        Get the loaded configuration dictionary.
+        This is an alias for load_config() for backwards compatibility.
+        """
+        return self.load_config()
+    
     @classmethod
     def validate_domain_isolation(cls, target_url: str) -> bool:
         """
