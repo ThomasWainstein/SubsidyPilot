@@ -138,6 +138,14 @@ class AgriToolScraper:
         """
         log_step(f"Starting URL collection from {self.target_url}", max_pages=max_pages)
         
+        # Validate URL for FranceAgriMer compatibility
+        if "franceagrimer.fr" in self.target_url and not "rechercher-une-aide" in self.target_url:
+            raise RuntimeError(
+                "ERROR: FranceAgriMer scraper only works with "
+                "'https://www.franceagrimer.fr/rechercher-une-aide?page=0' as the start URL. "
+                "Sector/category pages are not supported and will fail."
+            )
+        
         driver = None
         try:
             log_step("Initializing driver for URL collection")

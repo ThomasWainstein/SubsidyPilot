@@ -4,13 +4,17 @@ A robust web scraper for agricultural subsidy data with direct Supabase database
 
 ## Features
 
-- **Multi-source scraping**: Currently supports AFIR (French agricultural subsidies)
+- **Multi-source scraping**: Currently supports AFIR (French agricultural subsidies) and FranceAgriMer
 - **Supabase integration**: Direct upload to subsidies table
 - **GitHub Actions support**: Automated scheduling and execution
 - **Error handling**: Comprehensive logging and retry mechanisms
 - **Rate limiting**: Respectful crawling with configurable delays
 - **Data validation**: Schema validation and duplicate detection
 - **Multi-language support**: Automatic language detection
+
+## Important Notes
+
+⚠️ **FranceAgriMer URL Requirements**: The FranceAgriMer scraper must always start from 'https://www.franceagrimer.fr/rechercher-une-aide?page=0'. Category/landing pages are NOT supported and will fail.
 
 ## Quick Start
 
