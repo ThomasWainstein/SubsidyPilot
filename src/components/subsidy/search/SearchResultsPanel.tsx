@@ -10,12 +10,14 @@ interface Subsidy {
   id: string;
   title: any;
   description: any;
-  region: string[];
-  categories: string[];
+  region: string | string[] | null; // Updated to handle different data types
+  categories?: string[]; // Made optional since subsidies_structured uses sector
+  sector?: string; // Added for subsidies_structured
   funding_type: string;
   deadline: string;
-  amount_min: number;
-  amount_max: number;
+  amount_min?: number; // Made optional for subsidies_structured
+  amount_max?: number; // Made optional for subsidies_structured
+  amount?: number; // Added for subsidies_structured
   matchConfidence: number;
 }
 
@@ -65,11 +67,16 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {subsidy.categories?.slice(0, 3).map((category: string, index: number) => (
-          <Badge key={index} variant="outline" className="text-xs">
-            {category}
+        {subsidy.sector && (
+          <Badge variant="outline" className="text-xs">
+            {subsidy.sector}
           </Badge>
-        ))}
+        )}
+        {subsidy.funding_type && (
+          <Badge variant="outline" className="text-xs">
+            {subsidy.funding_type}
+          </Badge>
+        )}
       </div>
 
       <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
@@ -79,23 +86,21 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
             <span>{new Date(subsidy.deadline).toLocaleDateString()}</span>
           </div>
         )}
-        {subsidy.region && subsidy.region.length > 0 && (
+        {subsidy.region && (
           <div className="flex items-center gap-1">
             <MapPin className="w-4 h-4" />
-            <span>{subsidy.region.slice(0, 2).join(', ')}</span>
-          </div>
-        )}
-        {(subsidy.amount_min || subsidy.amount_max) && (
-          <div className="flex items-center gap-1">
-            <Euro className="w-4 h-4" />
             <span>
-              {subsidy.amount_min && subsidy.amount_max
-                ? `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`
-                : subsidy.amount_min
-                ? `€${subsidy.amount_min.toLocaleString()}+`
-                : `Up to €${subsidy.amount_max?.toLocaleString()}`
+              {Array.isArray(subsidy.region) 
+                ? subsidy.region.slice(0, 2).join(', ')
+                : subsidy.region
               }
             </span>
+          </div>
+        )}
+        {subsidy.amount && (
+          <div className="flex items-center gap-1">
+            <Euro className="w-4 h-4" />
+            <span>€{subsidy.amount.toLocaleString()}</span>
           </div>
         )}
       </div>
