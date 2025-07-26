@@ -14,7 +14,7 @@ pandas>=2.0                  # For data analysis if needed
 # --- Cloud/API/AI ---
 python-dotenv>=1.0           # For .env config
 openai>=1.0                  # For AI processing if needed
-supabase==1.0.3              # Supabase client
+supabase>=2.0.0              # Supabase client
 tenacity>=8.2                # For retries
 langdetect>=1.0.9            # For automatic language detection
 

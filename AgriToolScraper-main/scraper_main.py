@@ -171,18 +171,19 @@ class AgriToolScraper:
             # Wait for results to load using config-driven selector
             log_step("Waiting for search results to load")
             config = self.config_manager.get_config()
-            total_results_selector = config.get('total_results_selector', 'h2:contains(\'résultat\')')
-            wait_for_selector(driver, total_results_selector, timeout=15)
+            total_results_selector = config.get('total_results_selector', 'h2')
+            # Split selector and try each one
+            selectors = [s.strip() for s in total_results_selector.split(',')]
+            wait_for_selector(driver, selectors[0], timeout=15)
             
             # Parse total results from the results counter with config-driven selectors
             try:
                 # Get selector from config and add DSFR fallbacks
                 config = self.config_manager.get_config()
-                total_results_selector = config.get('total_results_selector', 'h2:contains(\'résultat\')')
+                total_results_selector = config.get('total_results_selector', 'h2')
                 selectors_to_try = [
-                    total_results_selector,
-                    "h2:contains('résultat')",
                     ".fr-container h2", 
+                    "h2",
                     ".search-results-count",
                     "[data-fr-js-search-results]"
                 ]
@@ -190,8 +191,15 @@ class AgriToolScraper:
                 results_element = None
                 for selector in selectors_to_try:
                     try:
-                        results_element = driver.find_element(By.CSS_SELECTOR, selector)
-                        break
+                        # Find all candidates with this selector
+                        candidates = driver.find_elements(By.CSS_SELECTOR, selector)
+                        # Filter by text content containing "résultat"
+                        for el in candidates:
+                            if "résultat" in el.text.lower():
+                                results_element = el
+                                break
+                        if results_element:
+                            break
                     except NoSuchElementException:
                         continue
                 

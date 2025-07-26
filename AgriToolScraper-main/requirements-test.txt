@@ -13,6 +13,7 @@ webdriver-manager==4.0.1
 langdetect>=1.0.9
 beautifulsoup4>=4.12
 lxml>=4.9
+supabase>=2.0.0
 
 # Additional test utilities
 responses>=0.23.0  # HTTP mocking

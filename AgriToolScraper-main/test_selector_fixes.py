@@ -39,7 +39,7 @@ def test_franceagrimer_selector_fixes():
         
         # Verify updated selectors
         assert 'fr-card__title' in config['link_selector'], "Link selector should contain fr-card__title"
-        assert 'résultat' in config['total_results_selector'], "Results selector should contain résultat"
+        assert 'h2' in config['total_results_selector'], "Results selector should contain h2"
         
     except Exception as e:
         print(f"❌ Config loading failed: {e}")
@@ -71,15 +71,21 @@ def test_franceagrimer_selector_fixes():
             selector = selector.strip()
             try:
                 print(f"   Trying selector: {selector}")
-                element = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                elements = WebDriverWait(driver, 5).until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
                 )
-                text = element.text
-                print(f"   Found element with text: {text}")
                 
-                if 'résultat' in text.lower():
-                    results_found = True
-                    print(f"✅ Results counter found: {text}")
+                # Filter for elements containing "résultat"
+                for element in elements:
+                    text = element.text
+                    print(f"   Found element with text: {text}")
+                    
+                    if 'résultat' in text.lower():
+                        results_found = True
+                        print(f"✅ Results counter found: {text}")
+                        break
+                
+                if results_found:
                     break
                     
             except TimeoutException:

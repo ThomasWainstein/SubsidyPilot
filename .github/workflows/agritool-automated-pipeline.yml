@@ -242,7 +242,7 @@ jobs:
       - name: 📦 Install QA dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest psycopg2-binary requests
+          pip install pytest psycopg2-binary requests supabase
 
       - name: 🧪 Run comprehensive test suite
         env:

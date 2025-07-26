@@ -1,17 +1,17 @@
 {
-  "_comment": "FranceAgriMer selectors verified on 2025-01-25 - Updated to match actual DSFR card structure with h3.fr-card__title links and h2 results counter",
+  "_comment": "FranceAgriMer selectors verified on 2025-01-25 - Updated to match actual DSFR card structure with h3.fr-card__title links and h2 results counter. Fixed :contains() selectors for Selenium compatibility.",
   "list_page": "https://www.franceagrimer.fr/rechercher-une-aide?page={page}",
   "link_selector": "h3.fr-card__title a, .fr-card h3 a",
   "pagination_mode": "by_index",
   "results_per_page": 6,
-  "total_results_selector": "h2:contains('résultat'), .fr-container h2",
+  "total_results_selector": ".fr-container h2, h2",
   "detail_selectors": {
     "title": "h1.page-title, .page-header h1, h1, .fr-h2",
     "description": ".fr-card__desc, .content-main p, .page-content p, .content-wrapper p",
-    "eligibility": ".field-name-field-eligibility, .eligibility-criteria, .field-name-field-conditions, h2:contains('Éligibilité') + ul, h3:contains('Éligibilité') + ul",
+    "eligibility": ".field-name-field-eligibility, .eligibility-criteria, .field-name-field-conditions, h2 + ul, h3 + ul",
     "documents": ".field-name-field-documents a, .attachment-list a, .field-name-field-pieces-jointes a, .fr-link--download",
-    "deadline": ".field-name-field-deadline, .deadline-info, .field-name-field-date-limite, :contains('Date limite'), :contains('Disponible du'), :contains('date de clôture')",
+    "deadline": ".field-name-field-deadline, .deadline-info, .field-name-field-date-limite, .date-limit, .deadline",
     "agency": ".field-name-field-agency, .agency-info",
-    "amount": ".field-name-field-amount, .amount-info, .montant, .field-name-field-montant, :contains('Montant'), :contains('€')"
+    "amount": ".field-name-field-amount, .amount-info, .montant, .field-name-field-montant, .montant-aide, .funding-amount"
   }
 }
