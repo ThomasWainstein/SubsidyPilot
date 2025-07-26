@@ -15,6 +15,7 @@ beautifulsoup4>=4.12
 lxml>=4.9
 supabase>=2.0.0
 tenacity>=8.2
+openai>=1.0.0
 
 # Additional test utilities
 responses>=0.23.0  # HTTP mocking

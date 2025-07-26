@@ -109,6 +109,9 @@ jobs:
       - name: 📊 Validate scraping results
         id: validation
         working-directory: ./AgriToolScraper-main
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           # Run data pipeline validation test
           python test_data_pipeline_fix.py
@@ -242,7 +245,7 @@ jobs:
       - name: 📦 Install QA dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest psycopg2-binary requests supabase tenacity
+          pip install pytest psycopg2-binary requests supabase tenacity openai
 
       - name: 🧪 Run comprehensive test suite
         env:
