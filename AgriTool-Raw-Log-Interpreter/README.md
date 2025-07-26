@@ -111,9 +111,41 @@ CANONICAL_FIELDS = [
     "co_financing_rate", "project_duration", "payment_terms", "application_method",
     "evaluation_criteria", "previous_acceptance_rate", "priority_groups",
     "legal_entity_type", "funding_source", "reporting_requirements",
-    "compliance_requirements", "language", "technical_support", "matching_algorithm_score"
+    "compliance_requirements", "language", "technical_support", "matching_algorithm_score",
+    # NEW: Application Requirements & Dynamic Questionnaires
+    "application_requirements", "questionnaire_steps", "requirements_extraction_status"
 ]
 ```
+
+### New Application Requirements Features
+
+The agent now extracts and generates:
+
+- **`application_requirements`** (array): All required documents, forms, or proofs needed to apply (e.g., "Business Plan", "EU Farm ID", "Sustainability Report")
+- **`questionnaire_steps`** (array): User-friendly questions for each requirement to guide document upload
+- **`requirements_extraction_status`** (string): "extracted", "not_found", or "pending"
+
+**Example Output:**
+```json
+{
+  "application_requirements": [
+    "Business Plan", "EU Farm ID", "Sustainability Report", "Carbon Assessment"
+  ],
+  "questionnaire_steps": [
+    {
+      "requirement": "Business Plan",
+      "question": "Please upload your business plan (PDF or DOCX)."
+    },
+    {
+      "requirement": "EU Farm ID", 
+      "question": "Enter your EU Farm ID or upload supporting documentation."
+    }
+  ],
+  "requirements_extraction_status": "extracted"
+}
+```
+
+This enables frontend teams to build dynamic "Apply" flows that automatically guide users through the application process based on extracted requirements.
 
 ## File Processing
 

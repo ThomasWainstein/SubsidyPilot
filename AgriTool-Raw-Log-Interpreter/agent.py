@@ -47,7 +47,8 @@ CANONICAL_FIELDS = [
     "co_financing_rate", "project_duration", "payment_terms", "application_method",
     "evaluation_criteria", "previous_acceptance_rate", "priority_groups",
     "legal_entity_type", "funding_source", "reporting_requirements",
-    "compliance_requirements", "language", "technical_support", "matching_algorithm_score"
+    "compliance_requirements", "language", "technical_support", "matching_algorithm_score",
+    "application_requirements", "questionnaire_steps", "requirements_extraction_status"
 ]
 
 class Config:
@@ -212,6 +213,13 @@ class LogInterpreterAgent:
         - legal_entity_type, funding_source, reporting_requirements,
         - compliance_requirements, language, technical_support, matching_algorithm_score (numeric)
         
+        NEW REQUIREMENT EXTRACTION FIELDS:
+        - application_requirements (array): Extract ALL required documents, forms, or proofs needed to apply 
+          (e.g. "Business Plan", "EU Farm ID", "Sustainability Report", "Carbon Assessment", "Technical Certification")
+        - questionnaire_steps (array): For each requirement, generate a user-friendly question/instruction
+          (e.g. [{"requirement": "Business Plan", "question": "Please upload your business plan (PDF or DOCX)."}])
+        - requirements_extraction_status (string): Set to "extracted" if requirements found, "not_found" if unclear
+        
         Ensure all fields are present in your response."""
         
         full_content = f"Raw Log Payload:\n{payload}\n\nAttached File Content:\n{file_content}"
@@ -287,7 +295,7 @@ class LogInterpreterAgent:
                     normalized[field] = None
                     audit["missing_fields"].append(field)
             
-            elif field in ["documents", "priority_groups"]:
+            elif field in ["documents", "priority_groups", "application_requirements", "questionnaire_steps"]:
                 # Ensure these are lists
                 if isinstance(value, list):
                     normalized[field] = value
@@ -298,6 +306,21 @@ class LogInterpreterAgent:
                         normalized[field] = [value] if value else []
                 else:
                     normalized[field] = []
+                
+                # Special validation for questionnaire_steps
+                if field == "questionnaire_steps" and normalized[field]:
+                    for step in normalized[field]:
+                        if not isinstance(step, dict) or "requirement" not in step or "question" not in step:
+                            audit["validation_notes"].append(f"Invalid questionnaire step format: {step}")
+            
+            elif field == "requirements_extraction_status":
+                # Validate extraction status
+                valid_statuses = ["extracted", "not_found", "pending"]
+                if value in valid_statuses:
+                    normalized[field] = value
+                else:
+                    normalized[field] = "pending"
+                    audit["validation_notes"].append(f"Invalid extraction status: {value}, defaulted to pending")
             
             else:
                 # String fields
