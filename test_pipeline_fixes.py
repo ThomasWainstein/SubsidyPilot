@@ -94,12 +94,12 @@ def test_workflow_dependencies():
         with open(workflow_path, 'r') as f:
             content = f.read()
         
-        # Check if supabase is in QA dependencies
-        if 'pip install pytest psycopg2-binary requests supabase' in content:
-            print("✅ Workflow includes supabase in QA dependencies")
+        # Check if supabase and tenacity are in QA dependencies
+        if 'pip install pytest psycopg2-binary requests supabase tenacity' in content:
+            print("✅ Workflow includes supabase and tenacity in QA dependencies")
             return True
         else:
-            print("❌ Workflow missing supabase in QA dependencies")
+            print("❌ Workflow missing supabase and/or tenacity in QA dependencies")
             return False
             
     except Exception as e:
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         print("🎉 All pipeline fixes validated successfully!")
         print("\nFixed issues:")
         print("✅ Removed all :contains() selectors (Selenium compatibility)")
-        print("✅ Added supabase dependency to requirements files")
-        print("✅ Updated workflow to install supabase for QA")
+        print("✅ Added supabase and tenacity dependencies to requirements files")
+        print("✅ Updated workflow to install supabase and tenacity for QA")
         print("✅ Implemented text-based filtering for results detection")
         print("\n🚀 Pipeline should now run successfully!")
         sys.exit(0)

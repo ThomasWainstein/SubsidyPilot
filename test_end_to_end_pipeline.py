@@ -26,9 +26,10 @@ from typing import Dict, List, Any, Optional
 try:
     import requests
     from supabase import create_client, Client
+    import tenacity
 except ImportError as e:
     print(f"❌ Missing dependencies: {e}")
-    print("Install with: pip install supabase requests")
+    print("Install with: pip install supabase requests tenacity")
     sys.exit(1)
 
 

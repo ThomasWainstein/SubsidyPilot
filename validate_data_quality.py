@@ -26,9 +26,10 @@ from dataclasses import dataclass
 # Dependencies
 try:
     from supabase import create_client, Client
+    import tenacity
 except ImportError as e:
     print(f"❌ Missing dependencies: {e}")
-    print("Install with: pip install supabase")
+    print("Install with: pip install supabase tenacity")
     sys.exit(1)
 
 
