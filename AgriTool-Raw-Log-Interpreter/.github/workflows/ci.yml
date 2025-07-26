@@ -1,0 +1,247 @@
+name: AgriTool Raw Log Interpreter CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'AgriTool-Raw-Log-Interpreter/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'AgriTool-Raw-Log-Interpreter/**'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to production'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  WORKING_DIRECTORY: 'AgriTool-Raw-Log-Interpreter'
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr default-jre
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 black pytest-cov
+    
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Check code formatting with black
+      run: |
+        black --check --diff .
+    
+    - name: Validate environment variables
+      run: |
+        python -c "
+import os
+required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SCRAPER_RAW_GPT_API']
+missing = [var for var in required_vars if not os.getenv(var)]
+if missing:
+    print(f'Missing required env vars for testing: {missing}')
+    print('This is expected in CI - tests will use mocks')
+else:
+    print('All env vars present')
+"
+    
+    - name: Run unit tests with coverage
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co"
+        SUPABASE_SERVICE_ROLE_KEY: "test-key"
+        SCRAPER_RAW_GPT_API: "test-openai-key"
+      run: |
+        python -m pytest tests/ -v --cov=agent --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ${{ env.WORKING_DIRECTORY }}/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t agritool-log-interpreter:${{ github.sha }} .
+    
+    - name: Test Docker image
+      run: |
+        # Test that the image starts without required env vars (should exit gracefully)
+        docker run --rm agritool-log-interpreter:${{ github.sha }} python -c "
+import agent
+try:
+    config = agent.Config()
+    print('ERROR: Should have exited due to missing env vars')
+    exit(1)
+except SystemExit as e:
+    if e.code == 1:
+        print('SUCCESS: Correctly exited due to missing env vars')
+        exit(0)
+    else:
+        print(f'ERROR: Unexpected exit code: {e.code}')
+        exit(1)
+"
+    
+    - name: Save Docker image
+      if: github.event.inputs.deploy == 'true'
+      run: |
+        docker save agritool-log-interpreter:${{ github.sha }} | gzip > agritool-log-interpreter.tar.gz
+    
+    - name: Upload Docker image artifact
+      if: github.event.inputs.deploy == 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: ${{ env.WORKING_DIRECTORY }}/agritool-log-interpreter.tar.gz
+        retention-days: 1
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.event_name == 'pull_request' || github.event.inputs.deploy == 'true'
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr default-jre
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install psycopg2-binary
+    
+    - name: Run integration tests
+      env:
+        TEST_DATABASE_URL: "postgresql://postgres:password@localhost:5432/test_db"
+      run: |
+        python -c "
+print('Integration tests would run here')
+print('This is a placeholder for actual Supabase integration tests')
+print('In production, this would test against a Supabase test instance')
+"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Bandit security linter
+      run: |
+        pip install bandit[toml]
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . -f txt
+    
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: ${{ env.WORKING_DIRECTORY }}/bandit-report.json
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, build-docker, integration-test]
+    if: github.event.inputs.deploy == 'true' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download Docker image
+      uses: actions/download-artifact@v3
+      with:
+        name: docker-image
+        path: ${{ env.WORKING_DIRECTORY }}
+    
+    - name: Load Docker image
+      run: |
+        docker load < agritool-log-interpreter.tar.gz
+    
+    - name: Deploy notification
+      run: |
+        echo "🚀 Deployment step would run here"
+        echo "In production, this would:"
+        echo "- Push Docker image to registry"
+        echo "- Deploy to container orchestration platform"
+        echo "- Run smoke tests"
+        echo "- Send deployment notifications"
