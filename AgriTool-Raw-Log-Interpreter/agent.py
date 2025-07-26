@@ -373,11 +373,23 @@ class LogInterpreterAgent:
                 "audit": audit,
                 **normalized_data
             }
-            
+
             # Convert date objects to strings for JSON serialization
             if insert_data.get("deadline"):
                 insert_data["deadline"] = insert_data["deadline"].isoformat()
-            
+
+            def _convert_decimals(obj: Any) -> Any:
+                """Recursively convert Decimal objects to float for JSON serialization"""
+                if isinstance(obj, Decimal):
+                    return float(obj)
+                elif isinstance(obj, list):
+                    return [_convert_decimals(item) for item in obj]
+                elif isinstance(obj, dict):
+                    return {k: _convert_decimals(v) for k, v in obj.items()}
+                return obj
+
+            insert_data = _convert_decimals(insert_data)
+
             response = self.supabase.table('subsidies_structured').insert(insert_data).execute()
             
             if response.data:
