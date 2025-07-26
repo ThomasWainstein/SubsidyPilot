@@ -58,6 +58,7 @@ cp config.env .env
 | `SLACK_WEBHOOK_URL` | - | Slack webhook for alerts |
 | `SLACK_ALERT_THRESHOLD` | 0.25 | Failure rate threshold for alerts |
 | `OPENAI_MODEL` | gpt-4o-mini | OpenAI model to use |
+| `ASSISTANT_ID` | - | OpenAI Assistant ID (use `asst_...` to enable Assistants API) |
 
 ## Usage
 
