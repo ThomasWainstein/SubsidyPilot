@@ -295,11 +295,33 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
     return extracted
 
 
-def extract_subsidy_details(url: str) -> Optional[Dict[str, Any]]:
+def extract_subsidy_details(url: str, use_multi_tab: bool = True) -> Optional[Dict[str, Any]]:
     """
     Extract detailed information from a single subsidy page.
-    Returns structured subsidy data or None if extraction fails.
+    Enhanced with multi-tab content extraction for comprehensive data capture.
+    
+    Args:
+        url: URL of the subsidy detail page
+        use_multi_tab: Whether to use enhanced multi-tab extraction (default: True)
+        
+    Returns:
+        Structured subsidy data or None if extraction fails.
     """
+    if use_multi_tab:
+        try:
+            from .multi_tab_extractor import enhanced_extract_subsidy_details
+            result = enhanced_extract_subsidy_details(url)
+            if result:
+                print(f"[INFO] Multi-tab extraction successful for {url}")
+                return result
+            else:
+                print(f"[WARN] Multi-tab extraction failed, falling back to standard extraction for {url}")
+        except ImportError:
+            print(f"[WARN] Multi-tab extractor not available, using standard extraction for {url}")
+        except Exception as e:
+            print(f"[WARN] Multi-tab extraction error: {e}, falling back to standard extraction for {url}")
+    
+    # Fallback to standard extraction
     driver = None
     try:
         driver = init_driver()
