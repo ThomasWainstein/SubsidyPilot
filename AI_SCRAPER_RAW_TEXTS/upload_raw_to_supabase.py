@@ -36,12 +36,12 @@ def setup_logging():
 
 def get_supabase_client() -> Client:
     """Initialize Supabase client with environment variables"""
-    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     
     if not supabase_url or not supabase_key:
         raise ValueError(
-            "Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+            "Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
         )
     
     return create_client(supabase_url, supabase_key)

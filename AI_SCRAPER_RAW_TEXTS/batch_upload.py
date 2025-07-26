@@ -124,7 +124,7 @@ def parallel_upload(supabase: Client, json_files: List[Path], max_workers: int =
     
     # Prepare arguments for parallel processing
     supabase_config = {
-        'url': os.environ["SUPABASE_URL"],
+        'url': os.environ["NEXT_PUBLIC_SUPABASE_URL"],
         'key': os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     }
     
@@ -165,8 +165,8 @@ def main():
     logger = setup_logging()
     
     # Validate environment
-    if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
-        logger.error("❌ Missing required environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+    if not os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or not os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        logger.error("❌ Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
         return 1
     
     # Find JSON files
@@ -185,7 +185,7 @@ def main():
     try:
         # Initialize Supabase client
         supabase = create_client(
-            os.environ["SUPABASE_URL"],
+            os.environ["NEXT_PUBLIC_SUPABASE_URL"],
             os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         )
         logger.info("✅ Connected to Supabase")

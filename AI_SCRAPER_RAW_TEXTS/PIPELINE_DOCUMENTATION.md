@@ -146,7 +146,7 @@ Structured records in existing `subsidies` table with fields like:
 
 ### Environment Variables
 Required secrets in GitHub repository:
-- `SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
 ## Monitoring and Logging
