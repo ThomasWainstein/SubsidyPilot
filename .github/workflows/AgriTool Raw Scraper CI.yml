@@ -110,6 +110,13 @@ jobs:
           ps aux | grep Xvfb || echo "❌ Xvfb not running"
           echo "✅ Debug info complete"
 
+      - name: 🧹 Clear webdriver-manager cache
+        run: |
+          echo "🧹 Clearing webdriver-manager cache..."
+          rm -rf ~/.wdm || true
+          rm -rf /home/runner/.wdm || true
+          echo "✅ Webdriver-manager cache cleared"
+
       - name: 📦 Install Python dependencies
         run: |
           echo "📦 Installing Python dependencies..."
@@ -118,6 +125,24 @@ jobs:
           echo "✅ Python dependencies installed"
           echo "📋 Installed packages:"
           pip list | grep -E "(selenium|supabase|requests|beautifulsoup4)"
+
+      - name: 🧪 Test system chromedriver directly
+        run: |
+          echo "🧪 Testing system chromedriver..."
+          chromedriver --version
+          python -c "
+          from selenium import webdriver
+          from selenium.webdriver.chrome.service import Service
+          from selenium.webdriver.chrome.options import Options
+          options = Options()
+          options.add_argument('--headless=new')
+          options.add_argument('--no-sandbox')
+          options.add_argument('--disable-dev-shm-usage')
+          driver = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
+          print('✅ System chromedriver test successful')
+          driver.quit()
+          "
+          echo "✅ System chromedriver validation completed"
 
       - name: 🧪 Run comprehensive test suite
         run: |
