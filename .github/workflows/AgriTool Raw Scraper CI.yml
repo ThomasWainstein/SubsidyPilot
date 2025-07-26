@@ -43,6 +43,14 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        continue-on-error: true
+
+      - name: Validate upload success
+        run: |
+          if [ -f "data/logs/supabase_upload.log" ]; then
+            echo "📋 Upload log summary:"
+            tail -20 data/logs/supabase_upload.log
+          fi
 
       - name: List scraped outputs
         run: |

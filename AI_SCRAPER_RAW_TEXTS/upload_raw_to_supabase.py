@@ -64,9 +64,9 @@ def prepare_data_for_upload(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def upload_json_files(supabase: Client, json_files: List[Path], batch_size: int = 50, dry_run: bool = False) -> Dict[str, int]:
-    """Upload JSON files to Supabase in batches"""
+    """Upload JSON files to Supabase in batches with retry logic"""
     logger = logging.getLogger(__name__)
-    stats = {'uploaded': 0, 'errors': 0, 'skipped': 0}
+    stats = {'uploaded': 0, 'errors': 0, 'skipped': 0, 'retries': 0}
     
     for i in range(0, len(json_files), batch_size):
         batch = json_files[i:i + batch_size]
@@ -85,8 +85,18 @@ def upload_json_files(supabase: Client, json_files: List[Path], batch_size: int 
                     stats['skipped'] += 1
                     continue
                 
+                # Additional validation
+                if len(prepared_data.get('source_url', '')) > 2048:
+                    logger.warning(f"Skipping {json_file}: source_url too long")
+                    stats['skipped'] += 1
+                    continue
+                
                 batch_data.append(prepared_data)
                 
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in {json_file}: {e}")
+                stats['errors'] += 1
+                continue
             except Exception as e:
                 logger.error(f"Error processing {json_file}: {e}")
                 stats['errors'] += 1
@@ -100,20 +110,35 @@ def upload_json_files(supabase: Client, json_files: List[Path], batch_size: int 
             stats['uploaded'] += len(batch_data)
             continue
         
-        try:
-            # Use upsert to handle potential duplicates
-            response = supabase.table('raw_scraped_pages').upsert(
-                batch_data,
-                on_conflict='source_url'
-            ).execute()
-            
-            uploaded_count = len(response.data) if response.data else len(batch_data)
-            stats['uploaded'] += uploaded_count
-            logger.info(f"✅ Uploaded batch {i//batch_size + 1}: {uploaded_count} records")
-            
-        except Exception as e:
-            logger.error(f"❌ Error uploading batch {i//batch_size + 1}: {e}")
-            stats['errors'] += len(batch_data)
+        # Upload with retry logic
+        success = False
+        retry_count = 0
+        max_retries = 3
+        
+        while not success and retry_count < max_retries:
+            try:
+                # Use upsert to handle potential duplicates
+                response = supabase.table('raw_scraped_pages').upsert(
+                    batch_data,
+                    on_conflict='source_url'
+                ).execute()
+                
+                uploaded_count = len(response.data) if response.data else len(batch_data)
+                stats['uploaded'] += uploaded_count
+                logger.info(f"✅ Uploaded batch {i//batch_size + 1}: {uploaded_count} records")
+                success = True
+                
+            except Exception as e:
+                retry_count += 1
+                stats['retries'] += 1
+                
+                if retry_count < max_retries:
+                    logger.warning(f"⚠️ Retry {retry_count}/{max_retries} for batch {i//batch_size + 1}: {e}")
+                    import time
+                    time.sleep(2 ** retry_count)  # Exponential backoff
+                else:
+                    logger.error(f"❌ Failed to upload batch {i//batch_size + 1} after {max_retries} attempts: {e}")
+                    stats['errors'] += len(batch_data)
     
     return stats
 
@@ -157,6 +182,7 @@ def main():
    📤 Uploaded: {stats['uploaded']}
    ❌ Errors: {stats['errors']}
    ⏭️ Skipped: {stats['skipped']}
+   🔄 Retries: {stats.get('retries', 0)}
    📊 Total files: {len(json_files)}
         """)
         

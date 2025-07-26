@@ -85,10 +85,12 @@ Upload all raw scraped data to Supabase for centralized access, deduplication, a
 | `updated_at` | timestamptz | Last update time |
 
 ### Upload Process
-**Script**: `upload_raw_to_supabase.py`
+**Scripts**:
+- `upload_raw_to_supabase.py` - Standard batch upload with retry logic
+- `batch_upload.py` - Advanced parallel upload for large datasets
 
 ```bash
-# Upload all JSON files to Supabase
+# Standard upload with retry logic
 python upload_raw_to_supabase.py
 
 # Preview upload without inserting
@@ -96,6 +98,9 @@ python upload_raw_to_supabase.py --dry-run
 
 # Custom batch size
 python upload_raw_to_supabase.py --batch-size 25
+
+# Parallel upload for large datasets
+python batch_upload.py --parallel --check-existing --max-workers 4
 ```
 
 ### Data Flow
