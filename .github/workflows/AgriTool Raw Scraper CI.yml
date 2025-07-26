@@ -126,6 +126,14 @@ jobs:
           echo "📋 Installed packages:"
           pip list | grep -E "(selenium|supabase|requests|beautifulsoup4)"
 
+      - name: 🔍 Validate environment variables
+        run: |
+          echo "🔍 Validating required Supabase environment variables..."
+          python ../test_env_vars.py
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       - name: 🧪 Test system chromedriver directly
         run: |
           echo "🧪 Testing system chromedriver..."

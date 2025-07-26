@@ -54,7 +54,6 @@ For production use, set these environment variables:
 ```bash
 # Required for scraper operation
 export DB_GITHUB_SCRAPER="your_db_github_scraper"
-export NEXT_PUBLIC_SUPABASE_ANON_KEY="your_anon_key"
 export NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url"
 export SUPABASE_SERVICE_ROLE_KEY="your_service_role_key"
 
