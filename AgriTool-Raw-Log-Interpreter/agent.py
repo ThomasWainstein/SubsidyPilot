@@ -73,6 +73,7 @@ class Config:
         self.SUPABASE_URL = self._get_required_env("NEXT_PUBLIC_SUPABASE_URL")
         self.SUPABASE_SERVICE_KEY = self._get_required_env("SUPABASE_SERVICE_ROLE_KEY")
         self.OPENAI_API_KEY = self._get_required_env("SCRAPER_RAW_GPT_API")
+        print("✅ SCRAPER_RAW_GPT_API detected")
         
         # Optional configuration
         self.BATCH_SIZE = int(os.getenv("BATCH_SIZE", "25"))  # Reduced for more robust processing
@@ -239,17 +240,38 @@ class LogInterpreterAgent:
         full_content = f"Raw Log Payload:\n{payload}\n\nAttached File Content:\n{file_content}"
         
         try:
-            response = self.openai_client.chat.completions.create(
-                model=self.config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": full_content}
-                ],
-                temperature=0.1,
-                max_tokens=4000
-            )
-            
-            result_text = response.choices[0].message.content
+            if self.config.ASSISTANT_ID.startswith("asst_") and hasattr(self.openai_client, "beta"):
+                # Use OpenAI Assistants API when an Assistant ID is provided
+                thread = self.openai_client.beta.threads.create(messages=[{"role": "user", "content": full_content}])
+                run = self.openai_client.beta.threads.runs.create(
+                    thread_id=thread.id,
+                    assistant_id=self.config.ASSISTANT_ID,
+                    instructions=system_prompt
+                )
+
+                # Poll until completion
+                while run.status not in ["completed", "failed", "cancelled", "expired"]:
+                    time.sleep(1)
+                    run = self.openai_client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+
+                if run.status != "completed":
+                    raise RuntimeError(f"Assistant run failed: {run.status}")
+
+                messages = self.openai_client.beta.threads.messages.list(thread_id=thread.id)
+                result_text = messages.data[0].content[0].text.value
+            else:
+                # Fallback to Chat Completions API
+                response = self.openai_client.chat.completions.create(
+                    model=self.config.OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": full_content}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4000
+                )
+
+                result_text = response.choices[0].message.content
             
             # Parse JSON response
             try:
@@ -509,6 +531,11 @@ def main():
     if "--single-batch" in sys.argv:
         stats = agent.process_batch()
         print(f"Single batch processing complete: {stats}")
+        try:
+            with open("agent_stats.json", "w", encoding="utf-8") as f:
+                json.dump(stats, f)
+        except Exception as e:
+            print(f"Failed to write agent_stats.json: {e}")
         sys.exit(0)
     else:
         agent.run_continuous()
