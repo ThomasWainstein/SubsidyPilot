@@ -10,6 +10,7 @@ Usage:
 """
 
 import os
+import sys
 import json
 import logging
 import argparse
@@ -143,6 +144,23 @@ def upload_json_files(supabase: Client, json_files: List[Path], batch_size: int 
     return stats
 
 def main():
+    # Auto-load .env for local development
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    
+    # Early validation of required environment variables
+    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
+        print("Please set the following environment variables:")
+        for var in missing_vars:
+            print(f"  export {var}=your_value_here")
+        sys.exit(1)
+    
     parser = argparse.ArgumentParser(description='Upload raw scraped data to Supabase')
     parser.add_argument('--dry-run', action='store_true', help='Preview upload without actually inserting data')
     parser.add_argument('--batch-size', type=int, default=50, help='Number of records to upload per batch')

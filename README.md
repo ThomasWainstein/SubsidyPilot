@@ -4,6 +4,17 @@
 
 **URL**: https://lovable.dev/projects/3707732f-d16c-415b-9774-90470307d385
 
+## Required Environment Variables
+
+Before running any scraper or upload scripts, set these required variables:
+
+```bash
+export NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+```
+
+For local development, copy `.env.example` to `.env` and fill in your values. Scripts will auto-load `.env` if `python-dotenv` is installed.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.

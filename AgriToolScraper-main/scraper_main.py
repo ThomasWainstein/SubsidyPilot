@@ -580,6 +580,23 @@ class AgriToolScraper:
 
 def main():
     """Main entry point with CLI argument parsing."""
+    # Auto-load .env for local development
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    
+    # Early validation of required environment variables
+    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
+        print("Please set the following environment variables:")
+        for var in missing_vars:
+            print(f"  export {var}=your_value_here")
+        sys.exit(1)
+    
     print("ARGS:", sys.argv)
     logging.info("Starting AgriTool scraper main function")
     parser = argparse.ArgumentParser(description='AgriTool Scraper with Supabase Integration')
@@ -598,17 +615,6 @@ def main():
     target_url = os.environ.get('TARGET_URL', args.url)
     max_pages = int(os.environ.get('MAX_PAGES', args.max_pages))
     dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true' or args.dry_run
-    
-    # Validate required environment variables for non-dry runs (only what SupabaseUploader actually needs)
-    if not dry_run:
-        required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
-        missing_vars = [var for var in required_vars if not os.environ.get(var)]
-        if missing_vars:
-            print(f"[ERROR] Missing required environment variables: {missing_vars}")
-            print("Please set the following environment variables:")
-            for var in missing_vars:
-                print(f"  export {var}=your_value_here")
-            sys.exit(1)
     
     # Initialize and run scraper
     try:

@@ -36,5 +36,5 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scraper_main import main
 
 if __name__ == "__main__":
-    # Run the enhanced scraper pipeline
+    # Run the enhanced scraper pipeline (includes early env validation)
     main()

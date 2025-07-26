@@ -128,6 +128,13 @@ def scrape_single_url(url: str, site_name: str = "unknown", output_dir: str = "d
 
 def main() -> None:
     """Main CLI entry point."""
+    # Auto-load .env for local development
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    
     parser = argparse.ArgumentParser(
         description="AgriTool Raw Text Scraper",
         formatter_class=argparse.RawDescriptionHelpFormatter,

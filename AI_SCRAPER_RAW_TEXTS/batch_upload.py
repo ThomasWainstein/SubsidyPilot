@@ -10,6 +10,7 @@ Usage:
 """
 
 import os
+import sys
 import json
 import logging
 import argparse
@@ -153,6 +154,23 @@ def parallel_upload(supabase: Client, json_files: List[Path], max_workers: int =
     return stats
 
 def main():
+    # Auto-load .env for local development
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    
+    # Early validation of required environment variables
+    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
+        print("Please set the following environment variables:")
+        for var in missing_vars:
+            print(f"  export {var}=your_value_here")
+        sys.exit(1)
+    
     parser = argparse.ArgumentParser(description='Advanced batch upload for raw scraped data')
     parser.add_argument('--parallel', action='store_true', help='Enable parallel processing')
     parser.add_argument('--max-workers', type=int, default=4, help='Maximum number of worker threads')
@@ -163,11 +181,6 @@ def main():
     
     # Setup logging
     logger = setup_logging()
-    
-    # Validate environment
-    if not os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or not os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
-        logger.error("❌ Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
-        return 1
     
     # Find JSON files
     data_dir = Path(args.data_dir)

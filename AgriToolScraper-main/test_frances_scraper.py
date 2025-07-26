@@ -52,6 +52,23 @@ def test_scraper():
 
 def main():
     """Main test function."""
+    # Auto-load .env for local development
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    
+    # Early validation of required environment variables
+    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    if missing_vars:
+        print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
+        print("Please set the following environment variables:")
+        for var in missing_vars:
+            print(f"  export {var}=your_value_here")
+        sys.exit(1)
+    
     print("🧪 FranceAgriMer Scraper Test")
     print("=" * 50)
     

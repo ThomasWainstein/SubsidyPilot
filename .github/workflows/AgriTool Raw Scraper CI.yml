@@ -204,6 +204,9 @@ jobs:
           echo "🔄 Running Supabase upload dry run..."
           python upload_raw_to_supabase.py --dry-run --batch-size 25
           echo "✅ Dry run validation completed"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: 🚀 Upload raw data to Supabase (live upload)
         if: ${{ github.event.inputs.dry_run != 'true' }}
