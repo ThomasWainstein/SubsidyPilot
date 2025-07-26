@@ -123,6 +123,44 @@ export type Database = {
           },
         ]
       }
+      error_log: {
+        Row: {
+          created_at: string
+          error_message: string
+          error_type: string
+          id: string
+          metadata: Json | null
+          raw_log_id: string | null
+          stack_trace: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          error_type: string
+          id?: string
+          metadata?: Json | null
+          raw_log_id?: string | null
+          stack_trace?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          id?: string
+          metadata?: Json | null
+          raw_log_id?: string | null
+          stack_trace?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_log_raw_log_id_fkey"
+            columns: ["raw_log_id"]
+            isOneToOne: false
+            referencedRelation: "raw_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_documents: {
         Row: {
           category: Database["public"]["Enums"]["document_category"]
@@ -277,6 +315,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      raw_logs: {
+        Row: {
+          created_at: string
+          file_refs: string[] | null
+          id: string
+          payload: string
+          processed: boolean | null
+          processed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_refs?: string[] | null
+          id?: string
+          payload: string
+          processed?: boolean | null
+          processed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_refs?: string[] | null
+          id?: string
+          payload?: string
+          processed?: boolean | null
+          processed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       raw_scraped_pages: {
         Row: {
@@ -434,6 +502,116 @@ export type Database = {
         }
         Relationships: []
       }
+      subsidies_structured: {
+        Row: {
+          agency: string | null
+          amount: number | null
+          application_method: string | null
+          audit: Json | null
+          co_financing_rate: number | null
+          compliance_requirements: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          documents: Json | null
+          eligibility: string | null
+          evaluation_criteria: string | null
+          funding_source: string | null
+          funding_type: string | null
+          id: string
+          language: string | null
+          legal_entity_type: string | null
+          matching_algorithm_score: number | null
+          payment_terms: string | null
+          previous_acceptance_rate: number | null
+          priority_groups: Json | null
+          program: string | null
+          project_duration: string | null
+          raw_log_id: string
+          region: string | null
+          reporting_requirements: string | null
+          sector: string | null
+          technical_support: string | null
+          title: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          agency?: string | null
+          amount?: number | null
+          application_method?: string | null
+          audit?: Json | null
+          co_financing_rate?: number | null
+          compliance_requirements?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          documents?: Json | null
+          eligibility?: string | null
+          evaluation_criteria?: string | null
+          funding_source?: string | null
+          funding_type?: string | null
+          id?: string
+          language?: string | null
+          legal_entity_type?: string | null
+          matching_algorithm_score?: number | null
+          payment_terms?: string | null
+          previous_acceptance_rate?: number | null
+          priority_groups?: Json | null
+          program?: string | null
+          project_duration?: string | null
+          raw_log_id: string
+          region?: string | null
+          reporting_requirements?: string | null
+          sector?: string | null
+          technical_support?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          agency?: string | null
+          amount?: number | null
+          application_method?: string | null
+          audit?: Json | null
+          co_financing_rate?: number | null
+          compliance_requirements?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          documents?: Json | null
+          eligibility?: string | null
+          evaluation_criteria?: string | null
+          funding_source?: string | null
+          funding_type?: string | null
+          id?: string
+          language?: string | null
+          legal_entity_type?: string | null
+          matching_algorithm_score?: number | null
+          payment_terms?: string | null
+          previous_acceptance_rate?: number | null
+          priority_groups?: Json | null
+          program?: string | null
+          project_duration?: string | null
+          raw_log_id?: string
+          region?: string | null
+          reporting_requirements?: string | null
+          sector?: string | null
+          technical_support?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidies_structured_raw_log_id_fkey"
+            columns: ["raw_log_id"]
+            isOneToOne: false
+            referencedRelation: "raw_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           company_name: string | null
@@ -475,6 +653,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_processing_lock: {
+        Args: { log_id: string }
+        Returns: boolean
+      }
       calculate_match_confidence: {
         Args: {
           farm_tags: string[]
@@ -483,6 +665,10 @@ export type Database = {
           subsidy_regions: string[]
         }
         Returns: number
+      }
+      release_processing_lock: {
+        Args: { log_id: string }
+        Returns: boolean
       }
     }
     Enums: {
