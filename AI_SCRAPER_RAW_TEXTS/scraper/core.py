@@ -20,18 +20,17 @@ def init_driver(headless: bool = True) -> webdriver.Chrome:
     options.add_argument("--disable-renderer-backgrounding")
     options.add_argument("--window-size=1920,1080")
     
-    # Determine chromedriver path - prioritize system chromedriver for CI
-    chromedriver_path = None
-    if os.path.exists("/usr/bin/chromedriver"):
-        # Use system chromedriver (CI environment)
-        chromedriver_path = "/usr/bin/chromedriver"
+    # Prioritize system chromedriver for CI environments
+    chromedriver_path = "/usr/bin/chromedriver" if os.path.exists("/usr/bin/chromedriver") else None
+    if chromedriver_path:
         print(f"🔧 Using system chromedriver: {chromedriver_path}")
+        service = Service(chromedriver_path)
     else:
-        # Fallback to webdriver-manager (local development)
+        # Fallback to webdriver-manager for local development
         chromedriver_path = ChromeDriverManager().install()
         print(f"🔧 Using webdriver-manager chromedriver: {chromedriver_path}")
+        service = Service(chromedriver_path)
     
-    service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 

@@ -52,8 +52,16 @@ def create_driver(headless: bool = True) -> webdriver.Chrome:
     # User agent to avoid bot detection
     options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     
-    # Create service
-    service = Service(ChromeDriverManager().install())
+    # Prioritize system chromedriver for CI environments
+    chromedriver_path = "/usr/bin/chromedriver" if os.path.exists("/usr/bin/chromedriver") else None
+    if chromedriver_path:
+        print(f"🔧 Using system chromedriver: {chromedriver_path}")
+        service = Service(chromedriver_path)
+    else:
+        # Fallback to webdriver-manager for local development
+        chromedriver_path = ChromeDriverManager().install()
+        print(f"🔧 Using webdriver-manager chromedriver: {chromedriver_path}")
+        service = Service(chromedriver_path)
     
     # Create driver
     driver = webdriver.Chrome(service=service, options=options)
