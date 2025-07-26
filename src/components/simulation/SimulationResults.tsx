@@ -49,28 +49,30 @@ const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsPro
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">
-                  {getLocalizedContent(subsidy.name, language)}
+                  {subsidy.title || 'Untitled'}
                 </CardTitle>
                 <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
               </div>
             </CardHeader>
             <CardContent className="pb-2">
               <p className="text-sm text-gray-600 mb-2">
-                {getLocalizedContent(subsidy.description, language)}
+                {subsidy.description || 'No description available'}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge variant="outline" className="bg-blue-50">
-                  {subsidy.code}
+                  {subsidy.agency || 'Unknown Agency'}
                 </Badge>
                 <Badge variant="outline" className="bg-green-50">
-                  {subsidy.grant}
+                  €{subsidy.amount?.toLocaleString() || 'Amount TBD'}
                 </Badge>
                 <Badge variant="outline" className="bg-purple-50">
-                  {typeof subsidy.region === 'string' ? subsidy.region : subsidy.region.join(', ')}
+                  {subsidy.region || 'All regions'}
                 </Badge>
-                <Badge variant="outline" className="bg-yellow-50">
-                  {t('subsidies.deadline')}: {new Date(subsidy.deadline).toLocaleDateString()}
-                </Badge>
+                {subsidy.deadline && (
+                  <Badge variant="outline" className="bg-yellow-50">
+                    {t('subsidies.deadline')}: {new Date(subsidy.deadline).toLocaleDateString()}
+                  </Badge>
+                )}
               </div>
             </CardContent>
             <CardFooter className="pt-2 flex justify-end">

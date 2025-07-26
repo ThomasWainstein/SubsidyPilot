@@ -36,13 +36,19 @@ const SubsidyManagement = () => {
 
   const onSubmit = async (data: SubsidyCreationData) => {
     try {
-      // Ensure required fields are present and properly typed
+      // Map legacy form data to subsidies_structured fields
       const subsidyData = {
-        ...data,
-        code: data.code, // Ensure code is required
-        title: data.title as any, // Cast to Json type expected by Supabase
-        description: data.description as any, // Cast to Json type expected by Supabase
-        eligibility_criteria: data.eligibility_criteria as any,
+        raw_log_id: 'manual-' + Date.now(), // Required field for subsidies_structured
+        title: typeof data.title === 'object' ? data.title.en || data.title.ro || '' : data.title,
+        description: typeof data.description === 'object' ? data.description.en || data.description.ro || '' : data.description,
+        eligibility: typeof data.eligibility_criteria === 'object' ? JSON.stringify(data.eligibility_criteria) : data.eligibility_criteria,
+        region: Array.isArray(data.region) ? data.region[0] : data.region, // Take first region
+        sector: Array.isArray(data.categories) ? data.categories[0] : data.categories, // Take first category as sector
+        funding_type: data.funding_type,
+        deadline: data.deadline,
+        amount: data.amount_max || data.amount_min || null,
+        url: `manual-subsidy-${Date.now()}`,
+        agency: 'Manual Entry',
       };
       
       await createSubsidyMutation.mutateAsync(subsidyData);
@@ -206,9 +212,7 @@ const SubsidyManagement = () => {
 
       <div className="grid gap-4">
         {subsidies?.map((subsidy) => {
-          // Safely handle the title type casting
-          const titleObj = subsidy.title as Record<string, any> | null;
-          const title = titleObj?.en || titleObj?.ro || Object.values(titleObj || {})[0] || 'Untitled';
+          const title = subsidy.title || 'Untitled';
 
           return (
             <Card key={subsidy.id}>
@@ -217,22 +221,24 @@ const SubsidyManagement = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="font-semibold">{title}</h3>
-                      <Badge variant="outline">{subsidy.code}</Badge>
-                      <Badge variant={subsidy.status === 'open' ? 'default' : 'secondary'}>
-                        {subsidy.status}
-                      </Badge>
+                      <Badge variant="outline">{subsidy.agency || 'Unknown Agency'}</Badge>
                     </div>
                     
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {subsidy.categories?.slice(0, 5).map((category, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {category}
+                      {subsidy.sector && (
+                        <Badge variant="secondary" className="text-xs">
+                          {subsidy.sector}
                         </Badge>
-                      ))}
+                      )}
+                      {subsidy.funding_type && (
+                        <Badge variant="secondary" className="text-xs">
+                          {subsidy.funding_type}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="text-sm text-gray-600">
-                      Regions: {subsidy.region?.join(', ') || 'All regions'}
+                      Region: {subsidy.region || 'All regions'}
                     </div>
                   </div>
 

@@ -161,7 +161,7 @@ const SubsidySearchPage = () => {
                       onSearchQueryChange={setSearchQuery}
                       showFilters={showFilters}
                       onToggleFilters={() => setShowFilters(!showFilters)}
-                      subsidies={subsidies}
+                      subsidies={subsidies as any}
                       totalCount={totalCount}
                       filteredCount={filteredCount}
                       loading={loading}
@@ -178,7 +178,7 @@ const SubsidySearchPage = () => {
                     onSearchQueryChange={setSearchQuery}
                     showFilters={false}
                     onToggleFilters={() => {}}
-                    subsidies={subsidies}
+                    subsidies={subsidies as any}
                     totalCount={totalCount}
                     filteredCount={filteredCount}
                     loading={loading}
