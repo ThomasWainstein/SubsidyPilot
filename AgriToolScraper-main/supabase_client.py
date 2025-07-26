@@ -2,6 +2,7 @@
 """
 Supabase integration client for AgriTool scraper.
 Handles authentication, data validation, and batch uploads.
+NOW WRITES TO raw_logs TABLE for AI agent processing.
 """
 
 import os
@@ -37,9 +38,13 @@ class SupabaseUploader:
     def test_connection(self) -> bool:
         """Test the Supabase connection and permissions."""
         try:
-            # Test basic connection
-            result = self.client.table('subsidies').select('id').limit(1).execute()
-            print(f"[INFO] Supabase connection successful. Can access subsidies table.")
+            # Test basic connection to raw_logs table (where scraper now writes)
+            result = self.client.table('raw_logs').select('id').limit(1).execute()
+            print(f"[INFO] Supabase connection successful. Can access raw_logs table.")
+            
+            # Also test subsidies table for legacy compatibility
+            self.client.table('subsidies').select('id').limit(1).execute()
+            print(f"[INFO] Can also access subsidies table for compatibility.")
             return True
         except Exception as e:
             print(f"[ERROR] Supabase connection failed: {e}")
@@ -161,6 +166,122 @@ class SupabaseUploader:
             
         return mapped_data
     
+    def prepare_raw_log_data(self, subsidies: List[Dict]) -> List[Dict]:
+        """
+        Prepare scraped subsidy data for insertion into raw_logs table.
+        This is the NEW method that replaces raw_scraped_pages workflow.
+        """
+        raw_log_entries = []
+        
+        for subsidy in subsidies:
+            try:
+                # Create payload with all scraped data
+                payload_data = {
+                    "scraping_metadata": {
+                        "source_url": subsidy.get('source_url'),
+                        "domain": subsidy.get('domain'),
+                        "scraped_at": datetime.utcnow().isoformat(),
+                        "session_id": self.session_id,
+                        "extraction_method": subsidy.get('extraction_metadata', {}).get('method_used', 'standard')
+                    },
+                    "raw_content": {
+                        "title": subsidy.get('title'),
+                        "description": subsidy.get('description'),
+                        "eligibility": subsidy.get('eligibility'),
+                        "agency": subsidy.get('agency'),
+                        "raw_text": subsidy.get('raw_content', {}),
+                        "multi_tab_content": subsidy.get('multi_tab_content', {}),
+                        "combined_tab_text": subsidy.get('combined_tab_text', ''),
+                        "amount_min": subsidy.get('amount_min'),
+                        "amount_max": subsidy.get('amount_max'),
+                        "deadline": subsidy.get('deadline'),
+                        "categories": subsidy.get('categories', []),
+                        "region": subsidy.get('region', []),
+                        "language": subsidy.get('language', ['fr']),
+                        "tags": subsidy.get('tags', []),
+                        "documents": subsidy.get('documents', [])
+                    }
+                }
+                
+                # Convert to JSON string for payload field
+                payload_json = json.dumps(payload_data, ensure_ascii=False, indent=2, default=str)
+                
+                # Prepare file references from documents
+                file_refs = []
+                documents = subsidy.get('documents', [])
+                if isinstance(documents, list):
+                    for doc in documents:
+                        if isinstance(doc, dict) and 'url' in doc:
+                            file_refs.append(doc['url'])
+                        elif isinstance(doc, str):
+                            file_refs.append(doc)
+                
+                # Create raw_logs entry
+                raw_log_entry = {
+                    'payload': payload_json,
+                    'file_refs': file_refs,
+                    'processed': False,  # CRITICAL: Set to False for AI agent processing
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+                
+                raw_log_entries.append(raw_log_entry)
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to prepare raw log data for subsidy: {e}")
+                continue
+        
+        return raw_log_entries
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((requests.exceptions.RequestException, Exception))
+    )
+    def insert_raw_logs(self, raw_log_entries: List[Dict]) -> Dict:
+        """
+        Insert raw log entries into raw_logs table for AI agent processing.
+        This is the NEW primary method replacing insert_subsidies.
+        """
+        if not raw_log_entries:
+            return {'inserted': 0, 'errors': [], 'total_attempted': 0}
+            
+        results = {
+            'inserted': 0,
+            'errors': [],
+            'total_attempted': len(raw_log_entries)
+        }
+        
+        # Process in batches of 50 (smaller batches for large payload field)
+        batch_size = 50
+        for i in range(0, len(raw_log_entries), batch_size):
+            batch = raw_log_entries[i:i + batch_size]
+            
+            try:
+                # Insert batch into raw_logs
+                response = self.client.table('raw_logs').insert(batch).execute()
+                
+                if response.data:
+                    batch_inserted = len(response.data)
+                    results['inserted'] += batch_inserted
+                    print(f"[INFO] Inserted batch of {batch_inserted} raw log entries")
+                else:
+                    results['errors'].append("Insert returned no data")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                results['errors'].append(f"Batch insert error: {error_msg}")
+                print(f"[ERROR] Failed to insert raw logs batch: {error_msg}")
+        
+        # Log final results
+        self.create_log_entry(
+            'raw_logs_insert_complete',
+            f"Processed {results['total_attempted']} raw log entries",
+            results
+        )
+        
+        return results
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -168,87 +289,73 @@ class SupabaseUploader:
     )
     def insert_subsidies(self, subsidies: List[Dict]) -> Dict:
         """
-        Insert a batch of subsidies into Supabase with retry logic.
-        Returns summary of results.
+        UPDATED: Now writes to raw_logs instead of subsidies table.
+        This maintains backward compatibility while fixing the data pipeline.
         """
         if not subsidies:
-            return {'inserted': 0, 'errors': [], 'duplicates': 0}
-            
-        results = {
-            'inserted': 0,
-            'errors': [],
-            'duplicates': 0,
-            'total_attempted': len(subsidies)
-        }
+            return {'inserted': 0, 'errors': [], 'total_attempted': 0}
         
-        # Process in batches of 100 (Supabase recommended batch size)
-        batch_size = 100
-        for i in range(0, len(subsidies), batch_size):
-            batch = subsidies[i:i + batch_size]
-            
-            try:
-                # Validate each subsidy in the batch
-                validated_batch = []
-                for subsidy in batch:
-                    try:
-                        validated = self.validate_subsidy_data(subsidy)
-                        
-                        # Secondary Failsafe Fix: Final check before insertion
-                        if not validated.get('description'):
-                            validated['description'] = {'fr': 'Description non disponible'}
-                            print(f"[WARN] Failsafe: Fixed null description for subsidy code {validated.get('code', 'unknown')}")
-                        
-                        validated_batch.append(validated)
-                    except Exception as e:
-                        results['errors'].append(f"Validation error: {e}")
-                        continue
-                
-                if not validated_batch:
-                    continue
-                    
-                # Insert batch
-                response = self.client.table('subsidies').insert(validated_batch).execute()
-                
-                if response.data:
-                    batch_inserted = len(response.data)
-                    results['inserted'] += batch_inserted
-                    print(f"[INFO] Inserted batch of {batch_inserted} subsidies")
-                else:
-                    results['errors'].append("Insert returned no data")
-                    
-            except Exception as e:
-                error_msg = str(e)
-                if 'duplicate key' in error_msg.lower():
-                    results['duplicates'] += len(batch)
-                    print(f"[WARN] Batch contained duplicates: {len(batch)} skipped")
-                else:
-                    results['errors'].append(f"Batch insert error: {error_msg}")
-                    print(f"[ERROR] Failed to insert batch: {error_msg}")
+        print(f"[INFO] Converting {len(subsidies)} subsidies to raw_logs format...")
         
-        # Log final results
-        self.create_log_entry(
-            'batch_insert_complete',
-            f"Processed {results['total_attempted']} subsidies",
-            results
-        )
+        # Convert subsidies to raw_logs format
+        raw_log_entries = self.prepare_raw_log_data(subsidies)
+        
+        if not raw_log_entries:
+            return {'inserted': 0, 'errors': ['Failed to convert any subsidies to raw_logs format'], 'total_attempted': len(subsidies)}
+        
+        print(f"[INFO] Inserting {len(raw_log_entries)} entries into raw_logs for AI agent processing...")
+        
+        # Insert into raw_logs instead of subsidies
+        results = self.insert_raw_logs(raw_log_entries)
+        
+        # Update messaging for clarity
+        if results['inserted'] > 0:
+            print(f"[INFO] Successfully inserted {results['inserted']} raw log entries.")
+            print(f"[INFO] These will be processed by the AI agent to extract structured data.")
         
         return results
     
     def check_existing_subsidies(self, codes: List[str]) -> List[str]:
-        """Check which subsidy codes already exist in the database."""
+        """
+        UPDATED: Check raw_logs for existing data instead of subsidies table.
+        This prevents duplicate processing of the same source URLs.
+        """
         try:
-            result = self.client.table('subsidies').select('code').in_('code', codes).execute()
-            existing_codes = [row['code'] for row in result.data]
-            return existing_codes
+            existing_urls = []
+            
+            # Check for existing source URLs in raw_logs
+            for code in codes:
+                # Search payloads for source_url matches
+                result = self.client.table('raw_logs').select('id,payload').execute()
+                for row in result.data:
+                    try:
+                        payload_data = json.loads(row['payload'])
+                        source_url = payload_data.get('scraping_metadata', {}).get('source_url', '')
+                        if code in source_url:  # Simple URL-based deduplication
+                            existing_urls.append(code)
+                            break
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+            
+            return existing_urls
         except Exception as e:
-            print(f"[WARN] Could not check existing subsidies: {e}")
+            print(f"[WARN] Could not check existing raw logs: {e}")
             return []
     
     def get_scraper_stats(self, days: int = 30) -> Dict:
         """Get scraper statistics for the last N days."""
         try:
-            # This would query scraper_logs for statistics
-            # Implementation depends on having scraper_logs table
-            return {'message': 'Stats feature requires scraper_logs table setup'}
+            # Query scraper_logs and raw_logs for statistics
+            logs_result = self.client.table('scraper_logs').select('*').execute()
+            raw_logs_result = self.client.table('raw_logs').select('id,processed,created_at').execute()
+            
+            stats = {
+                'total_sessions': len(logs_result.data),
+                'total_raw_logs': len(raw_logs_result.data),
+                'processed_logs': len([r for r in raw_logs_result.data if r.get('processed', False)]),
+                'pending_logs': len([r for r in raw_logs_result.data if not r.get('processed', False)])
+            }
+            
+            return stats
         except Exception as e:
             return {'error': str(e)}
