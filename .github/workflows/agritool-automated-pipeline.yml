@@ -1,0 +1,356 @@
+# =============================================================================
+# AgriTool Automated End-to-End Pipeline
+# =============================================================================
+# Comprehensive automation workflow that handles:
+# 1. Data scraping from FranceAgriMer
+# 2. Raw data upload to Supabase raw_logs table  
+# 3. AI Log Interpreter agent processing
+# 4. Final structured data population
+# 5. Quality assurance and validation
+# =============================================================================
+
+name: 🌾 AgriTool Automated Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: 'Maximum pages to scrape (0 = unlimited)'
+        required: false
+        default: '0'
+        type: string
+      dry_run:
+        description: 'Dry run mode (no database writes)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      run_tests:
+        description: 'Run comprehensive test suite'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      agent_batch_size:
+        description: 'AI agent batch size'
+        required: false
+        default: '25'
+        type: string
+  schedule:
+    # Run daily at 2 AM UTC for full automation
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: '3.11'
+  DISPLAY: ':99'
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  # =============================================================================
+  # JOB 1: SCRAPING & RAW DATA UPLOAD
+  # =============================================================================
+  scrape-and-upload:
+    name: 🕷️ Scrape & Upload Raw Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      scrape-success: ${{ steps.validation.outputs.success }}
+      records-uploaded: ${{ steps.validation.outputs.records }}
+      
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 🔧 Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y chromium-browser chromium-chromedriver xvfb file tesseract-ocr default-jre
+
+      - name: 🖥️ Setup virtual display
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 -ac &
+          sleep 3
+        env:
+          DISPLAY: ':99'
+
+      - name: 📦 Install dependencies - Scraper
+        working-directory: ./AgriToolScraper-main
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🕷️ Run FranceAgriMer scraper with enhanced extraction
+        working-directory: ./AgriToolScraper-main
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DISPLAY: ':99'
+        run: |
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            python main.py \
+              --url "https://www.franceagrimer.fr/rechercher-une-aide" \
+              --max-pages "${{ github.event.inputs.max_pages || '0' }}" \
+              --dry-run
+          else
+            python main.py \
+              --url "https://www.franceagrimer.fr/rechercher-une-aide" \
+              --max-pages "${{ github.event.inputs.max_pages || '0' }}"
+          fi
+
+      - name: 📊 Validate scraping results
+        id: validation
+        working-directory: ./AgriToolScraper-main
+        run: |
+          # Run data pipeline validation test
+          python test_data_pipeline_fix.py
+          
+          # Extract upload statistics
+          if [ -f "upload_stats.json" ]; then
+            RECORDS=$(cat upload_stats.json | grep -o '"records_uploaded":[0-9]*' | cut -d':' -f2 || echo "0")
+            echo "records=$RECORDS" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Pipeline validation successful - $RECORDS records uploaded"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "records=0" >> $GITHUB_OUTPUT
+            echo "❌ Pipeline validation failed - no upload stats found"
+          fi
+
+      - name: 📦 Upload scraper artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-output-${{ github.run_number }}
+          path: |
+            AgriToolScraper-main/data/
+            AgriToolScraper-main/*.log
+            AgriToolScraper-main/upload_stats.json
+          retention-days: 7
+
+  # =============================================================================
+  # JOB 2: AI LOG INTERPRETER AGENT
+  # =============================================================================
+  ai-agent-processing:
+    name: 🤖 AI Log Interpreter
+    runs-on: ubuntu-latest
+    needs: scrape-and-upload
+    if: needs.scrape-and-upload.outputs.scrape-success == 'true'
+    timeout-minutes: 120
+    outputs:
+      agent-success: ${{ steps.agent-run.outputs.success }}
+      processed-count: ${{ steps.agent-run.outputs.processed }}
+      
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 🔧 Install system dependencies for agent
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr default-jre
+
+      - name: 📦 Install dependencies - Agent
+        working-directory: ./AgriTool-Raw-Log-Interpreter
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🤖 Run AI Log Interpreter Agent
+        id: agent-run
+        working-directory: ./AgriTool-Raw-Log-Interpreter
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPER_RAW_GPT_API: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🤖 Starting AI agent processing..."
+          
+          # Run the enhanced agent with specified batch size
+          BATCH_SIZE="${{ github.event.inputs.agent_batch_size || '25' }}"
+          
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            echo "🧪 Running in test mode (single batch)"
+            python agent.py --batch-size 5 --single-batch
+          else
+            echo "🚀 Running full agent processing (batch size: $BATCH_SIZE)"
+            python agent.py --batch-size "$BATCH_SIZE" --single-batch
+          fi
+          
+          # Extract processing statistics
+          if [ -f "agent_stats.json" ]; then
+            PROCESSED=$(cat agent_stats.json | grep -o '"processed":[0-9]*' | cut -d':' -f2 || echo "0")
+            echo "processed=$PROCESSED" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Agent processing successful - $PROCESSED records processed"
+          else
+            # Check agent logs for processing info
+            if [ -f "agent.log" ]; then
+              PROCESSED=$(grep -c "Successfully processed" agent.log || echo "0")
+              echo "processed=$PROCESSED" >> $GITHUB_OUTPUT
+              echo "success=true" >> $GITHUB_OUTPUT
+              echo "✅ Agent processing completed - $PROCESSED records from logs"
+            else
+              echo "processed=0" >> $GITHUB_OUTPUT
+              echo "success=false" >> $GITHUB_OUTPUT
+              echo "❌ Agent processing failed - no stats or logs found"
+            fi
+          fi
+
+      - name: 📦 Upload agent artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-output-${{ github.run_number }}
+          path: |
+            AgriTool-Raw-Log-Interpreter/*.log
+            AgriTool-Raw-Log-Interpreter/agent_stats.json
+          retention-days: 7
+
+  # =============================================================================
+  # JOB 3: QUALITY ASSURANCE & TESTING
+  # =============================================================================
+  quality-assurance:
+    name: 🔍 Quality Assurance
+    runs-on: ubuntu-latest
+    needs: [scrape-and-upload, ai-agent-processing]
+    if: always() && github.event.inputs.run_tests != 'false'
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python  
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install QA dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psycopg2-binary requests
+
+      - name: 🧪 Run comprehensive test suite
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPER_RAW_GPT_API: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🧪 Running comprehensive QA test suite..."
+          
+          # Test 1: Data pipeline integration test
+          echo "📋 Test 1: Data pipeline validation"
+          cd AgriToolScraper-main
+          python test_data_pipeline_fix.py
+          cd ..
+          
+          # Test 2: Agent robustness test  
+          echo "📋 Test 2: Agent robustness validation"
+          cd AgriTool-Raw-Log-Interpreter
+          python test_robust_agent.py
+          cd ..
+          
+          # Test 3: End-to-end integration test
+          echo "📋 Test 3: End-to-end integration test"
+          python test_end_to_end_pipeline.py
+
+      - name: 🔍 Data quality validation
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔍 Running data quality validation..."
+          python validate_data_quality.py
+
+      - name: 📊 Generate QA report
+        run: |
+          echo "📊 Generating comprehensive QA report..."
+          python generate_qa_report.py \
+            --scrape-records "${{ needs.scrape-and-upload.outputs.records-uploaded || '0' }}" \
+            --processed-records "${{ needs.ai-agent-processing.outputs.processed-count || '0' }}" \
+            --run-id "${{ github.run_number }}"
+
+      - name: 📦 Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report-${{ github.run_number }}
+          path: |
+            qa_report.html
+            qa_report.json
+            test_results.xml
+          retention-days: 14
+
+  # =============================================================================
+  # JOB 4: PIPELINE SUMMARY & NOTIFICATIONS
+  # =============================================================================
+  pipeline-summary:
+    name: 📋 Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [scrape-and-upload, ai-agent-processing, quality-assurance]
+    if: always()
+    
+    steps:
+      - name: 📋 Generate pipeline summary
+        run: |
+          echo "📋 === AGRITOOL PIPELINE EXECUTION SUMMARY ===" 
+          echo "🏃 Run ID: ${{ github.run_number }}"
+          echo "📅 Execution Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "⚙️ Trigger: ${{ github.event_name }}"
+          echo ""
+          echo "📊 RESULTS:"
+          echo "  🕷️ Scraping: ${{ needs.scrape-and-upload.result }}"
+          echo "  📝 Records Uploaded: ${{ needs.scrape-and-upload.outputs.records-uploaded || 'N/A' }}"
+          echo "  🤖 AI Processing: ${{ needs.ai-agent-processing.result }}"  
+          echo "  📈 Records Processed: ${{ needs.ai-agent-processing.outputs.processed-count || 'N/A' }}"
+          echo "  🔍 Quality Assurance: ${{ needs.quality-assurance.result }}"
+          echo ""
+          echo "🎯 OVERALL STATUS:"
+          if [ "${{ needs.scrape-and-upload.result }}" = "success" ] && \
+             [ "${{ needs.ai-agent-processing.result }}" = "success" ] && \
+             [ "${{ needs.quality-assurance.result }}" = "success" ]; then
+            echo "  ✅ PIPELINE SUCCESS - All components completed successfully"
+            echo "  🚀 AgriTool automation pipeline executed end-to-end"
+          else
+            echo "  ⚠️ PIPELINE PARTIAL SUCCESS - Some components failed"
+            echo "  🔧 Review individual job logs for troubleshooting"
+          fi
+          echo ""
+          echo "📦 ARTIFACTS AVAILABLE:"
+          echo "  📁 scraper-output-${{ github.run_number }}"
+          echo "  📁 agent-output-${{ github.run_number }}" 
+          echo "  📁 qa-report-${{ github.run_number }}"
+          echo ""
+          echo "🔗 NEXT STEPS:"
+          echo "  1. Review QA report for data quality metrics"
+          echo "  2. Check Supabase subsidies_structured table for new records"
+          echo "  3. Validate extraction completeness and accuracy"
+          echo "  4. Monitor error logs for any issues requiring attention"
+
+      - name: ✅ Success notification
+        if: needs.scrape-and-upload.result == 'success' && needs.ai-agent-processing.result == 'success'
+        run: |
+          echo "🎉 AGRITOOL PIPELINE COMPLETED SUCCESSFULLY!"
+          echo "✅ End-to-end automation executed without errors"
+          echo "📊 Total records: ${{ needs.scrape-and-upload.outputs.records-uploaded || '0' }} scraped, ${{ needs.ai-agent-processing.outputs.processed-count || '0' }} processed"
+
+      - name: ⚠️ Partial success notification  
+        if: needs.scrape-and-upload.result != 'success' || needs.ai-agent-processing.result != 'success'
+        run: |
+          echo "⚠️ AGRITOOL PIPELINE COMPLETED WITH ISSUES"
+          echo "❌ One or more components failed - manual review required"
+          echo "🔧 Check individual job logs and artifacts for troubleshooting"
