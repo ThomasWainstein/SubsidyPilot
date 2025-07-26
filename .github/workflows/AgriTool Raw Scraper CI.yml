@@ -8,7 +8,8 @@ on:
   pull_request:
     paths:
       - 'AI_SCRAPER_RAW_TEXTS/**'
-
+  workflow_dispatch:
+  
 jobs:
   test-scraper:
     runs-on: ubuntu-latest
