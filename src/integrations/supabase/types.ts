@@ -278,6 +278,51 @@ export type Database = {
           },
         ]
       }
+      raw_scraped_pages: {
+        Row: {
+          attachment_count: number | null
+          attachment_paths: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          raw_html: string | null
+          raw_text: string | null
+          scrape_date: string | null
+          source_site: string | null
+          source_url: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attachment_count?: number | null
+          attachment_paths?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          raw_html?: string | null
+          raw_text?: string | null
+          scrape_date?: string | null
+          source_site?: string | null
+          source_url: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attachment_count?: number | null
+          attachment_paths?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          raw_html?: string | null
+          raw_text?: string | null
+          scrape_date?: string | null
+          source_site?: string | null
+          source_url?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       scraper_logs: {
         Row: {
           created_at: string

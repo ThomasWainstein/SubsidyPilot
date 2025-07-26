@@ -12,6 +12,9 @@ lxml>=4.9.0
 # --- Progress and utilities ---
 tqdm>=4.66.0
 
+# --- Supabase integration ---
+supabase>=2.0.0
+
 # --- Development and testing ---
 pytest>=7.0.0
 pytest-cov>=4.0.0
