@@ -6,13 +6,32 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 
 def init_driver(headless: bool = True) -> webdriver.Chrome:
-    """Initialize a simple Chrome WebDriver."""
+    """Initialize a robust Chrome WebDriver with CI/local compatibility."""
     options = Options()
     if headless:
         options.add_argument("--headless=new")
+    
+    # Essential arguments for CI environments
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    service = Service(ChromeDriverManager().install())
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--window-size=1920,1080")
+    
+    # Determine chromedriver path - prioritize system chromedriver for CI
+    chromedriver_path = None
+    if os.path.exists("/usr/bin/chromedriver"):
+        # Use system chromedriver (CI environment)
+        chromedriver_path = "/usr/bin/chromedriver"
+        print(f"🔧 Using system chromedriver: {chromedriver_path}")
+    else:
+        # Fallback to webdriver-manager (local development)
+        chromedriver_path = ChromeDriverManager().install()
+        print(f"🔧 Using webdriver-manager chromedriver: {chromedriver_path}")
+    
+    service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
