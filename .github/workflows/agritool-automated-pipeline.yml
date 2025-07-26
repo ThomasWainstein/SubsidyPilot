@@ -186,11 +186,19 @@ jobs:
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
         run: |
           echo "🤖 Starting AI agent processing..."
-          
+
           # Debug environment variables (without exposing values)
           echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo 'SET' || echo 'MISSING')"
           echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo 'SET' || echo 'MISSING')"
           echo "✅ SCRAPER_RAW_GPT_API: $([ -n "$SCRAPER_RAW_GPT_API" ] && echo 'SET' || echo 'MISSING')"
+
+          # Ensure required secret is present
+          if [ -z "$SCRAPER_RAW_GPT_API" ]; then
+            echo "SCRAPER_RAW_GPT_API missing!"
+            exit 1
+          else
+            echo "SCRAPER_RAW_GPT_API is set"
+          fi
           
           # Run the enhanced agent with specified batch size
           BATCH_SIZE="${{ github.event.inputs.agent_batch_size || '25' }}"
@@ -261,7 +269,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.OPENAI_API_KEY }}
+          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
         run: |
           echo "🧪 Running comprehensive QA test suite..."
           
