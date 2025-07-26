@@ -37,9 +37,22 @@ on:
         required: false
         default: '0'
       end_page:
-        description: 'End page number'
+        description: 'End page number (use -1 to scrape all pages)'
         required: false
         default: '2'
+      max_pages:
+        description: 'Maximum number of pages to scrape (optional limit)'
+        required: false
+        default: ''
+      max_urls:
+        description: 'Maximum number of URLs to collect (optional limit)'
+        required: false
+        default: ''
+      scrape_all:
+        description: 'Scrape all pages until no more results'
+        required: false
+        default: false
+        type: boolean
       dry_run:
         description: 'Dry run upload (no actual Supabase insert)'
         required: false
@@ -158,19 +171,44 @@ jobs:
           python test_scraper.py
           echo "✅ Test suite completed successfully"
 
-      - name: 🕷️ Batch scrape (FranceAgriMer pages ${{ github.event.inputs.start_page || '0' }}–${{ github.event.inputs.end_page || '2' }})
+      - name: 🕷️ Batch scrape with flexible pagination
         run: |
           echo "🕷️ Starting batch scrape..."
           SITE="${{ github.event.inputs.site || 'franceagrimer' }}"
           START_PAGE="${{ github.event.inputs.start_page || '0' }}"
           END_PAGE="${{ github.event.inputs.end_page || '2' }}"
+          MAX_PAGES="${{ github.event.inputs.max_pages }}"
+          MAX_URLS="${{ github.event.inputs.max_urls }}"
+          SCRAPE_ALL="${{ github.event.inputs.scrape_all }}"
           
           echo "📊 Scrape parameters:"
           echo "  Site: $SITE"
           echo "  Start page: $START_PAGE"
           echo "  End page: $END_PAGE"
+          echo "  Max pages: $MAX_PAGES"
+          echo "  Max URLs: $MAX_URLS"
+          echo "  Scrape all: $SCRAPE_ALL"
           
-          python scraper_main.py --site $SITE --start-page $START_PAGE --end-page $END_PAGE
+          # Build command with optional parameters
+          CMD="python scraper_main.py --site $SITE --start-page $START_PAGE --end-page $END_PAGE"
+          
+          if [ "$SCRAPE_ALL" = "true" ]; then
+            CMD="$CMD --scrape-all"
+            echo "  Mode: Scrape ALL pages"
+          fi
+          
+          if [ -n "$MAX_PAGES" ] && [ "$MAX_PAGES" != "" ]; then
+            CMD="$CMD --max-pages $MAX_PAGES"
+            echo "  Applying max pages limit: $MAX_PAGES"
+          fi
+          
+          if [ -n "$MAX_URLS" ] && [ "$MAX_URLS" != "" ]; then
+            CMD="$CMD --max-urls $MAX_URLS"
+            echo "  Applying max URLs limit: $MAX_URLS"
+          fi
+          
+          echo "🚀 Executing: $CMD"
+          eval $CMD
           echo "✅ Batch scrape completed"
 
       - name: 📊 Validate scraper outputs

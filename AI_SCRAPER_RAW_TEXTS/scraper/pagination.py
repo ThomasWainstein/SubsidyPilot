@@ -22,9 +22,30 @@ class SitePaginator:
         self.config = site_config
         self.collected_urls = set()
     
-    def collect_all_detail_urls(self, start_page: int = 0, end_page: int = 50) -> List[str]:
-        """Collect all detail URLs from paginated listing pages."""
-        logger.info(f"Starting URL collection from page {start_page} to {end_page}")
+    def collect_all_detail_urls(self, start_page: int = 0, end_page: int = 50, max_pages: int = None, max_urls: int = None) -> List[str]:
+        """Collect all detail URLs from paginated listing pages.
+        
+        Args:
+            start_page: Starting page number (default: 0)
+            end_page: Ending page number, or -1 for "scrape all pages" (default: 50)
+            max_pages: Maximum number of pages to scrape (default: None, no limit)
+            max_urls: Maximum number of URLs to collect (default: None, no limit)
+        """
+        # Handle "scrape all pages" mode
+        if end_page == -1:
+            end_page = 9999  # Large number for unlimited pagination
+            logger.info(f"Starting URL collection from page {start_page} - scraping ALL pages until empty")
+        else:
+            logger.info(f"Starting URL collection from page {start_page} to {end_page}")
+        
+        # Apply max_pages limit if specified
+        if max_pages is not None and max_pages > 0:
+            effective_end_page = start_page + max_pages - 1
+            if end_page == 9999 or effective_end_page < end_page:
+                end_page = effective_end_page
+                logger.info(f"Limited to {max_pages} pages due to max_pages setting (end_page: {end_page})")
+        
+        pages_processed = 0
         
         for page_num in range(start_page, end_page + 1):
             try:
@@ -32,9 +53,23 @@ class SitePaginator:
                 if not urls:
                     logger.info(f"No URLs found on page {page_num}, stopping pagination")
                     break
+                
+                # Check for empty results message
+                if self._has_empty_results_message():
+                    logger.info(f"Empty results message detected on page {page_num}, stopping pagination")
+                    break
                     
                 logger.info(f"Page {page_num}: collected {len(urls)} URLs")
                 self.collected_urls.update(urls)
+                pages_processed += 1
+                
+                # Check max_urls limit
+                if max_urls is not None and len(self.collected_urls) >= max_urls:
+                    logger.info(f"Reached max_urls limit ({max_urls}), stopping pagination")
+                    # Trim to exact limit
+                    collected_list = list(self.collected_urls)
+                    self.collected_urls = set(collected_list[:max_urls])
+                    break
                 
                 # Add delay between pages
                 time.sleep(1)
@@ -43,7 +78,15 @@ class SitePaginator:
                 logger.error(f"Error on page {page_num}: {e}")
                 continue
         
-        logger.info(f"Total unique URLs collected: {len(self.collected_urls)}")
+        final_count = len(self.collected_urls)
+        logger.info(f"Pagination complete: {pages_processed} pages processed, {final_count} unique URLs collected")
+        
+        if max_urls is not None and final_count > max_urls:
+            # Final safety trim
+            collected_list = list(self.collected_urls)
+            self.collected_urls = set(collected_list[:max_urls])
+            logger.info(f"Trimmed to max_urls limit: {max_urls} URLs")
+        
         return list(self.collected_urls)
     
     def _collect_urls_from_page(self, page_num: int) -> List[str]:
@@ -124,6 +167,34 @@ class SitePaginator:
                 return False
         
         return True
+    
+    def _has_empty_results_message(self) -> bool:
+        """Check if the current page has an empty results message."""
+        try:
+            # Get page source and parse with BeautifulSoup
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            
+            # Check for common empty results messages
+            empty_messages = [
+                "Votre recherche n'a retourné aucun résultat",
+                "No results found",
+                "Aucun résultat",
+                "0 résultat"
+            ]
+            
+            page_text = soup.get_text().lower()
+            for message in empty_messages:
+                if message.lower() in page_text:
+                    return True
+            
+            # Check if there are no result cards/links
+            link_selector = self.config['link_selector']
+            results = soup.select(link_selector)
+            return len(results) == 0
+            
+        except Exception as e:
+            logger.warning(f"Error checking for empty results: {e}")
+            return False
 
 
 # Site-specific configurations

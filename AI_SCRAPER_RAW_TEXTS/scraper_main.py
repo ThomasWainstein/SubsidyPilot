@@ -24,17 +24,30 @@ from scraper.utils import (
 )
 
 
-def scrape_site_batch(site_name: str, start_page: int, end_page: int, output_dir: str = "data") -> None:
+def scrape_site_batch(site_name: str, start_page: int, end_page: int, output_dir: str = "data", 
+                     max_pages: int = None, max_urls: int = None) -> None:
     """Scrape all pages from a site using pagination."""
     logger = logging.getLogger(__name__)
-    logger.info(f"Starting batch scrape: {site_name}, pages {start_page}-{end_page}")
+    
+    # Log scraping parameters
+    if end_page == -1:
+        logger.info(f"Starting batch scrape: {site_name}, pages {start_page} - ALL PAGES (unlimited)")
+    else:
+        logger.info(f"Starting batch scrape: {site_name}, pages {start_page}-{end_page}")
+    
+    if max_pages is not None:
+        logger.info(f"Max pages limit: {max_pages}")
+    if max_urls is not None:
+        logger.info(f"Max URLs limit: {max_urls}")
     
     # Initialize job stats
     stats = create_job_stats()
     stats.update({
         'site_name': site_name,
         'start_page': start_page,
-        'end_page': end_page
+        'end_page': end_page,
+        'max_pages': max_pages,
+        'max_urls': max_urls
     })
     
     driver = None
@@ -47,7 +60,7 @@ def scrape_site_batch(site_name: str, start_page: int, end_page: int, output_dir
         
         # Collect all URLs
         logger.info("Collecting URLs from paginated listings...")
-        all_urls = paginator.collect_all_detail_urls(start_page, end_page)
+        all_urls = paginator.collect_all_detail_urls(start_page, end_page, max_pages, max_urls)
         stats['total_urls'] = len(all_urls)
         stats['sample_urls'] = all_urls[:10]  # Store sample for logging
         
@@ -163,7 +176,13 @@ Examples:
     parser.add_argument('--start-page', type=int, default=0,
                        help='Starting page number for pagination (default: 0)')
     parser.add_argument('--end-page', type=int, default=50,
-                       help='Ending page number for pagination (default: 50)')
+                       help='Ending page number for pagination, use -1 to scrape all pages (default: 50)')
+    parser.add_argument('--max-pages', type=int, default=None,
+                       help='Maximum number of pages to scrape (default: None, no limit)')
+    parser.add_argument('--max-urls', type=int, default=None,
+                       help='Maximum number of URLs to collect (default: None, no limit)')
+    parser.add_argument('--scrape-all', action='store_true',
+                       help='Scrape all pages until no more results (equivalent to --end-page -1)')
     parser.add_argument('--output-dir', default='data',
                        help='Output directory for scraped data (default: data)')
     parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
@@ -192,8 +211,23 @@ Examples:
     
     try:
         if args.site:
+            # Handle scrape-all flag
+            end_page = args.end_page
+            if args.scrape_all:
+                end_page = -1
+                logger.info("--scrape-all flag detected, setting end_page to -1")
+            
+            # Validate limits
+            if args.max_pages is not None and args.max_pages <= 0:
+                logger.error("ERROR: max_pages must be greater than 0")
+                sys.exit(1)
+            if args.max_urls is not None and args.max_urls <= 0:
+                logger.error("ERROR: max_urls must be greater than 0")
+                sys.exit(1)
+            
             # Batch scraping with pagination
-            scrape_site_batch(args.site, args.start_page, args.end_page, args.output_dir)
+            scrape_site_batch(args.site, args.start_page, end_page, args.output_dir, 
+                            args.max_pages, args.max_urls)
         elif args.url:
             # Single URL scraping
             scrape_single_url(args.url, "manual", args.output_dir)
