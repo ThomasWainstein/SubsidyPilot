@@ -51,6 +51,20 @@ CANONICAL_FIELDS = [
     "application_requirements", "questionnaire_steps", "requirements_extraction_status"
 ]
 
+# Field type specifications for validation
+FIELD_TYPES = {
+    'url': str, 'title': str, 'description': str, 'eligibility': str, 'program': str,
+    'agency': str, 'region': str, 'sector': str, 'funding_type': str, 'project_duration': str,
+    'payment_terms': str, 'application_method': str, 'evaluation_criteria': str,
+    'legal_entity_type': str, 'funding_source': str, 'reporting_requirements': str,
+    'compliance_requirements': str, 'language': str, 'technical_support': str,
+    'requirements_extraction_status': str, 'deadline': str,
+    'amount': (int, float), 'co_financing_rate': (int, float), 'previous_acceptance_rate': (int, float),
+    'matching_algorithm_score': (int, float),
+    'documents': list, 'priority_groups': list, 'application_requirements': list,
+    'questionnaire_steps': list
+}
+
 class Config:
     """Configuration management from environment variables"""
     
@@ -61,7 +75,7 @@ class Config:
         self.OPENAI_API_KEY = self._get_required_env("SCRAPER_RAW_GPT_API")
         
         # Optional configuration
-        self.BATCH_SIZE = int(os.getenv("BATCH_SIZE", "50"))
+        self.BATCH_SIZE = int(os.getenv("BATCH_SIZE", "25"))  # Reduced for more robust processing
         self.POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "300"))
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
         self.SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
