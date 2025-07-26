@@ -1,0 +1,61 @@
+name: AgriTool Raw Scraper CI
+
+on:
+  push:
+    paths:
+      - 'AI_SCRAPER_RAW_TEXTS/**'
+      - '.github/workflows/test-scraper.yml'
+  pull_request:
+    paths:
+      - 'AI_SCRAPER_RAW_TEXTS/**'
+
+jobs:
+  test-scraper:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AI_SCRAPER_RAW_TEXTS
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run test suite
+        run: |
+          python test_scraper.py
+
+      - name: Batch scrape (FranceAgriMer pages 0–2)
+        run: |
+          python scraper_main.py --site franceagrimer --start-page 0 --end-page 2
+
+      - name: List scraped outputs
+        run: |
+          ls -l data/raw_pages/
+          ls -l data/attachments/
+          ls -l data/logs/
+
+      - name: Upload raw_pages as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw_pages
+          path: data/raw_pages/
+
+      - name: Upload attachments as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: attachments
+          path: data/attachments/
+
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: data/logs/
