@@ -1,0 +1,22 @@
+# --- Web automation ---
+selenium==4.15.2
+webdriver-manager==4.0.1
+
+# --- HTTP/HTML parsing ---
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=4.9
+
+# --- Data handling & progress ---
+tqdm>=4.66
+pandas>=2.0                  # For data analysis if needed
+
+# --- Cloud/API/AI ---
+python-dotenv>=1.0           # For .env config
+openai>=1.0                  # For AI processing if needed
+supabase==1.0.3              # Supabase client
+tenacity>=8.2                # For retries
+langdetect>=1.0.9            # For automatic language detection
+
+# --- Development ---
+pytest>=7.0                  # For testing
