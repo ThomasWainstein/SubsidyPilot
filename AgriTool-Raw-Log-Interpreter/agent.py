@@ -364,6 +364,19 @@ class LogInterpreterAgent:
         
         return normalized, audit
     
+    def _convert_for_json_serialization(self, obj):
+        """Recursively convert objects that aren't JSON serializable"""
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, (date, datetime)):
+            return obj.isoformat()
+        elif isinstance(obj, dict):
+            return {k: self._convert_for_json_serialization(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_for_json_serialization(item) for item in obj]
+        else:
+            return obj
+
     def save_structured_data(self, raw_log_id: str, normalized_data: Dict[str, Any], audit: Dict[str, Any]) -> bool:
         """Save normalized data to subsidies_structured table"""
         try:
@@ -374,9 +387,8 @@ class LogInterpreterAgent:
                 **normalized_data
             }
             
-            # Convert date objects to strings for JSON serialization
-            if insert_data.get("deadline"):
-                insert_data["deadline"] = insert_data["deadline"].isoformat()
+            # Convert all data to be JSON serializable (handle Decimal, date objects, etc.)
+            insert_data = self._convert_for_json_serialization(insert_data)
             
             response = self.supabase.table('subsidies_structured').insert(insert_data).execute()
             
