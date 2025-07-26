@@ -146,13 +146,18 @@ jobs:
     name: 🤖 AI Log Interpreter
     runs-on: ubuntu-latest
     needs: scrape-and-upload
-    if: needs.scrape-and-upload.outputs.scrape-success == 'true'
+    if: needs.scrape-and-upload.result == 'success'
     timeout-minutes: 120
     outputs:
       agent-success: ${{ steps.agent-run.outputs.success }}
       processed-count: ${{ steps.agent-run.outputs.processed }}
-      
+
     steps:
+      - name: 🐛 Debug scrape outputs
+        run: |
+          echo "Scrape success: '${{ needs.scrape-and-upload.outputs.scrape-success }}'"
+          echo "Records uploaded: '${{ needs.scrape-and-upload.outputs.records-uploaded }}'"
+
       - name: 📋 Checkout repository
         uses: actions/checkout@v4
 
@@ -230,7 +235,7 @@ jobs:
     name: 🔍 Quality Assurance
     runs-on: ubuntu-latest
     needs: [scrape-and-upload, ai-agent-processing]
-    if: always() && github.event.inputs.run_tests != 'false'
+    if: needs.ai-agent-processing.result == 'success' && github.event.inputs.run_tests != 'false'
     timeout-minutes: 45
     
     steps:
