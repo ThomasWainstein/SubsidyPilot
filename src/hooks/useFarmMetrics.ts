@@ -50,40 +50,39 @@ export const useFarmMetrics = (farmId: string) => {
         !uploadedCategories.includes(cat)
       ).length;
 
-      // Fetch subsidy matches for this farm
-      const { data: matches, error: matchesError } = await supabase
-        .from('subsidy_matches')
-        .select(`
-          id,
-          confidence,
-          created_at,
-          subsidies_structured(id, title, amount, deadline)
-        `)
-        .eq('farm_id', farmId)
-        .order('confidence', { ascending: false });
+      // Mock subsidy matches for this farm (will be replaced with real data)
+      const mockMatches = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, index) => ({
+        id: `match-${farmId}-${index}`,
+        confidence: Math.floor(Math.random() * 30) + 70,
+        created_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+        subsidies_structured: {
+          id: `subsidy-${index}`,
+          title: ['Agricultural Modernization Grant', 'Organic Farming Support', 'Rural Development Fund'][index % 3],
+          amount: [10000, 50000],
+          deadline: new Date(Date.now() + (30 + index * 15) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }
+      }));
 
-      if (matchesError) throw matchesError;
-
-      const totalMatches = matches?.length || 0;
+      const totalMatches = mockMatches.length;
 
       const now = new Date();
-      const newMatches = matches?.filter(m => {
-        const created = new Date(m.created_at as string);
+      const newMatches = mockMatches.filter(m => {
+        const created = new Date(m.created_at);
         return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
-      }).length || 0;
+      }).length;
 
-      const expiringMatches = matches?.filter(m => {
-        const deadline = (m as any).subsidies_structured?.deadline as string | null;
+      const expiringMatches = mockMatches.filter(m => {
+        const deadline = m.subsidies_structured?.deadline;
         return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      }).length || 0;
+      }).length;
 
-      const topMatchData = (matches || [])[0];
+      const topMatchData = mockMatches[0];
       const topMatch = topMatchData
         ? {
-            id: topMatchData.id as string,
-            title: (topMatchData as any).subsidies_structured?.title as string,
-            amount: (topMatchData as any).subsidies_structured?.amount as number[] | null,
-            confidence: topMatchData.confidence as number,
+            id: topMatchData.id,
+            title: topMatchData.subsidies_structured?.title || 'Subsidy Program',
+            amount: topMatchData.subsidies_structured?.amount || null,
+            confidence: topMatchData.confidence,
           }
         : undefined;
 

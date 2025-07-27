@@ -672,6 +672,81 @@ export type Database = {
           },
         ]
       }
+      subsidy_matches: {
+        Row: {
+          confidence: number
+          created_at: string
+          farm_id: string
+          id: string
+          match_criteria: Json | null
+          status: string | null
+          subsidy_id: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          farm_id: string
+          id?: string
+          match_criteria?: Json | null
+          status?: string | null
+          subsidy_id: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          farm_id?: string
+          id?: string
+          match_criteria?: Json | null
+          status?: string | null
+          subsidy_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidy_matches_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subsidy_matches_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies_structured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_alerts: {
+        Row: {
+          alert_id: string
+          created_at: string
+          dismissed: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_id: string
+          created_at?: string
+          dismissed?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string
+          created_at?: string
+          dismissed?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           company_name: string | null
