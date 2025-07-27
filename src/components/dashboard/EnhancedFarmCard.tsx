@@ -122,52 +122,23 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
           </div>
         </div>
 
-        {/* Subsidy Metrics */}
-        {!isLoading && metrics && (
-          <div className="space-y-3 border-t pt-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={14} className="text-green-600" />
-                <span className="text-sm font-medium">Subsidies</span>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {metrics.totalMatches || 0} matches
-              </Badge>
-            </div>
-            
-            {metrics.topMatch && (
-              <div className="text-xs text-gray-600 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                <p className="font-medium truncate">{metrics.topMatch.title}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span>{formatFundingAmount(metrics.topMatch.amount)}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {metrics.topMatch.confidence}% match
-                  </Badge>
-                </div>
+        {/* Real Subsidy Metrics - Only show if data exists */}
+        {!isLoading && metrics && (metrics.urgentDeadlines > 0 || metrics.missingDocuments > 0) && (
+          <div className="space-y-2 border-t pt-3">
+            {metrics.urgentDeadlines > 0 && (
+              <div className="flex items-center gap-2 text-xs">
+                <AlertTriangle size={12} className="text-red-500" />
+                <Badge variant="destructive" className="text-xs">
+                  {metrics.urgentDeadlines} urgent deadline{metrics.urgentDeadlines > 1 ? 's' : ''}
+                </Badge>
               </div>
             )}
-
-            {/* Urgent Items */}
-            {(metrics.urgentDeadlines > 0 || metrics.missingDocuments > 0 || metrics.expiringMatches > 0) && (
+            {metrics.missingDocuments > 0 && (
               <div className="flex items-center gap-2 text-xs">
-                <AlertTriangle size={12} className="text-orange-500" />
-                <div className="flex gap-2">
-                  {metrics.urgentDeadlines > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      {metrics.urgentDeadlines} urgent deadline{metrics.urgentDeadlines > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  {metrics.missingDocuments > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      {metrics.missingDocuments} missing doc{metrics.missingDocuments > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  {metrics.expiringMatches > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {metrics.expiringMatches} expiring
-                    </Badge>
-                  )}
-                </div>
+                <FileText size={12} className="text-orange-500" />
+                <Badge variant="outline" className="text-xs">
+                  {metrics.missingDocuments} missing doc{metrics.missingDocuments > 1 ? 's' : ''}
+                </Badge>
               </div>
             )}
           </div>

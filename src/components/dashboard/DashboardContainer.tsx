@@ -213,13 +213,8 @@ const DashboardContainer = () => {
             </h1>
           </div>
           
-          {/* Dashboard Overview with metrics */}
-          <ErrorBoundary fallback={DashboardErrorFallback}>
-            <DashboardOverview farmCount={farms.length} />
-          </ErrorBoundary>
-
           <div className="grid grid-cols-12 gap-6">
-            {/* Main content area */}
+            {/* Main content area - Farm cards prioritized */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
               <ErrorBoundary fallback={DashboardErrorFallback}>
                 <DashboardFilters 
@@ -238,11 +233,11 @@ const DashboardContainer = () => {
               
               {farms.length === 0 ? (
                 <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No farms yet</h3>
-                  <p className="text-gray-600 mb-4">Create your first farm to get started</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No farms yet</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">Create your first farm to get started</p>
                   <button
                     onClick={() => setIsAddFarmModalOpen(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                   >
                     Add Your First Farm
                   </button>
@@ -254,8 +249,29 @@ const DashboardContainer = () => {
               )}
             </div>
 
-            {/* Sidebar with alerts and quick actions */}
-            <div className="col-span-12 lg:col-span-4">
+            {/* Right sidebar - All metrics and secondary info */}
+            <div className="col-span-12 lg:col-span-4 space-y-6">
+              {/* Simple farm summary */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Farm Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-300">Total Farms:</span>
+                    <span className="font-medium">{farms.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-300">Filtered Results:</span>
+                    <span className="font-medium">{sortedFarms.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dashboard Overview in sidebar */}
+              <ErrorBoundary fallback={DashboardErrorFallback}>
+                <DashboardOverview farmCount={farms.length} />
+              </ErrorBoundary>
+
+              {/* Alerts and actions */}
               <ErrorBoundary fallback={DashboardErrorFallback}>
                 <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
               </ErrorBoundary>

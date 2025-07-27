@@ -64,41 +64,45 @@ export const useDashboardMetrics = () => {
           app.status === 'approved'
         ).length || 0;
 
-        // Mock subsidy matches for now (will be replaced with real data)
-        const mockMatches = farmIds.map((farmId, index) => ({
-          id: `match-${farmId}-${index}`,
-          farm_id: farmId,
-          confidence: Math.floor(Math.random() * 30) + 70, // 70-100%
-          created_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-          subsidies_structured: {
-            id: `subsidy-${index}`,
-            title: ['Agricultural Modernization Grant', 'Organic Farming Support', 'Rural Development Fund'][index % 3],
-            amount: [10000, 50000],
-            deadline: new Date(Date.now() + (30 + index * 15) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          }
-        }));
+        // Fetch real subsidy matches (no mock data)
+        const { data: subsidyMatches } = await supabase
+          .from('subsidy_matches')
+          .select(`
+            id,
+            farm_id,
+            confidence,
+            created_at,
+            subsidies_structured (
+              id,
+              title,
+              amount,
+              deadline
+            )
+          `)
+          .in('farm_id', farmIds)
+          .eq('status', 'active');
 
-        const totalSubsidyMatches = mockMatches.length;
+        const totalSubsidyMatches = subsidyMatches?.length || 0;
         const now = new Date();
         
-        const newMatches = mockMatches.filter(m => {
+        const newMatches = subsidyMatches?.filter(m => {
           const created = new Date(m.created_at);
           return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
-        }).length;
+        }).length || 0;
 
-        const expiringMatches = mockMatches.filter(m => {
+        const expiringMatches = subsidyMatches?.filter(m => {
           const deadline = m.subsidies_structured?.deadline;
           return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        }).length;
+        }).length || 0;
 
-        const topMatches = mockMatches.slice(0, 3).map(m => ({
+        const topMatches = subsidyMatches?.slice(0, 3).map(m => ({
           id: m.id,
-          title: m.subsidies_structured?.title || 'Subsidy Program',
+          title: m.subsidies_structured?.title || null,
           amount: m.subsidies_structured?.amount || null,
           deadline: m.subsidies_structured?.deadline || null,
           farmName: farms?.find(f => f.id === m.farm_id)?.name || 'Unknown Farm',
           confidence: m.confidence
-        }));
+        })).filter(m => m.title) || []; // Only include matches with real titles
 
         // Generate urgent deadlines from recent applications
         const urgentDeadlines = applications
