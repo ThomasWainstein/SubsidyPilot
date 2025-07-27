@@ -56,7 +56,7 @@ function App() {
           <RoleProvider>
             <LanguageProvider>
               <CalendarProvider>
-              <div className="min-h-screen bg-background font-sans antialiased">
+                <div className="min-h-screen bg-background font-sans antialiased">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
@@ -175,8 +175,8 @@ function App() {
                   />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                <Toaster />
-              </div>
+                  <Toaster />
+                </div>
               </CalendarProvider>
             </LanguageProvider>
           </RoleProvider>

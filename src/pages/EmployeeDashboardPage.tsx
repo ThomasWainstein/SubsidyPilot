@@ -36,6 +36,9 @@ import {
 } from 'lucide-react';
 import AccessControl from '@/components/security/AccessControl';
 import ArrayProcessingMonitor from '@/components/admin/ArrayProcessingMonitor';
+import ErrorManagement from '@/components/admin/ErrorManagement';
+import BatchOperations from '@/components/admin/BatchOperations';
+import TicketingSystem from '@/components/admin/TicketingSystem';
 import { useToast } from '@/hooks/use-toast';
 
 interface SystemMetrics {
