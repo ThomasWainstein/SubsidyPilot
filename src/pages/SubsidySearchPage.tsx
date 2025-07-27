@@ -167,6 +167,7 @@ const SubsidySearchPage = () => {
                       loading={loading}
                       error={error}
                       farmId={farmId}
+                      onClearFilters={clearFilters}
                     />
                   </div>
                 </div>
@@ -184,6 +185,7 @@ const SubsidySearchPage = () => {
                     loading={loading}
                     error={error}
                     farmId={farmId}
+                    onClearFilters={clearFilters}
                   />
                 </div>
               </div>

@@ -125,8 +125,12 @@ export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ 
                 )}
                 
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm">
-                    View Details
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.location.href = `/subsidy/${application.subsidy_id}`}
+                  >
+                    View Subsidy Details
                   </Button>
                   {application.status === 'draft' && (
                     <Button size="sm">

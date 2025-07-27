@@ -78,11 +78,12 @@ const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button size="sm" className="flex-1 min-h-[36px] text-xs md:text-sm">
+          <Button 
+            size="sm" 
+            className="flex-1 min-h-[36px] text-xs md:text-sm"
+            onClick={() => window.location.href = `/subsidy/${subsidy.id}`}
+          >
             View Details
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1 min-h-[36px] text-xs md:text-sm">
-            Apply
           </Button>
         </div>
       </div>

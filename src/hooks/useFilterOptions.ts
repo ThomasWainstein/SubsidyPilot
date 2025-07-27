@@ -22,10 +22,10 @@ export const useFilterOptions = (): FilterOptions => {
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
-        // Get unique regions from subsidies
+        // Get unique regions from subsidies_structured
         const { data: subsidies, error: subsidiesError } = await supabase
-          .from('subsidies')
-          .select('region, categories, funding_type');
+          .from('subsidies_structured')
+          .select('region, sector, funding_type');
 
         if (subsidiesError) {
           throw subsidiesError;
@@ -37,14 +37,18 @@ export const useFilterOptions = (): FilterOptions => {
         const fundingTypesSet = new Set<string>();
 
         subsidies?.forEach(subsidy => {
-          // Add regions
-          if (subsidy.region && Array.isArray(subsidy.region)) {
-            subsidy.region.forEach(r => regionsSet.add(r));
+          // Add regions - handle both string and array formats
+          if (subsidy.region) {
+            if (Array.isArray(subsidy.region)) {
+              subsidy.region.forEach(r => regionsSet.add(r));
+            } else if (typeof subsidy.region === 'string') {
+              regionsSet.add(subsidy.region);
+            }
           }
 
-          // Add categories
-          if (subsidy.categories && Array.isArray(subsidy.categories)) {
-            subsidy.categories.forEach(c => categoriesSet.add(c));
+          // Add sectors (changed from categories to sector)
+          if (subsidy.sector) {
+            categoriesSet.add(subsidy.sector);
           }
 
           // Add funding types

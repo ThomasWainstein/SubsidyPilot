@@ -1,0 +1,97 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    console.log('Starting subsidy title improvement...')
+
+    // Get all subsidies with "Subsidy Page" title
+    const { data: subsidies, error: fetchError } = await supabaseClient
+      .from('subsidies_structured')
+      .select('*')
+      .eq('title', 'Subsidy Page')
+
+    if (fetchError) {
+      throw fetchError
+    }
+
+    console.log(`Found ${subsidies?.length || 0} subsidies with placeholder titles`)
+
+    let updatedCount = 0
+    
+    if (subsidies && subsidies.length > 0) {
+      for (const subsidy of subsidies) {
+        // Create a better title based on available data
+        let newTitle = 'Agricultural Funding Program'
+        
+        if (subsidy.agency && subsidy.sector) {
+          newTitle = `${subsidy.agency} - ${subsidy.sector} Grant`
+        } else if (subsidy.agency) {
+          newTitle = `${subsidy.agency} Agricultural Grant`
+        } else if (subsidy.sector) {
+          newTitle = `${subsidy.sector} Funding Program`
+        } else if (subsidy.program) {
+          newTitle = subsidy.program
+        }
+
+        // Add funding type if available
+        if (subsidy.funding_type && !newTitle.includes(subsidy.funding_type)) {
+          newTitle += ` (${subsidy.funding_type})`
+        }
+
+        // Update the title
+        const { error: updateError } = await supabaseClient
+          .from('subsidies_structured')
+          .update({ title: newTitle })
+          .eq('id', subsidy.id)
+
+        if (updateError) {
+          console.error(`Error updating subsidy ${subsidy.id}:`, updateError)
+        } else {
+          updatedCount++
+          console.log(`Updated title for subsidy ${subsidy.id}: "${newTitle}"`)
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Updated ${updatedCount} subsidy titles`,
+        updatedCount,
+        totalFound: subsidies?.length || 0
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    )
+
+  } catch (error) {
+    console.error('Error in improve-subsidy-titles function:', error)
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    )
+  }
+})

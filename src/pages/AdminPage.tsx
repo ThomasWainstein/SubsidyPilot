@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import SubsidyManagement from '@/components/admin/SubsidyManagement';
 import ImportManagement from '@/components/admin/ImportManagement';
+import SubsidyTitleImprover from '@/components/admin/SubsidyTitleImprover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getIsAdmin, FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -75,12 +76,18 @@ const AdminPage = () => {
             )}
           </div>
           <Tabs defaultValue="subsidies" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="subsidies">Subsidy Management</TabsTrigger>
+              <TabsTrigger value="improve">Data Quality</TabsTrigger>
               <TabsTrigger value="import">Data Import</TabsTrigger>
             </TabsList>
             <TabsContent value="subsidies">
               <SubsidyManagement />
+            </TabsContent>
+            <TabsContent value="improve">
+              <div className="space-y-6">
+                <SubsidyTitleImprover />
+              </div>
             </TabsContent>
             <TabsContent value="import">
               <ImportManagement />

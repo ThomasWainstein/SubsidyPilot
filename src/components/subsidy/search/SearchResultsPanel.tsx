@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, X, Calendar, MapPin, Euro } from 'lucide-react';
+import EmptySubsidyState from './EmptySubsidyState';
+import SubsidyLoadingCard from './SubsidyLoadingCard';
 
 interface Subsidy {
   id: string;
@@ -18,6 +20,7 @@ interface Subsidy {
   amount_min?: number; // Made optional for subsidies_structured
   amount_max?: number; // Made optional for subsidies_structured
   amount?: number; // Added for subsidies_structured
+  agency?: string; // Added for subsidies_structured
   matchConfidence: number;
 }
 
@@ -32,14 +35,20 @@ interface SearchResultsPanelProps {
   loading: boolean;
   error: string | null;
   farmId?: string; // Now optional
+  onClearFilters?: () => void;
 }
 
 const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const getTitle = () => {
     if (typeof subsidy.title === 'object' && subsidy.title) {
-      return subsidy.title.en || subsidy.title.ro || subsidy.title.fr || Object.values(subsidy.title)[0] || 'Untitled';
+      return subsidy.title.en || subsidy.title.ro || subsidy.title.fr || Object.values(subsidy.title)[0] || 'Agricultural Subsidy Program';
     }
-    return subsidy.title || 'Untitled';
+    // Replace placeholder titles with more descriptive names
+    const title = subsidy.title || 'Agricultural Subsidy Program';
+    if (title === 'Subsidy Page') {
+      return `${subsidy.agency || 'Agricultural'} Funding Program` + (subsidy.sector ? ` - ${subsidy.sector}` : '');
+    }
+    return title;
   };
 
   const getDescription = () => {
@@ -106,11 +115,12 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
       </div>
 
       <div className="flex gap-2">
-        <Button size="sm" className="flex-1">
+        <Button 
+          size="sm" 
+          className="flex-1"
+          onClick={() => window.location.href = `/subsidy/${subsidy.id}`}
+        >
           View Details
-        </Button>
-        <Button size="sm" variant="outline">
-          Apply
         </Button>
       </div>
     </Card>
@@ -127,7 +137,8 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
   filteredCount,
   loading,
   error,
-  farmId
+  farmId,
+  onClearFilters
 }) => {
   if (error) {
     return (
@@ -154,10 +165,11 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium mb-2 text-red-600">Error Loading Subsidies</h3>
-            <p className="text-gray-500">{error}</p>
-          </div>
+          <EmptySubsidyState 
+            type="error"
+            error={error}
+            onRetry={() => window.location.reload()}
+          />
         </CardContent>
       </Card>
     );
@@ -204,20 +216,17 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-gray-500">Loading subsidies...</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SubsidyLoadingCard key={index} />
+            ))}
           </div>
         ) : subsidies.length === 0 ? (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium mb-2">No subsidies found</h3>
-            <p className="text-gray-500">
-              {totalCount === 0 
-                ? "No subsidies are available in the database." 
-                : "No subsidies match your current filters. Try adjusting your search criteria."
-              }
-            </p>
-          </div>
+          <EmptySubsidyState 
+            type={totalCount === 0 ? 'no-data' : 'no-results'}
+            searchQuery={searchQuery}
+            onClearFilters={onClearFilters}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {subsidies.map((subsidy) => (

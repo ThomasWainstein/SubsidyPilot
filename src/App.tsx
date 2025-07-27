@@ -14,6 +14,7 @@ import SubsidySearchPage from '@/pages/SubsidySearchPage';
 import CalendarPage from '@/pages/CalendarPage';
 import ApplicationFormPage from '@/pages/ApplicationFormPage';
 import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
+import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
 import AdminPage from '@/pages/AdminPage';
 import NotFound from '@/pages/NotFound';
@@ -90,6 +91,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <SubsidySearchPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/subsidy/:subsidyId" 
+                    element={
+                      <ProtectedRoute>
+                        <SubsidyDetailPage />
                       </ProtectedRoute>
                     } 
                   />
