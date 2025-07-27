@@ -39,6 +39,7 @@ import ArrayProcessingMonitor from '@/components/admin/ArrayProcessingMonitor';
 import ErrorManagement from '@/components/admin/ErrorManagement';
 import BatchOperations from '@/components/admin/BatchOperations';
 import TicketingSystem from '@/components/admin/TicketingSystem';
+import SubmissionMonitoring from '@/components/admin/SubmissionMonitoring';
 import { useToast } from '@/hooks/use-toast';
 
 interface SystemMetrics {
@@ -251,12 +252,13 @@ const EmployeeDashboardPage = () => {
           )}
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="array-processing">Array Processing</TabsTrigger>
-              <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
-              <TabsTrigger value="errors">Error Management</TabsTrigger>
+              <TabsTrigger value="submissions">Submissions</TabsTrigger>
+              <TabsTrigger value="array-processing">Processing</TabsTrigger>
+              <TabsTrigger value="errors">Errors</TabsTrigger>
               <TabsTrigger value="operations">Operations</TabsTrigger>
+              <TabsTrigger value="data-quality">Quality</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6">
@@ -329,6 +331,10 @@ const EmployeeDashboardPage = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="submissions" className="mt-6">
+              <SubmissionMonitoring />
             </TabsContent>
 
             <TabsContent value="array-processing" className="mt-6">
