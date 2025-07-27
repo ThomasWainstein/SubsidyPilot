@@ -493,7 +493,7 @@ Do not output any explanations, logs, or additional commentary.`
       }
     };
 
-    const { data: insertData: newSubsidy, error: insertError } = await supabase
+    const { data: newSubsidy, error: insertError } = await supabase
       .from('subsidies_structured')
       .insert(insertData)
       .select()
