@@ -2,10 +2,255 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Robust array processing utilities (Deno version)
+const CANONICAL_ARRAY_FIELDS = [
+  'amount', 'region', 'sector', 'legal_entity_type', 'objectives',
+  'beneficiary_types', 'investment_types', 'rejection_conditions',
+  'eligible_actions', 'ineligible_actions', 'requirements',
+  'documents_required', 'scoring_criteria_list', 'funding_tranches',
+  'priority_groups_list'
+];
+
+const ARRAY_FIELD_TYPES: Record<string, 'numeric' | 'text'> = {
+  amount: 'numeric',
+  region: 'text',
+  sector: 'text',
+  legal_entity_type: 'text',
+  objectives: 'text',
+  beneficiary_types: 'text',
+  investment_types: 'text',
+  rejection_conditions: 'text',
+  eligible_actions: 'text',
+  ineligible_actions: 'text',
+  requirements: 'text',
+  documents_required: 'text',
+  scoring_criteria_list: 'text',
+  funding_tranches: 'text',
+  priority_groups_list: 'text',
 };
+
+interface ArrayCoercionResult {
+  value: any[];
+  original: any;
+  method: string;
+  fieldName: string;
+  warnings: string[];
+  timestamp: string;
+  success: boolean;
+}
+
+/**
+ * Robust array coercion for Deno/Edge Functions
+ */
+function ensureArray(value: any, fieldName: string = 'unknown'): ArrayCoercionResult {
+  const originalValue = value;
+  const warnings: string[] = [];
+  const timestamp = new Date().toISOString();
+
+  console.log(`[EdgeFunction] Coercing field '${fieldName}': ${JSON.stringify(value)} (${typeof value})`);
+
+  try {
+    // Handle null, undefined, or empty values
+    if (value === null || value === undefined) {
+      return {
+        value: [],
+        original: originalValue,
+        method: 'null_handling',
+        fieldName,
+        warnings,
+        timestamp,
+        success: true
+      };
+    }
+
+    // Handle already-array values
+    if (Array.isArray(value)) {
+      const cleaned = value.filter(item => 
+        item !== null && 
+        item !== undefined && 
+        String(item).trim() !== ''
+      );
+      
+      if (cleaned.length !== value.length) {
+        warnings.push(`Filtered ${value.length - cleaned.length} empty/null items`);
+      }
+
+      return {
+        value: cleaned,
+        original: originalValue,
+        method: 'array_cleanup',
+        fieldName,
+        warnings,
+        timestamp,
+        success: true
+      };
+    }
+
+    // Convert to string for processing
+    const strValue = String(value).trim();
+
+    // Handle empty strings and null-like values
+    if (!strValue || ['null', 'none', 'undefined', '[]', '{}'].includes(strValue.toLowerCase())) {
+      return {
+        value: [],
+        original: originalValue,
+        method: 'empty_string',
+        fieldName,
+        warnings,
+        timestamp,
+        success: true
+      };
+    }
+
+    // Try JSON parsing first (most reliable)
+    if (strValue.startsWith('[') && strValue.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(strValue);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(item => 
+            item !== null && 
+            item !== undefined && 
+            String(item).trim() !== ''
+          );
+          
+          console.log(`[EdgeFunction] JSON parse successful: ${cleaned.length} items`);
+          return {
+            value: cleaned,
+            original: originalValue,
+            method: 'json_parse',
+            fieldName,
+            warnings,
+            timestamp,
+            success: true
+          };
+        } else {
+          warnings.push(`JSON parsed to non-array: ${typeof parsed}`);
+        }
+      } catch (e) {
+        warnings.push(`JSON parse failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    // Handle comma-separated or semicolon-separated values
+    if (strValue.includes(',') || strValue.includes(';')) {
+      const separator = strValue.includes(',') ? ',' : ';';
+      const items = strValue
+        .split(separator)
+        .map(item => item.trim())
+        .filter(item => item);
+
+      if (items.length > 0) {
+        console.log(`[EdgeFunction] CSV parse successful: ${items.length} items`);
+        return {
+          value: items,
+          original: originalValue,
+          method: `csv_split_${separator}`,
+          fieldName,
+          warnings,
+          timestamp,
+          success: true
+        };
+      }
+    }
+
+    // Handle numeric fields specially
+    const fieldType = ARRAY_FIELD_TYPES[fieldName] || 'text';
+    if (fieldType === 'numeric') {
+      try {
+        let numericValue: number;
+        if (typeof value === 'number') {
+          numericValue = value;
+        } else {
+          numericValue = strValue.includes('.') ? parseFloat(strValue) : parseInt(strValue, 10);
+        }
+
+        if (!isNaN(numericValue)) {
+          console.log(`[EdgeFunction] Numeric wrap successful: [${numericValue}]`);
+          return {
+            value: [numericValue],
+            original: originalValue,
+            method: 'numeric_wrap',
+            fieldName,
+            warnings,
+            timestamp,
+            success: true
+          };
+        }
+      } catch (e) {
+        warnings.push(`Failed to convert to numeric: ${strValue}`);
+      }
+    }
+
+    // Last resort: wrap as single item
+    if (strValue) {
+      console.log(`[EdgeFunction] Single wrap: ['${strValue}']`);
+      return {
+        value: [strValue],
+        original: originalValue,
+        method: 'single_wrap',
+        fieldName,
+        warnings,
+        timestamp,
+        success: true
+      };
+    } else {
+      return {
+        value: [],
+        original: originalValue,
+        method: 'empty_fallback',
+        fieldName,
+        warnings,
+        timestamp,
+        success: true
+      };
+    }
+
+  } catch (error) {
+    const errorMsg = `Array coercion critical error: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[EdgeFunction] ${errorMsg}`);
+    warnings.push(errorMsg);
+
+    return {
+      value: [],
+      original: originalValue,
+      method: 'error_fallback',
+      fieldName,
+      warnings,
+      timestamp,
+      success: false
+    };
+  }
+}
+
+/**
+ * Process all array fields in a record
+ */
+function processRecordArrays(record: Record<string, any>): {
+  processedRecord: Record<string, any>;
+  auditEntries: ArrayCoercionResult[];
+} {
+  const processedRecord = { ...record };
+  const auditEntries: ArrayCoercionResult[] = [];
+
+  console.log(`[EdgeFunction] Processing record with ${CANONICAL_ARRAY_FIELDS.length} potential array fields`);
+
+  for (const fieldName of CANONICAL_ARRAY_FIELDS) {
+    if (fieldName in record) {
+      const result = ensureArray(record[fieldName], fieldName);
+      processedRecord[fieldName] = result.value;
+      auditEntries.push(result);
+
+      if (result.warnings.length > 0) {
+        for (const warning of result.warnings) {
+          console.warn(`[EdgeFunction] Field '${fieldName}': ${warning}`);
+        }
+      }
+    }
+  }
+
+  console.log(`[EdgeFunction] Record processing complete: ${auditEntries.length} fields processed`);
+  return { processedRecord, auditEntries };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +261,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
+
+serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -91,17 +339,19 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
             content: `You are an expert subsidy data extraction agent for the AgriTool platform.
 Your task is to analyze unstructured raw subsidy logs from FranceAgriMer subsidy pages (in French or English), including messy web page text and attached files, and convert each subsidy record into a strictly structured JSON object conforming to the canonical schema below.
 
+CRITICAL: ALL array-type fields MUST be returned as valid JSON arrays, even for single values or empty cases.
+
 Always:
 - Parse and normalize all relevant information: subsidy details, eligibility, special/conditional scenarios (e.g., for JA, NI, CUMA, collective investments), objectives, eligible/ineligible actions, funding amounts (including breakdowns/ranges), application methods, required documents, evaluation criteria, reporting and compliance requirements, etc.
 - Clearly flag and capture conditional logic and special eligibility cases, explicitly noting these to support downstream human review and filtering.
-- If any information is ambiguous, missing, or cannot be confidently extracted, set that field to null or empty string and include it in a flagged "missing_fields" audit list.
+- If any information is ambiguous, missing, or cannot be confidently extracted, set that field to null or empty array [] for array fields.
 - Normalize dates to ISO format: YYYY-MM-DD.
 - Normalize numbers as plain numbers or numeric arrays for ranges (e.g., "amount": [min, max]).
 - Normalize URLs as absolute URLs.
@@ -165,74 +415,107 @@ Do not output any explanations, logs, or additional commentary.`
     console.log('Raw OpenAI response:', extractedContent);
 
     // Parse the JSON response
-    let structuredData;
+    let extractedData;
     try {
       // Remove any potential markdown formatting
       const cleanContent = extractedContent.replace(/```json\n?|\n?```/g, '').trim();
-      structuredData = JSON.parse(cleanContent);
+      extractedData = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', parseError);
       throw new Error('Invalid JSON response from AI extraction');
     }
 
-    // Enforce array fields for database compatibility - CRITICAL FIX
-    const enforceArray = (value: any) => {
-      if (value === null || value === undefined || value === '') return [];
-      if (Array.isArray(value)) return value;
-      if (typeof value === 'string' && value.includes(',')) {
-        // Handle comma-separated values like "cereal, livestock"
-        return value.split(',').map(v => v.trim()).filter(v => v);
-      }
-      return [value];
-    };
-
-    // Array fields that must be enforced
-    const arrayFields = ['amount', 'region', 'sector', 'documents', 'priority_groups', 
-                        'application_requirements', 'questionnaire_steps', 'legal_entity_type',
-                        'objectives', 'eligible_actions', 'ineligible_actions', 
-                        'beneficiary_types', 'investment_types', 'rejection_conditions'];
-
-    // Enforce array format for required fields
-    arrayFields.forEach(field => {
-      if (structuredData[field] !== undefined) {
-        structuredData[field] = enforceArray(structuredData[field]);
-      }
-    });
-
-    // Validate all array fields are actually arrays - CRITICAL CHECK
-    console.log('Enforced array fields validation:');
-    arrayFields.forEach(field => {
-      if (structuredData[field] !== undefined) {
-        const isArray = Array.isArray(structuredData[field]);
-        console.log(`${field}: ${isArray ? 'ARRAY' : 'NOT ARRAY'} - ${typeof structuredData[field]} - ${JSON.stringify(structuredData[field])}`);
-        if (!isArray) {
-          console.error(`CRITICAL ERROR: ${field} is not an array after enforcement!`);
+    // Apply robust array enforcement with audit trail
+    console.log('Applying robust array enforcement...');
+    const { processedRecord, auditEntries } = processRecordArrays(extractedData);
+    
+    // Log audit entries
+    for (const auditEntry of auditEntries) {
+      console.log(`Array processing audit: ${JSON.stringify(auditEntry)}`);
+    }
+    
+    // Log processing summary
+    const methodsUsed: Record<string, number> = {};
+    let totalWarnings = 0;
+    for (const entry of auditEntries) {
+      methodsUsed[entry.method] = (methodsUsed[entry.method] || 0) + 1;
+      totalWarnings += entry.warnings.length;
+    }
+    
+    console.log('=== ARRAY PROCESSING SUMMARY ===');
+    console.log(`Fields processed: ${auditEntries.length}`);
+    console.log(`Methods used: ${JSON.stringify(methodsUsed)}`);
+    console.log(`Total warnings: ${totalWarnings}`);
+    console.log('===============================');
+    
+    // Validate array fields before insertion
+    const validationErrors: string[] = [];
+    for (const fieldName of CANONICAL_ARRAY_FIELDS) {
+      if (fieldName in processedRecord) {
+        const value = processedRecord[fieldName];
+        if (!Array.isArray(value)) {
+          validationErrors.push(`Field '${fieldName}' is not an array: ${typeof value}`);
         }
       }
-    });
+    }
+    
+    if (validationErrors.length > 0) {
+      console.error(`Array validation failed: ${JSON.stringify(validationErrors)}`);
+      // Log but continue with insertion
+    }
+    
+    // Log final payload for debugging
+    console.log(`Inserting record with ${Object.keys(processedRecord).length} fields`);
+    const arrayFieldSummary: Record<string, any> = {};
+    for (const field of CANONICAL_ARRAY_FIELDS) {
+      if (field in processedRecord) {
+        const value = processedRecord[field];
+        arrayFieldSummary[field] = {
+          type: Array.isArray(value) ? 'array' : typeof value,
+          length: Array.isArray(value) ? value.length : 'N/A'
+        };
+      }
+    }
+    console.log(`Array fields summary: ${JSON.stringify(arrayFieldSummary)}`);
 
-    // Insert structured data into subsidies_structured
+    // Insert processed data
     const insertData = {
       raw_log_id,
-      ...structuredData,
-      requirements_extraction_status: structuredData.requirements_extraction_status || 'pending',
+      ...processedRecord,
+      requirements_extraction_status: processedRecord.requirements_extraction_status || 'pending',
       audit: {
         extraction_timestamp: new Date().toISOString(),
-        model_used: 'gpt-4.1-2025-04-14',
+        model_used: 'gpt-4o-mini',
         content_length: contentForExtraction.length,
-        array_fields_enforced: arrayFields.filter(f => structuredData[f] !== undefined)
+        array_fields_enforced: CANONICAL_ARRAY_FIELDS.filter(f => processedRecord[f] !== undefined),
+        processing_methods: methodsUsed,
+        total_warnings: totalWarnings
       }
     };
 
-    const { data: newSubsidy, error: insertError } = await supabase
+    const { data: insertData: newSubsidy, error: insertError } = await supabase
       .from('subsidies_structured')
       .insert(insertData)
       .select()
       .single();
 
     if (insertError) {
-      console.error('Database insert error:', insertError);
-      throw new Error(`Failed to save structured data: ${insertError.message}`);
+      console.error('Database insertion failed:', insertError);
+      
+      // Log detailed error information
+      if (insertError.message?.toLowerCase().includes('array') || 
+          insertError.message?.toLowerCase().includes('json') ||
+          insertError.message?.toLowerCase().includes('type')) {
+        console.error('Detected array-related insertion error. Field details:');
+        for (const field of CANONICAL_ARRAY_FIELDS) {
+          if (field in processedRecord) {
+            const value = processedRecord[field];
+            console.error(`  ${field}: ${typeof value} = ${JSON.stringify(value)}`);
+          }
+        }
+      }
+      
+      throw insertError;
     }
 
     // Mark raw log as processed
@@ -249,9 +532,11 @@ Do not output any explanations, logs, or additional commentary.`
         success: true, 
         subsidy_id: newSubsidy.id,
         extraction_summary: {
-          fields_extracted: Object.keys(structuredData).length,
-          missing_fields: structuredData.missing_fields || [],
-          requirements_status: structuredData.requirements_extraction_status
+          fields_extracted: Object.keys(extractedData).length,
+          array_fields_processed: auditEntries.length,
+          processing_methods: methodsUsed,
+          missing_fields: extractedData.missing_fields || [],
+          requirements_status: extractedData.requirements_extraction_status
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
