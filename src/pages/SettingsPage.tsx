@@ -66,7 +66,7 @@ const SettingsPage = () => {
       icon: Users,
       action: () => navigate('/consultant-dashboard'),
       badge: 'Consultant',
-      disabled: true // Will be implemented in Phase 2
+      disabled: false // Now available!
     },
     {
       title: 'Organization Dashboard',
@@ -74,7 +74,7 @@ const SettingsPage = () => {
       icon: Building2,
       action: () => navigate('/organization-dashboard'),
       badge: 'Enterprise',
-      disabled: true // Will be implemented in Phase 2
+      disabled: false // Now available!
     }
   ];
 
@@ -103,7 +103,8 @@ const SettingsPage = () => {
   ];
 
   const SettingsCard = ({ item, showBadge = false }: { item: any, showBadge?: boolean }) => (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={item.disabled ? undefined : item.action}>
+    <Card className={`cursor-pointer hover:shadow-md transition-shadow ${item.disabled ? 'opacity-60' : ''}`} 
+          onClick={item.disabled ? undefined : item.action}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-primary/10 rounded-lg">

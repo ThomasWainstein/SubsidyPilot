@@ -19,6 +19,8 @@ import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 import AdminPage from '@/pages/AdminPage';
 import SettingsPage from '@/pages/SettingsPage';
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
+import ConsultantDashboardPage from '@/pages/ConsultantDashboardPage';
+import OrganizationDashboardPage from '@/pages/OrganizationDashboardPage';
 import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -150,6 +152,22 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <EmployeeDashboardPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/consultant-dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <ConsultantDashboardPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/organization-dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <OrganizationDashboardPage />
                       </ProtectedRoute>
                     } 
                   />

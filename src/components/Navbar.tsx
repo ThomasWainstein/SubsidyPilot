@@ -61,10 +61,10 @@ const Navbar = () => {
     // Regulations tab removed per business requirements
   ] : [];
 
-  // Add admin item if user is admin
-  if (isAdmin && user) {
-    navItems.push({ path: '/admin', label: 'Admin', icon: Shield });
-  }
+  // Remove direct admin access - all admin features must go through Settings
+  // if (isAdmin && user) {
+  //   navItems.push({ path: '/admin', label: 'Admin', icon: Shield });
+  // }
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -150,7 +150,8 @@ const Navbar = () => {
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {/* Admin access removed - use Settings tab instead */}
+                  {/* {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
@@ -158,7 +159,7 @@ const Navbar = () => {
                         <span>Admin Panel</span>
                       </DropdownMenuItem>
                     </>
-                  )}
+                  )} */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} disabled={isLoading}>
                     <LogOut className="mr-2 h-4 w-4" />
