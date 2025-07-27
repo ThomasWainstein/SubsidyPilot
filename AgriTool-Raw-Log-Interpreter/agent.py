@@ -14,6 +14,7 @@ import json
 import logging
 import traceback
 from typing import List, Dict, Any, Optional, Tuple
+from enhanced_agent import RawLogInterpreterAgent as _EnhancedRawLogInterpreterAgent
 from datetime import datetime, date
 from decimal import Decimal
 import asyncio
@@ -301,11 +302,33 @@ class LogInterpreterAgent:
         """Ensure value is an array for array-type fields"""
         if value is None or value == "":
             return []
+
+        # Already a list
         if isinstance(value, list):
             return value
-        if isinstance(value, str) and ',' in value:
-            # Handle comma-separated values like "cereal, livestock"
-            return [v.strip() for v in value.split(',') if v.strip()]
+
+        # Attempt to parse JSON array strings like '["foo", "bar"]'
+        if isinstance(value, str):
+            stripped = value.strip()
+
+            if stripped.startswith('[') and stripped.endswith(']'):
+                try:
+                    parsed = json.loads(stripped)
+                    if isinstance(parsed, list):
+                        return parsed
+                except json.JSONDecodeError:
+                    # Fallback to simple split of Python-style lists
+                    inner = stripped[1:-1].strip()
+                    if not inner:
+                        return []
+                    parts = [p.strip().strip('"\'') for p in inner.split(',')]
+                    return [p for p in parts if p]
+
+            if ',' in stripped:
+                # Handle comma-separated values like "cereal, livestock"
+                return [v.strip() for v in stripped.split(',') if v.strip()]
+
+        # Fallback - wrap single value in list
         return [value]
 
     def validate_and_normalize(self, extracted_data: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -327,18 +350,37 @@ class LogInterpreterAgent:
         
         for field in CANONICAL_FIELDS:
             value = extracted_data.get(field)
-            
-            # Enforce array format for array fields
+
+            # Array-type fields are coerced first
             if field in array_fields:
-                value = self.enforce_array(value)
-                audit["validation_notes"].append(f"Field '{field}' enforced as array")
-            
-            if value is None or (isinstance(value, str) and value == ""):
-                if field in array_fields:
+                coerced = self.enforce_array(value)
+                if coerced != value:
+                    audit["validation_notes"].append(f"Field '{field}' coerced to array")
+
+                if not coerced and (value is None or value == ""):
                     normalized[field] = []
+                elif field == "amount":
+                    try:
+                        normalized[field] = [Decimal(str(v)) for v in coerced if v is not None]
+                        if not normalized[field]:
+                            audit["missing_fields"].append(field)
+                    except (ValueError, TypeError):
+                        normalized[field] = []
+                        audit["missing_fields"].append(field)
+                        audit["validation_notes"].append(f"Failed to convert amount array: {value}")
+                elif field in ["documents", "priority_groups", "application_requirements", "questionnaire_steps"]:
+                    normalized[field] = coerced
+                    if field == "questionnaire_steps" and coerced:
+                        for step in coerced:
+                            if not isinstance(step, dict) or "requirement" not in step or "question" not in step:
+                                audit["validation_notes"].append(f"Invalid questionnaire step format: {step}")
                 else:
-                    normalized[field] = None
-                    audit["missing_fields"].append(field)
+                    normalized[field] = coerced
+                continue
+
+            if value is None or (isinstance(value, str) and value == ""):
+                normalized[field] = None
+                audit["missing_fields"].append(field)
                 continue
             
             # Type-specific validation and normalization
@@ -357,42 +399,12 @@ class LogInterpreterAgent:
                     audit["missing_fields"].append(field)
                     audit["validation_notes"].append(f"Failed to parse deadline: {value}")
             
-            elif field == "amount":
-                # Amount must be an array (already enforced above)
-                try:
-                    # Convert array elements to Decimal
-                    if isinstance(value, list) and value:
-                        normalized[field] = [Decimal(str(v)) for v in value if v is not None]
-                    else:
-                        normalized[field] = []
-                except (ValueError, TypeError):
-                    normalized[field] = []
-                    audit["validation_notes"].append(f"Failed to convert amount array: {value}")
-            
             elif field in ["co_financing_rate", "previous_acceptance_rate", "matching_algorithm_score"]:
                 try:
                     normalized[field] = Decimal(str(value)) if value is not None else None
                 except (ValueError, TypeError):
                     normalized[field] = None
                     audit["missing_fields"].append(field)
-            
-            elif field in ["documents", "priority_groups", "application_requirements", "questionnaire_steps"]:
-                # Ensure these are lists
-                if isinstance(value, list):
-                    normalized[field] = value
-                elif isinstance(value, str):
-                    try:
-                        normalized[field] = json.loads(value)
-                    except json.JSONDecodeError:
-                        normalized[field] = [value] if value else []
-                else:
-                    normalized[field] = []
-                
-                # Special validation for questionnaire_steps
-                if field == "questionnaire_steps" and normalized[field]:
-                    for step in normalized[field]:
-                        if not isinstance(step, dict) or "requirement" not in step or "question" not in step:
-                            audit["validation_notes"].append(f"Invalid questionnaire step format: {step}")
             
             elif field == "requirements_extraction_status":
                 # Validate extraction status
@@ -598,6 +610,19 @@ class LogInterpreterAgent:
                 self.logger.error(f"Unexpected error in main loop: {e}")
                 self.send_alert(f"Unexpected error in main loop: {str(e)}")
                 time.sleep(60)  # Wait before retrying
+
+# Backwards compatibility alias for older test suites
+class RawLogInterpreterAgent(_EnhancedRawLogInterpreterAgent):
+    """Compatibility wrapper used in legacy tests"""
+
+    def __init__(self):
+        # Initialize configuration but skip external connections
+        self.config = Config()
+        self.logger = self._setup_logging()
+        self.supabase = None
+        self.openai_client = None
+        self.CANONICAL_FIELDS = CANONICAL_FIELDS
+        self.FIELD_TYPES = FIELD_TYPES
 
 def main():
     """Main entry point"""
