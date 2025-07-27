@@ -2,7 +2,8 @@
 """
 Fast Environment Variable Validation Test
 
-This script validates that the required Supabase environment variables
+This script validates that the required environment variables
+for Supabase access and the OpenAI-powered extraction pipeline
 are present and properly formatted. It runs in <1 second and fails
 fast if variables are missing or invalid.
 
@@ -46,13 +47,24 @@ def validate_service_role_key(key: str) -> Tuple[bool, str]:
     
     return True, "Valid"
 
+def validate_lovable_reguline(key: str) -> Tuple[bool, str]:
+    """Basic validation for OpenAI API key"""
+    if not key:
+        return False, "API key is empty"
+    if not key.startswith('sk-'):
+        return False, "API key should start with 'sk-'"
+    if len(key) < 20:
+        return False, f"API key too short. Got length {len(key)}"
+    return True, "Valid"
+
 def main() -> int:
     """Main validation function"""
-    print("🔍 Validating Supabase environment variables...")
-    
+    print("🔍 Validating environment variables...")
+
     required_vars = [
         ('NEXT_PUBLIC_SUPABASE_URL', validate_supabase_url),
-        ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key)
+        ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key),
+        ('LOVABLE_REGULINE', validate_lovable_reguline)
     ]
     
     errors: List[str] = []
@@ -79,6 +91,7 @@ def main() -> int:
         print(f"\n📋 REQUIRED ENVIRONMENT VARIABLES:")
         print(f"   export NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'")
         print(f"   export SUPABASE_SERVICE_ROLE_KEY='your-service-role-key'")
+        print(f"   export LOVABLE_REGULINE='your-openai-api-key'")
         
         return 1
     
