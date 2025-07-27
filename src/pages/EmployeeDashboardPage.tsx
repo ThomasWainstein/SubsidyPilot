@@ -31,9 +31,11 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Settings
+  Settings,
+  Activity
 } from 'lucide-react';
 import AccessControl from '@/components/security/AccessControl';
+import ArrayProcessingMonitor from '@/components/admin/ArrayProcessingMonitor';
 import { useToast } from '@/hooks/use-toast';
 
 interface SystemMetrics {
@@ -246,8 +248,9 @@ const EmployeeDashboardPage = () => {
           )}
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="array-processing">Array Processing</TabsTrigger>
               <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
               <TabsTrigger value="errors">Error Management</TabsTrigger>
               <TabsTrigger value="operations">Operations</TabsTrigger>
@@ -323,6 +326,10 @@ const EmployeeDashboardPage = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="array-processing" className="mt-6">
+              <ArrayProcessingMonitor />
             </TabsContent>
 
             <TabsContent value="data-quality" className="mt-6">
