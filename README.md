@@ -11,7 +11,10 @@ Before running any scraper or upload scripts, set these required variables:
 ```bash
 export NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+export LOVABLE_REGULINE="your-openai-api-key"
 ```
+
+`LOVABLE_REGULINE` provides the OpenAI API key used by the extraction pipeline.
 
 For local development, copy `.env.example` to `.env` and fill in your values. Scripts will auto-load `.env` if `python-dotenv` is installed.
 

@@ -227,6 +227,9 @@ After comprehensive investigation of production extraction failures:
 4. ✅ Added comprehensive indexing for production performance
 5. ✅ **IDENTIFIED ROOT CAUSE**: Missing API key in Supabase secrets
 6. 🚨 **IMMEDIATE ACTION**: Configure `LOVABLE_REGULINE` secret with valid OpenAI API key
+   ```bash
+   supabase secrets set LOVABLE_REGULINE=<OpenAI-Key>
+   ```
 7. Verify extraction functionality after secret configuration
 8. Monitor production logs for remaining issues
 
