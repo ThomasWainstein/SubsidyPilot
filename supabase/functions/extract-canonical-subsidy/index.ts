@@ -346,6 +346,12 @@ serve(async (req) => {
             content: `You are an expert subsidy data extraction agent for the AgriTool platform.
 Your task is to analyze unstructured raw subsidy logs from FranceAgriMer subsidy pages (in French or English), including messy web page text and attached files, and convert each subsidy record into a strictly structured JSON object conforming to the canonical schema below.
 
+CRITICAL TITLE EXTRACTION RULES:
+- ALWAYS extract the OFFICIAL program/subsidy name from the page's main title, H1 heading, or program name field
+- NEVER use "Subsidy Page", "Agricultural Program", generic agency names, or placeholder text as titles
+- If the official title cannot be found, set "title": null and add "missing_title" to missing_fields array
+- NEVER generate, infer, or create titles from other fields like agency, sector, or description
+
 CRITICAL: ALL array-type fields MUST be returned as valid JSON arrays, even for single values or empty cases.
 
 Always:
@@ -377,6 +383,7 @@ Extended Classification Fields:
 - "conditional_eligibility": Object with special cases and conditional requirements
 
 Field-by-Field Extraction Guidance:
+- "title": Extract ONLY the official program/subsidy name from main heading/title. NEVER use "Subsidy Page", agency names, or generic terms. Set null if not found.
 - "description": Succinct 2–3 sentence summary capturing purpose, objectives, and key rules.
 - "eligibility": Clearly specify who can apply, including entity types, geographic scopes, and any conditional eligibility statements.
 - "amount": ALWAYS provide as array - single number as [amount] or range as [min, max]. Remove currency symbols.
@@ -448,6 +455,19 @@ Do not output any explanations, logs, or additional commentary.`
     console.log(`Total warnings: ${totalWarnings}`);
     console.log('===============================');
     
+    // Validate title quality - reject placeholder titles
+    if (processedRecord.title === 'Subsidy Page' || 
+        processedRecord.title === 'Agricultural Program' ||
+        processedRecord.title === 'Agricultural Funding Program' ||
+        (processedRecord.title && processedRecord.title.includes('FranceAgriMer') && processedRecord.title.length < 30)) {
+      console.warn('Placeholder title detected, setting to null:', processedRecord.title);
+      processedRecord.title = null;
+      if (!processedRecord.missing_fields) processedRecord.missing_fields = [];
+      if (!processedRecord.missing_fields.includes('missing_title')) {
+        processedRecord.missing_fields.push('missing_title');
+      }
+    }
+
     // Validate array fields before insertion
     const validationErrors: string[] = [];
     for (const fieldName of CANONICAL_ARRAY_FIELDS) {
