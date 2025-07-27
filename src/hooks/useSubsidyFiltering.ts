@@ -41,6 +41,7 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
   const [subsidies, setSubsidies] = useState<SubsidyWithMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [qualityStats, setQualityStats] = useState<any>(null);
 
   // Fetch farm data and subsidies
   useEffect(() => {
