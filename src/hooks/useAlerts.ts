@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { REQUIRED_DOCUMENT_CATEGORIES } from '@/utils/requiredDocumentCategories';
 
 interface Alert {
   id: string;
@@ -49,7 +50,7 @@ export const useAlerts = (farmIds: string[]) => {
 
         if (docsError) continue;
 
-        const requiredCategories = ['legal', 'financial', 'technical'] as const;
+        const requiredCategories = REQUIRED_DOCUMENT_CATEGORIES;
         const uploadedCategories = documents?.map(doc => doc.category) || [];
         const missingCategories = requiredCategories.filter(cat => 
           !uploadedCategories.includes(cat)
