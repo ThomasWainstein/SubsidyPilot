@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import RoleSwitcher from '@/components/RoleSwitcher';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
@@ -108,6 +109,9 @@ const Navbar = () => {
 
           {/* Right side controls */}
           <div className="flex items-center space-x-4">
+            {/* Role Switcher - only show when authenticated */}
+            {user && <RoleSwitcher />}
+            
             {/* Language Selector */}
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger className="w-[70px] h-8">

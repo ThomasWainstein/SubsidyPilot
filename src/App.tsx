@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { RoleProvider } from '@/contexts/RoleContext';
 import { CalendarProvider } from '@/contexts/CalendarContext';
 import Index from '@/pages/Index';
 import AuthPage from '@/pages/AuthPage';
@@ -52,8 +53,9 @@ function App() {
     >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <LanguageProvider>
-            <CalendarProvider>
+          <RoleProvider>
+            <LanguageProvider>
+              <CalendarProvider>
               <div className="min-h-screen bg-background font-sans antialiased">
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -175,8 +177,9 @@ function App() {
                 </Routes>
                 <Toaster />
               </div>
-            </CalendarProvider>
-          </LanguageProvider>
+              </CalendarProvider>
+            </LanguageProvider>
+          </RoleProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

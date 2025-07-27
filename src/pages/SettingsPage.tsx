@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRole } from '@/contexts/RoleContext';
 import { getIsAdmin } from '@/config/environment';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { currentRole } = useRole();
   const isAdmin = getIsAdmin(user);
 
   const personalSettings = [
@@ -66,7 +68,8 @@ const SettingsPage = () => {
       icon: Users,
       action: () => navigate('/consultant-dashboard'),
       badge: 'Consultant',
-      disabled: false // Now available!
+      disabled: currentRole !== 'consultant' && currentRole !== 'admin',
+      roleRequired: 'consultant'
     },
     {
       title: 'Organization Dashboard',
@@ -74,7 +77,8 @@ const SettingsPage = () => {
       icon: Building2,
       action: () => navigate('/organization-dashboard'),
       badge: 'Enterprise',
-      disabled: false // Now available!
+      disabled: currentRole !== 'organization' && currentRole !== 'admin',
+      roleRequired: 'organization'
     }
   ];
 
@@ -84,21 +88,24 @@ const SettingsPage = () => {
       description: 'Monitor system health, data quality, and error management',
       icon: BarChart3,
       action: () => navigate('/employee-dashboard'),
-      badge: 'Admin Only'
+      badge: 'Admin Only',
+      disabled: currentRole !== 'admin'
     },
     {
       title: 'Data Quality Center',
       description: 'Advanced data quality monitoring and batch operations',
       icon: Database,
       action: () => navigate('/data-quality'),
-      badge: 'Admin Only'
+      badge: 'Admin Only',
+      disabled: currentRole !== 'admin'
     },
     {
       title: 'Admin Panel',
       description: 'Full system administration and user management',
       icon: Shield,
       action: () => navigate('/admin'),
-      badge: 'Admin Only'
+      badge: 'Admin Only',
+      disabled: currentRole !== 'admin'
     }
   ];
 
@@ -123,7 +130,9 @@ const SettingsPage = () => {
       </CardHeader>
       {item.disabled && (
         <CardContent className="pt-0">
-          <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+          <Badge variant="outline" className="text-xs">
+            {item.roleRequired ? `Requires ${item.roleRequired} role` : 'Coming Soon'}
+          </Badge>
         </CardContent>
       )}
     </Card>
@@ -144,9 +153,9 @@ const SettingsPage = () => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="personal">Personal Settings</TabsTrigger>
             <TabsTrigger value="dashboards">Advanced Dashboards</TabsTrigger>
-            <TabsTrigger value="admin" disabled={!isAdmin}>
+            <TabsTrigger value="admin" disabled={currentRole !== 'admin'}>
               Admin Features
-              {isAdmin && <Shield className="w-4 h-4 ml-2" />}
+              {currentRole === 'admin' && <Shield className="w-4 h-4 ml-2" />}
             </TabsTrigger>
           </TabsList>
 
@@ -172,19 +181,19 @@ const SettingsPage = () => {
           </TabsContent>
 
           <TabsContent value="admin" className="mt-6">
-            <AccessControl requiredRole="admin" fallback={
+            {currentRole !== 'admin' ? (
               <Card>
                 <CardContent className="p-6">
                   <div className="text-center">
                     <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
+                    <h3 className="text-lg font-semibold mb-2">Admin Role Required</h3>
                     <p className="text-muted-foreground">
-                      You need administrator privileges to access these features.
+                      Switch to Admin role using the role switcher to access these features.
                     </p>
                   </div>
                 </CardContent>
               </Card>
-            }>
+            ) : (
               <div className="grid gap-4">
                 <h2 className="text-xl font-semibold mb-4">Admin Features</h2>
                 <p className="text-muted-foreground mb-4">
@@ -194,7 +203,7 @@ const SettingsPage = () => {
                   <SettingsCard key={index} item={item} showBadge />
                 ))}
               </div>
-            </AccessControl>
+            )}
           </TabsContent>
         </Tabs>
       </div>
