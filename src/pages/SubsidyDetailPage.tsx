@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
+import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -31,6 +32,13 @@ const SubsidyDetailPage = () => {
     },
     enabled: !!subsidyId
   });
+
+  // Check data quality when subsidy loads
+  React.useEffect(() => {
+    if (subsidy) {
+      SubsidyDataQuality.checkSubsidyQuality(subsidy);
+    }
+  }, [subsidy]);
 
   const handleApply = () => {
     if (!subsidy) return;

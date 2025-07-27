@@ -39,9 +39,15 @@ interface SearchResultsPanelProps {
 }
 
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
+import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
 
 const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+  
+  // Check data quality for this subsidy
+  React.useEffect(() => {
+    SubsidyDataQuality.checkSubsidyQuality(subsidy);
+  }, [subsidy]);
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">

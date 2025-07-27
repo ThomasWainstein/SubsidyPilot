@@ -29,40 +29,43 @@ export const formatFundingAmount = (amount: number[] | number | null): string =>
 };
 
 /**
- * Get a user-friendly title for subsidies, replacing generic titles
+ * Get subsidy title - prioritize actual source titles, flag missing ones
  */
 export const getSubsidyTitle = (subsidy: any): string => {
   // Handle multilingual titles
   if (typeof subsidy.title === 'object' && subsidy.title) {
     const title = subsidy.title.en || subsidy.title.fr || subsidy.title.ro || Object.values(subsidy.title)[0];
-    if (title && title !== 'Subsidy Page') return title;
+    if (title && title !== 'Subsidy Page' && title.trim() !== '') {
+      return title.trim();
+    }
   }
   
-  // Handle string titles
+  // Handle string titles - prioritize actual source titles
   const title = subsidy.title;
-  if (title && title !== 'Subsidy Page') return title;
+  if (title && title !== 'Subsidy Page' && title.trim() !== '') {
+    return title.trim();
+  }
   
-  // Generate meaningful title from available data
-  let generatedTitle = 'Agricultural Funding Program';
+  // Log data quality issue for missing titles
+  console.warn('Missing or placeholder title detected for subsidy:', {
+    id: subsidy.id,
+    agency: subsidy.agency,
+    sector: subsidy.sector,
+    title: subsidy.title
+  });
   
-  if (subsidy.agency && subsidy.sector) {
-    const sector = Array.isArray(subsidy.sector) ? subsidy.sector[0] : subsidy.sector;
-    generatedTitle = `${subsidy.agency} - ${sector} Grant`;
+  // ONLY fallback to generated title when absolutely necessary
+  // This should be rare and indicates data quality issues
+  if (subsidy.agency && subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0) {
+    return `${subsidy.agency} - ${subsidy.sector[0]} Program`;
   } else if (subsidy.agency) {
-    generatedTitle = `${subsidy.agency} Agricultural Grant`;
-  } else if (subsidy.sector) {
-    const sector = Array.isArray(subsidy.sector) ? subsidy.sector[0] : subsidy.sector;
-    generatedTitle = `${sector} Funding Program`;
-  } else if (subsidy.program) {
-    generatedTitle = subsidy.program;
+    return `${subsidy.agency} Agricultural Program`;
+  } else if (subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0) {
+    return `${subsidy.sector[0]} Funding Program`;
   }
   
-  // Add funding type if available and not already included
-  if (subsidy.funding_type && !generatedTitle.toLowerCase().includes(subsidy.funding_type.toLowerCase())) {
-    generatedTitle += ` (${subsidy.funding_type})`;
-  }
-  
-  return generatedTitle;
+  // Last resort - this should trigger data quality alerts
+  return 'Agricultural Funding Program [Title Missing]';
 };
 
 /**
