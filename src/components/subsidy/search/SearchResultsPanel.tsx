@@ -38,32 +38,17 @@ interface SearchResultsPanelProps {
   onClearFilters?: () => void;
 }
 
-const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
-  const getTitle = () => {
-    if (typeof subsidy.title === 'object' && subsidy.title) {
-      return subsidy.title.en || subsidy.title.ro || subsidy.title.fr || Object.values(subsidy.title)[0] || 'Agricultural Subsidy Program';
-    }
-    // Replace placeholder titles with more descriptive names
-    const title = subsidy.title || 'Agricultural Subsidy Program';
-    if (title === 'Subsidy Page') {
-      return `${subsidy.agency || 'Agricultural'} Funding Program` + (subsidy.sector ? ` - ${subsidy.sector}` : '');
-    }
-    return title;
-  };
+import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
 
-  const getDescription = () => {
-    if (typeof subsidy.description === 'object' && subsidy.description) {
-      return subsidy.description.en || subsidy.description.ro || subsidy.description.fr || Object.values(subsidy.description)[0] || 'No description';
-    }
-    return subsidy.description || 'No description';
-  };
+const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
+  const deadlineStatus = getDeadlineStatus(subsidy.deadline);
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
-          <h3 className="font-semibold text-lg mb-1">{getTitle()}</h3>
-          <p className="text-gray-600 text-sm line-clamp-2">{getDescription()}</p>
+          <h3 className="font-semibold text-lg mb-1">{getSubsidyTitle(subsidy)}</h3>
+          <p className="text-gray-600 text-sm line-clamp-2">{getSubsidyDescription(subsidy)}</p>
         </div>
         {showMatchScore && (
           <Badge 
@@ -91,25 +76,22 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
       <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
         {subsidy.deadline && (
           <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{new Date(subsidy.deadline).toLocaleDateString()}</span>
+            <Calendar className={`w-4 h-4 ${deadlineStatus.urgent ? 'text-red-500' : ''}`} />
+            <span className={deadlineStatus.urgent ? 'text-red-600 font-medium' : ''}>
+              {deadlineStatus.status}
+            </span>
           </div>
         )}
         {subsidy.region && (
           <div className="flex items-center gap-1">
             <MapPin className="w-4 h-4" />
-            <span>
-              {Array.isArray(subsidy.region) 
-                ? subsidy.region.slice(0, 2).join(', ')
-                : subsidy.region
-              }
-            </span>
+            <span>{getRegionDisplay(subsidy.region)}</span>
           </div>
         )}
         {subsidy.amount && (
           <div className="flex items-center gap-1">
             <Euro className="w-4 h-4" />
-            <span>€{subsidy.amount.toLocaleString()}</span>
+            <span>{formatFundingAmount(subsidy.amount)}</span>
           </div>
         )}
       </div>

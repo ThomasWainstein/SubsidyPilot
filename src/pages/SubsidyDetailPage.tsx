@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -43,25 +44,6 @@ const SubsidyDetailPage = () => {
     });
     
     setIsApplying(false);
-  };
-
-  const getAmountDisplay = (amount: number[] | null) => {
-    if (!amount || !Array.isArray(amount)) return null;
-    if (amount.length === 1) return `€${amount[0].toLocaleString()}`;
-    if (amount.length === 2) return `€${amount[0].toLocaleString()} - €${amount[1].toLocaleString()}`;
-    return `€${Math.min(...amount).toLocaleString()} - €${Math.max(...amount).toLocaleString()}`;
-  };
-
-  const getRegionDisplay = (region: string[] | null) => {
-    if (!region) return 'All regions';
-    if (Array.isArray(region)) return region.join(', ');
-    return region;
-  };
-
-  const getSectorDisplay = (sector: string[] | null) => {
-    if (!sector) return [];
-    if (Array.isArray(sector)) return sector;
-    return [sector];
   };
 
   if (isLoading) {
@@ -117,7 +99,7 @@ const SubsidyDetailPage = () => {
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-4">
-                  {subsidy.title || `${subsidy.agency || 'Agricultural'} Funding Program`}
+                  {getSubsidyTitle(subsidy)}
                 </h1>
                 
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -153,12 +135,12 @@ const SubsidyDetailPage = () => {
                     </div>
                   </div>
                   
-                  {getAmountDisplay(subsidy.amount) && (
+                  {formatFundingAmount(subsidy.amount) && (
                     <div className="flex items-center gap-2">
                       <Euro className="w-4 h-4 text-green-500" />
                       <div>
                         <div className="font-medium">Funding</div>
-                        <div className="text-gray-600">{getAmountDisplay(subsidy.amount)}</div>
+                        <div className="text-gray-600">{formatFundingAmount(subsidy.amount)}</div>
                       </div>
                     </div>
                   )}
@@ -221,7 +203,7 @@ const SubsidyDetailPage = () => {
                     </CardHeader>
                     <CardContent>
                       <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                        {subsidy.description || 'No description available.'}
+                        {getSubsidyDescription(subsidy)}
                       </p>
                       
                       {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
