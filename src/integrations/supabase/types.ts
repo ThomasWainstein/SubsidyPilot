@@ -708,6 +708,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_alerts: {
+        Row: {
+          id: string
+          user_id: string
+          alert_id: string
+          dismissed: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          alert_id: string
+          dismissed?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          alert_id?: string
+          dismissed?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
