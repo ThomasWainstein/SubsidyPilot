@@ -50,38 +50,50 @@ export const useFarmMetrics = (farmId: string) => {
         !uploadedCategories.includes(cat)
       ).length;
 
-      // Mock subsidy matching data - in real implementation, this would come from matching service
-      const mockTotalMatches = Math.floor(Math.random() * 8) + 3; // 3-10 matches
-      const mockNewMatches = Math.floor(mockTotalMatches * 0.2); // 20% new
-      const mockExpiringMatches = Math.floor(mockTotalMatches * 0.1); // 10% expiring
+      // Fetch subsidy matches for this farm
+      const { data: matches, error: matchesError } = await supabase
+        .from('subsidy_matches')
+        .select(`
+          id,
+          confidence,
+          created_at,
+          subsidies_structured(id, title, amount, deadline)
+        `)
+        .eq('farm_id', farmId)
+        .order('confidence', { ascending: false });
 
-      // Mock top match
-      const mockTopMatch = {
-        id: `top-match-${farmId}`,
-        title: [
-          'Agricultural Modernization Grant',
-          'Organic Certification Support',
-          'Green Technology Investment',
-          'Sustainable Farming Initiative',
-          'Rural Development Fund'
-        ][Math.floor(Math.random() * 5)],
-        amount: [
-          [5000, 25000],
-          [10000, 50000],
-          [15000, 75000],
-          [8000, 35000],
-          [12000, 60000]
-        ][Math.floor(Math.random() * 5)],
-        confidence: Math.floor(Math.random() * 25) + 70 // 70-95%
-      };
+      if (matchesError) throw matchesError;
+
+      const totalMatches = matches?.length || 0;
+
+      const now = new Date();
+      const newMatches = matches?.filter(m => {
+        const created = new Date(m.created_at as string);
+        return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      }).length || 0;
+
+      const expiringMatches = matches?.filter(m => {
+        const deadline = (m as any).subsidies_structured?.deadline as string | null;
+        return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }).length || 0;
+
+      const topMatchData = (matches || [])[0];
+      const topMatch = topMatchData
+        ? {
+            id: topMatchData.id as string,
+            title: (topMatchData as any).subsidies_structured?.title as string,
+            amount: (topMatchData as any).subsidies_structured?.amount as number[] | null,
+            confidence: topMatchData.confidence as number,
+          }
+        : undefined;
 
       return {
-        totalMatches: mockTotalMatches,
-        newMatches: mockNewMatches,
-        expiringMatches: mockExpiringMatches,
+        totalMatches,
+        newMatches,
+        expiringMatches,
         urgentDeadlines,
         missingDocuments,
-        topMatch: mockTopMatch
+        topMatch
       };
     },
     enabled: !!farmId,
