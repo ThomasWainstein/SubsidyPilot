@@ -220,12 +220,18 @@ class LogInterpreterAgent:
         system_prompt = """You are the SCRAPER_RAW_LOGS_INTERPRETER assistant. 
         Extract canonical subsidy fields from the provided text content.
         
+        CRITICAL: Always return array fields (amount, region, sector, documents, priority_groups, 
+        application_requirements, questionnaire_steps, legal_entity_type, objectives, 
+        eligible_actions, ineligible_actions, beneficiary_types, investment_types, rejection_conditions) 
+        as JSON arrays — e.g., amount: [5000] or amount: [5000, 15000]. Do NOT output scalars or 
+        strings for these fields. Return empty arrays if no data is present.
+        
         Return a JSON object with exactly these fields (use null for missing values):
         - url, title, description, eligibility, documents (array), deadline (YYYY-MM-DD),
-        - amount (numeric), program, agency, region, sector, funding_type,
+        - amount (array of numbers), program, agency, region (array), sector (array), funding_type,
         - co_financing_rate (numeric), project_duration, payment_terms, application_method,
         - evaluation_criteria, previous_acceptance_rate (numeric), priority_groups (array),
-        - legal_entity_type, funding_source, reporting_requirements,
+        - legal_entity_type (array), funding_source, reporting_requirements,
         - compliance_requirements, language, technical_support, matching_algorithm_score (numeric)
         
         NEW REQUIREMENT EXTRACTION FIELDS:
@@ -291,6 +297,14 @@ class LogInterpreterAgent:
             self.logger.error(f"OpenAI API call failed: {e}")
             raise
     
+    def enforce_array(self, value):
+        """Ensure value is an array for array-type fields"""
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
     def validate_and_normalize(self, extracted_data: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Validate and normalize extracted data"""
         normalized = {}
@@ -300,12 +314,28 @@ class LogInterpreterAgent:
             "attachment_sources_used": []
         }
         
+        # Array fields that must be enforced as arrays
+        array_fields = [
+            "amount", "region", "sector", "documents", "priority_groups", 
+            "application_requirements", "questionnaire_steps", "legal_entity_type",
+            "objectives", "eligible_actions", "ineligible_actions", 
+            "beneficiary_types", "investment_types", "rejection_conditions"
+        ]
+        
         for field in CANONICAL_FIELDS:
             value = extracted_data.get(field)
             
-            if value is None or value == "":
-                audit["missing_fields"].append(field)
-                normalized[field] = None
+            # Enforce array format for array fields
+            if field in array_fields:
+                value = self.enforce_array(value)
+                audit["validation_notes"].append(f"Field '{field}' enforced as array")
+            
+            if value is None or (isinstance(value, str) and value == ""):
+                if field in array_fields:
+                    normalized[field] = []
+                else:
+                    normalized[field] = None
+                    audit["missing_fields"].append(field)
                 continue
             
             # Type-specific validation and normalization
@@ -324,7 +354,19 @@ class LogInterpreterAgent:
                     audit["missing_fields"].append(field)
                     audit["validation_notes"].append(f"Failed to parse deadline: {value}")
             
-            elif field in ["amount", "co_financing_rate", "previous_acceptance_rate", "matching_algorithm_score"]:
+            elif field == "amount":
+                # Amount must be an array (already enforced above)
+                try:
+                    # Convert array elements to Decimal
+                    if isinstance(value, list) and value:
+                        normalized[field] = [Decimal(str(v)) for v in value if v is not None]
+                    else:
+                        normalized[field] = []
+                except (ValueError, TypeError):
+                    normalized[field] = []
+                    audit["validation_notes"].append(f"Failed to convert amount array: {value}")
+            
+            elif field in ["co_financing_rate", "previous_acceptance_rate", "matching_algorithm_score"]:
                 try:
                     normalized[field] = Decimal(str(value)) if value is not None else None
                 except (ValueError, TypeError):
@@ -389,6 +431,12 @@ class LogInterpreterAgent:
             
             # Convert all data to be JSON serializable (handle Decimal, date objects, etc.)
             insert_data = self._convert_for_json_serialization(insert_data)
+            
+            # Log the exact payload being inserted for debugging
+            self.logger.info(f"Inserting data for raw_log_id {raw_log_id}:")
+            self.logger.info(f"Amount field type: {type(insert_data.get('amount'))}, value: {insert_data.get('amount')}")
+            self.logger.info(f"Region field type: {type(insert_data.get('region'))}, value: {insert_data.get('region')}")
+            self.logger.info(f"Sector field type: {type(insert_data.get('sector'))}, value: {insert_data.get('sector')}")
             
             response = self.supabase.table('subsidies_structured').insert(insert_data).execute()
             

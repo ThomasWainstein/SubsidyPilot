@@ -121,7 +121,7 @@ Extended Classification Fields:
 Field-by-Field Extraction Guidance:
 - "description": Succinct 2–3 sentence summary capturing purpose, objectives, and key rules.
 - "eligibility": Clearly specify who can apply, including entity types, geographic scopes, and any conditional eligibility statements.
-- "amount": Provide a single number or [min, max] range representing funding limits. Remove currency symbols.
+- "amount": ALWAYS provide as array - single number as [amount] or range as [min, max]. Remove currency symbols.
 - "documents": List document names exactly as specified, or translated if English source.
 - "deadline": Final application deadline date (if none, null).
 - "legal_entity_type": Enumerate all legal forms eligible (e.g., "SAS", "EARL", "CUMA").
@@ -167,6 +167,32 @@ Do not output any explanations, logs, or additional commentary.`
       throw new Error('Invalid JSON response from AI extraction');
     }
 
+    // Enforce array fields for database compatibility
+    const enforceArray = (value: any) => {
+      if (value === null || value === undefined) return [];
+      if (Array.isArray(value)) return value;
+      return [value];
+    };
+
+    // Array fields that must be enforced
+    const arrayFields = ['amount', 'region', 'sector', 'documents', 'priority_groups', 
+                        'application_requirements', 'questionnaire_steps', 'legal_entity_type',
+                        'objectives', 'eligible_actions', 'ineligible_actions', 
+                        'beneficiary_types', 'investment_types', 'rejection_conditions'];
+
+    // Enforce array format for required fields
+    arrayFields.forEach(field => {
+      if (structuredData[field] !== undefined) {
+        structuredData[field] = enforceArray(structuredData[field]);
+      }
+    });
+
+    console.log('Enforced array fields:', {
+      amount: structuredData.amount,
+      region: structuredData.region, 
+      sector: structuredData.sector
+    });
+
     // Insert structured data into subsidies_structured
     const insertData = {
       raw_log_id,
@@ -175,7 +201,8 @@ Do not output any explanations, logs, or additional commentary.`
       audit: {
         extraction_timestamp: new Date().toISOString(),
         model_used: 'gpt-4.1-2025-04-14',
-        content_length: contentForExtraction.length
+        content_length: contentForExtraction.length,
+        array_fields_enforced: arrayFields.filter(f => structuredData[f] !== undefined)
       }
     };
 
