@@ -299,10 +299,13 @@ class LogInterpreterAgent:
     
     def enforce_array(self, value):
         """Ensure value is an array for array-type fields"""
-        if value is None:
+        if value is None or value == "":
             return []
         if isinstance(value, list):
             return value
+        if isinstance(value, str) and ',' in value:
+            # Handle comma-separated values like "cereal, livestock"
+            return [v.strip() for v in value.split(',') if v.strip()]
         return [value]
 
     def validate_and_normalize(self, extracted_data: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -314,7 +317,7 @@ class LogInterpreterAgent:
             "attachment_sources_used": []
         }
         
-        # Array fields that must be enforced as arrays
+        # Array fields that must be enforced as arrays - CRITICAL FOR DB COMPATIBILITY
         array_fields = [
             "amount", "region", "sector", "documents", "priority_groups", 
             "application_requirements", "questionnaire_steps", "legal_entity_type",
@@ -432,11 +435,28 @@ class LogInterpreterAgent:
             # Convert all data to be JSON serializable (handle Decimal, date objects, etc.)
             insert_data = self._convert_for_json_serialization(insert_data)
             
-            # Log the exact payload being inserted for debugging
+            # Log the exact payload being inserted for debugging - CRITICAL FOR ARRAY VALIDATION
             self.logger.info(f"Inserting data for raw_log_id {raw_log_id}:")
-            self.logger.info(f"Amount field type: {type(insert_data.get('amount'))}, value: {insert_data.get('amount')}")
-            self.logger.info(f"Region field type: {type(insert_data.get('region'))}, value: {insert_data.get('region')}")
-            self.logger.info(f"Sector field type: {type(insert_data.get('sector'))}, value: {insert_data.get('sector')}")
+            array_fields_log = ["amount", "region", "sector", "legal_entity_type", "objectives", "beneficiary_types"]
+            for field in array_fields_log:
+                if field in insert_data:
+                    field_value = insert_data.get(field)
+                    self.logger.info(f"{field} field type: {type(field_value)}, value: {field_value}")
+                    if not isinstance(field_value, list):
+                        self.logger.error(f"CRITICAL ERROR: {field} is not an array! Type: {type(field_value)}")
+            
+            # Double-check all array fields are actually arrays before insert
+            array_validation_errors = []
+            for field in ["amount", "region", "sector", "documents", "priority_groups", 
+                         "application_requirements", "questionnaire_steps", "legal_entity_type",
+                         "objectives", "eligible_actions", "ineligible_actions", 
+                         "beneficiary_types", "investment_types", "rejection_conditions"]:
+                if field in insert_data and not isinstance(insert_data[field], list):
+                    array_validation_errors.append(f"{field} is not an array: {type(insert_data[field])}")
+            
+            if array_validation_errors:
+                self.logger.error(f"ARRAY VALIDATION FAILED: {array_validation_errors}")
+                raise ValueError(f"Array validation failed: {array_validation_errors}")
             
             response = self.supabase.table('subsidies_structured').insert(insert_data).execute()
             

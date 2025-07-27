@@ -167,10 +167,14 @@ Do not output any explanations, logs, or additional commentary.`
       throw new Error('Invalid JSON response from AI extraction');
     }
 
-    // Enforce array fields for database compatibility
+    // Enforce array fields for database compatibility - CRITICAL FIX
     const enforceArray = (value: any) => {
-      if (value === null || value === undefined) return [];
+      if (value === null || value === undefined || value === '') return [];
       if (Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.includes(',')) {
+        // Handle comma-separated values like "cereal, livestock"
+        return value.split(',').map(v => v.trim()).filter(v => v);
+      }
       return [value];
     };
 
@@ -187,10 +191,16 @@ Do not output any explanations, logs, or additional commentary.`
       }
     });
 
-    console.log('Enforced array fields:', {
-      amount: structuredData.amount,
-      region: structuredData.region, 
-      sector: structuredData.sector
+    // Validate all array fields are actually arrays - CRITICAL CHECK
+    console.log('Enforced array fields validation:');
+    arrayFields.forEach(field => {
+      if (structuredData[field] !== undefined) {
+        const isArray = Array.isArray(structuredData[field]);
+        console.log(`${field}: ${isArray ? 'ARRAY' : 'NOT ARRAY'} - ${typeof structuredData[field]} - ${JSON.stringify(structuredData[field])}`);
+        if (!isArray) {
+          console.error(`CRITICAL ERROR: ${field} is not an array after enforcement!`);
+        }
+      }
     });
 
     // Insert structured data into subsidies_structured

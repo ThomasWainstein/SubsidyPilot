@@ -71,8 +71,11 @@ class BatchReprocessor:
             ).order('created_at', desc=True).limit(limit).execute()
             
             failed_logs = []
+            array_error_keywords = ['array', 'malformed', 'expected JSON array', '22P02']
+            
             for error in response.data:
-                if 'array' in error['error_message'].lower() or 'malformed' in error['error_message'].lower():
+                error_msg_lower = error['error_message'].lower()
+                if any(keyword in error_msg_lower for keyword in array_error_keywords):
                     failed_logs.append({
                         'raw_log_id': error['raw_log_id'],
                         'error_type': error['error_type'],
@@ -80,7 +83,20 @@ class BatchReprocessor:
                         'failed_at': error['created_at']
                     })
             
-            self.logger.info(f"Found {len(failed_logs)} logs with array-related errors")
+            # Also get unprocessed logs (processed=False)
+            unprocessed_response = self.supabase.table('raw_logs').select(
+                'id, created_at, processed, processed_at'
+            ).eq('processed', False).limit(limit).execute()
+            
+            for log in unprocessed_response.data:
+                failed_logs.append({
+                    'raw_log_id': log['id'],
+                    'error_type': 'UNPROCESSED',
+                    'error_message': 'Log never processed',
+                    'failed_at': log['created_at']
+                })
+            
+            self.logger.info(f"Found {len(failed_logs)} logs needing reprocessing")
             return failed_logs
             
         except Exception as e:
