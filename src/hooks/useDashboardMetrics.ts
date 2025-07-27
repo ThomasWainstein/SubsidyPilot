@@ -69,30 +69,42 @@ export const useDashboardMetrics = () => {
         app.status === 'approved'
       ).length || 0;
 
-      // For now, we'll use mock data for subsidy matches since the matching system
-      // needs to be enhanced. In a real implementation, this would fetch from
-      // a subsidies matching table or service.
-      const mockSubsidyMatches = farmIds.length * 3; // Mock: 3 matches per farm
-      const mockNewMatches = Math.floor(mockSubsidyMatches * 0.2); // 20% are new
-      const mockExpiringMatches = Math.floor(mockSubsidyMatches * 0.1); // 10% expiring
+      // Fetch subsidy matches for the user's farms
+      const { data: matches, error: matchesError } = await supabase
+        .from('subsidy_matches')
+        .select(`
+          id,
+          farm_id,
+          confidence,
+          created_at,
+          subsidies_structured(id, title, amount, deadline)
+        `)
+        .in('farm_id', farmIds)
+        .order('confidence', { ascending: false });
 
-      // Generate mock top matches
-      const topMatches = farms?.slice(0, 3).map((farm, index) => ({
-        id: `match-${farm.id}-${index}`,
-        title: [
-          'Agricultural Modernization Grant',
-          'Organic Certification Support',
-          'Green Technology Investment'
-        ][index] || 'Agricultural Support Program',
-        amount: [
-          [5000, 25000],
-          [10000, 50000],
-          [15000, 75000]
-        ][index] || [5000, 25000],
-        deadline: new Date(Date.now() + (30 - index * 10) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        farmName: farm.name,
-        confidence: [85, 92, 78][index] || 80
-      })) || [];
+      if (matchesError) throw matchesError;
+
+      const totalSubsidyMatches = matches?.length || 0;
+
+      const now = new Date();
+      const newMatches = matches?.filter(m => {
+        const created = new Date(m.created_at as string);
+        return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      }).length || 0;
+
+      const expiringMatches = matches?.filter(m => {
+        const deadline = (m as any).subsidies_structured?.deadline as string | null;
+        return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }).length || 0;
+
+      const topMatches = (matches || []).slice(0, 3).map(m => ({
+        id: m.id as string,
+        title: (m as any).subsidies_structured?.title as string,
+        amount: (m as any).subsidies_structured?.amount as number[] | null,
+        deadline: (m as any).subsidies_structured?.deadline as string | null,
+        farmName: farms?.find(f => f.id === m.farm_id)?.name || 'Unknown Farm',
+        confidence: m.confidence as number
+      }));
 
       // Generate urgent deadlines from recent applications
       const urgentDeadlines = applications
@@ -110,9 +122,9 @@ export const useDashboardMetrics = () => {
         }) || [];
 
       return {
-        totalSubsidyMatches: mockSubsidyMatches,
-        newMatches: mockNewMatches,
-        expiringMatches: mockExpiringMatches,
+        totalSubsidyMatches,
+        newMatches,
+        expiringMatches,
         applicationCount,
         activeApplications,
         approvedApplications,
