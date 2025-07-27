@@ -20,11 +20,11 @@ interface SubsidyWithMatch {
   id: string;
   title: string | null;
   description: string | null;
-  region: string | null;
-  sector: string | null;
+  region: string[] | null;
+  sector: string[] | null;
   funding_type: string | null;
   deadline: string | null;
-  amount: number | null;
+  amount: number[] | null;
   url: string | null;
   agency: string | null;
   eligibility: string | null;
@@ -89,13 +89,13 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
           const farmTags = farm?.matching_tags || [];
           // For subsidies_structured, we'll do simple region/sector matching for now
           const farmRegion = farm?.department || farm?.country || '';
-          const subsidyRegion = subsidy.region || '';
-          const subsidySector = subsidy.sector || '';
+          const subsidyRegions = Array.isArray(subsidy.region) ? subsidy.region : (subsidy.region ? [subsidy.region] : []);
+          const subsidySectors = Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : []);
           
           let matchConfidence = 0;
           if (farm) {
             // Basic region matching
-            if (farmRegion && subsidyRegion && farmRegion.toLowerCase() === subsidyRegion.toLowerCase()) {
+            if (farmRegion && subsidyRegions.some(region => region?.toLowerCase() === farmRegion.toLowerCase())) {
               matchConfidence += 50;
             }
             // Add base confidence for having a farm profile
@@ -136,16 +136,18 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
 
     // Apply region filter
     if (filters.regions.length > 0) {
-      filtered = filtered.filter(s => 
-        s.region && filters.regions.includes(s.region)
-      );
+      filtered = filtered.filter(s => {
+        const regions = Array.isArray(s.region) ? s.region : (s.region ? [s.region] : []);
+        return regions.some(region => filters.regions.includes(region));
+      });
     }
 
     // Apply farming types filter (using sector field)
     if (filters.farmingTypes.length > 0) {
-      filtered = filtered.filter(s => 
-        s.sector && filters.farmingTypes.includes(s.sector)
-      );
+      filtered = filtered.filter(s => {
+        const sectors = Array.isArray(s.sector) ? s.sector : (s.sector ? [s.sector] : []);
+        return sectors.some(sector => filters.farmingTypes.includes(sector));
+      });
     }
 
     // Apply funding sources filter

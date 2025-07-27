@@ -46,9 +46,13 @@ export const useFilterOptions = (): FilterOptions => {
             }
           }
 
-          // Add sectors (changed from categories to sector)
+          // Add sectors (changed from categories to sector) - handle array format
           if (subsidy.sector) {
-            categoriesSet.add(subsidy.sector);
+            if (Array.isArray(subsidy.sector)) {
+              subsidy.sector.forEach(s => categoriesSet.add(s));
+            } else if (typeof subsidy.sector === 'string') {
+              categoriesSet.add(subsidy.sector);
+            }
           }
 
           // Add funding types

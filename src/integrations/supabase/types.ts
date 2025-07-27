@@ -505,35 +505,52 @@ export type Database = {
       subsidies_structured: {
         Row: {
           agency: string | null
-          amount: number | null
+          amount: number[] | null
           application_method: string | null
           application_requirements: Json | null
+          application_window_end: string | null
+          application_window_start: string | null
           audit: Json | null
+          audit_notes: string | null
+          beneficiary_types: string[] | null
           co_financing_rate: number | null
+          co_financing_rates_by_category: Json | null
           compliance_requirements: string | null
+          conditional_eligibility: Json | null
           created_at: string
           deadline: string | null
           description: string | null
           documents: Json | null
           eligibility: string | null
+          eligible_actions: string[] | null
           evaluation_criteria: string | null
           funding_source: string | null
+          funding_tranches: Json | null
           funding_type: string | null
+          geographic_scope: Json | null
           id: string
+          ineligible_actions: string[] | null
+          investment_types: string[] | null
           language: string | null
-          legal_entity_type: string | null
+          legal_entity_type: string[] | null
           matching_algorithm_score: number | null
+          minimum_score: number | null
+          missing_fields: string[] | null
+          objectives: string[] | null
           payment_terms: string | null
           previous_acceptance_rate: number | null
           priority_groups: Json | null
           program: string | null
           project_duration: string | null
           questionnaire_steps: Json | null
-          raw_log_id: string
-          region: string | null
+          raw_log_id: string | null
+          region: string[] | null
+          rejection_conditions: string[] | null
           reporting_requirements: string | null
           requirements_extraction_status: string | null
-          sector: string | null
+          scoring_criteria: Json | null
+          sector: string[] | null
+          submission_conditions: string | null
           technical_support: string | null
           title: string | null
           updated_at: string
@@ -541,35 +558,52 @@ export type Database = {
         }
         Insert: {
           agency?: string | null
-          amount?: number | null
+          amount?: number[] | null
           application_method?: string | null
           application_requirements?: Json | null
+          application_window_end?: string | null
+          application_window_start?: string | null
           audit?: Json | null
+          audit_notes?: string | null
+          beneficiary_types?: string[] | null
           co_financing_rate?: number | null
+          co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
+          conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
           description?: string | null
           documents?: Json | null
           eligibility?: string | null
+          eligible_actions?: string[] | null
           evaluation_criteria?: string | null
           funding_source?: string | null
+          funding_tranches?: Json | null
           funding_type?: string | null
+          geographic_scope?: Json | null
           id?: string
+          ineligible_actions?: string[] | null
+          investment_types?: string[] | null
           language?: string | null
-          legal_entity_type?: string | null
+          legal_entity_type?: string[] | null
           matching_algorithm_score?: number | null
+          minimum_score?: number | null
+          missing_fields?: string[] | null
+          objectives?: string[] | null
           payment_terms?: string | null
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
           project_duration?: string | null
           questionnaire_steps?: Json | null
-          raw_log_id: string
-          region?: string | null
+          raw_log_id?: string | null
+          region?: string[] | null
+          rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
-          sector?: string | null
+          scoring_criteria?: Json | null
+          sector?: string[] | null
+          submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
           updated_at?: string
@@ -577,35 +611,52 @@ export type Database = {
         }
         Update: {
           agency?: string | null
-          amount?: number | null
+          amount?: number[] | null
           application_method?: string | null
           application_requirements?: Json | null
+          application_window_end?: string | null
+          application_window_start?: string | null
           audit?: Json | null
+          audit_notes?: string | null
+          beneficiary_types?: string[] | null
           co_financing_rate?: number | null
+          co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
+          conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
           description?: string | null
           documents?: Json | null
           eligibility?: string | null
+          eligible_actions?: string[] | null
           evaluation_criteria?: string | null
           funding_source?: string | null
+          funding_tranches?: Json | null
           funding_type?: string | null
+          geographic_scope?: Json | null
           id?: string
+          ineligible_actions?: string[] | null
+          investment_types?: string[] | null
           language?: string | null
-          legal_entity_type?: string | null
+          legal_entity_type?: string[] | null
           matching_algorithm_score?: number | null
+          minimum_score?: number | null
+          missing_fields?: string[] | null
+          objectives?: string[] | null
           payment_terms?: string | null
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
           project_duration?: string | null
           questionnaire_steps?: Json | null
-          raw_log_id?: string
-          region?: string | null
+          raw_log_id?: string | null
+          region?: string[] | null
+          rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
-          sector?: string | null
+          scoring_criteria?: Json | null
+          sector?: string[] | null
+          submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
           updated_at?: string

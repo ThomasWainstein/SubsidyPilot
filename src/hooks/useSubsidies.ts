@@ -28,13 +28,13 @@ export const useSubsidies = (filters?: SubsidyFilters) => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Apply filters
+      // Apply filters - for array fields, we need to use overlaps instead of in
       if (filters?.region && filters.region.length > 0) {
-        query = query.in('region', filters.region);
+        query = query.overlaps('region', filters.region);
       }
 
       if (filters?.categories && filters.categories.length > 0) {
-        query = query.in('sector', filters.categories);
+        query = query.overlaps('sector', filters.categories);
       }
 
       if (filters?.fundingType) {

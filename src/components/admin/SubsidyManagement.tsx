@@ -42,11 +42,11 @@ const SubsidyManagement = () => {
         title: typeof data.title === 'object' ? data.title.en || data.title.ro || '' : data.title,
         description: typeof data.description === 'object' ? data.description.en || data.description.ro || '' : data.description,
         eligibility: typeof data.eligibility_criteria === 'object' ? JSON.stringify(data.eligibility_criteria) : data.eligibility_criteria,
-        region: Array.isArray(data.region) ? data.region[0] : data.region, // Take first region
-        sector: Array.isArray(data.categories) ? data.categories[0] : data.categories, // Take first category as sector
+        region: Array.isArray(data.region) ? data.region : [data.region || ''], // Keep as array
+        sector: Array.isArray(data.categories) ? data.categories : [data.categories || ''], // Keep as array
         funding_type: data.funding_type,
         deadline: data.deadline,
-        amount: data.amount_max || data.amount_min || null,
+        amount: data.amount_max && data.amount_min ? [data.amount_min, data.amount_max] : (data.amount_max ? [data.amount_max] : (data.amount_min ? [data.amount_min] : null)),
         url: `manual-subsidy-${Date.now()}`,
         agency: 'Manual Entry',
       };
@@ -225,11 +225,11 @@ const SubsidyManagement = () => {
                     </div>
                     
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {subsidy.sector && (
-                        <Badge variant="secondary" className="text-xs">
-                          {subsidy.sector}
+                      {(Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : [])).map((sector, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {sector}
                         </Badge>
-                      )}
+                      ))}
                       {subsidy.funding_type && (
                         <Badge variant="secondary" className="text-xs">
                           {subsidy.funding_type}
@@ -238,7 +238,7 @@ const SubsidyManagement = () => {
                     </div>
 
                     <div className="text-sm text-gray-600">
-                      Region: {subsidy.region || 'All regions'}
+                      Region: {Array.isArray(subsidy.region) ? subsidy.region.join(', ') : (subsidy.region || 'All regions')}
                     </div>
                   </div>
 
