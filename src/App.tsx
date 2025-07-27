@@ -17,6 +17,8 @@ import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
 import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
 import AdminPage from '@/pages/AdminPage';
+import SettingsPage from '@/pages/SettingsPage';
+import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
 import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -132,6 +134,22 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <AdminPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/settings" 
+                    element={
+                      <ProtectedRoute>
+                        <SettingsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/employee-dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <EmployeeDashboardPage />
                       </ProtectedRoute>
                     } 
                   />
