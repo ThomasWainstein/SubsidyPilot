@@ -1,6 +1,6 @@
 
 import React from 'react';
-import FarmCard from '@/components/FarmCard';
+import EnhancedFarmCard from '@/components/dashboard/EnhancedFarmCard';
 import { useFarms } from '@/hooks/useFarms';
 import { FarmCardSkeleton } from '@/components/ui/loading-skeleton';
 import EmptyState from '@/components/states/EmptyState';
@@ -90,7 +90,7 @@ const FarmGrid = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {farms.map(farm => (
-        <FarmCard key={farm.id} farm={transformFarm(farm)} />
+        <EnhancedFarmCard key={farm.id} farm={transformFarm(farm)} />
       ))}
     </div>
   );

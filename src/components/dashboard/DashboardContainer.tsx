@@ -8,6 +8,8 @@ import DashboardFilters from '@/components/dashboard/DashboardFilters';
 import AddFarmModal from '@/components/dashboard/AddFarmModal';
 import FarmGrid from '@/components/dashboard/FarmGrid';
 import DashboardErrorFallback from '@/components/dashboard/DashboardErrorFallback';
+import DashboardOverview from '@/components/dashboard/DashboardOverview';
+import EnhancedAlertsActions from '@/components/dashboard/EnhancedAlertsActions';
 import { toast } from '@/hooks/use-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -211,8 +213,14 @@ const DashboardContainer = () => {
             </h1>
           </div>
           
+          {/* Dashboard Overview with metrics */}
+          <ErrorBoundary fallback={DashboardErrorFallback}>
+            <DashboardOverview farmCount={farms.length} />
+          </ErrorBoundary>
+
           <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 space-y-6">
+            {/* Main content area */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
               <ErrorBoundary fallback={DashboardErrorFallback}>
                 <DashboardFilters 
                   searchQuery={searchQuery}
@@ -244,6 +252,13 @@ const DashboardContainer = () => {
                   <FarmGrid />
                 </ErrorBoundary>
               )}
+            </div>
+
+            {/* Sidebar with alerts and quick actions */}
+            <div className="col-span-12 lg:col-span-4">
+              <ErrorBoundary fallback={DashboardErrorFallback}>
+                <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
+              </ErrorBoundary>
             </div>
           </div>
         </div>
