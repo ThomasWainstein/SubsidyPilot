@@ -534,7 +534,7 @@ const SubsidyDetailPage = () => {
                           <li key={idx} className="flex items-start gap-2">
                             <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
                             <span className="text-sm">
-                              {typeof req === 'string' ? req : (req && typeof req === 'object' && 'requirement' in req ? req.requirement : JSON.stringify(req))}
+                              {typeof req === 'string' ? req : (req && typeof req === 'object' && 'requirement' in req ? String(req.requirement) : String(req))}
                             </span>
                           </li>
                         ))}
@@ -545,7 +545,7 @@ const SubsidyDetailPage = () => {
                           <li key={idx} className="flex items-start gap-2">
                             <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
                             <span className="text-sm">
-                              {typeof doc === 'string' ? doc : (doc && typeof doc === 'object' && 'name' in doc ? doc.name : `Document ${idx + 1}`)}
+                              {typeof doc === 'string' ? doc : (doc && typeof doc === 'object' && 'name' in doc ? String(doc.name) : `Document ${idx + 1}`)}
                             </span>
                           </li>
                         ))}
