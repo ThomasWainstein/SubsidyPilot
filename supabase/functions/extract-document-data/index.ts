@@ -7,7 +7,9 @@ import { extractTextFromFile } from './textExtraction.ts';
 import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 
-const openAIApiKey = Deno.env.get('lovable_reguline');
+// OpenAI API key used for text and farm data extraction
+// Expect the environment variable to be defined in uppercase
+const openAIApiKey = Deno.env.get('LOVABLE_REGULINE');
 const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -85,8 +87,8 @@ serve(async (req) => {
 
     // Check environment variables
     addDebugLog('ENVIRONMENT_CHECK', {
-      hasLovableRegaline: !!openAIApiKey,
-      lovableRegalineKeyLength: openAIApiKey?.length || 0,
+      hasLovableReguline: !!openAIApiKey,
+      lovableRegulineKeyLength: openAIApiKey?.length || 0,
       supabaseUrl,
       hasServiceKey: !!supabaseServiceKey,
       serviceKeyLength: supabaseServiceKey?.length || 0
