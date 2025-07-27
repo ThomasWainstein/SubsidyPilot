@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { REQUIRED_DOCUMENT_CATEGORIES } from '@/utils/requiredDocumentCategories';
 
 interface FarmMetrics {
   totalMatches: number;
@@ -43,7 +44,7 @@ export const useFarmMetrics = (farmId: string) => {
       ).length || 0;
 
       // Check for missing critical documents - using proper enum values
-      const requiredCategories = ['ownership_proof', 'id_document', 'financial'] as const;
+      const requiredCategories = REQUIRED_DOCUMENT_CATEGORIES;
       const uploadedCategories = documents?.map(doc => doc.category) || [];
       const missingDocuments = requiredCategories.filter(cat => 
         !uploadedCategories.includes(cat)
