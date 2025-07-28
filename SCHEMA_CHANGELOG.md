@@ -170,7 +170,7 @@ CREATE INDEX idx_farms_matching_tags_gin ON public.farms USING GIN(matching_tags
 ### Latest Enhancement: Production Readiness & API Key Fixes (2025-07-14)
 
 #### Critical API Key Fix
-- **Corrected OpenAI API Key**: Changed from `OPENAI_API_KEY` to `LOVABLE_REGULINE` throughout extraction pipeline
+- **Corrected OpenAI API Key**: Changed from `OPENAI_API_KEY` to `SCRAPER_RAW_GPT_API` throughout extraction pipeline
 - **Environment Variable Validation**: Enhanced logging to verify correct API key propagation
 - **Debug Information**: Added comprehensive environment variable checking in edge functions
 
@@ -204,16 +204,16 @@ CREATE INDEX idx_farms_matching_tags_gin ON public.farms USING GIN(matching_tags
 #### Root Cause Analysis for Extraction Failures
 After comprehensive investigation of production extraction failures:
 
-**Problem**: All extractions failing with `LOVABLE_REGULINE API key not configured`
-**Root Cause**: Missing `LOVABLE_REGULINE` secret in Supabase project configuration
+**Problem**: All extractions failing with `SCRAPER_RAW_GPT_API key not configured`
+**Root Cause**: Missing `SCRAPER_RAW_GPT_API` secret in Supabase project configuration
 **Evidence**: Debug logs show `hasLovableRegaline: false`, `lovableRegalineKeyLength: 0`
 
 #### Investigation Results
-✅ **Code Implementation**: Correctly uses `LOVABLE_REGULINE` throughout extraction pipeline  
+✅ **Code Implementation**: Correctly uses `SCRAPER_RAW_GPT_API` throughout extraction pipeline
 ✅ **Database Setup**: RLS policies and service role permissions working correctly  
 ✅ **Edge Function Logic**: Properly structured with comprehensive error handling  
 ✅ **Debug System**: Successfully captured the missing API key issue  
-❌ **Critical Missing**: `LOVABLE_REGULINE` secret not configured in Supabase
+❌ **Critical Missing**: `SCRAPER_RAW_GPT_API` secret not configured in Supabase
 
 #### Secondary Issues Resolved by Root Cause
 - **Edge Function 500 Errors**: Will resolve once API key is configured
@@ -221,20 +221,20 @@ After comprehensive investigation of production extraction failures:
 - **Frontend UI Errors**: "Edge Function returned non-2xx status" will resolve
 
 ### Next Steps
-1. ✅ Fixed LOVABLE_REGULINE API key usage throughout pipeline
+1. ✅ Fixed SCRAPER_RAW_GPT_API API key usage throughout pipeline
 2. ✅ Enhanced debug logging for comprehensive troubleshooting
 3. ✅ Optimized RLS policies and service role permissions
 4. ✅ Added comprehensive indexing for production performance
 5. ✅ **IDENTIFIED ROOT CAUSE**: Missing API key in Supabase secrets
-6. 🚨 **IMMEDIATE ACTION**: Configure `LOVABLE_REGULINE` secret with valid OpenAI API key
+6. 🚨 **IMMEDIATE ACTION**: Configure `SCRAPER_RAW_GPT_API` secret with valid OpenAI API key
    ```bash
-   supabase secrets set LOVABLE_REGULINE=<OpenAI-Key>
+   supabase secrets set SCRAPER_RAW_GPT_API=<OpenAI-Key>
    ```
 7. Verify extraction functionality after secret configuration
 8. Monitor production logs for remaining issues
 
 ### Critical Action Required
-**The `LOVABLE_REGULINE` secret must be configured in Supabase Edge Function secrets with a valid OpenAI API key before extractions will work.**
+**The `SCRAPER_RAW_GPT_API` secret must be configured in Supabase Edge Function secrets with a valid OpenAI API key before extractions will work.**
 
 ---
 **Migration completed by**: Lovable AI  

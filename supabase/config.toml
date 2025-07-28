@@ -31,7 +31,7 @@ max_header_length = 4096
 enabled = true
 port = 54324
 api_url = "http://127.0.0.1:54321"
-openai_api_key = "env(LOVABLE_REGULINE)"
+openai_api_key = "env(SCRAPER_RAW_GPT_API)"
 
 [inbucket]
 enabled = true

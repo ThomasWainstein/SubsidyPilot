@@ -47,7 +47,7 @@ def validate_service_role_key(key: str) -> Tuple[bool, str]:
     
     return True, "Valid"
 
-def validate_lovable_reguline(key: str) -> Tuple[bool, str]:
+def validate_scraper_raw_gpt_api(key: str) -> Tuple[bool, str]:
     """Basic validation for OpenAI API key"""
     if not key:
         return False, "API key is empty"
@@ -64,7 +64,7 @@ def main() -> int:
     required_vars = [
         ('NEXT_PUBLIC_SUPABASE_URL', validate_supabase_url),
         ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key),
-        ('LOVABLE_REGULINE', validate_lovable_reguline)
+        ('SCRAPER_RAW_GPT_API', validate_scraper_raw_gpt_api)
     ]
     
     errors: List[str] = []
@@ -91,7 +91,7 @@ def main() -> int:
         print(f"\n📋 REQUIRED ENVIRONMENT VARIABLES:")
         print(f"   export NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'")
         print(f"   export SUPABASE_SERVICE_ROLE_KEY='your-service-role-key'")
-        print(f"   export LOVABLE_REGULINE='your-openai-api-key'")
+        print(f"   export SCRAPER_RAW_GPT_API='your-openai-api-key'")
         
         return 1
     

@@ -4,8 +4,8 @@
 
 ### Background
 A production bug was identified where environment variables had inconsistent casing across the codebase:
-- **Code expected**: `lovable_reguline` (lowercase) 
-- **Documentation specified**: `LOVABLE_REGULINE` (uppercase)
+- **Code expected**: `lovable_reguline` (lowercase)
+- **Documentation specified**: `SCRAPER_RAW_GPT_API` (uppercase)
 - **Result**: OpenAI API key not found, causing extraction failures
 
 ### Solution Applied
@@ -23,23 +23,23 @@ Environment variables are **case-sensitive** in all deployment environments. Thi
 |---------------|---------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://project-id.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key for backend operations | `eyJ...` or `sbp_...` |
-| `LOVABLE_REGULINE` | OpenAI API key for extraction pipeline | `sk-...` |
+| `SCRAPER_RAW_GPT_API` | OpenAI API key for extraction pipeline | `sk-...` |
 
 ### Files Updated for Consistency
 
 1. **Edge Functions**:
-   - `supabase/functions/extract-document-data/index.ts`: Updated `Deno.env.get('LOVABLE_REGULINE')`
+   - `supabase/functions/extract-document-data/index.ts`: Updated `Deno.env.get('SCRAPER_RAW_GPT_API')`
    
 2. **Configuration Files**:
-   - `supabase/config.toml`: Updated `openai_api_key = "env(LOVABLE_REGULINE)"`
+   - `supabase/config.toml`: Updated `openai_api_key = "env(SCRAPER_RAW_GPT_API)"`
    
 3. **Documentation**:
-   - `README.md`: All examples use `LOVABLE_REGULINE`
+   - `README.md`: All examples use `SCRAPER_RAW_GPT_API`
    - `.env.example`: Consistent uppercase format
    - `SCHEMA_CHANGELOG.md`: Updated references to uppercase
    
 4. **Testing & Validation**:
-   - `test_env_vars.py`: Validates `LOVABLE_REGULINE` format
+   - `test_env_vars.py`: Validates `SCRAPER_RAW_GPT_API` format
    - All error messages reference uppercase variable name
 
 ## Deployment Checklist
@@ -62,7 +62,7 @@ Before deploying any changes involving environment variables:
 ### ✅ Secret Configuration
 ```bash
 # Supabase Edge Function Secrets (required for production)
-supabase secrets set LOVABLE_REGULINE=sk-your-openai-api-key-here
+supabase secrets set SCRAPER_RAW_GPT_API=sk-your-openai-api-key-here
 
 # Verify secrets are configured
 supabase secrets list
@@ -83,7 +83,7 @@ const key = Deno.env.get('Lovable_Reguline');
 ### ✅ Required Patterns
 ```javascript
 // ✅ CORRECT - Uppercase environment variables
-const key = Deno.env.get('LOVABLE_REGULINE');
+const key = Deno.env.get('SCRAPER_RAW_GPT_API');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 ```
 
