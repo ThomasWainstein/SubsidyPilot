@@ -27,7 +27,7 @@
 
 ### 5. OpenAI Configuration Improvements
 **Files**: `supabase/config.toml`, `openaiService.ts`, `index.ts`
-- ✅ Unified OpenAI API key to use `lovable_reguline`
+- ✅ Unified OpenAI API key to use `LOVABLE_REGULINE`
 - ✅ Made OpenAI model configurable via `OPENAI_MODEL` environment variable
 - ✅ Default to `gpt-4o-mini` if not specified
 
