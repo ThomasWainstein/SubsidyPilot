@@ -113,10 +113,10 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client
+    // Create Supabase client - CRITICAL: Environment variable names are case-sensitive
     const supabase = createClient(
       Deno.env.get('NEXT_PUBLIC_SUPABASE_URL') ?? '',
-      Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON') ?? '',
       {
         auth: {
           autoRefreshToken: false,

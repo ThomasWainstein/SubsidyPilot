@@ -257,10 +257,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+// CRITICAL: Environment variable names are case-sensitive and MUST use standardized uppercase format
+const SUPABASE_URL = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
+const OPENAI_API_KEY = Deno.env.get('SCRAPER_RAW_GPT_API')!;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -279,7 +280,7 @@ serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -335,7 +336,7 @@ serve(async (req) => {
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('SCRAPER_RAW_GPT_API')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

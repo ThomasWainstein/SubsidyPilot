@@ -1,5 +1,6 @@
 
-// Environment configuration for production vs development
+// CRITICAL: Environment variable access for client-side code
+// All environment variables MUST use standardized uppercase format
 export const IS_PRODUCTION = import.meta.env.PROD;
 export const IS_DEVELOPMENT = import.meta.env.DEV;
 

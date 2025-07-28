@@ -22,25 +22,30 @@ Environment variables are **case-sensitive** in all deployment environments. Thi
 | Variable Name | Purpose | Format |
 |---------------|---------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://project-id.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON` | Supabase anonymous key for frontend | `eyJ...` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key for backend operations | `eyJ...` or `sbp_...` |
 | `SCRAPER_RAW_GPT_API` | OpenAI API key for extraction pipeline | `sk-...` |
 
 ### Files Updated for Consistency
 
 1. **Edge Functions**:
-   - `supabase/functions/extract-document-data/index.ts`: Updated `Deno.env.get('SCRAPER_RAW_GPT_API')`
+   - `supabase/functions/extract-document-data/index.ts`: Updated to use `SCRAPER_RAW_GPT_API`
+   - `supabase/functions/extract-canonical-subsidy/index.ts`: Updated to use `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON`, `SCRAPER_RAW_GPT_API`
+   - `supabase/functions/improve-subsidy-titles/index.ts`: Updated to use `NEXT_PUBLIC_SUPABASE_URL`
+   - `supabase/functions/upload-farm-document/index.ts`: Updated to use `NEXT_PUBLIC_SUPABASE_ANON`
    
 2. **Configuration Files**:
    - `supabase/config.toml`: Updated `openai_api_key = "env(SCRAPER_RAW_GPT_API)"`
    
 3. **Documentation**:
-   - `README.md`: All examples use `SCRAPER_RAW_GPT_API`
-   - `.env.example`: Consistent uppercase format
-   - `SCHEMA_CHANGELOG.md`: Updated references to uppercase
+   - `.env.example`: Added `NEXT_PUBLIC_SUPABASE_ANON` and consistent uppercase format
+   - `src/config/environment.ts`: Added critical comments about case sensitivity
+   - `ENVIRONMENT_VARIABLE_STANDARDS.md`: Comprehensive documentation
    
 4. **Testing & Validation**:
-   - `test_env_vars.py`: Validates `SCRAPER_RAW_GPT_API` format
-   - All error messages reference uppercase variable name
+   - `test_env_vars.py`: Validates all standardized variables including `NEXT_PUBLIC_SUPABASE_ANON`
+   - All error messages reference uppercase variable names
+   - Added `LICENSE` file for proper open-source licensing
 
 ## Deployment Checklist
 

@@ -12,8 +12,9 @@ serve(async (req) => {
   }
 
   try {
+    // CRITICAL: Environment variable names are case-sensitive and MUST use standardized uppercase format
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('NEXT_PUBLIC_SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
