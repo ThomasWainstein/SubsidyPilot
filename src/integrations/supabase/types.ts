@@ -76,6 +76,50 @@ export type Database = {
           },
         ]
       }
+      document_classification_logs: {
+        Row: {
+          agrees: boolean
+          created_at: string
+          document_id: string
+          document_text_preview: string | null
+          id: string
+          model_used: string
+          predicted_category: string
+          prediction_confidence: number
+          user_selected_category: string
+        }
+        Insert: {
+          agrees: boolean
+          created_at?: string
+          document_id: string
+          document_text_preview?: string | null
+          id?: string
+          model_used: string
+          predicted_category: string
+          prediction_confidence: number
+          user_selected_category: string
+        }
+        Update: {
+          agrees?: boolean
+          created_at?: string
+          document_id?: string
+          document_text_preview?: string | null
+          id?: string
+          model_used?: string
+          predicted_category?: string
+          prediction_confidence?: number
+          user_selected_category?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_classification_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "farm_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_extractions: {
         Row: {
           confidence_score: number | null
@@ -164,32 +208,47 @@ export type Database = {
       farm_documents: {
         Row: {
           category: Database["public"]["Enums"]["document_category"]
+          category_agreement: boolean | null
+          classification_model: string | null
+          classification_timestamp: string | null
           farm_id: string
           file_name: string
           file_size: number | null
           file_url: string
           id: string
           mime_type: string | null
+          predicted_category: string | null
+          prediction_confidence: number | null
           uploaded_at: string | null
         }
         Insert: {
           category: Database["public"]["Enums"]["document_category"]
+          category_agreement?: boolean | null
+          classification_model?: string | null
+          classification_timestamp?: string | null
           farm_id: string
           file_name: string
           file_size?: number | null
           file_url: string
           id?: string
           mime_type?: string | null
+          predicted_category?: string | null
+          prediction_confidence?: number | null
           uploaded_at?: string | null
         }
         Update: {
           category?: Database["public"]["Enums"]["document_category"]
+          category_agreement?: boolean | null
+          classification_model?: string | null
+          classification_timestamp?: string | null
           farm_id?: string
           file_name?: string
           file_size?: number | null
           file_url?: string
           id?: string
           mime_type?: string | null
+          predicted_category?: string | null
+          prediction_confidence?: number | null
           uploaded_at?: string | null
         }
         Relationships: [

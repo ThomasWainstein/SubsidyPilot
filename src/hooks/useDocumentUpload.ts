@@ -4,6 +4,7 @@ import { useUploadDocument } from '@/hooks/useFarmDocuments';
 import { toast } from '@/components/ui/use-toast';
 import { validateDocumentUpload } from '@/utils/documentValidation';
 import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/documentValidation';
+import { useDocumentClassification } from '@/hooks/useDocumentClassification';
 import { validateFileType, sanitizeFileName } from '@/utils/securityValidation';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,6 +21,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const uploadMutation = useUploadDocument();
+  const { classifyAndCompare, isClassifying } = useDocumentClassification();
 
   const addFiles = (files: File[]) => {
     console.log(`📝 Processing ${files.length} files for upload validation`);
@@ -237,6 +239,32 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
           fileUrl: uploadResult.document.file_url,
           category: normalizedCategory
         });
+
+        // Trigger document classification in background for text files
+        if (file.type === 'text/plain') {
+          console.log(`🔍 Starting background classification for: ${file.name}`);
+          
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const text = e.target?.result as string;
+            if (text && text.trim()) {
+              try {
+                await classifyAndCompare(
+                  uploadResult.document.id,
+                  text,
+                  file.name,
+                  normalizedCategory
+                );
+                console.log(`✅ Classification completed for: ${file.name}`);
+              } catch (error) {
+                console.error('Background classification failed:', error);
+              }
+            }
+          };
+          reader.readAsText(file);
+        } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          console.log('📄 PDF classification will be handled after text extraction completes');
+        }
         
         setUploadProgress(((i + 1) / totalFiles) * 100);
         setUploadedFiles(prev => [...prev, file.name]);

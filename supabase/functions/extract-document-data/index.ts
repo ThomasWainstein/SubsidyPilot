@@ -166,6 +166,37 @@ serve(async (req) => {
       throw dbError;
     }
 
+    // Trigger document classification after successful extraction
+    addDebugLog('CLASSIFICATION_START', { documentId });
+    try {
+      const classificationResponse = await fetch(`${supabaseUrl}/functions/v1/classify-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          documentId,
+          extractedText: extractionResult.text,
+          fileName,
+          userSelectedCategory: documentType || 'other'
+        })
+      });
+
+      if (classificationResponse.ok) {
+        const classificationResult = await classificationResponse.json();
+        addDebugLog('CLASSIFICATION_SUCCESS', classificationResult);
+      } else {
+        const error = await classificationResponse.text();
+        addDebugLog('CLASSIFICATION_FAILED', { error });
+      }
+    } catch (classificationError) {
+      addDebugLog('CLASSIFICATION_ERROR', {
+        error: (classificationError as Error).message
+      });
+      // Don't fail the entire extraction if classification fails
+    }
+
     // Final success response
     addDebugLog('EXTRACTION_SUCCESS', {
       documentId,
