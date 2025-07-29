@@ -39,6 +39,34 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 2. Fill in your Supabase credentials
 3. Ensure `.env` is in `.gitignore`
 
+### Setting Supabase CLI Secrets
+
+Store the runtime secrets for your edge functions using the Supabase CLI:
+
+```bash
+supabase secrets set \
+  NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+  NEXT_PUBLIC_SUPABASE_ANON=$NEXT_PUBLIC_SUPABASE_ANON \
+  SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+```
+
+#### GitHub Actions Example
+
+```yaml
+- name: Deploy edge functions
+  run: |
+    supabase secrets set \
+      NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+      NEXT_PUBLIC_SUPABASE_ANON=$NEXT_PUBLIC_SUPABASE_ANON \
+      SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+    supabase functions deploy extract-canonical-subsidy
+  env:
+    NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+    NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
+    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+```
+
 ### Frontend Build
 
 The frontend automatically loads environment variables at build time using:
