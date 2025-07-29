@@ -321,7 +321,14 @@ async function triggerTraining(supabase: any, params: any) {
     // Continue anyway, just log the error
   }
   
-  // Simulate training process (in real implementation, this would trigger actual training)
+  // WARNING: This is a simulation for MVP/development purposes only!
+  // In production, this should trigger actual model training infrastructure
+  const isSimulation = true; // TODO: Replace with environment check or feature flag
+  
+  if (isSimulation) {
+    console.log('⚠️  WARNING: Running training SIMULATION - not actual model training!');
+  }
+  
   console.log('🔄 Training simulation started...');
   
   // Background task to simulate training
@@ -465,6 +472,9 @@ async function deployModel(supabase: any, params: any) {
   if (deployError) {
     console.error('Failed to create deployment record:', deployError);
   }
+  
+  // WARNING: This is a simulation for MVP/development purposes only!
+  console.log('⚠️  WARNING: Running deployment SIMULATION - not actual model deployment!');
   
   // Simulate deployment process
   setTimeout(async () => {

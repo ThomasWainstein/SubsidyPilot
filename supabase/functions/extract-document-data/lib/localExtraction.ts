@@ -24,7 +24,7 @@ export async function tryLocalExtraction(
   const startTime = Date.now();
   
   try {
-    console.log('🔄 Starting local extraction (server-side simulation)');
+    console.log('⚠️  WARNING: Using rule-based extraction SIMULATION - not actual transformer model!');
     
     // For MVP: Use rule-based extraction as "local" extraction
     // This simulates what would be done with actual transformers

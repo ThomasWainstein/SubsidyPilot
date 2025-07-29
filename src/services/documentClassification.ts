@@ -48,10 +48,10 @@ class HuggingFaceDocumentClassifier implements DocumentClassificationService {
     try {
       console.log('🤖 Initializing document classifier...');
       
-      // Use a lightweight text classification model
+      // Use a proper document classification model
       this.classifier = await pipeline(
         'text-classification',
-        'microsoft/DialoGPT-medium', // Fallback to a general model
+        'distilbert-base-uncased-finetuned-sst-2-english', // Better classification model
         {
           device: 'webgpu',
           dtype: 'fp16',

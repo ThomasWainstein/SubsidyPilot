@@ -19,6 +19,7 @@ export interface DocumentForReview {
 
 export interface ReviewCorrection {
   extractionId: string;
+  originalData?: Record<string, any>;
   correctedData: Record<string, any>;
   reviewerNotes?: string;
   status: 'reviewed' | 'flagged' | 'approved';
@@ -127,9 +128,22 @@ export const useSubmitReviewCorrection = () => {
 
       if (updateError) throw updateError;
 
-      // Note: document_extraction_reviews table will be available after migration
-      // For now, we'll skip the audit logging until types are regenerated
-      console.log('Review correction saved. Audit logging will be available after type regeneration.');
+      // Insert audit record into document_extraction_reviews
+      const { error: auditError } = await supabase
+        .from('document_extraction_reviews')
+        .insert({
+          extraction_id: correction.extractionId,
+          reviewer_id: (await supabase.auth.getUser()).data.user?.id,
+          original_data: correction.originalData || {},
+          corrected_data: correction.correctedData,
+          reviewer_notes: correction.reviewerNotes,
+          review_status: correction.status
+        });
+
+      if (auditError) {
+        console.warn('Failed to log review audit:', auditError);
+        // Don't throw - audit logging failure shouldn't block the main operation
+      }
 
       return { success: true };
     },

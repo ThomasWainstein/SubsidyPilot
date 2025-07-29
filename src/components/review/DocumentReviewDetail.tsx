@@ -65,6 +65,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
       await submitCorrection.mutateAsync({
         correction: {
           extractionId: extraction.id,
+          originalData: extraction.extracted_data as Record<string, any>,
           correctedData: extractedFields,
           reviewerNotes,
           status: reviewStatus
