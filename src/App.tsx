@@ -28,6 +28,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
 import DocumentReviewPage from '@/pages/DocumentReviewPage';
 import DocumentReviewDetailPage from '@/pages/DocumentReviewDetailPage';
+import TrainingPipelinePage from '@/pages/TrainingPipelinePage';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
 
@@ -107,6 +108,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <DocumentReviewDetailPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/training" 
+                    element={
+                      <ProtectedRoute>
+                        <TrainingPipelinePage />
                       </ProtectedRoute>
                     } 
                   />

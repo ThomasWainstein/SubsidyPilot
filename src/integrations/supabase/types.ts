@@ -419,6 +419,109 @@ export type Database = {
           },
         ]
       }
+      model_deployments: {
+        Row: {
+          config: Json
+          created_at: string
+          deployed_at: string
+          environment: string
+          id: string
+          metrics: Json | null
+          model_type: string
+          status: string
+          training_job_id: string | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          deployed_at?: string
+          environment?: string
+          id?: string
+          metrics?: Json | null
+          model_type: string
+          status?: string
+          training_job_id?: string | null
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          deployed_at?: string
+          environment?: string
+          id?: string
+          metrics?: Json | null
+          model_type?: string
+          status?: string
+          training_job_id?: string | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_deployments_training_job_id_fkey"
+            columns: ["training_job_id"]
+            isOneToOne: false
+            referencedRelation: "model_training_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      model_training_jobs: {
+        Row: {
+          completed_at: string | null
+          config: Json
+          created_at: string
+          dataset_size: number
+          error_message: string | null
+          farm_id: string | null
+          id: string
+          metrics: Json | null
+          model_type: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          dataset_size?: number
+          error_message?: string | null
+          farm_id?: string | null
+          id?: string
+          metrics?: Json | null
+          model_type?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          dataset_size?: number
+          error_message?: string | null
+          farm_id?: string | null
+          id?: string
+          metrics?: Json | null
+          model_type?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_training_jobs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raw_logs: {
         Row: {
           created_at: string
