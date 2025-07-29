@@ -113,14 +113,21 @@ serve(async (req) => {
   }
 
   try {
+    // Enhanced environment diagnostics for troubleshooting
+    console.log('🔧 Environment Check:', {
+      hasUrl: !!Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
+      hasAnon: !!Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+      availableVars: Object.keys(Deno.env.toObject()).filter(k => k.startsWith('NEXT_PUBLIC')),
+    });
+
     // Check required Supabase environment variables BEFORE creating client
     const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL');
-    const supabaseAnon = Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON');
+    const supabaseAnon = Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
     if (!supabaseUrl || !supabaseAnon) {
       console.error('Supabase environment variables missing or empty', {
         NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-        NEXT_PUBLIC_SUPABASE_ANON: supabaseAnon,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnon,
       });
       return new Response(
         JSON.stringify({ error: 'Supabase misconfiguration' }),

@@ -9,11 +9,11 @@
 | `VITE_SUPABASE_URL` | Public | Frontend Supabase project URL | `https://xxxxx.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Public | Frontend anonymous key | `eyJhbGciOiJIUz...` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Scraper Supabase project URL | `https://xxxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON` | Public | Scraper anonymous key | `eyJhbGciOiJIUz...` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Scraper anonymous key | `eyJhbGciOiJIUz...` |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Backend service key | `eyJhbGciOiJIUz...` |
 
 The `VITE_` variables configure the public frontend client. The
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON`, and
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
 `SUPABASE_SERVICE_ROLE_KEY` variables are used only by server-side code such as
 the scraper and should be kept secret.
 
@@ -32,7 +32,7 @@ In your repository settings → Secrets and variables → Actions, add:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON=your_anon_key_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
@@ -40,7 +40,7 @@ Configure your Supabase project with the same variables:
 
 ```bash
 supabase secrets set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
-                    NEXT_PUBLIC_SUPABASE_ANON=your_anon_key_here
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
 ### Local Development
@@ -56,7 +56,7 @@ Store the runtime secrets for your edge functions using the Supabase CLI:
 ```bash
 supabase secrets set \
   NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-  NEXT_PUBLIC_SUPABASE_ANON=$NEXT_PUBLIC_SUPABASE_ANON \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
   SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 ```
 
@@ -67,12 +67,12 @@ supabase secrets set \
   run: |
     supabase secrets set \
       NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-      NEXT_PUBLIC_SUPABASE_ANON=$NEXT_PUBLIC_SUPABASE_ANON \
+      NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
       SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
     supabase functions deploy extract-canonical-subsidy
   env:
     NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-    NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 ```
