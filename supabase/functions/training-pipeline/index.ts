@@ -323,7 +323,8 @@ async function triggerTraining(supabase: any, params: any) {
   
   // WARNING: This is a simulation for MVP/development purposes only!
   // In production, this should trigger actual model training infrastructure
-  const isSimulation = true; // TODO: Replace with environment check or feature flag
+  const simulationFlag = Deno.env.get('TRAINING_SIMULATION_MODE');
+  const isSimulation = simulationFlag ? simulationFlag.toLowerCase() === 'true' : true;
   
   if (isSimulation) {
     console.log('⚠️  WARNING: Running training SIMULATION - not actual model training!');
