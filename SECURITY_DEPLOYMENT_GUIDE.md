@@ -55,6 +55,23 @@ url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 ```
 
+### Logging Environment Checks Safely
+
+When verifying environment variables, **never** print the full URL or token. Log
+only boolean flags or partial metadata. The Phase 2 fixes demonstrate this in
+`supabase/functions/extract-document-data/databaseService.ts`:
+
+```typescript
+console.log('🔧 Connection check:', {
+  hasUrl: !!supabaseUrl,
+  hasServiceKey: !!supabaseServiceKey,
+  urlDomain: supabaseUrl?.split('://')[1]?.split('.')[0] || 'unknown'
+});
+```
+
+This confirms configuration without leaking credentials. Always review logs
+before deployment and remove or mask any sensitive output.
+
 ## Testing Environment
 
 ### Required Dependencies
