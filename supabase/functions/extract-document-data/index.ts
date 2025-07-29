@@ -212,11 +212,19 @@ serve(async (req) => {
       await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);
       addDebugLog('DATABASE_STORAGE_SUCCESS', { documentId });
     } catch (dbError) {
+      const errorMessage = `Failed to store extraction: ${(dbError as Error).message}`;
       addDebugLog('DATABASE_STORAGE_FAILED', {
-        error: (dbError as Error).message,
-        stack: (dbError as Error).stack
+        error: errorMessage,
+        timestamp: new Date().toISOString()
       });
-      throw dbError;
+      
+      return new Response(JSON.stringify({ 
+        error: errorMessage,
+        documentId 
+      }), {
+        status: 500,
+        headers: corsHeaders
+      });
     }
 
     // Trigger document classification after successful extraction
@@ -244,10 +252,14 @@ serve(async (req) => {
         addDebugLog('CLASSIFICATION_FAILED', { error });
       }
     } catch (classificationError) {
+      const errorMessage = `Classification failed: ${(classificationError as Error).message}`;
       addDebugLog('CLASSIFICATION_ERROR', {
-        error: (classificationError as Error).message
+        error: errorMessage,
+        timestamp: new Date().toISOString()
       });
-      // Don't fail the entire extraction if classification fails
+      
+      // Classification error is not fatal - continue with extraction
+      console.warn('⚠️', errorMessage, 'continuing with extraction');
     }
 
     // Final success response
@@ -296,9 +308,13 @@ serve(async (req) => {
         );
         addDebugLog('ERROR_LOGGED_TO_DB', { documentId });
       } catch (logError) {
+        const logErrorMessage = `Error logging failed: ${(logError as Error).message}`;
         addDebugLog('ERROR_LOGGING_FAILED', {
-          error: (logError as Error).message
+          originalError: errorMessage,
+          logError: logErrorMessage,
+          timestamp: new Date().toISOString()
         });
+        console.error('❌', logErrorMessage);
       }
     }
     

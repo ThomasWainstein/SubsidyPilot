@@ -1,11 +1,12 @@
+import React from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSubmitReviewCorrection } from '../useDocumentReview'
+import { vi, describe, it, expect } from 'vitest'
 
 const queryClient = new QueryClient()
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-)
+const wrapper = ({ children }: { children: React.ReactNode }) => 
+  React.createElement(QueryClientProvider, { client: queryClient }, children)
 
 const eqMock = vi.fn().mockResolvedValue({ error: null })
 const updateMock = vi.fn(() => ({ eq: eqMock }))
