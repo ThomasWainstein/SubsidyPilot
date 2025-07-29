@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { extractTextFromFile } from './textExtraction.ts';
 import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
+import { tryLocalExtraction } from './lib/localExtraction.ts';
 
 // CRITICAL: Environment variable names are case-sensitive. MUST use uppercase SCRAPER_RAW_GPT_API
 const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API');
@@ -127,21 +128,73 @@ serve(async (req) => {
       debugInfo: extractionResult.debugInfo
     });
 
-    // OpenAI extraction
-    addDebugLog('OPENAI_EXTRACTION_START', {
+    // Try local extraction first
+    addDebugLog('LOCAL_EXTRACTION_START', {
       textLength: extractionResult.text.length,
-      textSample: extractionResult.text.substring(0, 200)
+      documentType: documentType || 'other'
     });
     
-    // 🔥 FIX: Make OpenAI model configurable
-    const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini';
-    
-    const extractedData = await extractFarmDataWithOpenAI(
-      extractionResult.text, 
-      openAIApiKey, 
-      extractionResult.debugInfo,
-      openAIModel
+    const localExtractionResult = await tryLocalExtraction(
+      extractionResult.text,
+      documentType || 'other',
+      0.7 // confidence threshold
     );
+    
+    addDebugLog('LOCAL_EXTRACTION_COMPLETE', {
+      success: !localExtractionResult.errorMessage,
+      confidence: localExtractionResult.overallConfidence,
+      extractedFieldCount: localExtractionResult.extractedFields.length,
+      fallbackRecommended: localExtractionResult.fallbackRecommended,
+      processingTime: localExtractionResult.processingTime
+    });
+
+    let extractedData;
+    let extractionMethod = 'local';
+
+    // Use local extraction if confidence is high enough
+    if (!localExtractionResult.fallbackRecommended && !localExtractionResult.errorMessage) {
+      // Convert local extraction result to expected format
+      extractedData = {
+        extractedFields: localExtractionResult.extractedFields.reduce((acc, field) => {
+          acc[field.field] = field.value;
+          return acc;
+        }, {} as Record<string, string>),
+        confidence: localExtractionResult.overallConfidence,
+        detectedLanguage: 'unknown', // Local extraction doesn't detect language yet
+        promptUsed: 'local-rule-based-extraction',
+        debugInfo: {
+          extractionMethod: 'local',
+          localProcessingTime: localExtractionResult.processingTime,
+          modelUsed: localExtractionResult.modelUsed
+        }
+      };
+      addDebugLog('USING_LOCAL_EXTRACTION', { confidence: extractedData.confidence });
+    } else {
+      // Fallback to OpenAI extraction
+      addDebugLog('FALLBACK_TO_OPENAI', {
+        reason: localExtractionResult.errorMessage || 'Low confidence',
+        localConfidence: localExtractionResult.overallConfidence
+      });
+      
+      extractionMethod = 'openai_fallback';
+      
+      // 🔥 FIX: Make OpenAI model configurable
+      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini';
+      
+      extractedData = await extractFarmDataWithOpenAI(
+        extractionResult.text, 
+        openAIApiKey, 
+        extractionResult.debugInfo,
+        openAIModel
+      );
+      
+      // Add local extraction attempt info to debug
+      extractedData.debugInfo = {
+        ...extractedData.debugInfo,
+        localExtractionAttempted: true,
+        localExtractionResult: localExtractionResult
+      };
+    }
 
     addDebugLog('OPENAI_EXTRACTION_COMPLETE', {
       hasError: !!extractedData.error,
