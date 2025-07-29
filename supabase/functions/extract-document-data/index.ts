@@ -86,10 +86,18 @@ serve(async (req) => {
     }
 
     // Check environment variables
+    const supabaseDomain = (() => {
+      try {
+        return new URL(supabaseUrl).hostname;
+      } catch {
+        return 'invalid-url';
+      }
+    })();
+
     addDebugLog('ENVIRONMENT_CHECK', {
       hasOpenAIKey: !!openAIApiKey,
       openAIKeyLength: openAIApiKey?.length || 0,
-      supabaseUrl,
+      supabaseDomain,
       hasServiceKey: !!supabaseServiceKey,
       serviceKeyLength: supabaseServiceKey?.length || 0
     });
