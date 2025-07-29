@@ -8,10 +8,32 @@ import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 import { tryLocalExtraction } from './lib/localExtraction.ts';
 
-// CRITICAL: Environment variable names are case-sensitive. MUST use uppercase SCRAPER_RAW_GPT_API
-const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API');
-const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+// Enhanced environment diagnostics and validation
+function validateEnvironment() {
+  console.log('🔧 Environment Check for extract-document-data:', {
+    hasOpenAI: !!Deno.env.get('OPENAI_API_KEY'),
+    hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+    hasServiceKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    availableVars: Object.keys(Deno.env.toObject()).filter(k => 
+      k.startsWith('SUPABASE') || k.startsWith('OPENAI') || k.startsWith('SCRAPER')
+    ),
+  });
+
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!openAIApiKey || !supabaseUrl || !supabaseServiceKey) {
+    const missingVars = [];
+    if (!openAIApiKey) missingVars.push('OPENAI_API_KEY');
+    if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+    if (!supabaseServiceKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+    
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  }
+
+  return { openAIApiKey, supabaseUrl, supabaseServiceKey };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +44,10 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  try {
+    // Validate environment variables first
+    const { openAIApiKey, supabaseUrl, supabaseServiceKey } = validateEnvironment();
 
   let documentId: string | undefined;
   let debugLog: any[] = [];
@@ -350,4 +376,29 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  } catch (error) {
+    console.error('❌ Critical error in extract-document-data function:', error);
+    
+    // Check if this is an environment variable error
+    if (error instanceof Error && error.message.includes('Missing required environment variables')) {
+      return new Response(JSON.stringify({ 
+        error: 'Environment configuration error',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+});
 });
