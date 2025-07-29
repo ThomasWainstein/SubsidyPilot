@@ -26,6 +26,8 @@ import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
+import DocumentReviewPage from '@/pages/DocumentReviewPage';
+import DocumentReviewDetailPage from '@/pages/DocumentReviewDetailPage';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
 
@@ -89,6 +91,22 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <FarmEditPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/document-review" 
+                    element={
+                      <ProtectedRoute>
+                        <DocumentReviewPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/document-review/:documentId" 
+                    element={
+                      <ProtectedRoute>
+                        <DocumentReviewDetailPage />
                       </ProtectedRoute>
                     } 
                   />

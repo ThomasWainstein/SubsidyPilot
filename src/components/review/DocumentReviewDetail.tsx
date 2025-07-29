@@ -38,8 +38,8 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   const extraction = documentDetail?.document_extractions?.[0];
 
   useEffect(() => {
-    if (extraction?.extracted_data) {
-      setExtractedFields(extraction.extracted_data);
+    if (extraction?.extracted_data && typeof extraction.extracted_data === 'object') {
+      setExtractedFields(extraction.extracted_data as Record<string, any>);
     }
   }, [extraction]);
 

@@ -120,6 +120,50 @@ export type Database = {
           },
         ]
       }
+      document_extraction_reviews: {
+        Row: {
+          corrected_data: Json
+          created_at: string
+          extraction_id: string
+          id: string
+          original_data: Json
+          review_status: string
+          reviewer_id: string
+          reviewer_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          corrected_data: Json
+          created_at?: string
+          extraction_id: string
+          id?: string
+          original_data: Json
+          review_status?: string
+          reviewer_id: string
+          reviewer_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          corrected_data?: Json
+          created_at?: string
+          extraction_id?: string
+          id?: string
+          original_data?: Json
+          review_status?: string
+          reviewer_id?: string
+          reviewer_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_extraction_reviews_extraction_id_fkey"
+            columns: ["extraction_id"]
+            isOneToOne: false
+            referencedRelation: "document_extractions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_extractions: {
         Row: {
           confidence_score: number | null
