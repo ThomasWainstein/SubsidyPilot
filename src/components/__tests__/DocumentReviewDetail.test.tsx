@@ -77,9 +77,9 @@ describe('DocumentReviewDetail', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByText('test-document.pdf')).toBeInTheDocument()
-    expect(screen.getByText('Test Farm')).toBeInTheDocument()
-    expect(screen.getByText('financial')).toBeInTheDocument()
+    expect(screen.getByText('test-document.pdf')).toBeTruthy()
+    expect(screen.getByText('Test Farm')).toBeTruthy()
+    expect(screen.getByText('financial')).toBeTruthy()
   })
 
   it('should display extraction data in editable form', () => {
@@ -91,9 +91,9 @@ describe('DocumentReviewDetail', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByDisplayValue('Test Farm')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('150')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Test Farm')).toBeTruthy()
+    expect(screen.getByDisplayValue('John Doe')).toBeTruthy()
+    expect(screen.getByDisplayValue('150')).toBeTruthy()
   })
 
   it('should handle form submission for corrections', async () => {
@@ -149,8 +149,8 @@ describe('DocumentReviewDetail', () => {
     )
 
     const confidenceElement = screen.getByText('85%')
-    expect(confidenceElement).toBeInTheDocument()
-    expect(confidenceElement).toHaveClass('text-yellow-600') // Medium confidence styling
+    expect(confidenceElement).toBeTruthy()
+    expect(confidenceElement.classList.contains('text-yellow-600')).toBe(true) // Medium confidence styling
   })
 
   it('should show loading state appropriately', () => {
@@ -170,7 +170,7 @@ describe('DocumentReviewDetail', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading/i)).toBeTruthy()
   })
 
   it('should handle error states gracefully', () => {
@@ -190,7 +190,7 @@ describe('DocumentReviewDetail', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByText(/error loading document/i)).toBeInTheDocument()
+    expect(screen.getByText(/error loading document/i)).toBeTruthy()
   })
 
   it('should prevent submission when form is invalid', () => {
@@ -231,8 +231,8 @@ describe('DocumentReviewDetail', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByText('openai')).toBeInTheDocument() // extraction method
-    expect(screen.getByText(/1.5s/)).toBeInTheDocument() // processing time
-    expect(screen.getByText('gpt-4o-mini')).toBeInTheDocument() // model used
+    expect(screen.getByText('openai')).toBeTruthy() // extraction method
+    expect(screen.getByText(/1.5s/)).toBeTruthy() // processing time
+    expect(screen.getByText('gpt-4o-mini')).toBeTruthy() // model used
   })
 })

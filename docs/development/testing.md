@@ -87,7 +87,7 @@ npm test -- --grep "classification"
 #### Component Testing
 
 ```typescript
-// Example component test
+// Example component test using standard Vitest assertions
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DocumentCard } from '@/components/farm/DocumentCard'
 import { mockDocumentData } from '@/test/mocks/supabase'
@@ -96,8 +96,9 @@ describe('DocumentCard', () => {
   it('should display document information correctly', () => {
     render(<DocumentCard document={mockDocumentData} />)
     
-    expect(screen.getByText('test-document.pdf')).toBeInTheDocument()
-    expect(screen.getByText('financial')).toBeInTheDocument()
+    // Using standard Vitest assertions instead of jest-dom matchers
+    expect(screen.getByText('test-document.pdf')).toBeTruthy()
+    expect(screen.getByText('financial')).toBeTruthy()
   })
 
   it('should handle click events', () => {
@@ -106,6 +107,13 @@ describe('DocumentCard', () => {
     
     fireEvent.click(screen.getByRole('button'))
     expect(onClickMock).toHaveBeenCalledWith(mockDocumentData.id)
+  })
+
+  it('should check element classes', () => {
+    render(<DocumentCard document={mockDocumentData} />)
+    
+    const element = screen.getByText('financial')
+    expect(element.classList.contains('category-badge')).toBe(true)
   })
 })
 ```
