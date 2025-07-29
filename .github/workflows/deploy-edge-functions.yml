@@ -56,5 +56,3 @@ jobs:
           for fn in classify-document extract-canonical-subsidy extract-document-data improve-subsidy-titles training-pipeline upload-farm-document; do
             supabase functions deploy "$fn"
           done
-
-
