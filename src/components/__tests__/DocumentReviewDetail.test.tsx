@@ -73,7 +73,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -87,7 +87,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -109,7 +109,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -144,7 +144,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -166,7 +166,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -186,7 +186,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -206,7 +206,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 
@@ -227,7 +227,7 @@ describe('DocumentReviewDetail', () => {
     
     render(
       <TestWrapper>
-        <DocumentReviewDetail documentId="test-document-id" />
+        <DocumentReviewDetail documentId="test-document-id" farmId="test-farm-id" />
       </TestWrapper>
     )
 

@@ -2,8 +2,65 @@
  * Test setup file for Vitest
  * Configures global test environment and mocks
  */
-import { vi } from 'vitest'
-import '@testing-library/jest-dom'
+import { vi, expect } from 'vitest'
+
+// Custom jest-dom-like matchers for Vitest
+expect.extend({
+  toBeInTheDocument(received) {
+    const pass = received != null && document.body.contains(received)
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to be in document` : 
+        `expected element to be in document`
+    }
+  },
+  toHaveClass(received, className) {
+    const pass = received?.classList?.contains(className) || false
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to have class "${className}"` : 
+        `expected element to have class "${className}"`
+    }
+  },
+  toBeVisible(received) {
+    const pass = received && received.style.display !== 'none'
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to be visible` : 
+        `expected element to be visible`
+    }
+  },
+  toBeDisabled(received) {
+    const pass = received?.disabled === true
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to be disabled` : 
+        `expected element to be disabled`
+    }
+  },
+  toHaveValue(received, value) {
+    const pass = received?.value === value
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to have value "${value}"` : 
+        `expected element to have value "${value}"`
+    }
+  },
+  toHaveTextContent(received, text) {
+    const pass = received?.textContent?.includes(text) || false
+    return {
+      pass,
+      message: () => pass ? 
+        `expected element not to contain text "${text}"` : 
+        `expected element to contain text "${text}"`
+    }
+  }
+})
 
 // Mock the Supabase client
 vi.mock('@/integrations/supabase/client', () => ({

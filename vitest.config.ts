@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    typecheck: {
+      include: ['**/*.{test,spec}.{ts,tsx}']
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

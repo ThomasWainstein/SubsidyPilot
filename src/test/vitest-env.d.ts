@@ -1,11 +1,21 @@
 /// <reference types="vitest" />
 /// <reference types="vite/client" />
-/// <reference types="@testing-library/jest-dom" />
-
-import type { TestingLibraryMatchers } from '@testing-library/jest-dom/matchers'
 
 declare global {
   namespace Vi {
-    interface JestAssertion<T = any> extends jest.Matchers<void>, TestingLibraryMatchers<T, void> {}
+    interface Assertion<T = any> {
+      toBeInTheDocument(): T
+      toHaveClass(className: string): T
+      toBeVisible(): T
+      toBeDisabled(): T
+      toBeEnabled(): T
+      toHaveValue(value: string | number): T
+      toHaveTextContent(text: string): T
+      toHaveAttribute(attr: string, value?: string): T
+      toBeChecked(): T
+      toHaveFocus(): T
+      toBeEmptyDOMElement(): T
+      toContainElement(element: HTMLElement): T
+    }
   }
 }
