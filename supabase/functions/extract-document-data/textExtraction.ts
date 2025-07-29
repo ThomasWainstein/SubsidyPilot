@@ -96,8 +96,19 @@ export async function extractTextFromFile(
     extractedText = `Failed to extract text from ${fileName}. File type: ${fileExtension}, Size: ${fileSize} bytes. Error: ${errorMsg}`;
   }
 
+  // 🔍 CRITICAL DEBUG: Log text BEFORE cleaning
+  console.log(`🔍 BEFORE CLEANING: Text length = ${extractedText.length}`);
+  console.log(`🔍 BEFORE CLEANING: Text preview = "${extractedText.substring(0, 300)}"`);
+  console.log(`🔍 BEFORE CLEANING: Text type = ${typeof extractedText}`);
+  
   // Clean and validate extracted text
+  const originalText = extractedText;
   extractedText = cleanExtractedText(extractedText);
+  
+  // 🔍 CRITICAL DEBUG: Log text AFTER cleaning
+  console.log(`🔍 AFTER CLEANING: Original length = ${originalText.length}, Cleaned length = ${extractedText.length}`);
+  console.log(`🔍 AFTER CLEANING: Text preview = "${extractedText.substring(0, 300)}"`);
+  
   debugInfo.rawText = extractedText;
   debugInfo.textLength = extractedText.length;
   debugInfo.extractionTime = Date.now() - startTime;

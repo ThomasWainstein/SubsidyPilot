@@ -266,6 +266,11 @@ export async function extractFarmDataWithOpenAI(
   debugInfo?: any,
   model: string = 'gpt-4o-mini'
 ): Promise<ExtractedFarmData> {
+  // 🔍 CRITICAL DEBUG: Log OpenAI input
+  console.log(`🔍 OPENAI INPUT: Text length = ${extractedText?.length || 0}`);
+  console.log(`🔍 OPENAI INPUT: Text preview = "${extractedText?.substring(0, 300) || 'NO TEXT'}"`);
+  console.log(`🔍 OPENAI INPUT: Debug info =`, debugInfo);
+  
   console.log(`🤖 Starting enhanced OpenAI extraction analysis...`);
   console.log(`📄 Document text length: ${extractedText.length} characters`);
   console.log(`📄 Text preview (first 500 chars): ${extractedText.substring(0, 500)}`);

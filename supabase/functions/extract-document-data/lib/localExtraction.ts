@@ -23,12 +23,37 @@ export async function tryLocalExtraction(
 ): Promise<LocalExtractionResult> {
   const startTime = Date.now();
   
+  // 🔍 CRITICAL DEBUG: Log input parameters
+  console.log(`🔍 LOCAL EXTRACTION INPUT: Text length = ${text?.length || 0}`);
+  console.log(`🔍 LOCAL EXTRACTION INPUT: Text preview = "${text?.substring(0, 200) || 'NO TEXT'}"...`);
+  console.log(`🔍 LOCAL EXTRACTION INPUT: Document type = ${documentType}`);
+  console.log(`🔍 LOCAL EXTRACTION INPUT: Confidence threshold = ${confidenceThreshold}`);
+  
   try {
     console.log('⚠️  WARNING: Using rule-based extraction SIMULATION - not actual transformer model!');
+    
+    // Check if we have valid text input
+    if (!text || text.length < 10) {
+      console.warn('❌ Local extraction received insufficient text input');
+      return {
+        extractedFields: [],
+        overallConfidence: 0,
+        processingTime: Date.now() - startTime,
+        modelUsed: 'local-rules-v1',
+        fallbackRecommended: true,
+        errorMessage: 'Insufficient text input for extraction'
+      };
+    }
     
     // For MVP: Use rule-based extraction as "local" extraction
     // This simulates what would be done with actual transformers
     const extractedFields = extractWithRules(text, documentType);
+    
+    // 🔍 CRITICAL DEBUG: Log extraction results
+    console.log(`🔍 LOCAL EXTRACTION RESULTS: Found ${extractedFields.length} fields`);
+    extractedFields.forEach((field, index) => {
+      console.log(`🔍 FIELD ${index + 1}: ${field.field} = "${field.value}" (confidence: ${field.confidence})`);
+    });
     
     // Calculate overall confidence
     const overallConfidence = extractedFields.length > 0 
@@ -37,6 +62,8 @@ export async function tryLocalExtraction(
     
     // Determine if fallback is recommended
     const fallbackRecommended = overallConfidence < confidenceThreshold || extractedFields.length < 2;
+    
+    console.log(`🔍 LOCAL EXTRACTION SUMMARY: Overall confidence = ${overallConfidence}, Fallback recommended = ${fallbackRecommended}`);
     
     const processingTime = Date.now() - startTime;
     

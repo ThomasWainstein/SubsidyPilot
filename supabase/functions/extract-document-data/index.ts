@@ -164,6 +164,11 @@ serve(async (req) => {
     addDebugLog('TEXT_EXTRACTION_START', { fileName });
     const extractionResult = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
     
+    // 🔍 CRITICAL DEBUG: Log extraction result details
+    console.log(`🔍 EXTRACTION RESULT: Text length = ${extractionResult.text.length}`);
+    console.log(`🔍 EXTRACTION RESULT: Text preview = "${extractionResult.text.substring(0, 300)}"`);
+    console.log(`🔍 EXTRACTION RESULT: Debug info =`, extractionResult.debugInfo);
+    
     addDebugLog('TEXT_EXTRACTION_COMPLETE', {
       textLength: extractionResult.text.length,
       textPreview: extractionResult.text.substring(0, 300),
