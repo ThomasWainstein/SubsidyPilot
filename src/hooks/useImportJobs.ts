@@ -23,14 +23,14 @@ const parseCSV = (text: string): Record<string, string>[] => {
   return data;
 };
 
-const parseExcel = async (file: File): Promise<any[]> => {
+const parseExcel = async (file: File): Promise<Record<string, unknown>[]> => {
   // For simplicity, we'll treat Excel as CSV for now
   // In production, you'd use a library like xlsx
   const text = await file.text();
   return parseCSV(text);
 };
 
-const parseJSON = (text: string): any[] => {
+const parseJSON = (text: string): Record<string, unknown>[] => {
   try {
     const parsed = JSON.parse(text);
     return Array.isArray(parsed) ? parsed : [parsed];
@@ -43,7 +43,7 @@ export const useImportJobs = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentJob, setCurrentJob] = useState<ImportJob | null>(null);
-  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [parsedData, setParsedData] = useState<Record<string, unknown>[]>([]);
   const [sourceFields, setSourceFields] = useState<string[]>([]);
 
   // Create import job
@@ -51,7 +51,7 @@ export const useImportJobs = () => {
     file: File, 
     type: 'subsidies' | 'farms' | 'applications'
   ): Promise<ImportJob> => {
-    let data: any[] = [];
+    let data: Record<string, unknown>[] = [];
     
     try {
       const fileType = file.name.split('.').pop()?.toLowerCase();
@@ -137,8 +137,11 @@ export const useImportJobs = () => {
         const transformed: Record<string, unknown> = {};
         
         currentJob.fieldMappings.forEach(mapping => {
-          if (mapping.canonicalField && row[mapping.sourceField] !== undefined) {
-            let value = row[mapping.sourceField];
+          if (
+            mapping.canonicalField &&
+            (row as Record<string, any>)[mapping.sourceField] !== undefined
+          ) {
+            let value: any = (row as Record<string, any>)[mapping.sourceField];
             
             // Apply transformations
             switch (mapping.transform) {
@@ -232,8 +235,12 @@ export const useImportJobs = () => {
         const transformed: Record<string, unknown> = {};
         
         currentJob.fieldMappings.forEach(mapping => {
-          if (mapping.canonicalField && row[mapping.sourceField] !== undefined) {
-            transformed[mapping.canonicalField] = row[mapping.sourceField];
+          if (
+            mapping.canonicalField &&
+            (row as Record<string, any>)[mapping.sourceField] !== undefined
+          ) {
+            transformed[mapping.canonicalField] =
+              (row as Record<string, any>)[mapping.sourceField];
           }
         });
         
