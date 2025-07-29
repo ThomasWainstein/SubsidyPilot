@@ -14,9 +14,11 @@ function validateEnvironment() {
     hasOpenAI: !!Deno.env.get('OPENAI_API_KEY'),
     hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
     hasServiceKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    hasAnonKey: !!Deno.env.get('SUPABASE_ANON_KEY'),
     availableVars: Object.keys(Deno.env.toObject()).filter(k => 
-      k.startsWith('SUPABASE') || k.startsWith('OPENAI') || k.startsWith('SCRAPER')
+      k.startsWith('SUPABASE') || k.startsWith('OPENAI')
     ),
+    allEnvKeys: Object.keys(Deno.env.toObject()).sort()
   });
 
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -28,6 +30,12 @@ function validateEnvironment() {
     if (!openAIApiKey) missingVars.push('OPENAI_API_KEY');
     if (!supabaseUrl) missingVars.push('SUPABASE_URL');
     if (!supabaseServiceKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.error('❌ Missing environment variables:', {
+      OPENAI_API_KEY: openAIApiKey ? '[SET]' : '[MISSING]',
+      SUPABASE_URL: supabaseUrl ? '[SET]' : '[MISSING]',
+      SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? '[SET]' : '[MISSING]'
+    });
     
     throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
   }
@@ -129,7 +137,7 @@ serve(async (req) => {
     });
 
     if (!openAIApiKey) {
-      const error = 'SCRAPER_RAW_GPT_API key not configured';
+      const error = 'OPENAI_API_KEY not configured';
       addDebugLog('OPENAI_KEY_MISSING', { error });
       throw new Error(error);
     }
