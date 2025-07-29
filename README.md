@@ -90,6 +90,14 @@ Frontend variables are safe to expose in the browser. Backend variables must
 remain secret and are used only by server-side code and the Python scraper.
 See `.env.example` for a full template.
 
+## Classification and Simulation Overview
+
+The project uses a lightweight text classification model to categorize uploaded
+documents. Review corrections are stored as audit records, and parts of the
+training pipeline run in simulation mode during development. For more details
+and instructions on enabling or disabling the simulation flag, see
+`CLASSIFICATION_AUDIT_AND_SIMULATION.md`.
+
 ## 🔥 Selenium 4+ Compliance
 
 This project maintains **ZERO TOLERANCE** for legacy Selenium WebDriver patterns. All code contributions must follow strict compliance rules.
