@@ -10,7 +10,11 @@ To enable the automated scraper, add the following secrets to your GitHub reposi
    - Value: `https://gvfgvbztagafjykncwto.supabase.co`
    - Purpose: Supabase project endpoint
 
-2. **SUPABASE_SERVICE_ROLE_KEY**
+2. **NEXT_PUBLIC_SUPABASE_ANON**
+   - Value: [Anon key from Supabase dashboard]
+   - Purpose: Scraper anonymous key
+
+3. **SUPABASE_SERVICE_ROLE_KEY**
    - Value: [Service role key from Supabase dashboard]
    - Purpose: Full database access for scraper operations
 
