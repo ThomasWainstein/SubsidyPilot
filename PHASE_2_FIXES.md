@@ -7,6 +7,7 @@
 - **Solution**: Replaced direct logging of environment variables with safe connection checks
 - **Files Modified**:
   - `supabase/functions/extract-document-data/databaseService.ts` - Removed full URL and service key logging
+  - `supabase/functions/extract-document-data/index.ts` - Sanitized ENVIRONMENT_CHECK logs to only show the Supabase domain
 - **Result**: Only non-sensitive connection status information is now logged
 
 ### 2. Strengthened Error Handling in Edge Functions
@@ -41,6 +42,17 @@ console.log('🔧 Connection check:', {
   hasUrl: !!supabaseUrl,
   hasServiceKey: !!supabaseServiceKey,
   urlDomain: supabaseUrl?.split('://')[1]?.split('.')[0] || 'unknown'
+});
+```
+
+```typescript
+// AFTER: Environment check sanitized
+addDebugLog('ENVIRONMENT_CHECK', {
+  hasOpenAIKey: !!openAIApiKey,
+  openAIKeyLength: openAIApiKey?.length || 0,
+  supabaseDomain: new URL(supabaseUrl).hostname,
+  hasServiceKey: !!supabaseServiceKey,
+  serviceKeyLength: supabaseServiceKey?.length || 0
 });
 ```
 
@@ -85,7 +97,7 @@ const parseCSV = (text: string): Record<string, string>[] => {
 
 ## Files Modified Summary
 - `supabase/functions/extract-document-data/databaseService.ts` - Sanitized logging, improved error handling, fixed types
-- `supabase/functions/extract-document-data/index.ts` - Better HTTP error responses, consistent error messaging
+- `supabase/functions/extract-document-data/index.ts` - Better HTTP error responses, sanitized environment logging, consistent error messaging
 - `src/hooks/useImportJobs.ts` - Replaced `any` types with proper TypeScript types
 - `src/hooks/__tests__/useSubmitReviewCorrection.test.ts` - Fixed test imports and JSX syntax
 
