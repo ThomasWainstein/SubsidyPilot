@@ -8,8 +8,8 @@ Complete guide to configuring AgriTool for different environments and use cases.
 
 ```bash
 # Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_DB_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
 
@@ -18,6 +18,11 @@ NODE_ENV=development|staging|production
 VITE_APP_TITLE="AgriTool"
 VITE_APP_DESCRIPTION="Agricultural Document Management Platform"
 ```
+
+**Note:** When deploying edge functions, `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON` must be stored as [Supabase
+secrets](https://supabase.com/docs/guides/functions/secrets) so they are
+available to the runtime.
 
 ### Feature Flags
 
@@ -151,8 +156,8 @@ Vite loads environment files in this order (later files override earlier ones):
 import { z } from 'zod'
 
 const envSchema = z.object({
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON: z.string().min(1),
   TRAINING_SIMULATION_MODE: z.string().transform(val => val === 'true'),
   CLASSIFICATION_CONFIDENCE_THRESHOLD: z.string().transform(val => parseFloat(val)),
 })
@@ -374,8 +379,8 @@ TELEMETRY_ENDPOINT=https://telemetry.agritool.app
 // Validate critical configuration on startup
 export const validateConfiguration = () => {
   const required = [
-    'SUPABASE_URL',
-    'SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON',
     'SUPABASE_SERVICE_ROLE_KEY'
   ]
 
@@ -387,9 +392,9 @@ export const validateConfiguration = () => {
 
   // Validate URLs
   try {
-    new URL(process.env.SUPABASE_URL!)
+    new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!)
   } catch {
-    throw new Error('Invalid SUPABASE_URL format')
+    throw new Error('Invalid NEXT_PUBLIC_SUPABASE_URL format')
   }
 
   // Validate numeric values
@@ -460,8 +465,8 @@ services:
     build: .
     environment:
       - NODE_ENV=production
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON=${NEXT_PUBLIC_SUPABASE_ANON}
     env_file:
       - .env.production
 ```
@@ -491,13 +496,13 @@ npm run health-check
 
 1. **Missing Environment Variables**
    ```bash
-   Error: Missing required environment variable: SUPABASE_URL
+   Error: Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL
    Solution: Check .env file and ensure all required variables are set
    ```
 
 2. **Invalid URL Format**
    ```bash
-   Error: Invalid SUPABASE_URL format
+   Error: Invalid NEXT_PUBLIC_SUPABASE_URL format
    Solution: Ensure URL includes protocol (https://)
    ```
 
@@ -514,7 +519,7 @@ npm run health-check
 export const debugConfiguration = () => {
   console.log('Environment:', process.env.NODE_ENV)
   console.log('Configuration loaded:', {
-    supabaseUrl: process.env.SUPABASE_URL?.substring(0, 20) + '...',
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20) + '...',
     simulationMode: process.env.TRAINING_SIMULATION_MODE,
     classificationThreshold: process.env.CLASSIFICATION_CONFIDENCE_THRESHOLD,
   })
