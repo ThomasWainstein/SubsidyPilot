@@ -113,10 +113,28 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client - CRITICAL: Environment variable names are case-sensitive
+    // Check required Supabase environment variables BEFORE creating client
+    const supabaseUrl = Deno.env.get('NEXT_PUBLIC_SUPABASE_URL');
+    const supabaseAnon = Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON');
+
+    if (!supabaseUrl || !supabaseAnon) {
+      console.error('Supabase environment variables missing or empty', {
+        NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+        NEXT_PUBLIC_SUPABASE_ANON: supabaseAnon,
+      });
+      return new Response(
+        JSON.stringify({ error: 'Supabase misconfiguration' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    // Create Supabase client - environment variables validated above
     const supabase = createClient(
-      Deno.env.get('NEXT_PUBLIC_SUPABASE_URL') ?? '',
-      Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON') ?? '',
+      supabaseUrl,
+      supabaseAnon,
       {
         auth: {
           autoRefreshToken: false,
@@ -126,7 +144,7 @@ serve(async (req) => {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
         },
-      }
+      },
     );
 
     // Get the current user
