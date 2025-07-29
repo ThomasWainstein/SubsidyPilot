@@ -10,6 +10,7 @@ Before running any scraper or upload scripts, set these required variables:
 
 ```bash
 export NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+export NEXT_PUBLIC_SUPABASE_ANON="your-anon-key"
 export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 export SCRAPER_RAW_GPT_API="your-openai-api-key"
 ```
@@ -84,11 +85,19 @@ This project uses two sets of Supabase credentials:
 
 ### Backend / Scraper
 - `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Frontend variables are safe to expose in the browser. Backend variables must
-remain secret and are used only by server-side code and the Python scraper.
-See `.env.example` for a full template.
+Frontend variables are safe to expose in the browser. Backend variables, including
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON`, must remain secret and
+are used only by server-side code and the Python scraper. Set them as GitHub
+Secrets or in your `.env` file.
+See `.env.example` for a full template. Configure your Supabase project secrets with:
+
+```bash
+supabase secrets set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+                    NEXT_PUBLIC_SUPABASE_ANON=your-anon-key
+```
 
 ## Classification and Simulation Overview
 
