@@ -92,6 +92,7 @@ jobs:
         working-directory: ./AgriToolScraper-main
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DISPLAY: ':99'
         run: |
@@ -111,6 +112,7 @@ jobs:
         working-directory: ./AgriToolScraper-main
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           # Run data pipeline validation test
@@ -182,6 +184,7 @@ jobs:
         working-directory: ./AgriTool-Raw-Log-Interpreter
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           # Map secret with legacy double-P spelling to expected env variable
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
@@ -189,9 +192,10 @@ jobs:
           echo "🤖 Starting AI agent processing..."
 
           # Debug environment variables (without exposing values)
-          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SCRAPER_RAW_GPT_API: $([ -n "$SCRAPER_RAW_GPT_API" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ NEXT_PUBLIC_SUPABASE_ANON: $([ -n \"$NEXT_PUBLIC_SUPABASE_ANON\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SCRAPER_RAW_GPT_API: $([ -n \"$SCRAPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
 
           # Ensure required secret is present
           if [ -z "$SCRAPER_RAW_GPT_API" ]; then
@@ -269,6 +273,7 @@ jobs:
       - name: 🧪 Run comprehensive test suite
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           # Map secret with legacy double-P spelling to expected env variable
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
@@ -294,6 +299,7 @@ jobs:
       - name: 🔍 Data quality validation
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "🔍 Running data quality validation..."
