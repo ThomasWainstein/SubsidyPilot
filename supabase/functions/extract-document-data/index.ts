@@ -208,24 +208,33 @@ serve(async (req) => {
     // Database storage
     addDebugLog('DATABASE_STORAGE_START', { documentId });
     
-    try {
-      await storeExtractionResult(documentId, extractedData, supabaseUrl, supabaseServiceKey);
-      addDebugLog('DATABASE_STORAGE_SUCCESS', { documentId });
-    } catch (dbError) {
-      const errorMessage = `Failed to store extraction: ${(dbError as Error).message}`;
+    const storeResult = await storeExtractionResult(
+      documentId,
+      extractedData,
+      supabaseUrl,
+      supabaseServiceKey
+    );
+
+    if (!storeResult.success) {
+      const errorMessage = storeResult.error || 'Unknown database error';
       addDebugLog('DATABASE_STORAGE_FAILED', {
         error: errorMessage,
         timestamp: new Date().toISOString()
       });
-      
-      return new Response(JSON.stringify({ 
-        error: errorMessage,
-        documentId 
-      }), {
-        status: 500,
-        headers: corsHeaders
-      });
+
+      return new Response(
+        JSON.stringify({
+          error: errorMessage,
+          documentId
+        }),
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      );
     }
+
+    addDebugLog('DATABASE_STORAGE_SUCCESS', { documentId });
 
     // Trigger document classification after successful extraction
     addDebugLog('CLASSIFICATION_START', { documentId });
