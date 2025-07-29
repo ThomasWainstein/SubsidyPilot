@@ -33,23 +33,27 @@ Comprehensive review and correction system for extracted data.
 
 ## Training and Model Management
 
-### [Training Pipeline](./training-pipeline.md)
+### Training Pipeline
 ML model training and deployment system with simulation capabilities.
 
 **Key Capabilities:**
-- Data extraction and preprocessing
+- Data extraction and preprocessing  
 - Simulated training for safe testing
 - Model validation and metrics
 - Staged deployment process
 
-### [Model Management](./model-management.md)
+*Note: Full training pipeline documentation is planned for future phases*
+
+### Model Management
 Centralized model versioning and deployment control.
 
 **Key Capabilities:**
 - Version tracking and rollback
-- A/B testing support
+- A/B testing support  
 - Performance monitoring
 - Health checks and alerts
+
+*Note: Advanced model management features are planned for future phases*
 
 ## Administrative Features
 

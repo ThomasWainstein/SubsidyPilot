@@ -172,4 +172,4 @@ console.log('Extraction completed:', {
 
 - [Document Classification](./document-classification.md)
 - [Human Review Process](./human-review.md)
-- [Training Pipeline](./training-pipeline.md)
+- [User Guide](./user-guide.md) - Complete user documentation

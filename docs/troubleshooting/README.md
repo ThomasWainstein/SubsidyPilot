@@ -90,8 +90,7 @@ npx vitest run --reporter=verbose
 
 #### Missing Test Dependencies
 ```bash
-# Install missing testing libraries
-npm install --save-dev @testing-library/jest-dom
+# Install required testing libraries (jest-dom not needed)
 npm install --save-dev @testing-library/react
 npm install --save-dev @testing-library/user-event
 
