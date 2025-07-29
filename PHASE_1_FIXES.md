@@ -29,6 +29,7 @@ This document tracks the completion of Phase 1 fixes for the AgriTool/Reguline p
 - **Files Modified**:
   - `supabase/functions/training-pipeline/index.ts` - Added clear warnings and feature flag placeholders for simulated training
   - `supabase/functions/extract-document-data/lib/localExtraction.ts` - Added warning about rule-based simulation
+- **Environment Variable Added**: `TRAINING_SIMULATION_MODE` to toggle simulation mode
 - **Result**: Clear warnings now indicate when simulations are running instead of actual ML operations
 
 ## Technical Details
@@ -61,7 +62,8 @@ const { error: auditError } = await supabase
 ```typescript
 // WARNING: This is a simulation for MVP/development purposes only!
 // In production, this should trigger actual model training infrastructure
-const isSimulation = true; // TODO: Replace with environment check or feature flag
+const simulationFlag = Deno.env.get('TRAINING_SIMULATION_MODE');
+const isSimulation = simulationFlag ? simulationFlag.toLowerCase() === 'true' : true;
 
 if (isSimulation) {
   console.log('⚠️  WARNING: Running training SIMULATION - not actual model training!');
