@@ -476,22 +476,30 @@ async function extractImageText(
 }
 
 function cleanExtractedText(text: string): string {
-  return text
-    // Remove excessive whitespace
-    .replace(/\s+/g, ' ')
-    // Remove common PDF artifacts and control characters
-    .replace(/[^\x20-\x7E\u00A0-\u024F\u1E00-\u1EFF\u0100-\u017F]/g, ' ')
-    // Clean up punctuation spacing
-    .replace(/\s+([,.!?;:])/g, '$1')
-    .replace(/([,.!?;:])\s*([a-zA-Z])/g, '$1 $2')
-    // Remove header/footer patterns
-    .replace(/^(Page \d+|\d+\/\d+|Header|Footer).*$/gm, '')
-    // Remove repeated characters
-    .replace(/(.)\1{10,}/g, '$1')
-    // Normalize quotes and dashes
-    .replace(/[""]/g, '"')
-    .replace(/['']/g, "'")
-    .replace(/[–—]/g, '-')
-    // Trim and normalize
+  if (!text || typeof text !== 'string') {
+    console.warn('⚠️ cleanExtractedText received invalid input:', typeof text);
+    return '';
+  }
+  
+  console.log(`🧹 Cleaning text: ${text.length} characters -> starting cleanup...`);
+  
+  let cleaned = text
+    // Remove excessive whitespace but preserve structure
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n')
+    // Remove common PDF artifacts and control characters but be more permissive
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+    // Remove only truly problematic characters, keep most unicode
+    .replace(/\uFEFF/g, '') // Remove BOM
     .trim();
+    
+  console.log(`🧹 Text cleaned: ${text.length} -> ${cleaned.length} characters`);
+  
+  // Additional validation
+  if (cleaned.length < text.length * 0.3) {
+    console.warn('⚠️ Text cleaning removed too much content! Reverting to original with minimal cleaning.');
+    cleaned = text.replace(/\s+/g, ' ').trim();
+  }
+  
+  return cleaned;
 }
