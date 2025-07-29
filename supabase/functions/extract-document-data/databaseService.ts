@@ -3,12 +3,17 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+export interface StoreResult {
+  success: boolean;
+  error?: string;
+}
+
 export async function storeExtractionResult(
   documentId: string,
   extractedData: Record<string, unknown>,
   supabaseUrl: string,
   supabaseServiceKey: string
-): Promise<void> {
+): Promise<StoreResult> {
   console.log(`💾 Storing extraction result for document: ${documentId}`);
   
   // Debug connection (without exposing sensitive data)
@@ -88,11 +93,11 @@ export async function storeExtractionResult(
       .from('document_extractions')
       .insert(extractionRecord)
       .select();
-    
+
     if (error) {
       console.error('❌ Database insertion failed:', error);
       console.error('📄 Failed record details:', extractionRecord);
-      throw new Error(`Database insertion failed: ${error.message} (Code: ${error.code})`);
+      return { success: false, error: `Database insertion failed: ${error.message} (Code: ${error.code})` };
     }
     
     console.log(`✅ Extraction result stored successfully`);
@@ -103,10 +108,12 @@ export async function storeExtractionResult(
       openaiTokens: extractedData.debugInfo?.openaiUsage?.total_tokens || 0
     });
     
+    return { success: true };
+
   } catch (dbError) {
     const errorMessage = `Failed to store extraction: ${(dbError as Error).message}`;
     console.error('❌ Database storage failed:', errorMessage);
-    throw new Error(errorMessage);
+    return { success: false, error: errorMessage };
   }
 }
 
