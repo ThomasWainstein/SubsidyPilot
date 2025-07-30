@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { unifiedExtractionService } from '@/lib/extraction/unified-extraction-service';
 
@@ -47,11 +48,11 @@ const createTestWrapper = () => {
     }
   });
   
-  return function TestWrapper(props: any) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {props.children}
-      </QueryClientProvider>
+  return function TestWrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children
     );
   };
 };
