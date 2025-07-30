@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -269,46 +269,107 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
     }
   };
 
-  const applyToForm = () => {
-    const mappedData = fields.reduce((acc, field) => {
-      // Map to form field names
-      const mapping: Record<string, string> = {
-        farmName: 'name',
-        ownerName: 'ownerName',
-        address: 'address',
-        totalHectares: 'total_hectares',
-        legalStatus: 'legal_status',
-        registrationNumber: 'cnp_or_cui',
-        revenue: 'revenue',
-        country: 'country',
-        email: 'email',
-        phone: 'phone',
-        certifications: 'certifications',
-        activities: 'land_use_types'
-      };
-
-      const formField = mapping[field.fieldName] || field.fieldName;
-      let value = field.value;
-
-      // Handle special formatting
-      if (field.fieldName === 'totalHectares') {
-        value = typeof value === 'string' ? parseFloat(value) : value;
-      }
-      if (['certifications', 'activities'].includes(field.fieldName) && typeof value === 'string') {
-        value = value.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+  const applyToForm = useCallback(() => {
+    try {
+      // Only include non-empty fields
+      const validFields = fields.filter(field => 
+        field.value !== null && field.value !== undefined && field.value !== '' && 
+        !(Array.isArray(field.value) && field.value.length === 0)
+      );
+      
+      if (validFields.length === 0) {
+        toast({
+          title: 'No Data to Apply',
+          description: 'Please add some field values before applying to form.',
+          variant: 'destructive',
+        });
+        return;
       }
 
-      acc[formField] = value;
-      return acc;
-    }, {} as any);
+      const mappedData = validFields.reduce((acc, field) => {
+        // Map to form field names
+        const mapping: Record<string, string> = {
+          farmName: 'name',
+          ownerName: 'ownerName',
+          address: 'address',
+          totalHectares: 'total_hectares',
+          legalStatus: 'legal_status',
+          registrationNumber: 'cnp_or_cui',
+          revenue: 'revenue',
+          country: 'country',
+          email: 'email',
+          phone: 'phone',
+          certifications: 'certifications',
+          activities: 'land_use_types',
+          description: 'description',
+          department: 'department',
+          locality: 'locality'
+        };
 
-    onApplyToForm(mappedData);
-    
-    toast({
-      title: 'Applied to Form',
-      description: 'Extracted data has been applied to the farm form.',
-    });
-  };
+        const formField = mapping[field.fieldName] || field.fieldName;
+        let value = field.value;
+
+        // Data type transformations with validation
+        if (field.fieldName === 'totalHectares') {
+          if (typeof value === 'string') {
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+              console.warn(`Invalid hectares value: ${value}`);
+              return acc; // Skip invalid values
+            }
+            value = numValue;
+          }
+        }
+        
+        if (['certifications', 'activities'].includes(field.fieldName) && typeof value === 'string') {
+          value = value.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+        }
+
+        // Validate email format
+        if (field.fieldName === 'email' && typeof value === 'string') {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            console.warn(`Invalid email format: ${value}`);
+            return acc; // Skip invalid email
+          }
+        }
+
+        acc[formField] = value;
+        return acc;
+      }, {} as any);
+
+      if (Object.keys(mappedData).length === 0) {
+        toast({
+          title: 'No Valid Data',
+          description: 'No valid field values found to apply to form.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Apply with error boundary
+      onApplyToForm(mappedData);
+      
+      toast({
+        title: 'Applied to Form',
+        description: `Applied ${Object.keys(mappedData).length} fields to the farm form.`,
+      });
+
+      // Log application for debugging
+      console.log('Applied extraction data to form:', {
+        appliedFields: Object.keys(mappedData),
+        totalFields: validFields.length,
+        documentId
+      });
+      
+    } catch (error) {
+      console.error('Error applying data to form:', error);
+      toast({
+        title: 'Application Failed',
+        description: 'Failed to apply data to form. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [fields, onApplyToForm, documentId]);
 
   const exportData = () => {
     const exportData = {
