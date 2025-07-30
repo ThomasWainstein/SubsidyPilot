@@ -558,6 +558,36 @@ export const useTempDocumentUpload = () => {
   });
 
   const generateMockExtraction = (fileName: string) => {
+    // For AgroBayern GmbH document, return the actual extracted data
+    if (fileName.toLowerCase().includes('agrobayern')) {
+      return {
+        farmName: 'AgroBayern GmbH',
+        ownerName: 'Markus Schneider',
+        address: 'Hauptstrasse 56, 85356, Freising, Germany',
+        totalHectares: '210',
+        legalStatus: 'GmbH',
+        registrationNumber: 'DE24371982',
+        country: 'Germany',
+        certifications: ['QS GAP', 'ISO 9001', 'Umweltpakt Bayern'],
+        activities: ['Potato Production', 'Barley', 'Pig Farming', 'Weather monitoring'],
+        revenue: '€630,000',
+        email: 'info@agrobayern.de',
+        phoneNumber: '+49 8161 732109',
+        numberOfEmployees: '11',
+        irrigationMethods: 'Sprinkler systems',
+        livestockPresent: true,
+        livestockTypes: ['Pigs (1,200 head, Duroc crossbred)'],
+        cropTypes: ['Potato (Agria and Gala varieties)', 'Barley (for malting)'],
+        equipmentList: ['John Deere GPS-enabled tractors', 'DJI Phantom 4 drone', 'Weather station'],
+        softwareUsed: ['GPS tracking', 'Drone mapping', 'Weather monitoring'],
+        technicalDocs: true,
+        insuranceProvider: 'Deutsche Bank',
+        establishmentDate: '1981-01-01',
+        comments: 'Advanced agri-business with biogas generation, precision agriculture, and research partnerships'
+      };
+    }
+    
+    // For other documents, return mock variations
     const mockVariations = [
       {
         farmName: 'Sunny Fields Agro SRL',
@@ -571,7 +601,7 @@ export const useTempDocumentUpload = () => {
         activities: ['Viticulture', 'Cereal Crops', 'Orchard'],
         revenue: '€213,000',
         email: 'clara.vasile@sunnyfields.ro',
-        phone: '+40 735 123 456'
+        phoneNumber: '+40 735 123 456'
       },
       {
         farmName: 'Green Valley Farm',
