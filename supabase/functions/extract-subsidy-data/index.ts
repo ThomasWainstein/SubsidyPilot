@@ -58,90 +58,80 @@ interface SubsidyExtractionResult {
   confidence_scores: Record<string, number> | null;
 }
 
-const SUBSIDY_EXTRACTION_PROMPT = `You are an expert agricultural funding analyst. Extract ALL detailed information from subsidy documents to create comprehensive, well-structured entries that preserve every important detail.
+const SUBSIDY_VERBATIM_EXTRACTION_PROMPT = `
+You are an expert document extraction assistant. Your task is to extract the full content of a subsidy webpage or document **verbatim**, preserving all original wording, formatting, punctuation, and structure, in any language, without summarization or paraphrasing.
 
-CRITICAL INSTRUCTIONS:
-1. Extract ALL content - do not summarize or lose any important information
-2. Preserve exact funding amounts, percentages, dates, and specific requirements
-3. Maintain original terminology and official language
-4. If you see detailed requirements or procedures, extract them fully
-5. Generate proper titles based on the actual program name, not generic placeholders
+Return a valid JSON object with the following keys exactly:
 
-REQUIRED OUTPUT STRUCTURE:
+{
+  "title": string | null,
+  "contact": {
+    "email": string | null,
+    "phone": string | null,
+    "website": string | null
+  },
+  "period": {
+    "start_date": string | null,
+    "end_date": string | null,
+    "publication_date": string | null
+  },
+  "presentation": string | null,
+  "objectives": string | null,
+  "actions": string | null,
+  "eligibility": string | null,
+  "application_process": [
+    {
+      "step_number": integer,
+      "description": string,
+      "required_documents": [string]
+    }
+  ],
+  "funding": {
+    "amount": string | null,
+    "contribution_rate": string | null,
+    "type": string | null
+  },
+  "deadlines": {
+    "application_start": string | null,
+    "application_end": string | null,
+    "status": string | null
+  },
+  "documents": [ { "name": string, "format": string | null } ],
+  "additional_info": string | null,
+  "language": string,
+  "metadata": {
+    "source_url": string | null,
+    "extraction_date": string,
+    "confidence": object
+  }
+}
 
-TITLE GENERATION:
-- title: Create a specific, descriptive title based on the actual program name, code, and focus area. NEVER use generic titles like "Subsidy Page" or "Agricultural Program". Use format: "[Program Code] - [Program Name]" or similar based on actual content.
+CRITICAL EXTRACTION RULES:
+1. Extract ALL content verbatim - NO summarization, NO paraphrasing, NO translation
+2. Preserve exact original formatting, paragraphs, line breaks, bullet points
+3. Maintain all named entities, numbers, policy references, legal citations as-is
+4. If a section or field is missing, set its value to null or empty array
+5. Support multi-language documents, preserving language-specific text
+6. Include all tables, appendices, document references exactly as listed
+7. Preserve all links, emails, phone numbers, and addresses exactly
+8. Keep original punctuation, capitalization, and special characters
 
-PRESENTATION SECTION (Complete program description):
-- description: Extract the FULL presentation/description section. Include:
-  * Complete program overview and objectives
-  * All policy context and background information
-  * Detailed explanation of supported actions/activities
-  * All investment types and eligible expenses
-  * Complete funding calculation methods and rates
-  * Any specific criteria or conditions mentioned
-  
-ELIGIBILITY SECTION (Who can apply):
-- eligibility: Extract COMPLETE eligibility information including:
-  * All beneficiary types and legal entity requirements
-  * Specific eligibility criteria and conditions
-  * Required registrations, affiliations, or certifications
-  * Size limits, geographic restrictions, or sector requirements
-  * Any exclusions or special conditions
+SECTION MAPPING INSTRUCTIONS:
+- "title": Extract the main program title/heading exactly as shown
+- "presentation": Full introductory/overview text preserving all paragraphs
+- "objectives": Complete objectives section verbatim
+- "actions": All eligible/ineligible actions text exactly as written
+- "eligibility": Full eligibility criteria preserving all conditions and requirements
+- "application_process": Step-by-step process with exact wording and document names
+- "funding": All funding amounts, rates, types exactly as stated
+- "deadlines": All dates and timeline information verbatim
+- "documents": Every required document with exact names and formats
+- "additional_info": Any remaining content not categorized above
 
-TIMING SECTION (When to apply):
-- deadline: Extract exact deadline date in YYYY-MM-DD format
-- application_window_start: Start date if specified
-- application_window_end: End date if specified  
-- project_duration: Allowed project duration or implementation timeframes
-- payment_terms: Payment schedule and timing details
+If a key is missing or empty in source, assign null or empty array accordingly.
 
-APPLICATION PROCESS (How to apply):
-- application_requirements: Array of ALL required steps, documents, and procedures including:
-  * Complete step-by-step application process
-  * All required forms and documents with exact names
-  * Portal links and submission methods
-  * Review and evaluation process
-  * Payment request procedures
-- documents: Array of ALL required documents with exact official names
-- application_method: How to submit (online portal, mail, etc.)
-
-COMPREHENSIVE DETAILS:
-- program: Full program name
-- agency: Managing agency/organization
-- amount: Array of ALL funding amounts mentioned (preserve all numbers)
-- funding_type: Specific type of funding
-- funding_source: Source of funding (EU, national, regional, etc.)
-- co_financing_rate: Co-financing percentage if mentioned
-- region: Array of applicable regions
-- sector: Array of ALL applicable sectors/activities
-- legal_entity_type: Array of ALL eligible legal entity types
-- objectives: Array of ALL program objectives
-- eligible_actions: Array of ALL eligible actions/investments
-- ineligible_actions: Array of actions explicitly excluded
-- investment_types: Array of investment categories supported
-- evaluation_criteria: Detailed evaluation and scoring criteria
-- reporting_requirements: Reporting obligations
-- compliance_requirements: Compliance and audit requirements
-- technical_support: Available technical assistance
-- language: Document language (fr, en, etc.)
-
-CONTACT AND REFERENCE:
-- url: Source URL if available
-- contact_info: Complete contact information including email, phone, portal links
-
-METADATA:
-- confidence_scores: Object with confidence (0.0-1.0) for major extractions
-- missing_fields: Array of fields that couldn't be extracted
-
-EXAMPLE OF GOOD TITLE GENERATION:
-- Instead of "Subsidy Page" → "(OS 2.2) - TA 1 : Transformation (Régions continentales uniquement)"
-- Instead of "Agricultural Program" → "FEAMPA - Aide aux investissements de modernisation"
-- Use actual program codes, names, and focus areas from the document
-
-REMEMBER: Extract EVERYTHING in detail. Do not lose any information. The goal is to preserve all the rich content from the original document in a structured format.
-
-Respond with valid JSON only. Do not include explanations or markdown formatting.`;
+Response must be valid JSON only, no explanations or markdown.
+`;
 
 async function extractTextFromFile(fileUrl: string, fileName: string): Promise<string> {
   console.log(`📄 Extracting text from: ${fileName}`);
@@ -196,7 +186,7 @@ async function callOpenAIExtraction(documentText: string, fileName: string): Pro
       messages: [
         {
           role: 'system',
-          content: SUBSIDY_EXTRACTION_PROMPT
+          content: SUBSIDY_VERBATIM_EXTRACTION_PROMPT
         },
         {
           role: 'user',
@@ -236,57 +226,38 @@ async function storeSubsidyData(extractedData: any, metadata: any): Promise<stri
   console.log('💾 Storing comprehensive extracted subsidy data');
   
   try {
-    // Prepare comprehensive data for subsidies_structured table
+    // Prepare comprehensive data for subsidies_structured table using new verbatim schema
     const subsidyData = {
       // Title and basic info
-      title: extractedData.title || extractedData.program_title,
-      description: extractedData.description || extractedData.summary,
-      program: extractedData.program,
-      agency: extractedData.agency,
+      title: extractedData.title,
+      description: extractedData.presentation,
       
-      // Funding information - preserve all amounts
-      amount: extractedData.amount || extractedData.funding_range,
-      funding_type: extractedData.funding_type,
-      funding_source: extractedData.funding_source,
-      co_financing_rate: extractedData.co_financing_rate,
+      // Contact information
+      agency: extractedData.contact?.email ? 'Contact: ' + extractedData.contact.email : null,
       
-      // Geographic and sector targeting
-      region: extractedData.region || extractedData.applicable_regions,
-      sector: extractedData.sector || extractedData.sectors,
+      // Funding information - extract from new funding object
+      amount: extractedData.funding?.amount ? [extractedData.funding.amount] : null,
+      co_financing_rate: extractedData.funding?.contribution_rate ? parseFloat(extractedData.funding.contribution_rate.replace('%', '')) : null,
+      funding_type: extractedData.funding?.type,
       
-      // Comprehensive eligibility information
+      // Eligibility information
       eligibility: extractedData.eligibility,
-      legal_entity_type: extractedData.legal_entity_type || extractedData.legal_entity_types,
       
-      // Detailed application process
-      application_requirements: extractedData.application_requirements || extractedData.application_steps,
-      documents: extractedData.documents || extractedData.required_documents,
-      application_method: extractedData.application_method,
+      // Application process - map from new structure
+      application_requirements: extractedData.application_process || [],
+      documents: extractedData.documents || [],
       
-      // Comprehensive program details
-      objectives: extractedData.objectives,
-      eligible_actions: extractedData.eligible_actions,
-      ineligible_actions: extractedData.ineligible_actions,
-      investment_types: extractedData.investment_types,
-      beneficiary_types: extractedData.beneficiary_types,
+      // Program details from verbatim content
+      objectives: extractedData.objectives ? [extractedData.objectives] : null,
+      eligible_actions: extractedData.actions ? [extractedData.actions] : null,
       
-      // Timing information
-      deadline: extractedData.deadline || extractedData.application_deadline,
-      application_window_start: extractedData.application_window_start,
-      application_window_end: extractedData.application_window_end,
-      project_duration: extractedData.project_duration,
-      payment_terms: extractedData.payment_terms,
-      
-      // Requirements and criteria
-      evaluation_criteria: extractedData.evaluation_criteria,
-      reporting_requirements: extractedData.reporting_requirements,
-      compliance_requirements: extractedData.compliance_requirements,
-      
-      // Additional support and contact
-      technical_support: extractedData.technical_support,
+      // Timing information from new deadlines structure
+      deadline: extractedData.deadlines?.application_end || extractedData.period?.end_date,
+      application_window_start: extractedData.deadlines?.application_start || extractedData.period?.start_date,
+      application_window_end: extractedData.deadlines?.application_end || extractedData.period?.end_date,
       
       // Contact and reference
-      url: extractedData.url || metadata?.sourceUrl,
+      url: extractedData.metadata?.source_url || metadata?.sourceUrl,
       
       // Language and metadata
       language: extractedData.language || 'fr',
@@ -294,23 +265,26 @@ async function storeSubsidyData(extractedData: any, metadata: any): Promise<stri
       // Processing status
       requirements_extraction_status: 'completed',
       
+      // Additional verbatim content
+      technical_support: extractedData.additional_info,
+      
       // Comprehensive audit information
       audit: {
-        extraction_method: 'enhanced_openai_gpt4',
+        extraction_method: 'verbatim_openai_gpt4',
         extracted_at: new Date().toISOString(),
         source_file: metadata?.fileName,
         source_url: metadata?.sourceUrl,
-        confidence_scores: extractedData.confidence_scores,
+        confidence_scores: extractedData.metadata?.confidence || {},
         fields_extracted: Object.keys(extractedData).length,
-        comprehensive_extraction: true,
+        verbatim_extraction: true,
         model_used: 'gpt-4.1-2025-04-14'
       },
       
-      // Store missing fields tracking
-      missing_fields: extractedData.missing_fields || [],
+      // Store verbatim sections for full content preservation
+      missing_fields: [],
       
-      // Form generation data
-      questionnaire_steps: extractedData.application_requirements || extractedData.application_steps || [],
+      // Form generation data from application process
+      questionnaire_steps: extractedData.application_process || [],
     };
     
     // Clean up null/undefined values to avoid database issues
