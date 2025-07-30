@@ -367,11 +367,11 @@ const SubsidyDetailPage = () => {
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground mb-2">Required Files:</p>
                                     <div className="flex flex-wrap gap-2">
-                                      {req.required_files.map((file: string, fileIndex: number) => (
-                                        <Badge key={fileIndex} variant="secondary" className="text-sm">
-                                          {getRequirementLabel(file)}
-                                        </Badge>
-                                      ))}
+                                       {req.required_files.map((file: any, fileIndex: number) => (
+                                         <Badge key={fileIndex} variant="secondary" className="text-sm">
+                                           {getRequirementLabel(file)}
+                                         </Badge>
+                                       ))}
                                     </div>
                                   </div>
                                 )}
@@ -407,11 +407,11 @@ const SubsidyDetailPage = () => {
                 <div className="mt-6">
                   <h3 className="text-lg font-medium mb-3">Required Documents</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {subsidy.documents.map((doc: string, index: number) => (
-                      <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                        <span className="text-sm">{getRequirementLabel(doc)}</span>
-                      </div>
+                     {subsidy.documents.map((doc: any, index: number) => (
+                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                         <FileText className="h-5 w-5 text-blue-600" />
+                         <span className="text-sm">{getRequirementLabel(doc)}</span>
+                       </div>
                     ))}
                   </div>
                 </div>
