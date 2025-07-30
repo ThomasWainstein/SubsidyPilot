@@ -14,11 +14,14 @@ import {
   CheckCircle,
   Clock,
   Edit,
-  History
+  History,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { useDocumentReviewDetail, useSubmitReviewCorrection } from '@/hooks/useDocumentReview';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import ReExtractButton from './ReExtractButton';
 
 interface DocumentReviewDetailProps {
   farmId: string;
@@ -77,6 +80,40 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
     } catch (error) {
       console.error('Failed to submit review:', error);
     }
+  };
+
+  const handleExportExtraction = () => {
+    const exportData = {
+      document: {
+        id: documentDetail?.id,
+        fileName: documentDetail?.file_name,
+        category: documentDetail?.category,
+        uploadDate: documentDetail?.uploaded_at
+      },
+      extraction: extraction ? {
+        id: extraction.id,
+        status: extraction.status,
+        confidence: extraction.confidence_score,
+        extractionType: extraction.extraction_type,
+        extractedData: extractedFields,
+        createdAt: extraction.created_at,
+        debugInfo: extraction.debug_info
+      } : null,
+      review: {
+        status: reviewStatus,
+        notes: reviewerNotes,
+        hasChanges,
+        exportDate: new Date().toISOString()
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `extraction-${documentDetail?.file_name}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -145,6 +182,19 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
             <Eye className="h-4 w-4 mr-2" />
             View Document
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExtraction}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <ReExtractButton 
+            documentId={documentId}
+            documentName={documentDetail.file_name}
+            onSuccess={() => window.location.reload()}
+          />
           <Button
             onClick={handleSubmitReview}
             disabled={!hasChanges || submitCorrection.isPending}

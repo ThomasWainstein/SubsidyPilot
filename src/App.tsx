@@ -28,6 +28,9 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
 import DocumentReviewPage from '@/pages/DocumentReviewPage';
 import DocumentReviewDetailPage from '@/pages/DocumentReviewDetailPage';
+import ExtractionAnalyticsPage from '@/pages/ExtractionAnalyticsPage';
+import SupportedFileTypesPage from '@/pages/SupportedFileTypesPage';
+import ReviewWorkflowDocsPage from '@/pages/ReviewWorkflowDocsPage';
 import TrainingPipelinePage from '@/pages/TrainingPipelinePage';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
@@ -109,6 +112,26 @@ function App() {
                       <ProtectedRoute>
                         <DocumentReviewDetailPage />
                       </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/document-review/analytics" 
+                    element={
+                      <ProtectedRoute>
+                        <ExtractionAnalyticsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/supported-file-types" 
+                    element={
+                      <SupportedFileTypesPage />
+                    } 
+                  />
+                  <Route 
+                    path="/review-workflow" 
+                    element={
+                      <ReviewWorkflowDocsPage />
                     } 
                   />
                   <Route 

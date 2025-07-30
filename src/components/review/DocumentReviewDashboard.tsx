@@ -14,11 +14,16 @@ import {
   CheckCircle, 
   Clock,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Download,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 import { useDocumentsForReview, useReviewStatistics } from '@/hooks/useDocumentReview';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import DocumentPreviewModal from './DocumentPreviewModal';
+import ReExtractButton from './ReExtractButton';
 
 interface DocumentReviewDashboardProps {
   farmId: string;
@@ -30,6 +35,8 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [confidenceFilter, setConfidenceFilter] = useState<number | undefined>();
   const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { data: documents = [], isLoading } = useDocumentsForReview(farmId, {
     category: categoryFilter || undefined,
@@ -73,6 +80,35 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
 
   const handleReviewDocument = (documentId: string) => {
     navigate(`/farm/${farmId}/document-review/${documentId}`);
+  };
+
+  const handlePreviewDocument = (document: any) => {
+    setSelectedDocument(document);
+    setShowPreview(true);
+  };
+
+  const handleExportData = () => {
+    const csvData = documents.map(doc => ({
+      fileName: doc.file_name,
+      category: doc.category,
+      uploadDate: doc.uploaded_at,
+      extractionStatus: doc.extraction?.status || 'pending',
+      confidence: doc.extraction?.confidence_score || 0,
+      needsReview: doc.needsReview,
+      priority: doc.reviewPriority
+    }));
+
+    const csvHeaders = Object.keys(csvData[0] || {}).join(',');
+    const csvRows = csvData.map(row => Object.values(row).join(','));
+    const csvContent = [csvHeaders, ...csvRows].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `document-review-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
@@ -141,10 +177,22 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Document Review Queue
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Document Review Queue
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportData}>
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/farm/${farmId}/document-review/analytics`)}>
+                <Settings className="h-4 w-4 mr-1" />
+                Analytics
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -259,15 +307,21 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
                     </TableCell>
                     
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(document.file_url, '_blank')}
+                          onClick={() => handlePreviewDocument(document)}
                           className="h-8 px-2"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <ReExtractButton 
+                          documentId={document.id}
+                          documentName={document.file_name}
+                          variant="ghost"
+                          size="sm"
+                        />
                         <Button
                           size="sm"
                           onClick={() => handleReviewDocument(document.id)}
@@ -296,6 +350,13 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal 
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        document={selectedDocument}
+      />
     </div>
   );
 };
