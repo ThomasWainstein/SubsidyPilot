@@ -22,12 +22,12 @@ serve(async (req) => {
     );
 
     console.log('🔍 Fetching subsidies with poor quality titles...');
-    // Fetch subsidies with poor quality titles
+    // Fetch subsidies with poor quality titles - expand the filter
     const { data: subsidies, error } = await supabaseClient
       .from('subsidies_structured')
       .select('id, title, agency, sector, description, url')
-      .eq('title', 'Subsidy Page')
-      .limit(20);
+      .or('title.eq.Subsidy Page,title.ilike.%guide usager%,title.ilike.%rubrique%,title.ilike.%Agricultural Grant%,title.ilike.%Support Program%')
+      .limit(50);
 
     console.log(`📊 Found ${subsidies?.length || 0} subsidies to improve`);
 
@@ -43,41 +43,110 @@ serve(async (req) => {
       
       let improvedTitle = null;
       
-      // Clean agency name - extract just "FranceAgriMer" from longer text
-      let cleanAgency = null;
-      if (subsidy.agency) {
-        const agencyLower = subsidy.agency.toLowerCase();
-        if (agencyLower.includes('franceagrimer')) {
-          cleanAgency = 'FranceAgriMer';
-        } else {
-          // Take first few words if it's a long agency description
-          const words = subsidy.agency.split(' ');
-          cleanAgency = words.length > 3 ? words.slice(0, 3).join(' ') : subsidy.agency;
+      // Try to extract title from source URL if available
+      if (subsidy.url) {
+        console.log(`   📡 Fetching content from: ${subsidy.url}`);
+        try {
+          const response = await fetch(subsidy.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+          });
+          
+          if (response.ok) {
+            const html = await response.text();
+            
+            // Extract title from various sources
+            let extractedTitle = null;
+            
+            // Try to find title in h1 tags
+            const h1Match = html.match(/<h1[^>]*>([^<]+)</i);
+            if (h1Match) {
+              extractedTitle = h1Match[1].trim();
+            }
+            
+            // Try title tag as fallback
+            if (!extractedTitle) {
+              const titleMatch = html.match(/<title[^>]*>([^<]+)</i);
+              if (titleMatch) {
+                extractedTitle = titleMatch[1].trim()
+                  .replace(/\s*-\s*FranceAgriMer.*$/i, '') // Remove site suffix
+                  .replace(/\s*\|\s*.*$/i, ''); // Remove pipe separators
+              }
+            }
+            
+            // Try specific FranceAgriMer patterns
+            if (!extractedTitle) {
+              const patterns = [
+                /<div[^>]*class="[^"]*titre[^"]*"[^>]*>([^<]+)/i,
+                /<h2[^>]*>([^<]+(?:PAC|programme|opérationnel|aide)[^<]*)</i,
+                /<h3[^>]*>([^<]+(?:PAC|programme|opérationnel|aide)[^<]*)</i
+              ];
+              
+              for (const pattern of patterns) {
+                const match = html.match(pattern);
+                if (match) {
+                  extractedTitle = match[1].trim();
+                  break;
+                }
+              }
+            }
+            
+            if (extractedTitle && extractedTitle.length > 10 && extractedTitle.length < 200) {
+              // Clean up the extracted title
+              improvedTitle = extractedTitle
+                .replace(/\s+/g, ' ')
+                .replace(/^[^\w]+|[^\w]+$/g, '') // Remove leading/trailing non-word chars
+                .trim();
+              
+              console.log(`   🎯 Extracted title from URL: "${improvedTitle}"`);
+            }
+          }
+        } catch (urlError) {
+          console.log(`   ⚠️ Failed to fetch URL: ${urlError.message}`);
         }
       }
       
-      // Try to extract a meaningful title from description if no agency
-      if (!cleanAgency && subsidy.description) {
-        const desc = subsidy.description.toLowerCase();
-        if (desc.includes('plantation')) {
-          improvedTitle = 'Aide à la plantation de vergers';
-        } else if (desc.includes('investissement')) {
-          improvedTitle = 'Aide aux investissements agricoles';
-        } else if (desc.includes('modernisation')) {
-          improvedTitle = 'Aide à la modernisation';
-        } else if (desc.includes('restructuration')) {
-          improvedTitle = 'Aide à la restructuration';
-        } else if (desc.includes('développement')) {
-          improvedTitle = 'Aide au développement rural';
+      // Fallback to description-based extraction if URL extraction failed
+      if (!improvedTitle && subsidy.description) {
+        const desc = subsidy.description;
+        
+        // Look for patterns that suggest a title
+        const titlePatterns = [
+          /([A-Z][^.!?]*(?:PAC|programme|opérationnel|aide|subvention)[^.!?]*)/i,
+          /([A-Z][^.!?]*(?:fruits|légumes|viticulture|agricole)[^.!?]*)/i,
+          /^([A-Z][^.!?]{20,100})/
+        ];
+        
+        for (const pattern of titlePatterns) {
+          const match = desc.match(pattern);
+          if (match) {
+            improvedTitle = match[1].trim();
+            console.log(`   📝 Extracted title from description: "${improvedTitle}"`);
+            break;
+          }
         }
       }
       
-      // Generate title based on available data
-      if (!improvedTitle && cleanAgency && subsidy.sector?.length) {
-        const sectors = subsidy.sector.slice(0, 2).join(', ');
-        improvedTitle = `Aide ${cleanAgency} - ${sectors}`;
-      } else if (!improvedTitle && cleanAgency) {
-        improvedTitle = `Aide ${cleanAgency}`;
+      // Final fallback - generate based on agency and sector
+      if (!improvedTitle) {
+        let cleanAgency = null;
+        if (subsidy.agency) {
+          const agencyLower = subsidy.agency.toLowerCase();
+          if (agencyLower.includes('franceagrimer')) {
+            cleanAgency = 'FranceAgriMer';
+          } else {
+            const words = subsidy.agency.split(' ');
+            cleanAgency = words.length > 3 ? words.slice(0, 3).join(' ') : subsidy.agency;
+          }
+        }
+        
+        if (cleanAgency && subsidy.sector?.length) {
+          const sectors = subsidy.sector.slice(0, 2).join(', ');
+          improvedTitle = `Aide ${cleanAgency} - ${sectors}`;
+        } else if (cleanAgency) {
+          improvedTitle = `Aide ${cleanAgency}`;
+        }
       }
       
       if (improvedTitle) {
