@@ -58,53 +58,88 @@ interface SubsidyExtractionResult {
   confidence_scores: Record<string, number> | null;
 }
 
-const SUBSIDY_EXTRACTION_PROMPT = `You are a specialized document intelligence agent for extracting structured subsidy and funding program information from administrative documents (PDFs, DOCX, web pages, etc.).
+const SUBSIDY_EXTRACTION_PROMPT = `You are an expert agricultural funding analyst. Extract ALL detailed information from subsidy documents to create comprehensive, well-structured entries that preserve every important detail.
 
-Your task is to extract key information that will be used to:
-1. Populate subsidy program listings for farmers
-2. Generate dynamic application forms
-3. Enable automatic matching with farm profiles
+CRITICAL INSTRUCTIONS:
+1. Extract ALL content - do not summarize or lose any important information
+2. Preserve exact funding amounts, percentages, dates, and specific requirements
+3. Maintain original terminology and official language
+4. If you see detailed requirements or procedures, extract them fully
+5. Generate proper titles based on the actual program name, not generic placeholders
 
-Extract the following fields from the document. If information is missing or unclear, set the value to null:
+REQUIRED OUTPUT STRUCTURE:
 
-PROGRAM IDENTIFICATION:
-- program_title: Official program name or title
-- program_code: Any official reference number, code, or identifier
-- summary: Brief description of the program (2-3 sentences)
+TITLE GENERATION:
+- title: Create a specific, descriptive title based on the actual program name, code, and focus area. NEVER use generic titles like "Subsidy Page" or "Agricultural Program". Use format: "[Program Code] - [Program Name]" or similar based on actual content.
 
-FUNDING DETAILS:
-- total_funding: Total available funding as text (e.g., "€2.5 million")
-- funding_range: Array of numbers [min, max] if funding amounts per applicant are specified
-- funding_type: "grant", "loan", "subsidy", "tax_credit", or "other"
+PRESENTATION SECTION (Complete program description):
+- description: Extract the FULL presentation/description section. Include:
+  * Complete program overview and objectives
+  * All policy context and background information
+  * Detailed explanation of supported actions/activities
+  * All investment types and eligible expenses
+  * Complete funding calculation methods and rates
+  * Any specific criteria or conditions mentioned
+  
+ELIGIBILITY SECTION (Who can apply):
+- eligibility: Extract COMPLETE eligibility information including:
+  * All beneficiary types and legal entity requirements
+  * Specific eligibility criteria and conditions
+  * Required registrations, affiliations, or certifications
+  * Size limits, geographic restrictions, or sector requirements
+  * Any exclusions or special conditions
 
-TIMING:
-- application_deadline: ISO date format (YYYY-MM-DD) if specified
-- important_dates: Array of objects with "date" and "description" for key milestones
+TIMING SECTION (When to apply):
+- deadline: Extract exact deadline date in YYYY-MM-DD format
+- application_window_start: Start date if specified
+- application_window_end: End date if specified  
+- project_duration: Allowed project duration or implementation timeframes
+- payment_terms: Payment schedule and timing details
 
-TARGETING:
-- applicable_regions: Array of regions, departments, or geographic areas
-- sectors: Array of agricultural sectors or activities covered
-- legal_entity_types: Array of eligible legal entity types (individual, srl, cooperative, etc.)
-- eligibility_criteria: Array of key eligibility requirements
+APPLICATION PROCESS (How to apply):
+- application_requirements: Array of ALL required steps, documents, and procedures including:
+  * Complete step-by-step application process
+  * All required forms and documents with exact names
+  * Portal links and submission methods
+  * Review and evaluation process
+  * Payment request procedures
+- documents: Array of ALL required documents with exact official names
+- application_method: How to submit (online portal, mail, etc.)
 
-APPLICATION PROCESS:
-- application_steps: Array of objects with step_description, required_files array, and optional web_portal
-- required_documents: Array of document types needed for application
-- contact_info: Object with organization, contact_email, contact_phone, website
+COMPREHENSIVE DETAILS:
+- program: Full program name
+- agency: Managing agency/organization
+- amount: Array of ALL funding amounts mentioned (preserve all numbers)
+- funding_type: Specific type of funding
+- funding_source: Source of funding (EU, national, regional, etc.)
+- co_financing_rate: Co-financing percentage if mentioned
+- region: Array of applicable regions
+- sector: Array of ALL applicable sectors/activities
+- legal_entity_type: Array of ALL eligible legal entity types
+- objectives: Array of ALL program objectives
+- eligible_actions: Array of ALL eligible actions/investments
+- ineligible_actions: Array of actions explicitly excluded
+- investment_types: Array of investment categories supported
+- evaluation_criteria: Detailed evaluation and scoring criteria
+- reporting_requirements: Reporting obligations
+- compliance_requirements: Compliance and audit requirements
+- technical_support: Available technical assistance
+- language: Document language (fr, en, etc.)
+
+CONTACT AND REFERENCE:
+- url: Source URL if available
+- contact_info: Complete contact information including email, phone, portal links
 
 METADATA:
-- language: Document language code (en, fr, es, ro, pl)
-- file_metadata: Object with original_file_name and scraped_url if available
+- confidence_scores: Object with confidence (0.0-1.0) for major extractions
+- missing_fields: Array of fields that couldn't be extracted
 
-CONFIDENCE SCORING:
-For each major field where you have uncertainty, add confidence scores (0.0-1.0) in confidence_scores object.
+EXAMPLE OF GOOD TITLE GENERATION:
+- Instead of "Subsidy Page" → "(OS 2.2) - TA 1 : Transformation (Régions continentales uniquement)"
+- Instead of "Agricultural Program" → "FEAMPA - Aide aux investissements de modernisation"
+- Use actual program codes, names, and focus areas from the document
 
-SPECIAL INSTRUCTIONS:
-- Preserve original language for official terms and requirements
-- Focus on actionable information for farmers applying for funding
-- If document contains forms or questionnaires, extract field requirements into application_steps
-- Look for file upload requirements, form fields, and validation rules
-- Extract any mentions of required certifications, land use types, or farm characteristics
+REMEMBER: Extract EVERYTHING in detail. Do not lose any information. The goal is to preserve all the rich content from the original document in a structured format.
 
 Respond with valid JSON only. Do not include explanations or markdown formatting.`;
 
@@ -197,53 +232,96 @@ ${documentText.substring(0, 45000)}` // Leave room for response
   }
 }
 
-async function storeSubsidyData(extractedData: SubsidyExtractionResult, metadata: any): Promise<string> {
-  console.log('💾 Storing extracted subsidy data');
+async function storeSubsidyData(extractedData: any, metadata: any): Promise<string> {
+  console.log('💾 Storing comprehensive extracted subsidy data');
   
   try {
-    // Prepare data for subsidies_structured table
+    // Prepare comprehensive data for subsidies_structured table
     const subsidyData = {
-      // Core identification
-      title: extractedData.program_title,
-      description: extractedData.summary,
-      program: extractedData.program_code,
+      // Title and basic info
+      title: extractedData.title || extractedData.program_title,
+      description: extractedData.description || extractedData.summary,
+      program: extractedData.program,
+      agency: extractedData.agency,
       
-      // Funding information
-      amount: extractedData.funding_range,
+      // Funding information - preserve all amounts
+      amount: extractedData.amount || extractedData.funding_range,
       funding_type: extractedData.funding_type,
+      funding_source: extractedData.funding_source,
+      co_financing_rate: extractedData.co_financing_rate,
       
       // Geographic and sector targeting
-      region: extractedData.applicable_regions,
-      sector: extractedData.sectors,
+      region: extractedData.region || extractedData.applicable_regions,
+      sector: extractedData.sector || extractedData.sectors,
       
-      // Eligibility and requirements
-      eligibility: extractedData.eligibility_criteria?.join('; ') || null,
-      legal_entity_type: extractedData.legal_entity_types,
+      // Comprehensive eligibility information
+      eligibility: extractedData.eligibility,
+      legal_entity_type: extractedData.legal_entity_type || extractedData.legal_entity_types,
       
-      // Application process
-      application_requirements: extractedData.application_steps || [],
-      documents: extractedData.required_documents || [],
+      // Detailed application process
+      application_requirements: extractedData.application_requirements || extractedData.application_steps,
+      documents: extractedData.documents || extractedData.required_documents,
+      application_method: extractedData.application_method,
       
-      // Timing
-      deadline: extractedData.application_deadline,
+      // Comprehensive program details
+      objectives: extractedData.objectives,
+      eligible_actions: extractedData.eligible_actions,
+      ineligible_actions: extractedData.ineligible_actions,
+      investment_types: extractedData.investment_types,
+      beneficiary_types: extractedData.beneficiary_types,
       
-      // Contact and metadata
-      agency: extractedData.contact_info?.organization,
+      // Timing information
+      deadline: extractedData.deadline || extractedData.application_deadline,
+      application_window_start: extractedData.application_window_start,
+      application_window_end: extractedData.application_window_end,
+      project_duration: extractedData.project_duration,
+      payment_terms: extractedData.payment_terms,
+      
+      // Requirements and criteria
+      evaluation_criteria: extractedData.evaluation_criteria,
+      reporting_requirements: extractedData.reporting_requirements,
+      compliance_requirements: extractedData.compliance_requirements,
+      
+      // Additional support and contact
+      technical_support: extractedData.technical_support,
+      
+      // Contact and reference
+      url: extractedData.url || metadata?.sourceUrl,
+      
+      // Language and metadata
       language: extractedData.language || 'fr',
-      url: metadata?.sourceUrl,
       
-      // Processing metadata
+      // Processing status
       requirements_extraction_status: 'completed',
+      
+      // Comprehensive audit information
       audit: {
-        extraction_method: 'openai_gpt4',
+        extraction_method: 'enhanced_openai_gpt4',
         extracted_at: new Date().toISOString(),
         source_file: metadata?.fileName,
-        confidence_scores: extractedData.confidence_scores
+        source_url: metadata?.sourceUrl,
+        confidence_scores: extractedData.confidence_scores,
+        fields_extracted: Object.keys(extractedData).length,
+        comprehensive_extraction: true,
+        model_used: 'gpt-4.1-2025-04-14'
       },
       
-      // Store full extracted data for form generation
-      questionnaire_steps: extractedData.application_steps || [],
+      // Store missing fields tracking
+      missing_fields: extractedData.missing_fields || [],
+      
+      // Form generation data
+      questionnaire_steps: extractedData.application_requirements || extractedData.application_steps || [],
     };
+    
+    // Clean up null/undefined values to avoid database issues
+    Object.keys(subsidyData).forEach(key => {
+      if (subsidyData[key] === null || subsidyData[key] === undefined) {
+        delete subsidyData[key];
+      }
+    });
+    
+    console.log(`💾 Storing subsidy with ${Object.keys(subsidyData).length} fields`);
+    console.log(`📊 Key content lengths: title=${subsidyData.title?.length || 0}, description=${subsidyData.description?.length || 0}, eligibility=${subsidyData.eligibility?.length || 0}`);
     
     const { data, error } = await supabase
       .from('subsidies_structured')
@@ -253,10 +331,11 @@ async function storeSubsidyData(extractedData: SubsidyExtractionResult, metadata
     
     if (error) {
       console.error('❌ Error storing subsidy data:', error);
+      console.error('❌ Problematic data sample:', JSON.stringify(subsidyData, null, 2).substring(0, 1000));
       throw error;
     }
     
-    console.log('✅ Subsidy data stored successfully:', data.id);
+    console.log('✅ Comprehensive subsidy data stored successfully:', data.id);
     return data.id;
   } catch (error) {
     console.error('❌ Error in storeSubsidyData:', error);
