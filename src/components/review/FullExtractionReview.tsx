@@ -537,6 +537,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                         size="sm"
                         variant="ghost"
                         onClick={() => toggleEdit(index)}
+                        aria-label={`Save ${getFieldDisplayName(field.fieldName)} field`}
                       >
                         <Save className="h-3 w-3" />
                       </Button>
@@ -544,6 +545,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                         size="sm"
                         variant="ghost"
                         onClick={() => cancelEdit(index)}
+                        aria-label={`Cancel editing ${getFieldDisplayName(field.fieldName)} field`}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -553,6 +555,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => toggleEdit(index)}
+                      aria-label={`Edit ${getFieldDisplayName(field.fieldName)} field`}
                     >
                       <Edit3 className="h-3 w-3" />
                     </Button>
@@ -562,6 +565,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                     variant="ghost"
                     onClick={() => removeField(index)}
                     className="text-red-500 hover:text-red-700"
+                    aria-label={`Remove ${getFieldDisplayName(field.fieldName)} field`}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
