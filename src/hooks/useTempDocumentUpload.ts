@@ -155,7 +155,7 @@ export const useTempDocumentUpload = () => {
       id: documentId,
       file,
       file_name: file.name,
-      upload_progress: 0,
+      upload_progress: 1, // Start with 1% to show immediate feedback
       classification_status: 'pending',
       extraction_status: 'pending'
     };
@@ -169,17 +169,24 @@ export const useTempDocumentUpload = () => {
     if (!document) return;
 
     try {
-      // Step 1: Upload
-      updateDocument(documentId, { upload_progress: 10 });
+      // Step 1: Upload with immediate feedback
+      updateDocument(documentId, { upload_progress: 5 });
+      
+      // Simulate gradual upload progress
+      setTimeout(() => updateDocument(documentId, { upload_progress: 15 }), 200);
+      setTimeout(() => updateDocument(documentId, { upload_progress: 25 }), 500);
+      
       const { fileUrl } = await uploadMutation.mutateAsync(document.file);
       
       updateDocument(documentId, { 
         file_url: fileUrl,
-        upload_progress: 30,
+        upload_progress: 35,
         classification_status: 'processing'
       });
 
-      // Step 2: Classify
+      // Step 2: Classify with progress updates
+      setTimeout(() => updateDocument(documentId, { upload_progress: 45 }), 200);
+      
       const classificationResult = await classifyMutation.mutateAsync({
         documentId,
         fileUrl,
@@ -187,14 +194,17 @@ export const useTempDocumentUpload = () => {
       });
 
       updateDocument(documentId, {
-        upload_progress: 50,
+        upload_progress: 55,
         classification_status: 'completed',
         predicted_category: classificationResult.predicted_category,
         confidence: classificationResult.confidence,
         extraction_status: 'processing'
       });
 
-      // Step 3: Extract
+      // Step 3: Extract with progress feedback
+      setTimeout(() => updateDocument(documentId, { upload_progress: 70 }), 300);
+      setTimeout(() => updateDocument(documentId, { upload_progress: 85 }), 600);
+      
       const extractionResult = await extractMutation.mutateAsync({
         documentId,
         fileUrl,
@@ -215,11 +225,21 @@ export const useTempDocumentUpload = () => {
 
     } catch (error) {
       console.error('Document processing error:', error);
+      
+      // Show specific error message to user
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       updateDocument(documentId, {
         classification_status: 'failed',
         extraction_status: 'failed',
         upload_progress: 0,
-        error_message: error instanceof Error ? error.message : 'Unknown error'
+        error_message: errorMessage
+      });
+
+      toast({
+        title: 'Processing Failed',
+        description: `Failed to process ${document.file_name}: ${errorMessage}`,
+        variant: 'destructive',
       });
     }
   };

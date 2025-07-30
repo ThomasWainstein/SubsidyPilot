@@ -55,8 +55,11 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
 
     for (const file of acceptedFiles) {
       const documentId = addDocument(file);
-      // Process each document immediately
-      await processDocument(documentId);
+      // Show immediate uploading status
+      setTimeout(() => {
+        // Process each document immediately after state update
+        processDocument(documentId);
+      }, 100);
     }
   }, [disabled, addDocument, processDocument]);
 
@@ -249,8 +252,25 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                   <div className="mb-2">
                     <Progress value={document.upload_progress} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Processing... {document.upload_progress}%
+                      {document.upload_progress < 30 ? 'Uploading...' : 
+                       document.upload_progress < 50 ? 'Classifying...' : 
+                       'Extracting data...'} {document.upload_progress}%
                     </p>
+                  </div>
+                )}
+                
+                {document.upload_progress >= 100 && document.extraction_status === 'completed' && (
+                  <div className="mb-2">
+                    <Progress value={100} className="h-2" />
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ Extraction completed successfully
+                    </p>
+                  </div>
+                )}
+
+                {document.error_message && (
+                  <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                    <strong>Error:</strong> {document.error_message}
                   </div>
                 )}
                 
