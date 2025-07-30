@@ -914,6 +914,89 @@ export type Database = {
           },
         ]
       }
+      subsidy_applications: {
+        Row: {
+          created_at: string
+          farm_id: string | null
+          form_data: Json
+          form_id: string
+          id: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farm_id?: string | null
+          form_data?: Json
+          form_id: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farm_id?: string | null
+          form_data?: Json
+          form_id?: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subsidy_applications_farm"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_subsidy_applications_form"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "subsidy_form_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_form_schemas: {
+        Row: {
+          created_at: string
+          id: string
+          schema: Json
+          subsidy_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          schema?: Json
+          subsidy_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          schema?: Json
+          subsidy_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subsidy_form_schemas_subsidy"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies_structured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subsidy_matches: {
         Row: {
           confidence: number
