@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSubsidies } from '@/hooks/useSubsidies';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, Link as LinkIcon } from 'lucide-react';
+import { getSubsidyTitle } from '@/utils/subsidyFormatting';
 
 interface AttachSubsidyModalProps {
   isOpen: boolean;
@@ -62,16 +63,6 @@ export const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
     }
   };
 
-  const getSubsidyTitle = (title: any): string => {
-    if (!title) return 'Untitled';
-    if (typeof title === 'string') return title;
-    if (typeof title === 'object' && title !== null) {
-      // Type-safe access to object properties
-      const titleObj = title as Record<string, any>;
-      return titleObj.en || titleObj.ro || titleObj.fr || titleObj.es || 'Untitled';
-    }
-    return 'Untitled';
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -99,7 +90,7 @@ export const AttachSubsidyModal: React.FC<AttachSubsidyModalProps> = ({
                 <SelectContent>
                   {subsidies?.map((subsidy) => (
                     <SelectItem key={subsidy.id} value={subsidy.id}>
-                      {getSubsidyTitle(subsidy.title)}
+                      {getSubsidyTitle(subsidy)}
                     </SelectItem>
                   ))}
                 </SelectContent>

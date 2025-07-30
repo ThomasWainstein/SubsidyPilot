@@ -34,38 +34,32 @@ export const formatFundingAmount = (amount: number[] | number | null): string =>
 export const getSubsidyTitle = (subsidy: any): string => {
   // Handle multilingual titles
   if (typeof subsidy.title === 'object' && subsidy.title) {
-    const title = subsidy.title.en || subsidy.title.fr || subsidy.title.ro || Object.values(subsidy.title)[0];
+    const title =
+      subsidy.title.en ||
+      subsidy.title.fr ||
+      subsidy.title.ro ||
+      Object.values(subsidy.title)[0];
     if (title && title !== 'Subsidy Page' && title.trim() !== '') {
       return title.trim();
     }
   }
-  
+
   // Handle string titles - prioritize actual source titles
   const title = subsidy.title;
   if (title && title !== 'Subsidy Page' && title.trim() !== '') {
     return title.trim();
   }
-  
-  // Log data quality issue for missing titles
-  console.warn('Missing or placeholder title detected for subsidy:', {
+
+  // Log data quality issue for missing titles and use fallback
+  const fallback = `Subsidy/Program #${subsidy.id}`;
+  console.warn('Using fallback subsidy title', {
     id: subsidy.id,
     agency: subsidy.agency,
     sector: subsidy.sector,
-    title: subsidy.title
+    originalTitle: subsidy.title,
+    fallback
   });
-  
-  // ONLY fallback to generated title when absolutely necessary
-  // This should be rare and indicates data quality issues
-  if (subsidy.agency && subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0) {
-    return `${subsidy.agency} - ${subsidy.sector[0]} Program`;
-  } else if (subsidy.agency) {
-    return `${subsidy.agency} Agricultural Program`;
-  } else if (subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0) {
-    return `${subsidy.sector[0]} Funding Program`;
-  }
-  
-  // Last resort - this should trigger data quality alerts
-  return 'Agricultural Funding Program [Title Missing]';
+  return fallback;
 };
 
 /**
