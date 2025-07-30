@@ -18,7 +18,12 @@ interface UploadStatsProps {
     processing: number;
     completed: number;
     failed: number;
+    cancelled: number;
+    validationErrors: number;
     readyForReview: number;
+    canRetry: number;
+    activeUploads: number;
+    queuedUploads: number;
   };
   className?: string;
 }
@@ -29,7 +34,7 @@ const UploadStats: React.FC<UploadStatsProps> = ({ stats, className }) => {
     : 0;
 
   const hasActivity = stats.uploading > 0 || stats.processing > 0;
-  const hasErrors = stats.failed > 0;
+  const hasErrors = stats.failed > 0 || stats.validationErrors > 0;
   const isComplete = stats.totalDocuments > 0 && stats.completed === stats.totalDocuments;
 
   if (stats.totalDocuments === 0) {
@@ -67,7 +72,12 @@ const UploadStats: React.FC<UploadStatsProps> = ({ stats, className }) => {
           )}
           {hasErrors && (
             <Badge variant="destructive">
-              {stats.failed} Error{stats.failed !== 1 ? 's' : ''}
+              {stats.failed + stats.validationErrors} Error{(stats.failed + stats.validationErrors) !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          {stats.queuedUploads > 0 && (
+            <Badge variant="outline">
+              {stats.queuedUploads} Queued
             </Badge>
           )}
         </div>
@@ -83,7 +93,7 @@ const UploadStats: React.FC<UploadStatsProps> = ({ stats, className }) => {
       </div>
 
       {/* Detailed stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
         <div className="flex items-center space-x-1">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <span className="text-gray-600">
@@ -113,6 +123,13 @@ const UploadStats: React.FC<UploadStatsProps> = ({ stats, className }) => {
         </div>
         
         <div className="flex items-center space-x-1">
+          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+          <span className="text-gray-600">
+            {stats.validationErrors} Invalid
+          </span>
+        </div>
+        
+        <div className="flex items-center space-x-1">
           <FileCheck className="w-3 h-3 text-blue-600" />
           <span className="text-gray-600">
             {stats.readyForReview} Ready
@@ -137,7 +154,21 @@ const UploadStats: React.FC<UploadStatsProps> = ({ stats, className }) => {
           <div className="flex items-center space-x-1">
             <AlertCircle className="w-3 h-3" />
             <span>
-              Some documents failed processing. Use the retry button to try again.
+              {stats.failed > 0 && `${stats.failed} upload/processing failures. `}
+              {stats.validationErrors > 0 && `${stats.validationErrors} file validation errors. `}
+              {stats.canRetry > 0 && `${stats.canRetry} documents can be retried.`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {stats.queuedUploads > 0 && (
+        <div className="mt-3 p-2 bg-amber-100 border border-amber-200 rounded text-xs text-amber-700">
+          <div className="flex items-center space-x-1">
+            <Clock className="w-3 h-3" />
+            <span>
+              {stats.queuedUploads} document{stats.queuedUploads !== 1 ? 's' : ''} queued. 
+              Upload limit: {stats.activeUploads}/3 active.
             </span>
           </div>
         </div>

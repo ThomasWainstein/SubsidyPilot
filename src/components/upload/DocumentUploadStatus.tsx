@@ -12,15 +12,20 @@ import {
   RotateCcw, 
   Trash2,
   Clock,
-  Loader2
+  Loader2,
+  StopCircle,
+  AlertCircle,
+  FileX
 } from 'lucide-react';
 import { TempDocument } from '@/hooks/useTempDocumentUpload';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentUploadStatusProps {
   document: TempDocument;
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
+  onCancel?: (id: string) => void;
   className?: string;
 }
 
@@ -28,11 +33,21 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
   document,
   onRetry,
   onRemove,
+  onCancel,
   className
 }) => {
+  const { toast } = useToast();
   const getStatusIcon = () => {
+    if (document.validation_errors?.length) {
+      return <FileX className="h-4 w-4 text-orange-500" />;
+    }
+    
     if (document.upload_status === 'uploading') {
       return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+    }
+    
+    if (document.upload_status === 'cancelled') {
+      return <StopCircle className="h-4 w-4 text-gray-500" />;
     }
     
     if (document.classification_status === 'processing' || document.extraction_status === 'processing') {
@@ -53,8 +68,16 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
   };
 
   const getStatusText = () => {
+    if (document.validation_errors?.length) {
+      return `File validation failed: ${document.validation_errors.join(', ')}`;
+    }
+    
     if (document.upload_status === 'uploading') {
       return `Uploading... ${document.upload_progress}%`;
+    }
+    
+    if (document.upload_status === 'cancelled') {
+      return 'Upload cancelled';
     }
     
     if (document.classification_status === 'processing') {
@@ -77,8 +100,16 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
   };
 
   const getStatusBadge = () => {
+    if (document.validation_errors?.length) {
+      return <Badge variant="destructive">Invalid</Badge>;
+    }
+    
     if (document.upload_status === 'uploading') {
       return <Badge variant="secondary">Uploading</Badge>;
+    }
+    
+    if (document.upload_status === 'cancelled') {
+      return <Badge variant="outline">Cancelled</Badge>;
     }
     
     if (document.classification_status === 'processing') {
@@ -110,11 +141,18 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
                    document.classification_status === 'failed' ||
                    document.extraction_status === 'failed';
 
-  const canRetry = hasError && (document.retry_count || 0) < 3;
+  const hasValidationError = Boolean(document.validation_errors?.length);
+  const canRetry = (hasError || hasValidationError) && 
+                   (document.retry_count || 0) < 3 && 
+                   document.can_retry !== false;
+  const canCancel = document.upload_status === 'uploading' && onCancel;
+  const isCancelled = document.upload_status === 'cancelled';
 
   return (
     <Card className={cn("border-l-4", 
+      hasValidationError ? "border-l-orange-500" :
       hasError ? "border-l-red-500" : 
+      isCancelled ? "border-l-gray-500" :
       document.extraction_status === 'completed' ? "border-l-green-500" :
       isProcessing ? "border-l-blue-500" : "border-l-gray-300",
       className
@@ -124,7 +162,12 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
           <div className="flex items-center space-x-2 flex-1 min-w-0">
             {getStatusIcon()}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{document.file_name}</p>
+              <p className="text-sm font-medium truncate" title={document.file_name}>
+                {document.file_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {(document.file_size / 1024 / 1024).toFixed(1)} MB • {document.file_type}
+              </p>
               <div className="flex items-center space-x-2 mt-1">
                 {getStatusBadge()}
                 {document.confidence && (
@@ -137,13 +180,25 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
           </div>
           
           <div className="flex items-center space-x-1 ml-2">
+            {canCancel && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onCancel!(document.id)}
+                className="h-6 w-6 p-0"
+                title="Cancel upload"
+              >
+                <StopCircle className="h-3 w-3" />
+              </Button>
+            )}
             {canRetry && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => onRetry(document.id)}
                 className="h-6 w-6 p-0"
-                title="Retry processing"
+                title={`Retry processing (${document.retry_count || 0}/3)`}
+                disabled={isProcessing}
               >
                 <RotateCcw className="h-3 w-3" />
               </Button>
@@ -171,13 +226,37 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
         {/* Status text */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{getStatusText()}</span>
-          {document.retry_count && document.retry_count > 0 && (
-            <span>Retry {document.retry_count}/3</span>
-          )}
+          <div className="flex items-center space-x-2">
+            {document.retry_count && document.retry_count > 0 && (
+              <span>Retry {document.retry_count}/3</span>
+            )}
+            {document.upload_status === 'uploading' && (
+              <span className="text-blue-600 font-medium">
+                {document.upload_progress}%
+              </span>
+            )}
+          </div>
         </div>
         
+        {/* Validation errors */}
+        {hasValidationError && document.validation_errors && (
+          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+            <div className="flex items-start space-x-1">
+              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">File validation failed:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {document.validation_errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Error message */}
-        {hasError && document.error_message && (
+        {hasError && document.error_message && !hasValidationError && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
             <div className="flex items-start space-x-1">
               <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
