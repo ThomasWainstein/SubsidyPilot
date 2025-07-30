@@ -101,6 +101,11 @@ supabase secrets set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
                     NEXT_PUBLIC_SUPABASE_ANON=your-anon-key
 ```
 
+## Documentation
+
+- [Project Documentation](docs/README.md)
+- [Human Review Interface Guide](docs/features/human-review.md)
+
 ## Classification and Simulation Overview
 
 The project uses a lightweight text classification model to categorize uploaded
