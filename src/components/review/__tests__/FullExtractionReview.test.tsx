@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import FullExtractionReview from '../FullExtractionReview';
 
 // Mock dependencies
@@ -107,5 +107,24 @@ describe('FullExtractionReview', () => {
     
     const viewButton = screen.getByRole('button', { name: /view document/i });
     expect(viewButton).toBeDefined();
+  });
+
+  it('allows adding and saving a custom field', () => {
+    render(<FullExtractionReview {...mockProps} />);
+
+    const addButton = screen.getByRole('button', { name: /add field/i });
+    addButton.click();
+
+    const input = screen.getByRole('textbox');
+    input && input instanceof HTMLInputElement &&
+      fireEvent.change(input, { target: { value: 'Custom Value' } });
+
+    const saveIcon = input.parentElement?.parentElement?.previousElementSibling?.querySelector('button');
+    if (saveIcon) fireEvent.click(saveIcon);
+
+    const saveChanges = screen.getByRole('button', { name: /save changes/i });
+    fireEvent.click(saveChanges);
+
+    expect(mockProps.onSave).toHaveBeenCalledWith(expect.objectContaining({ customField: 'Custom Value' }));
   });
 });
