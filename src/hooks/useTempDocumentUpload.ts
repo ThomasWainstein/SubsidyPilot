@@ -659,20 +659,24 @@ export const useTempDocumentUpload = () => {
   const processDocument = useCallback(async (documentId: string) => {
     console.log('🎯 Starting processDocument for:', documentId);
     
-    const document = documents.find(d => d.id === documentId);
-    if (!document) {
-      console.error('❌ Document not found for processing:', documentId);
-      return;
-    }
+    // Get fresh document state to avoid stale closure issues
+    setDocuments(currentDocs => {
+      const document = currentDocs.find(d => d.id === documentId);
+      if (!document) {
+        console.error('❌ Document not found for processing:', documentId);
+        return currentDocs;
+      }
 
-    console.log('📤 Starting document processing for:', document.file_name);
-    
-    try {
-      await uploadFile(documentId, document.file);
-    } catch (error) {
-      console.error('Failed to process document:', error);
-    }
-  }, [documents]);
+      console.log('📤 Starting document processing for:', document.file_name);
+      
+      // Start the upload process asynchronously
+      uploadFile(documentId, document.file).catch(error => {
+        console.error('Failed to process document:', error);
+      });
+      
+      return currentDocs; // Don't modify state here
+    });
+  }, []);
 
   const retryDocument = useCallback(async (documentId: string) => {
     const document = documents.find(d => d.id === documentId);
