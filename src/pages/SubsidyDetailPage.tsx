@@ -496,11 +496,18 @@ const SubsidyDetailPage = () => {
                         <ol className="space-y-3">
                           {subsidy.questionnaire_steps.map((step, idx) => (
                             <li key={idx} className="flex items-start gap-3">
-                              <span className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
-                                {idx + 1}
-                              </span>
+                              <span className="step-number">{idx + 1}</span>
                               <span className="text-sm">
-                                {typeof step === 'string' ? step : JSON.stringify(step)}
+                                {typeof step === 'object' && step !== null ? (
+                                  <>
+                                    <span>{(step as any).question}</span>
+                                    {(step as any).requirement && (
+                                      <span className="ml-2 text-muted-foreground">({(step as any).requirement})</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  JSON.stringify(step)
+                                )}
                               </span>
                             </li>
                           ))}
