@@ -260,8 +260,11 @@ const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
       {showReview && selectedDocumentId && (
         <FullExtractionReview
           documentId={selectedDocumentId}
-          onApplyExtraction={handleApplyExtraction}
-          onClose={() => {
+          extraction={getExtractionData(selectedDocumentId)}
+          farmId={farmId}
+          onSave={(data) => {}}
+          onApplyToForm={async (data) => {
+            await handleApplyExtraction(selectedDocumentId);
             setShowReview(false);
             setSelectedDocumentId(null);
           }}

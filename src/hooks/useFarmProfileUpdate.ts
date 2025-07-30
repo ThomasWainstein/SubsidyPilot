@@ -3,7 +3,7 @@
  * Provides unified extraction and form update capabilities for existing farms
  */
 
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +43,7 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
       total_hectares: farm.total_hectares || 0,
       land_use_types: farm.land_use_types || [],
       livestock_present: farm.livestock_present || false,
-      livestock: farm.livestock || {},
+      livestock: (farm.livestock && typeof farm.livestock === 'object') ? farm.livestock as { [x: string]: any } : {},
       environmental_permit: farm.environmental_permit || false,
       tech_docs: farm.tech_docs || false,
       subsidy_interest: farm.subsidy_interest || [],
@@ -72,7 +72,7 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
         total_hectares: farm.total_hectares || 0,
         land_use_types: farm.land_use_types || [],
         livestock_present: farm.livestock_present || false,
-        livestock: farm.livestock || {},
+        livestock: (farm.livestock && typeof farm.livestock === 'object') ? farm.livestock as { [x: string]: any } : {},
         environmental_permit: farm.environmental_permit || false,
         tech_docs: farm.tech_docs || false,
         subsidy_interest: farm.subsidy_interest || [],
@@ -269,8 +269,8 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
       });
 
       await updateFarmMutation.mutateAsync({
-        farmId,
-        farmData: data
+        id: farmId,
+        ...data
       });
 
       toast.success('Farm profile updated successfully');
