@@ -69,14 +69,18 @@ const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
   };
 
   const badge = (
-    <div className={`
-      inline-flex items-center space-x-1 rounded-full font-medium border
-      ${colorClasses} ${sizeClasses[size]} ${className}
-    `}>
+    <div 
+      className={`
+        inline-flex items-center space-x-1 rounded-full font-medium border
+        ${colorClasses} ${sizeClasses[size]} ${className}
+      `}
+      role="status"
+      aria-label={`Confidence level: ${percentage}% ${level}`}
+    >
       {getConfidenceIcon(confidence)}
       <span>{percentage}%</span>
       {field && (
-        <HelpCircle className="w-3 h-3 opacity-60" />
+        <HelpCircle className="w-3 h-3 opacity-60" aria-hidden="true" />
       )}
     </div>
   );

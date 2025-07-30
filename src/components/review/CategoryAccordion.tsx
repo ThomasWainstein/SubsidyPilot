@@ -92,6 +92,9 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
             variant="ghost"
             className="w-full px-4 py-3 text-left flex justify-between items-center hover:bg-gray-50 h-auto"
             disabled={disabled}
+            aria-expanded={isExpanded}
+            aria-controls={`category-${category.title.toLowerCase().replace(/\s+/g, '-')}`}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${category.title} category`}
           >
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
@@ -136,7 +139,12 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <div className="border-t bg-gray-50/50">
+          <div 
+            className="border-t bg-gray-50/50"
+            id={`category-${category.title.toLowerCase().replace(/\s+/g, '-')}`}
+            role="region"
+            aria-labelledby={`category-${category.title.toLowerCase().replace(/\s+/g, '-')}-header`}
+          >
             {/* Category Description */}
             {category.description && (
               <div className="px-4 py-2 text-sm text-muted-foreground border-b">

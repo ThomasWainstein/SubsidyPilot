@@ -249,7 +249,8 @@ const InlineFieldEditor: React.FC<InlineFieldEditorProps> = ({
           checked={field.accepted || false}
           onCheckedChange={handleAcceptToggle}
           disabled={disabled}
-          aria-label={`Accept ${field.label}`}
+          aria-label={`Accept ${field.label} field`}
+          aria-describedby={`${field.key}-confidence`}
         />
       </div>
       
@@ -265,7 +266,11 @@ const InlineFieldEditor: React.FC<InlineFieldEditorProps> = ({
               size="sm"
             />
             {hasChanges && (
-              <Badge variant="outline" className="text-blue-600 border-blue-200">
+              <Badge 
+                variant="outline" 
+                className="text-blue-600 border-blue-200"
+                aria-label="Field has been modified"
+              >
                 Modified
               </Badge>
             )}
@@ -327,8 +332,9 @@ const InlineFieldEditor: React.FC<InlineFieldEditorProps> = ({
               onClick={() => setIsEditing(true)}
               disabled={disabled}
               className="opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`Edit ${field.label} field`}
             >
-              <Edit3 className="w-4 h-4" />
+              <Edit3 className="w-4 h-4" aria-hidden="true" />
             </Button>
           </div>
         )}
@@ -382,8 +388,9 @@ const ArrayEditor: React.FC<ArrayEditorProps> = ({
               onClick={() => removeItem(index)}
               disabled={disabled}
               className="ml-1 hover:bg-red-100 rounded-full p-0.5"
+              aria-label={`Remove ${item} from list`}
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3 h-3" aria-hidden="true" />
             </button>
           </Badge>
         ))}
@@ -403,8 +410,9 @@ const ArrayEditor: React.FC<ArrayEditorProps> = ({
           size="sm"
           onClick={addItem}
           disabled={disabled || !newItem.trim()}
+          aria-label="Add item to list"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4" aria-hidden="true" />
         </Button>
       </div>
     </div>
