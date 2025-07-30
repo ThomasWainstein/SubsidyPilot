@@ -115,7 +115,29 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     if (document.extraction_status === 'failed' || document.classification_status === 'failed') {
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     }
-    return <Badge variant="outline">Pending</Badge>;
+    if (document.upload_progress === 100 && document.extraction_status === 'pending') {
+      return <Badge variant="outline"><Sparkles className="h-3 w-3 mr-1" />Ready to Extract</Badge>;
+    }
+    return <Badge variant="outline">Uploading...</Badge>;
+  };
+
+  const getStatusMessage = (document: any) => {
+    if (document.extraction_status === 'processing') {
+      return <span className="text-xs text-muted-foreground">Extracting data, please wait...</span>;
+    }
+    if (document.extraction_status === 'completed') {
+      return <span className="text-xs text-green-600">Data extracted successfully</span>;
+    }
+    if (document.extraction_status === 'failed') {
+      return <span className="text-xs text-red-600">Extraction failed, click retry</span>;
+    }
+    if (document.upload_progress === 100 && document.extraction_status === 'pending') {
+      return <span className="text-xs text-blue-600">Click to start extraction</span>;
+    }
+    if (document.upload_progress < 100) {
+      return <span className="text-xs text-muted-foreground">Uploading file...</span>;
+    }
+    return null;
   };
 
   const completedExtractions = getCompletedDocuments();
@@ -187,6 +209,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                     {getFileIcon(document.file_name)}
                     <span className="font-medium text-sm">{document.file_name}</span>
                     {getStatusBadge(document)}
+                    {getStatusMessage(document)}
                   </div>
                   <div className="flex items-center gap-2">
                     {document.extraction_status === 'completed' && (
@@ -199,10 +222,23 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                         Review Data
                       </Button>
                     )}
+                    {(document.extraction_status === 'failed' || 
+                      (document.upload_progress === 100 && document.extraction_status === 'pending')) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => processDocument(document.id)}
+                        disabled={isProcessing}
+                      >
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        {document.extraction_status === 'failed' ? 'Retry' : 'Start'} Extraction
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => removeDocument(document.id)}
+                      disabled={isProcessing}
                     >
                       <X className="h-3 w-3" />
                     </Button>
