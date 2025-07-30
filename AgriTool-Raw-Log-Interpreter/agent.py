@@ -201,41 +201,58 @@ class LogInterpreterAgent:
                 # Extract text based on file type
                 if file_ref.lower().endswith('.pdf'):
                     # Use robust PDF extraction pipeline
+                    temp_file_path = None
                     try:
+                        self.logger.info(f"🔄 Starting robust PDF extraction for: {file_ref}")
+                        
                         # Save to temp file for processing
                         import tempfile
                         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
                             temp_file.write(file_content)
                             temp_file.flush()
+                            temp_file_path = temp_file.name
                             
-                            # Extract using robust pipeline
-                            extracted_text, temp_files = pdf_pipeline.extract_text(temp_file.name)
-                            
-                            if extracted_text and extracted_text.strip():
-                                content += f"\n\n--- Content from {file_ref} ---\n"
-                                content += extracted_text
-                                self.logger.info(f"✅ Successfully extracted {len(extracted_text)} characters from PDF: {file_ref}")
-                            else:
-                                self.logger.warning(f"⚠️ No text extracted from PDF: {file_ref}")
-                                content += f"\n\n--- No text content extracted from {file_ref} ---\n"
-                            
-                            # Cleanup temp files
-                            pdf_pipeline.cleanup_temp_files(temp_files)
-                            
+                        # Extract using robust pipeline
+                        extracted_text, temp_files = pdf_pipeline.extract_text(temp_file_path)
+                        
+                        if extracted_text and extracted_text.strip():
+                            content += f"\n\n--- Content from {file_ref} ---\n"
+                            content += extracted_text
+                            self.logger.info(f"✅ Successfully extracted {len(extracted_text)} characters from PDF: {file_ref}")
+                        else:
+                            self.logger.warning(f"⚠️ No text extracted from PDF: {file_ref}")
+                            content += f"\n\n--- No text content extracted from {file_ref} ---\n"
+                        
+                        # Cleanup temp files
+                        pdf_pipeline.cleanup_temp_files(temp_files)
+                        
                     except Exception as pdf_error:
                         self.logger.warning(f"❌ Robust PDF extraction failed for {file_ref}: {pdf_error}")
+                        self.logger.debug(f"PDF extraction error details: {traceback.format_exc()}")
+                        
                         # Fallback to basic tika parsing
                         try:
+                            self.logger.info(f"🔄 Attempting fallback extraction for: {file_ref}")
                             parsed = tika_parser.from_buffer(file_content)
                             if parsed.get('content'):
                                 content += f"\n\n--- Content from {file_ref} (fallback) ---\n"
                                 content += parsed['content']
                                 self.logger.info(f"✅ Fallback extraction successful for: {file_ref}")
                             else:
+                                self.logger.warning(f"⚠️ Fallback extraction returned no content for: {file_ref}")
                                 content += f"\n\n--- Failed to extract content from {file_ref}: {str(pdf_error)} ---\n"
                         except Exception as fallback_error:
                             self.logger.error(f"❌ Both robust and fallback extraction failed for {file_ref}: {fallback_error}")
                             content += f"\n\n--- Failed to extract content from {file_ref}: {str(fallback_error)} ---\n"
+                    
+                    finally:
+                        # Always cleanup the original temp file
+                        if temp_file_path and os.path.exists(temp_file_path):
+                            try:
+                                os.unlink(temp_file_path)
+                                self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
+                            except Exception as cleanup_error:
+                                self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
                 
                 elif file_ref.lower().endswith(('.docx', '.doc')):
                     parsed = tika_parser.from_buffer(file_content)
