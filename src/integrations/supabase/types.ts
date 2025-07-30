@@ -419,6 +419,42 @@ export type Database = {
           },
         ]
       }
+      field_corrections: {
+        Row: {
+          corrected_by: string | null
+          corrected_value: Json
+          correction_notes: string | null
+          created_at: string
+          document_id: string
+          field_name: string
+          id: string
+          original_value: Json | null
+          updated_at: string
+        }
+        Insert: {
+          corrected_by?: string | null
+          corrected_value: Json
+          correction_notes?: string | null
+          created_at?: string
+          document_id: string
+          field_name: string
+          id?: string
+          original_value?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          corrected_by?: string | null
+          corrected_value?: Json
+          correction_notes?: string | null
+          created_at?: string
+          document_id?: string
+          field_name?: string
+          id?: string
+          original_value?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       model_deployments: {
         Row: {
           config: Json

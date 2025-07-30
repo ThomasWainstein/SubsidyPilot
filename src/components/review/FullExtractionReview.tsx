@@ -242,6 +242,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
   const logFieldCorrections = async () => {
     try {
+      const user = await supabase.auth.getUser();
       const corrections = fields
         .filter(field => field.source === 'user_corrected')
         .map(field => ({
@@ -250,12 +251,13 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
           original_value: field.originalValue,
           corrected_value: field.value,
           correction_notes: field.notes,
-          corrected_by: (await supabase.auth.getUser()).data.user?.id
+          corrected_by: user.data.user?.id
         }));
 
       if (corrections.length > 0) {
+        // Use generic SQL insert since TypeScript types are not updated yet
         const { error } = await supabase
-          .from('field_corrections')
+          .from('field_corrections' as any)
           .insert(corrections);
 
         if (error) {

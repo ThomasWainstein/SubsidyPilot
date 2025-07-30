@@ -22,6 +22,7 @@ import { useDocumentReviewDetail, useSubmitReviewCorrection } from '@/hooks/useD
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import ReExtractButton from './ReExtractButton';
+import FullExtractionReview from './FullExtractionReview';
 
 interface DocumentReviewDetailProps {
   farmId: string;
@@ -37,6 +38,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   const [reviewerNotes, setReviewerNotes] = useState('');
   const [reviewStatus, setReviewStatus] = useState<'reviewed' | 'flagged' | 'approved'>('reviewed');
   const [hasChanges, setHasChanges] = useState(false);
+  const [showFullReview, setShowFullReview] = useState(false);
 
   const extraction = documentDetail?.document_extractions?.[0];
 
@@ -196,16 +198,40 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
             onSuccess={() => window.location.reload()}
           />
           <Button
-            onClick={handleSubmitReview}
-            disabled={!hasChanges || submitCorrection.isPending}
+            onClick={() => setShowFullReview(!showFullReview)}
+            variant="outline"
           >
-            <Save className="h-4 w-4 mr-2" />
-            {submitCorrection.isPending ? 'Saving...' : 'Save Review'}
+            {showFullReview ? 'Basic View' : 'Full Review'}
           </Button>
+          {!showFullReview && (
+            <Button
+              onClick={handleSubmitReview}
+              disabled={!hasChanges || submitCorrection.isPending}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {submitCorrection.isPending ? 'Saving...' : 'Save Review'}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {showFullReview ? (
+        <FullExtractionReview
+          documentId={documentId}
+          extraction={extraction}
+          farmId={farmId}
+          onSave={(correctedData) => {
+            handleSubmitReview();
+          }}
+          onApplyToForm={(mappedData) => {
+            toast({
+              title: 'Data Applied',
+              description: 'Extracted data has been processed for form application.',
+            });
+          }}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Document Info */}
         <Card>
           <CardHeader>
@@ -351,6 +377,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 };
