@@ -159,90 +159,68 @@ export const useTempDocumentUpload = () => {
   }, []);
 
   // Real upload with XMLHttpRequest for true progress tracking
-  const createUploadController = useCallback((
-    documentId: string, 
-    file: File
-  ): UploadController => {
-    const controller = new AbortController();
-    
-    const promise = new Promise<string>((resolve, reject) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `temp-farm-creation/${documentId}.${fileExt}`;
-      
-      // Create XMLHttpRequest for real progress tracking
-      const xhr = new XMLHttpRequest();
-      
-      // Handle abort signal
-      controller.signal.addEventListener('abort', () => {
-        xhr.abort();
-        reject(new Error('Upload cancelled by user'));
-      });
-      
-      // Track upload progress
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentage = Math.round((event.loaded / event.total) * 100);
-          
-          updateDocument(documentId, {
-            upload_progress: percentage,
-            last_updated: new Date().toISOString()
+  const createUploadController = useCallback(
+    (documentId: string, file: File): UploadController => {
+      const controller = new AbortController();
+
+      const promise = new Promise<string>(async (resolve, reject) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `temp-farm-creation/${documentId}.${fileExt}`;
+
+        try {
+          const { data: signed, error: signError } = await supabase.storage
+            .from('farm-documents')
+            .createSignedUploadUrl(fileName);
+
+          if (signError || !signed) {
+            reject(new Error(signError?.message || 'Failed to get upload URL'));
+            return;
+          }
+
+          const xhr = new XMLHttpRequest();
+
+          controller.signal.addEventListener('abort', () => {
+            xhr.abort();
+            reject(new Error('Upload cancelled by user'));
           });
-        }
-      });
 
-      xhr.addEventListener('load', async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            // For Supabase, we'll use their upload method but track progress manually
-            const { data, error } = await supabase.storage
-              .from('farm-documents')
-              .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false,
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percentage = Math.round((event.loaded / event.total) * 100);
+              updateDocument(documentId, {
+                upload_progress: percentage,
+                last_updated: new Date().toISOString(),
               });
+            }
+          });
 
-            if (error) throw error;
-            resolve(data.path);
-          } catch (error) {
-            reject(error);
-          }
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(signed.path);
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            reject(new Error('Upload failed due to network error'));
+          });
+
+          xhr.addEventListener('abort', () => {
+            reject(new Error('Upload cancelled'));
+          });
+
+          xhr.open('PUT', signed.signedUrl);
+          xhr.send(file);
+        } catch (error) {
+          reject(error as Error);
         }
       });
 
-      xhr.addEventListener('error', () => {
-        reject(new Error('Upload failed due to network error'));
-      });
-
-      xhr.addEventListener('abort', () => {
-        reject(new Error('Upload cancelled'));
-      });
-
-      // Start the upload using Supabase storage
-      // Note: For true XMLHttpRequest progress, we'd need signed URLs
-      // For now, we'll use a hybrid approach with progress simulation
-      supabase.storage
-        .from('farm-documents')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-        .then(({ data, error }) => {
-          if (error) {
-            reject(new Error(error.message));
-          } else {
-            resolve(data.path);
-          }
-        })
-        .catch(reject);
-    });
-
-    return {
-      abort: () => controller.abort(),
-      promise
-    };
-  }, []);
+      return { abort: () => controller.abort(), promise };
+    },
+    []
+  );
 
   // Enhanced upload with real progress and cancellation
   const uploadFile = async (documentId: string, file: File) => {
@@ -300,25 +278,8 @@ export const useTempDocumentUpload = () => {
       updateDocument(documentId, {
         upload_controller: uploadController.abort // Store abort function
       });
-
-      // Smooth progress simulation while upload happens
-      const progressInterval = setInterval(() => {
-        setDocuments(prev => prev.map(doc => {
-          if (doc.id === documentId && doc.upload_progress < 95 && doc.upload_status === 'uploading') {
-            return {
-              ...doc,
-              upload_progress: Math.min(doc.upload_progress + Math.random() * 8 + 2, 95),
-              last_updated: new Date().toISOString()
-            };
-          }
-          return doc;
-        }));
-      }, 300);
-
-      // Wait for upload to complete
       const filePath = await uploadController.promise;
-      
-      clearInterval(progressInterval);
+
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
