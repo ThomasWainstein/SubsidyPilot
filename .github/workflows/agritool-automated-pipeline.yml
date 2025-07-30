@@ -247,7 +247,141 @@ jobs:
           retention-days: 7
 
   # =============================================================================
-  # JOB 3: QUALITY ASSURANCE & TESTING
+  # JOB 3: PDF EXTRACTION PIPELINE
+  # =============================================================================
+  pdf-extraction:
+    name: 📄 PDF Extraction Pipeline
+    runs-on: ubuntu-latest
+    needs: [scrape-and-upload, ai-agent-processing]
+    if: needs.ai-agent-processing.result == 'success'
+    timeout-minutes: 60
+    outputs:
+      extraction-success: ${{ steps.pdf-extraction.outputs.success }}
+      files-processed: ${{ steps.pdf-extraction.outputs.files-processed }}
+      
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 🔧 Install system dependencies for PDF processing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            ghostscript \
+            tesseract-ocr \
+            tesseract-ocr-eng \
+            tesseract-ocr-fra \
+            default-jre \
+            poppler-utils \
+            ocrmypdf
+
+      - name: 🚀 Start Apache Tika Server
+        run: |
+          echo "🚀 Starting Apache Tika Server..."
+          wget -q https://downloads.apache.org/tika/2.9.1/tika-server-standard-2.9.1.jar -O tika-server.jar
+          java -jar tika-server.jar --host=0.0.0.0 --port=9998 &
+          TIKA_PID=$!
+          echo "TIKA_PID=$TIKA_PID" >> $GITHUB_ENV
+          
+          # Wait for Tika to be ready (max 60 seconds)
+          echo "⏳ Waiting for Tika server to start..."
+          for i in {1..60}; do
+            if curl -s http://localhost:9998/tika/version > /dev/null 2>&1; then
+              echo "✅ Tika server is ready!"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ Tika server failed to start within 60 seconds"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: 📦 Install Python dependencies for PDF extraction
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests ocrmypdf
+
+      - name: 📄 Run PDF Extraction Pipeline
+        id: pdf-extraction
+        env:
+          TIKA_URL: "http://localhost:9998/tika"
+          PYTHONPATH: ${{ github.workspace }}/AgriToolScraper-main
+        run: |
+          echo "📄 Starting PDF extraction pipeline..."
+          
+          # Create subsidies_docs directory if it doesn't exist
+          mkdir -p subsidies_docs/samples
+          
+          # Check if we have any PDF files to process
+          PDF_COUNT=$(find subsidies_docs/ -name "*.pdf" -type f | wc -l)
+          echo "📊 Found $PDF_COUNT PDF files to process"
+          
+          if [ $PDF_COUNT -eq 0 ]; then
+            echo "⚠️ No PDF files found in subsidies_docs/ - creating sample for demonstration"
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "files-processed=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Process PDFs using our extraction pipeline
+          PROCESSED=0
+          FAILED=0
+          
+          for pdf_file in subsidies_docs/*.pdf subsidies_docs/*/*.pdf; do
+            if [ -f "$pdf_file" ]; then
+              echo "🔄 Processing: $pdf_file"
+              
+              if python AgriToolScraper-main/pdf_extraction_pipeline.py "$pdf_file"; then
+                echo "✅ Successfully processed: $pdf_file"
+                PROCESSED=$((PROCESSED + 1))
+              else
+                echo "❌ Failed to process: $pdf_file"
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done
+          
+          echo "📊 PDF Processing Summary:"
+          echo "  ✅ Successfully processed: $PROCESSED files"
+          echo "  ❌ Failed to process: $FAILED files"
+          
+          # Set outputs
+          echo "files-processed=$PROCESSED" >> $GITHUB_OUTPUT
+          
+          if [ $FAILED -eq 0 ]; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "🎉 All PDF files processed successfully!"
+          else
+            echo "success=partial" >> $GITHUB_OUTPUT
+            echo "⚠️ Some PDF files failed to process"
+          fi
+
+      - name: 🗑️ Cleanup Tika Server
+        if: always()
+        run: |
+          if [ -n "$TIKA_PID" ]; then
+            echo "🗑️ Stopping Tika server (PID: $TIKA_PID)..."
+            kill $TIKA_PID || true
+          fi
+
+      - name: 📦 Upload PDF extraction artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-extraction-output-${{ github.run_number }}
+          path: |
+            subsidies_docs/
+            *.log
+          retention-days: 7
+
+  # =============================================================================
+  # JOB 4: QUALITY ASSURANCE & TESTING
   # =============================================================================
   quality-assurance:
     name: 🔍 Quality Assurance
@@ -330,7 +464,7 @@ jobs:
   pipeline-summary:
     name: 📋 Pipeline Summary
     runs-on: ubuntu-latest
-    needs: [scrape-and-upload, ai-agent-processing, quality-assurance]
+    needs: [scrape-and-upload, ai-agent-processing, pdf-extraction, quality-assurance]
     if: always()
     
     steps:
@@ -341,12 +475,14 @@ jobs:
           echo "📅 Execution Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "⚙️ Trigger: ${{ github.event_name }}"
           echo ""
-          echo "📊 RESULTS:"
-          echo "  🕷️ Scraping: ${{ needs.scrape-and-upload.result }}"
-          echo "  📝 Records Uploaded: ${{ needs.scrape-and-upload.outputs.records-uploaded || 'N/A' }}"
-          echo "  🤖 AI Processing: ${{ needs.ai-agent-processing.result }}"  
-          echo "  📈 Records Processed: ${{ needs.ai-agent-processing.outputs.processed-count || 'N/A' }}"
-          echo "  🔍 Quality Assurance: ${{ needs.quality-assurance.result }}"
+           echo "📊 RESULTS:"
+           echo "  🕷️ Scraping: ${{ needs.scrape-and-upload.result }}"
+           echo "  📝 Records Uploaded: ${{ needs.scrape-and-upload.outputs.records-uploaded || 'N/A' }}"
+           echo "  🤖 AI Processing: ${{ needs.ai-agent-processing.result }}"  
+           echo "  📈 Records Processed: ${{ needs.ai-agent-processing.outputs.processed-count || 'N/A' }}"
+           echo "  📄 PDF Extraction: ${{ needs.pdf-extraction.result }}"
+           echo "  📋 PDFs Processed: ${{ needs.pdf-extraction.outputs.files-processed || 'N/A' }}"
+           echo "  🔍 Quality Assurance: ${{ needs.quality-assurance.result }}"
           echo ""
           echo "🎯 OVERALL STATUS:"
           if [ "${{ needs.scrape-and-upload.result }}" = "success" ] && \
