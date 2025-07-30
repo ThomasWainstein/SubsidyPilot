@@ -12,6 +12,15 @@ import { useToast } from '@/hooks/use-toast';
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
 import { getRequirementLabel } from '@/utils/requirementLabels';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
+import { 
+  cleanMarkdownFormatting, 
+  parseEligibilityData, 
+  formatDocuments, 
+  hasContent,
+  formatArrayAsText,
+  cleanSubsidyDescription,
+  formatLanguages
+} from '@/utils/subsidyDataCleaning';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -197,9 +206,9 @@ const SubsidyDetailPage = () => {
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold text-primary">Présentation</h2>
               <div className="prose prose-gray max-w-none">
-                <p className="text-base leading-relaxed">
-                  {getSubsidyDescription(subsidy)}
-                </p>
+                <div className="text-base leading-relaxed whitespace-pre-line">
+                  {cleanSubsidyDescription(subsidy.description) || getSubsidyDescription(subsidy)}
+                </div>
               </div>
               
               {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
@@ -247,11 +256,40 @@ const SubsidyDetailPage = () => {
             {/* Eligibility Section */}
             <div className="space-y-4 border-t pt-8">
               <h2 className="text-2xl font-semibold text-primary">Pour qui ?</h2>
-              <div className="prose prose-gray max-w-none">
-                <p className="text-base leading-relaxed">
-                  {subsidy.eligibility || 'No specific eligibility criteria provided.'}
-                </p>
-              </div>
+              
+              {/* Parse and display eligibility data */}
+              {(() => {
+                const eligibilityList = parseEligibilityData(subsidy.eligibility);
+                const hasEligibilityText = subsidy.eligibility && 
+                  typeof subsidy.eligibility === 'string' && 
+                  !subsidy.eligibility.startsWith('[');
+                  
+                return (
+                  <>
+                    {hasEligibilityText && (
+                      <div className="prose prose-gray max-w-none">
+                        <div className="text-base leading-relaxed whitespace-pre-line">
+                          {cleanMarkdownFormatting(subsidy.eligibility)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {eligibilityList.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-medium mb-3">Eligible Organizations</h3>
+                        <ul className="space-y-2">
+                          {eligibilityList.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
                 <div className="mt-6">
@@ -289,13 +327,20 @@ const SubsidyDetailPage = () => {
                 </div>
               )}
 
-              {subsidy.conditional_eligibility && (
+              {hasContent(subsidy.conditional_eligibility) && (
                 <div className="mt-6">
                   <h3 className="text-lg font-medium mb-3">Special Cases & Conditions</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <pre className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {JSON.stringify(subsidy.conditional_eligibility, null, 2)}
-                    </pre>
+                    <div className="text-sm text-gray-600">
+                      {typeof subsidy.conditional_eligibility === 'object' ? 
+                        Object.entries(subsidy.conditional_eligibility).map(([key, value]) => (
+                          <div key={key} className="mb-2">
+                            <strong>{key}:</strong> {String(value)}
+                          </div>
+                        )) :
+                        String(subsidy.conditional_eligibility)
+                      }
+                    </div>
                   </div>
                 </div>
               )}
@@ -403,19 +448,35 @@ const SubsidyDetailPage = () => {
               )}
 
               {/* Required Documents */}
-              {subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Required Documents</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                     {subsidy.documents.map((doc: any, index: number) => (
-                       <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                         <FileText className="h-5 w-5 text-blue-600" />
-                         <span className="text-sm">{getRequirementLabel(doc)}</span>
-                       </div>
-                    ))}
+              {(() => {
+                const formattedDocs = formatDocuments(subsidy.documents);
+                return formattedDocs.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-3">Required Documents</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {formattedDocs.map((doc, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <div className="flex-1">
+                            {doc.url ? (
+                              <a 
+                                href={doc.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline"
+                              >
+                                {doc.text}
+                              </a>
+                            ) : (
+                              <span className="text-sm">{doc.text}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
 
             </div>
@@ -456,7 +517,7 @@ const SubsidyDetailPage = () => {
                 {subsidy.language && (
                   <div>
                     <span className="font-medium text-gray-700">Language: </span>
-                    <Badge variant="secondary">{subsidy.language.toUpperCase()}</Badge>
+                    <span>{formatLanguages(subsidy.language)}</span>
                   </div>
                 )}
               </div>
