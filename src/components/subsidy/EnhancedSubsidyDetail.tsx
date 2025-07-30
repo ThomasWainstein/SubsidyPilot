@@ -108,61 +108,51 @@ export const EnhancedSubsidyDetail: React.FC<EnhancedSubsidyDetailProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Main Subsidy Information */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-2 flex-1">
-              <CardTitle className="text-xl">{title}</CardTitle>
-              <p className="text-muted-foreground">{description}</p>
-              
-              {/* Key metrics */}
-              <div className="flex flex-wrap gap-4 pt-2">
-                <div className="flex items-center space-x-1">
-                  <Euro className="h-4 w-4 text-green-600" />
-                  <span className="font-medium">{fundingAmount}</span>
-                </div>
-                
-                <div className="flex items-center space-x-1">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm">{regionDisplay}</span>
-                </div>
-                
-                <div className="flex items-center space-x-1">
-                  <Clock className={`h-4 w-4 ${deadlineStatus.urgent ? 'text-red-500' : 'text-gray-500'}`} />
-                  <span className={`text-sm ${deadlineStatus.urgent ? 'text-red-500 font-medium' : ''}`}>
-                    {deadlineStatus.status}
-                  </span>
-                  {deadlineStatus.urgent && (
-                    <Badge variant="destructive" className="text-xs">Urgent</Badge>
-                  )}
-                </div>
-              </div>
+    <div className="max-w-4xl mx-auto space-y-8 p-6">
+      {/* Header with title and action button */}
+      <div className="flex items-start justify-between border-b pb-6">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold mb-4">{title}</h1>
+          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center space-x-2">
+              <Euro className="h-4 w-4 text-green-600" />
+              <span className="font-medium">{fundingAmount}</span>
             </div>
-            
-            {/* Action buttons */}
-            <div className="flex flex-col space-y-2 ml-4">
-              <Button 
-                onClick={handleGenerateForm}
-                disabled={loading}
-                className="flex items-center space-x-2"
-              >
-                <Wand2 className="h-4 w-4" />
-                <span>{loading ? 'Generating...' : 'Generate Application'}</span>
-              </Button>
-              
-              {subsidy.url && (
-                <Button variant="outline" asChild>
-                  <a href={subsidy.url} target="_blank" rel="noopener noreferrer">
-                    View Official Page
-                  </a>
-                </Button>
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4 text-blue-600" />
+              <span>{regionDisplay}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Clock className={`h-4 w-4 ${deadlineStatus.urgent ? 'text-red-500' : 'text-gray-500'}`} />
+              <span className={deadlineStatus.urgent ? 'text-red-500 font-medium' : ''}>
+                {deadlineStatus.status}
+              </span>
+              {deadlineStatus.urgent && (
+                <Badge variant="destructive" className="text-xs ml-2">Urgent</Badge>
               )}
             </div>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+        
+        <div className="flex flex-col space-y-2">
+          <Button 
+            onClick={handleGenerateForm}
+            disabled={loading}
+            className="flex items-center space-x-2"
+          >
+            <Wand2 className="h-4 w-4" />
+            <span>{loading ? 'Generating...' : 'Generate Application'}</span>
+          </Button>
+          
+          {subsidy.url && (
+            <Button variant="outline" asChild>
+              <a href={subsidy.url} target="_blank" rel="noopener noreferrer">
+                View Official Page
+              </a>
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Error Display */}
       {error && (
@@ -172,205 +162,243 @@ export const EnhancedSubsidyDetail: React.FC<EnhancedSubsidyDetailProps> = ({
         </Alert>
       )}
 
-      {/* Eligibility & Requirements */}
+      {/* Presentation Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold text-primary">Presentation</h2>
+        <div className="prose prose-gray max-w-none">
+          <div className="text-base leading-relaxed whitespace-pre-line">
+            {subsidy.description || description}
+          </div>
+        </div>
+      </div>
+
+      <Separator className="my-8" />
+
+      {/* For Who Section */}
       {(subsidy.eligibility || subsidy.legal_entity_type) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Users className="h-5 w-5" />
-              <span>Eligibility Requirements</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold text-primary">For Who</h2>
+          <div className="space-y-4">
             {subsidy.eligibility && (
-              <div>
-                <h4 className="font-medium mb-2">General Eligibility</h4>
-                <p className="text-sm text-muted-foreground">{subsidy.eligibility}</p>
+              <div className="prose prose-gray max-w-none">
+                <div className="text-base leading-relaxed whitespace-pre-line">
+                  {subsidy.eligibility}
+                </div>
               </div>
             )}
             
             {subsidy.legal_entity_type && subsidy.legal_entity_type.length > 0 && (
               <div>
-                <h4 className="font-medium mb-2">Eligible Entity Types</h4>
+                <h3 className="font-medium mb-3 text-lg">Eligible Entity Types:</h3>
                 <div className="flex flex-wrap gap-2">
                   {subsidy.legal_entity_type.map((type: string, index: number) => (
-                    <Badge key={index} variant="secondary">{type}</Badge>
+                    <Badge key={index} variant="secondary" className="text-sm">{type}</Badge>
                   ))}
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Application Process */}
-      {(subsidy.application_requirements || subsidy.documents) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Application Requirements</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Application Steps */}
-            {subsidy.application_requirements && Array.isArray(subsidy.application_requirements) && (
-              <div>
-                <h4 className="font-medium mb-3">Application Steps</h4>
-                <div className="space-y-3">
-                  {subsidy.application_requirements.map((req: any, index: number) => (
-                    <div key={index} className="border-l-2 border-blue-200 pl-4 py-2">
-                      <div className="flex items-start space-x-2">
-                        <Badge variant="outline" className="mt-0.5">
-                          Step {index + 1}
-                        </Badge>
-                        <div className="flex-1">
-                          <p className="text-sm">{req.step_description}</p>
-                          {req.required_files && Array.isArray(req.required_files) && req.required_files.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">Required Files:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {req.required_files.map((file: string, fileIndex: number) => (
-                                  <Badge key={fileIndex} variant="secondary" className="text-xs">
-                                    {getRequirementLabel(file)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {req.web_portal && (
-                            <div className="mt-2">
-                              <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                                <a href={req.web_portal} target="_blank" rel="noopener noreferrer">
-                                  Access Application Portal →
-                                </a>
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {(subsidy.eligibility || subsidy.legal_entity_type) && <Separator className="my-8" />}
+
+      {/* When Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold text-primary">When</h2>
+        <div className="space-y-3">
+          <div className="flex items-center space-x-3">
+            <Clock className={`h-5 w-5 ${deadlineStatus.urgent ? 'text-red-500' : 'text-gray-500'}`} />
+            <span className={`text-lg ${deadlineStatus.urgent ? 'text-red-500 font-medium' : ''}`}>
+              Application deadline: {deadlineStatus.status}
+            </span>
+            {deadlineStatus.urgent && (
+              <Badge variant="destructive">Urgent</Badge>
             )}
-
-            {subsidy.application_requirements && subsidy.documents && <Separator />}
-
-            {/* Required Documents */}
-            {subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-3">Required Documents</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {subsidy.documents.map((doc: string, index: number) => (
-                    <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm">{getRequirementLabel(doc)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Additional Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Sectors & Objectives */}
-        {(subsidy.sector || subsidy.objectives) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Focus Areas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {subsidy.sector && getSectorDisplay(subsidy.sector).length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Sectors</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {getSectorDisplay(subsidy.sector).map((sector: string, index: number) => (
-                      <Badge key={index} variant="outline">{sector}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {subsidy.objectives && subsidy.objectives.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Objectives</h4>
-                  <div className="space-y-1">
-                    {subsidy.objectives.map((objective: string, index: number) => (
-                      <p key={index} className="text-sm text-muted-foreground">• {objective}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Contact & Agency Information */}
-        {subsidy.agency && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Program Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <h4 className="font-medium">Managing Agency</h4>
-                <p className="text-sm text-muted-foreground">{subsidy.agency}</p>
-              </div>
-              
-              {subsidy.program && (
-                <div>
-                  <h4 className="font-medium">Program</h4>
-                  <p className="text-sm text-muted-foreground">{subsidy.program}</p>
-                </div>
-              )}
-              
-              {subsidy.language && (
-                <div>
-                  <h4 className="font-medium">Language</h4>
-                  <Badge variant="secondary">{subsidy.language.toUpperCase()}</Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+          </div>
+          {subsidy.deadline && (
+            <p className="text-muted-foreground">
+              Submit your application before {new Date(subsidy.deadline).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Extraction Metadata */}
-      {subsidy.audit && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Extraction Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium">Extracted:</span>
-                <p>{new Date(subsidy.audit.extracted_at || subsidy.created_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <span className="font-medium">Method:</span>
-                <p>{subsidy.audit.extraction_method || 'AI'}</p>
-              </div>
-              <div>
-                <span className="font-medium">Source:</span>
-                <p>{subsidy.audit.source_file || 'Web scraping'}</p>
-              </div>
-              {subsidy.audit.confidence_scores && (
-                <div>
-                  <span className="font-medium">Confidence:</span>
-                  <p>{(() => {
-                    const scores = Object.values(subsidy.audit.confidence_scores) as number[];
-                    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100);
-                  })()}%</p>
+      <Separator className="my-8" />
+
+      {/* How Section */}
+      {(subsidy.application_requirements || subsidy.documents) && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold text-primary">How to Apply</h2>
+          
+          {/* Application Requirements */}
+          {subsidy.application_requirements && (
+            <div className="space-y-4">
+              {Array.isArray(subsidy.application_requirements) ? (
+                <div className="space-y-6">
+                  <h3 className="font-medium text-lg">Application Steps:</h3>
+                  <div className="space-y-4">
+                    {subsidy.application_requirements.map((req: any, index: number) => (
+                      <div key={index} className="border-l-4 border-primary/30 pl-6 py-2">
+                        <div className="flex items-start space-x-3">
+                          <Badge variant="outline" className="mt-1">
+                            Step {index + 1}
+                          </Badge>
+                          <div className="flex-1 space-y-2">
+                            <p className="text-base">{req.step_description || req}</p>
+                            {req.required_files && Array.isArray(req.required_files) && req.required_files.length > 0 && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-2">Required Files:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {req.required_files.map((file: string, fileIndex: number) => (
+                                    <Badge key={fileIndex} variant="secondary" className="text-sm">
+                                      {getRequirementLabel(file)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {req.web_portal && (
+                              <div>
+                                <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                                  <a href={req.web_portal} target="_blank" rel="noopener noreferrer">
+                                    Access Application Portal →
+                                  </a>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="prose prose-gray max-w-none">
+                  <div className="text-base leading-relaxed whitespace-pre-line">
+                    {subsidy.application_requirements}
+                  </div>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {/* Required Documents */}
+          {subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg">Required Documents:</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {subsidy.documents.map((doc: string, index: number) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm">{getRequirementLabel(doc)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Additional Context Information */}
+      {(subsidy.sector || subsidy.objectives || subsidy.agency) && (
+        <>
+          <Separator className="my-8" />
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-primary">Additional Information</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Sectors & Objectives */}
+              {(subsidy.sector || subsidy.objectives) && (
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg">Focus Areas</h3>
+                  {subsidy.sector && getSectorDisplay(subsidy.sector).length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2">Sectors:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {getSectorDisplay(subsidy.sector).map((sector: string, index: number) => (
+                          <Badge key={index} variant="outline">{sector}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {subsidy.objectives && subsidy.objectives.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-2">Objectives:</h4>
+                      <div className="space-y-1">
+                        {subsidy.objectives.map((objective: string, index: number) => (
+                          <p key={index} className="text-sm text-muted-foreground">• {objective}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Program Information */}
+              {subsidy.agency && (
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg">Program Information</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-medium">Managing Agency:</h4>
+                      <p className="text-muted-foreground">{subsidy.agency}</p>
+                    </div>
+                    
+                    {subsidy.program && (
+                      <div>
+                        <h4 className="font-medium">Program:</h4>
+                        <p className="text-muted-foreground">{subsidy.program}</p>
+                      </div>
+                    )}
+                    
+                    {subsidy.language && (
+                      <div>
+                        <h4 className="font-medium">Language:</h4>
+                        <Badge variant="secondary">{subsidy.language.toUpperCase()}</Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Extraction Metadata */}
+      {subsidy.audit && (
+        <div className="mt-12 pt-6 border-t border-dashed">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Extraction Information</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-muted-foreground">
+            <div>
+              <span className="font-medium">Extracted:</span>
+              <p>{new Date(subsidy.audit.extracted_at || subsidy.created_at).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <span className="font-medium">Method:</span>
+              <p>{subsidy.audit.extraction_method || 'AI'}</p>
+            </div>
+            <div>
+              <span className="font-medium">Source:</span>
+              <p>{subsidy.audit.source_file || 'Web scraping'}</p>
+            </div>
+            {subsidy.audit.confidence_scores && (
+              <div>
+                <span className="font-medium">Confidence:</span>
+                <p>{(() => {
+                  const scores = Object.values(subsidy.audit.confidence_scores) as number[];
+                  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100);
+                })()}%</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
