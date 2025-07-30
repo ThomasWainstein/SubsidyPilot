@@ -165,8 +165,8 @@ describe('InlineFieldEditor', () => {
     const checkbox = screen.getByRole('checkbox');
     const editButton = screen.getByRole('button', { name: /edit/i });
     
-    expect(checkbox.disabled).toBe(true);
-    expect(editButton.disabled).toBe(true);
+    expect((checkbox as HTMLInputElement).disabled).toBe(true);
+    expect((editButton as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('formats date values correctly', () => {
