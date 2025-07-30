@@ -66,10 +66,82 @@ const FarmCreationForm = () => {
   const handleApplyExtraction = (extractedData: any) => {
     const appliedFields: string[] = [];
     
+    // Field mapping from extracted data to form fields
+    const fieldMapping: Record<string, string> = {
+      farmName: 'farmName',
+      ownerName: 'ownerName', // This might need a different target field
+      address: 'farmAddress',
+      totalHectares: 'totalArea',
+      legalStatus: 'legalStatus',
+      registrationNumber: 'cnpOrCui',
+      country: 'country',
+      department: 'department',
+      locality: 'locality',
+      revenue: 'revenue',
+      numberOfEmployees: 'staff',
+      phoneNumber: 'mobileNumber',
+      email: 'email',
+      irrigationMethods: 'irrigationMethod',
+      activities: 'landUseTypes',
+      certifications: 'certifications',
+      softwareUsed: 'software',
+      subsidyInterests: 'subsidyInterests'
+    };
+    
     Object.keys(extractedData).forEach(key => {
-      if (extractedData[key] !== undefined && extractedData[key] !== null) {
-        form.setValue(key as any, extractedData[key]);
-        appliedFields.push(key);
+      const formFieldName = fieldMapping[key];
+      const value = extractedData[key];
+      
+      if (formFieldName && value !== undefined && value !== null && value !== '') {
+        try {
+          // Special handling for different field types
+          if (formFieldName === 'landUseTypes' && Array.isArray(value)) {
+            // Map activities to land use types
+            const mappedActivities = value.map(activity => {
+              const activityMap: Record<string, string> = {
+                'Potato Production': 'cereals',
+                'Plantații de migdal': 'fruit-orchards',
+                'Vie': 'vineyards',
+                'Cultură de șofran': 'aromatic-medicinal',
+                'Măslini': 'fruit-orchards',
+                'Agroturism': 'other',
+                'Barley': 'cereals',
+                'Pig Farming': 'livestock',
+                'Vegetables': 'vegetables',
+                'Fruits': 'fruit-orchards',
+                'Herbs': 'aromatic-medicinal'
+              };
+              return activityMap[activity] || 'other';
+            }).filter(Boolean);
+            form.setValue(formFieldName as any, mappedActivities);
+          } else if (formFieldName === 'country') {
+            // Map country names to country codes
+            const countryMap: Record<string, string> = {
+              'Germany': 'DE',
+              'Spania': 'ES',
+              'Spain': 'ES',
+              'Romania': 'RO'
+            };
+            form.setValue(formFieldName as any, countryMap[value] || value);
+          } else if (formFieldName === 'legalStatus') {
+            // Map legal status values
+            const legalStatusMap: Record<string, string> = {
+              'GmbH': 'limited-company',
+              'S.A.': 'joint-stock-company',
+              'SRL': 'limited-company',
+              'PFA': 'individual-enterprise'
+            };
+            form.setValue(formFieldName as any, legalStatusMap[value] || value);
+          } else if (Array.isArray(value)) {
+            form.setValue(formFieldName as any, value);
+          } else {
+            form.setValue(formFieldName as any, value.toString());
+          }
+          
+          appliedFields.push(formFieldName);
+        } catch (error) {
+          console.warn(`Failed to apply field ${key}:`, error);
+        }
       }
     });
     
