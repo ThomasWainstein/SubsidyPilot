@@ -325,6 +325,8 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
               farmId={farmId || 'new'}
               onSave={handleSaveFromReview}
               onApplyToForm={onApplyExtraction}
+              currentFormData={currentFormData}
+              onFormDataChange={onFormDataChange}
             />
           )}
         </DialogContent>

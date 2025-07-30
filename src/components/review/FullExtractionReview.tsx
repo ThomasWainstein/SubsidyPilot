@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { mapFormToExtraction } from '@/lib/extraction/dataMapper';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import AIFieldClassifier from './AIFieldClassifier';
 
@@ -41,6 +42,8 @@ interface FullExtractionReviewProps {
   farmId: string;
   onSave: (correctedData: any) => void;
   onApplyToForm: (mappedData: any) => void;
+  currentFormData?: any; // For bidirectional sync
+  onFormDataChange?: (data: any) => void; // For bidirectional sync
 }
 
 const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
@@ -48,7 +51,9 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
   extraction,
   farmId,
   onSave,
-  onApplyToForm
+  onApplyToForm,
+  currentFormData,
+  onFormDataChange
 }) => {
   const [fields, setFields] = useState<ExtractedField[]>([]);
   const [unmappedData, setUnmappedData] = useState<any>({});
@@ -58,11 +63,81 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
   const document = extraction?.farm_documents;
 
+  const mapFieldsToFormData = useCallback((fieldsList: ExtractedField[]) => {
+    const mapping: Record<string, string> = {
+      farmName: 'name',
+      ownerName: 'ownerName',
+      address: 'address',
+      totalHectares: 'total_hectares',
+      legalStatus: 'legal_status',
+      registrationNumber: 'cnp_or_cui',
+      revenue: 'revenue',
+      country: 'country',
+      email: 'email',
+      phone: 'phone',
+      certifications: 'certifications',
+      activities: 'land_use_types',
+      description: 'description',
+      department: 'department',
+      locality: 'locality'
+    };
+
+    return fieldsList.reduce((acc, field) => {
+      const formField = mapping[field.fieldName] || field.fieldName;
+      let value = field.value;
+
+      if (field.fieldName === 'totalHectares') {
+        if (typeof value === 'string') {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue > 0) {
+            value = numValue;
+          } else {
+            return acc;
+          }
+        }
+      }
+
+      if (['certifications', 'activities'].includes(field.fieldName) && typeof value === 'string') {
+        value = value.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+      }
+
+      if (field.fieldName === 'email' && typeof value === 'string') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return acc;
+        }
+      }
+
+      acc[formField] = value;
+      return acc;
+    }, {} as any);
+  }, []);
+
   useEffect(() => {
     if (extraction?.extracted_data) {
       initializeFields(extraction.extracted_data);
     }
   }, [extraction]);
+
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(mapFieldsToFormData(fields));
+    }
+  }, [fields, onFormDataChange, mapFieldsToFormData]);
+
+  useEffect(() => {
+    if (currentFormData) {
+      const formExtraction = mapFormToExtraction(currentFormData, true, false);
+      setFields(prev =>
+        prev.map(field => {
+          const newVal = formExtraction[field.fieldName];
+          if (newVal !== undefined && newVal !== field.value) {
+            return { ...field, value: newVal, source: 'user_corrected' };
+          }
+          return field;
+        })
+      );
+    }
+  }, [currentFormData]);
 
   const initializeFields = (extractedData: any) => {
     const knownFields = [
