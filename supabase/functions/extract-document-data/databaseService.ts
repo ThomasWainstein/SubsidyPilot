@@ -58,7 +58,7 @@ export async function storeExtractionResult(
         extractionTimestamp: new Date().toISOString(),
         detectedLanguage: extractedData.detectedLanguage || 'unknown',
         promptUsed: extractedData.promptUsed || 'unknown',
-        extractedFieldCount: extractedData.extractedFields?.length || 0,
+        extractedFieldCount: Object.keys(extractedData.extractedFields || {}).length,
         
         // Include all debug info from extraction process
         ...(extractedData.debugInfo || {}),
@@ -102,7 +102,7 @@ export async function storeExtractionResult(
     
     console.log(`✅ Extraction result stored successfully`);
     console.log(`📊 Final analytics:`, {
-      extractedFields: extractedData.extractedFields?.length || 0,
+      extractedFields: Object.keys(extractedData.extractedFields || {}).length,
       confidence: Math.round((extractedData.confidence || 0) * 100),
       language: extractedData.detectedLanguage,
       openaiTokens: extractedData.debugInfo?.openaiUsage?.total_tokens || 0

@@ -335,7 +335,7 @@ serve(async (req) => {
         textLength: extractionResult.text.length,
         detectedLanguage: extractedData.detectedLanguage,
         confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields?.length || 0,
+        extractedFields: Object.keys(extractedData.extractedFields || {}).length,
         hasOpenAIUsage: !!extractedData.debugInfo?.openaiUsage
       }
     }), {
