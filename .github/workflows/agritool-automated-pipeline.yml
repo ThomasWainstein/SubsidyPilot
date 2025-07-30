@@ -55,10 +55,10 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install Dependencies
+    - name: Install Python Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests tika python-tika ocrmypdf tesseract-ocr ghostscript
+        pip install requests tika ocrmypdf ghostscript
         # Install additional dependencies as needed
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
@@ -67,14 +67,32 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ghostscript tesseract-ocr ocrmypdf openjdk-17-jre-headless
     
-    # DISABLED - Tika Server Management (until infrastructure is stable)
-    # - name: Start Apache Tika Server
-    #   run: |
-    #     echo "🚀 Starting Apache Tika Server..."
-    #     cd AgriTool-Raw-Log-Interpreter
-    #     python tika_server_manager.py start
-    #     sleep 5
-    #     python tika_server_manager.py status
+    - name: Start Apache Tika Server
+      run: |
+        echo "🚀 Starting Apache Tika Server..."
+        cd AgriTool-Raw-Log-Interpreter
+        python tika_server_manager.py start
+        if [ $? -ne 0 ]; then
+          echo "❌ Failed to start Tika server"
+          exit 1
+        fi
+    
+    - name: Wait for Tika Server Ready
+      run: |
+        echo "⏳ Waiting for Tika server to be ready..."
+        for i in {1..30}; do
+          if curl -s --connect-timeout 5 http://localhost:9998/tika/version; then
+            echo "✅ Tika server is ready"
+            break
+          else
+            echo "⏳ Attempt $i/30: Tika server not ready, waiting 5 seconds..."
+            sleep 5
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ Tika server failed to start after 150 seconds"
+            exit 1
+          fi
+        done
     
     - name: Run Comprehensive Test Suite
       if: ${{ github.event.inputs.run_tests == 'true' }}
@@ -101,8 +119,8 @@ jobs:
         # Navigate to the appropriate directory
         cd AgriTool-Raw-Log-Interpreter
         
-        # Build the command with all parameters (Tika-free pipeline)
-        PIPELINE_CMD="python enhanced_agent.py --no-tika"
+        # Build the command with all parameters (with Tika pipeline)
+        PIPELINE_CMD="python enhanced_agent.py"
         
         if [ "$MAX_PAGES" != "0" ]; then
           PIPELINE_CMD="$PIPELINE_CMD --max-pages $MAX_PAGES"
@@ -122,13 +140,12 @@ jobs:
         echo "🚀 Executing: $PIPELINE_CMD"
         eval $PIPELINE_CMD
     
-    # DISABLED - Tika Server Management (until infrastructure is stable)  
-    # - name: Stop Tika Server
-    #   if: always()
-    #   run: |
-    #     echo "🛑 Stopping Apache Tika Server..."
-    #     cd AgriTool-Raw-Log-Interpreter
-    #     python tika_server_manager.py stop || echo "Tika server was not running"
+    - name: Stop Tika Server
+      if: always()
+      run: |
+        echo "🛑 Stopping Apache Tika Server..."
+        cd AgriTool-Raw-Log-Interpreter
+        python tika_server_manager.py stop || echo "Tika server was not running"
     
     - name: Upload Pipeline Logs
       if: always()
