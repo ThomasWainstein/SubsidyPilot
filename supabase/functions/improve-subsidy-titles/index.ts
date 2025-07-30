@@ -43,18 +43,45 @@ serve(async (req) => {
       
       let improvedTitle = null;
       
-      if (subsidy.agency && subsidy.sector?.length) {
+      // Clean agency name - extract just "FranceAgriMer" from longer text
+      let cleanAgency = null;
+      if (subsidy.agency) {
+        const agencyLower = subsidy.agency.toLowerCase();
+        if (agencyLower.includes('franceagrimer')) {
+          cleanAgency = 'FranceAgriMer';
+        } else {
+          // Take first few words if it's a long agency description
+          const words = subsidy.agency.split(' ');
+          cleanAgency = words.length > 3 ? words.slice(0, 3).join(' ') : subsidy.agency;
+        }
+      }
+      
+      // Try to extract a meaningful title from description if no agency
+      if (!cleanAgency && subsidy.description) {
+        const desc = subsidy.description.toLowerCase();
+        if (desc.includes('plantation')) {
+          improvedTitle = 'Aide à la plantation de vergers';
+        } else if (desc.includes('investissement')) {
+          improvedTitle = 'Aide aux investissements agricoles';
+        } else if (desc.includes('modernisation')) {
+          improvedTitle = 'Aide à la modernisation';
+        } else if (desc.includes('restructuration')) {
+          improvedTitle = 'Aide à la restructuration';
+        } else if (desc.includes('développement')) {
+          improvedTitle = 'Aide au développement rural';
+        }
+      }
+      
+      // Generate title based on available data
+      if (!improvedTitle && cleanAgency && subsidy.sector?.length) {
         const sectors = subsidy.sector.slice(0, 2).join(', ');
-        improvedTitle = `${subsidy.agency} - ${sectors} Support Program`;
-        console.log(`   ✅ Generated title with agency and sectors: "${improvedTitle}"`);
-      } else if (subsidy.agency) {
-        improvedTitle = `${subsidy.agency} Agricultural Support Program`;
-        console.log(`   ✅ Generated title with agency only: "${improvedTitle}"`);
-      } else {
-        console.log(`   ❌ No agency found, skipping title improvement`);
+        improvedTitle = `Aide ${cleanAgency} - ${sectors}`;
+      } else if (!improvedTitle && cleanAgency) {
+        improvedTitle = `Aide ${cleanAgency}`;
       }
       
       if (improvedTitle) {
+        console.log(`   ✅ Generated title: "${improvedTitle}"`);
         console.log(`   💾 Updating subsidy ${subsidy.id} with new title...`);
         const { error: updateError } = await supabaseClient
           .from('subsidies_structured')
