@@ -176,7 +176,7 @@ const DashboardContainer = () => {
   }
 
   if (error) {
-    logger.debug('DashboardContainer: Showing error state:', error);
+    logger.debug('DashboardContainer: Showing error state', { error });
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -200,7 +200,7 @@ const DashboardContainer = () => {
     );
   }
 
-  logger.debug('DashboardContainer: Rendering main content with', farms.length, 'farms');
+  logger.debug('DashboardContainer: Rendering main content', { farmCount: farms.length });
 
   return (
     <div className="min-h-screen flex flex-col">

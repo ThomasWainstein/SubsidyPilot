@@ -236,7 +236,7 @@ export const useTempDocumentUpload = () => {
 
   // Enhanced upload with real progress and cancellation
   const uploadFile = async (documentId: string, file: File) => {
-    logger.debug('🚀 Starting enhanced upload for:', file.name);
+    logger.debug('Starting enhanced upload', { fileName: file.name });
     
     // Validate file first
     const validation = validateFile(file);
@@ -323,7 +323,7 @@ export const useTempDocumentUpload = () => {
         last_updated: new Date().toISOString()
       });
 
-      logger.debug('✅ Upload completed:', filePath);
+      logger.debug('Upload completed', { filePath });
 
       // Start classification immediately
       await startClassification(documentId, publicUrl, file.name);
@@ -612,7 +612,7 @@ export const useTempDocumentUpload = () => {
   }, [validateFile, toast]);
 
   const processDocument = useCallback(async (documentId: string) => {
-    logger.debug('🎯 Starting processDocument for:', documentId);
+    logger.debug('Starting processDocument', { documentId });
     
     // Get fresh document state to avoid stale closure issues
     setDocuments(currentDocs => {
@@ -622,7 +622,7 @@ export const useTempDocumentUpload = () => {
         return currentDocs;
       }
 
-      logger.debug('📤 Starting document processing for:', document.file_name);
+      logger.debug('Starting document processing', { fileName: document.file_name });
       
       // Start the upload process asynchronously
       uploadFile(documentId, document.file).catch(error => {
@@ -702,7 +702,7 @@ export const useTempDocumentUpload = () => {
         supabase.storage
           .from('farm-documents')
           .remove([fileName])
-          .then(() => logger.debug('🗑️ Cleaned up temp file:', fileName))
+          .then(() => logger.debug('Cleaned up temp file', { fileName }))
           .catch(err => console.warn('Failed to cleanup file:', err));
       }
     }

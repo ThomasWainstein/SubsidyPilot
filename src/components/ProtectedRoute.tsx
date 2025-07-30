@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  logger.debug('ProtectedRoute: user=', user, 'loading=', loading);
+  logger.debug('ProtectedRoute: checking auth state', { user: !!user, loading });
 
   if (loading) {
     return (

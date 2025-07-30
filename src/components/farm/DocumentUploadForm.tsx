@@ -38,7 +38,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess, onExtractionCompleted }: 
 
   // Validate category before setting it - only allow valid categories or empty string for clearing
   const handleCategoryChange = (value: string) => {
-    logger.debug('Category change requested:', value);
+    logger.debug('Category change requested', { value });
     
     // Allow empty string for clearing selection
     if (value === '') {

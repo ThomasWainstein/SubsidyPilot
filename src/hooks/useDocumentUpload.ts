@@ -42,7 +42,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
       }
 
       // Security validation
-      logger.debug('🔄 Starting file validation for:', file.name, 'Type:', file.type, 'Size:', file.size);
+      logger.debug('Starting file validation', { fileName: file.name, fileType: file.type, fileSize: file.size });
       const securityCheck = validateFileType(file);
       if (!securityCheck.isValid) {
         console.error('❌ Security validation failed:', securityCheck.error);
@@ -53,15 +53,15 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         });
         return;
       }
-      logger.debug('✅ Security validation passed for:', file.name);
+      logger.debug('Security validation passed', { fileName: file.name });
 
       // Document validation
-      logger.debug('🔄 Starting document validation for:', file.name);
+      logger.debug('Starting document validation', { fileName: file.name });
       const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
         // Sanitize filename for security
         const sanitizedFile = new File([file], sanitizeFileName(file.name), { type: file.type });
-        logger.debug('✅ Document validation passed, sanitized filename:', sanitizeFileName(file.name));
+        logger.debug('Document validation passed', { sanitizedFileName: sanitizeFileName(file.name) });
         validFiles.push(sanitizedFile);
       } else {
         console.error('❌ Document validation failed:', validation.errors);
@@ -96,7 +96,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
   };
 
   const uploadFiles = async () => {
-    logger.debug('Upload initiated with category:', category);
+    logger.debug('Upload initiated', { category });
 
     // Validate inputs
     if (selectedFiles.length === 0) {
@@ -138,7 +138,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
 
     // Normalize category as a final safety check
     const normalizedCategory = normalizeDocumentCategory(category);
-    logger.debug('Using normalized category for upload:', normalizedCategory);
+    logger.debug('Using normalized category for upload', { normalizedCategory });
 
     setUploadProgress(0);
     setUploadedFiles([]);
@@ -148,16 +148,16 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        logger.debug(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
+        logger.debug('Uploading file', { fileIndex: i + 1, totalFiles, fileName: file.name, category: normalizedCategory });
         
         // Final security validation before upload
-        logger.debug('🔄 Final security validation before upload for:', file.name);
+        logger.debug('Final security validation before upload', { fileName: file.name });
         const securityCheck = validateFileType(file);
         if (!securityCheck.isValid) {
           console.error('❌ Final security validation failed:', securityCheck.error);
           throw new Error(`Security validation failed for ${file.name}: ${securityCheck.error}`);
         }
-        logger.debug('✅ Final security validation passed for:', file.name);
+        logger.debug('Final security validation passed', { fileName: file.name });
         
         // Validate each file before upload
         const validation = validateDocumentUpload(file, normalizedCategory);

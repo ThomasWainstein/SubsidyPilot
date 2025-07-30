@@ -219,7 +219,7 @@ const FarmCreationForm = () => {
 
     try {
       logger.debug('Creating farm with data:', data);
-      logger.debug('User ID:', user.id);
+      logger.debug('User ID', { userId: user.id });
       
       const farmData = {
         name: data.farmName,
@@ -272,7 +272,7 @@ const FarmCreationForm = () => {
 
   const handleFileUpload = (fieldName: string) => (file: File | null) => {
     if (file) {
-      logger.debug(`File selected for ${fieldName}:`, file.name);
+      logger.debug('File selected', { fieldName, fileName: file.name });
       
       // Update upload state
       form.setValue(`uploadedFiles.${fieldName}`, {

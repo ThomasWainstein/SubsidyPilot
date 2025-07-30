@@ -20,7 +20,7 @@ const DocumentItem = ({ document, onDelete, onView, isDeleting }: DocumentItemPr
   const safeCategory = normalizeDocumentCategory(document.category);
   const categoryLabel = CATEGORY_LABELS[safeCategory] || 'Other';
   
-  logger.debug('DocumentItem rendering with category:', document.category, '-> normalized:', safeCategory);
+  logger.debug('DocumentItem rendering with category', { originalCategory: document.category, normalizedCategory: safeCategory });
   
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size';

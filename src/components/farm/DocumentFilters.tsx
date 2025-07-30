@@ -32,7 +32,7 @@ const DocumentFilters = ({
 
   // Safe category change handler that validates input
   const handleCategoryChange = (value: string) => {
-    logger.debug('Filter category change requested:', value);
+    logger.debug('Filter category change requested', { value });
     
     // Allow "all" for clearing selection (equivalent to empty string)
     if (value === 'all' || value === '') {
