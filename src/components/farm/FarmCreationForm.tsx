@@ -16,13 +16,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/hooks/use-toast';
 import FileUploadField from '@/components/form/FileUploadField';
-import SmartFormPrefill from '@/components/farm/SmartFormPrefill';
+import DocumentUploadSection from '@/components/farm/DocumentUploadSection';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const createFarmMutation = useCreateFarm();
+  const [extractedDocuments, setExtractedDocuments] = useState<any[]>([]);
 
   const form = useForm<FarmCreationData>({
     resolver: zodResolver(farmCreationSchema),
@@ -76,6 +77,10 @@ const FarmCreationForm = () => {
       title: 'Data Applied Successfully',
       description: `Applied ${appliedFields.length} fields: ${appliedFields.slice(0, 3).join(', ')}${appliedFields.length > 3 ? ` and ${appliedFields.length - 3} more` : ''}`,
     });
+  };
+
+  const handleExtractedDocumentsChange = (documents: any[]) => {
+    setExtractedDocuments(documents);
   };
 
   const onSubmit = async (data: FarmCreationData) => {
@@ -201,18 +206,28 @@ const FarmCreationForm = () => {
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Farm Profile</h1>
-          <p className="text-gray-600">Complete all sections to create a comprehensive farm profile</p>
+          <p className="text-gray-600">Upload documents to automatically extract farm information, or fill in the details manually</p>
         </div>
 
+        {/* Document Upload Section - Primary Method */}
+        <DocumentUploadSection
+          onExtractedDataChange={handleExtractedDocumentsChange}
+          onApplyAllData={handleApplyExtraction}
+          disabled={createFarmMutation.isPending}
+        />
+
+        {/* Manual Form Entry - Secondary/Optional */}
+        <div className="border-t pt-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Manual Farm Information Entry
+            </h2>
+            <p className="text-gray-600">
+              Complete or adjust any information below. Fields may already be filled from uploaded documents.
+            </p>
+          </div>
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Smart Prefill Section - Only show for existing farms with documents */}
-          {user && (
-            <SmartFormPrefill 
-              farmId="" // Will be empty for new farms
-              onApplyExtraction={handleApplyExtraction}
-              disabled={createFarmMutation.isPending}
-            />
-          )}
 
           {/* Section 1: Farm Identity & Legal Info */}
           <Card>
@@ -826,6 +841,7 @@ const FarmCreationForm = () => {
             </Button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
