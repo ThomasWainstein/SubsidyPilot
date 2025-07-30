@@ -29,6 +29,7 @@ const FarmCreationForm = () => {
     resolver: zodResolver(farmCreationSchema),
     defaultValues: {
       farmName: '',
+      ownerName: '', // Add owner name field
       farmAddress: '',
       legalStatus: '',
       cnpOrCui: '',
@@ -46,6 +47,7 @@ const FarmCreationForm = () => {
       subsidyInterests: [],
       otherSubsidyInterest: '',
       mobileNumber: '',
+      email: '', // Add email field
       preferredLanguage: '',
       gdprConsent: false,
       notificationConsent: false,
@@ -64,12 +66,13 @@ const FarmCreationForm = () => {
     : [];
 
   const handleApplyExtraction = (extractedData: any) => {
+    console.log('🎯 Applying extracted data:', extractedData);
     const appliedFields: string[] = [];
     
-    // Field mapping from extracted data to form fields
+    // Enhanced field mapping from extracted data to form fields
     const fieldMapping: Record<string, string> = {
       farmName: 'farmName',
-      ownerName: 'ownerName', // This might need a different target field
+      ownerName: 'ownerName',
       address: 'farmAddress',
       totalHectares: 'totalArea',
       legalStatus: 'legalStatus',
@@ -85,65 +88,113 @@ const FarmCreationForm = () => {
       activities: 'landUseTypes',
       certifications: 'certifications',
       softwareUsed: 'software',
-      subsidyInterests: 'subsidyInterests'
+      subsidyInterests: 'subsidyInterests',
+      livestockPresent: 'hasLivestock',
+      technicalDocs: 'hasTechnicalDocs'
     };
     
     Object.keys(extractedData).forEach(key => {
       const formFieldName = fieldMapping[key];
       const value = extractedData[key];
       
+      console.log(`🔄 Processing field: ${key} → ${formFieldName}:`, value);
+      
       if (formFieldName && value !== undefined && value !== null && value !== '') {
         try {
           // Special handling for different field types
           if (formFieldName === 'landUseTypes' && Array.isArray(value)) {
-            // Map activities to land use types
+            // Map activities to standard land use types
+            const activityMap: Record<string, string> = {
+              'Potato Production': 'cereals',
+              'Plantații de migdal': 'fruit-orchards',
+              'Vie': 'vineyards', 
+              'Cultură de șofran': 'aromatic-medicinal',
+              'Măslini': 'fruit-orchards',
+              'Agroturism': 'other',
+              'Barley': 'cereals',
+              'Pig Farming': 'livestock',
+              'Vegetables': 'vegetables',
+              'Fruits': 'fruit-orchards',
+              'Herbs': 'aromatic-medicinal',
+              'Viticulture': 'vineyards',
+              'Cereal Crops': 'cereals',
+              'Orchard': 'fruit-orchards',
+              'Weather monitoring': 'other'
+            };
+            
             const mappedActivities = value.map(activity => {
-              const activityMap: Record<string, string> = {
-                'Potato Production': 'cereals',
-                'Plantații de migdal': 'fruit-orchards',
-                'Vie': 'vineyards',
-                'Cultură de șofran': 'aromatic-medicinal',
-                'Măslini': 'fruit-orchards',
-                'Agroturism': 'other',
-                'Barley': 'cereals',
-                'Pig Farming': 'livestock',
-                'Vegetables': 'vegetables',
-                'Fruits': 'fruit-orchards',
-                'Herbs': 'aromatic-medicinal'
-              };
-              return activityMap[activity] || 'other';
-            }).filter(Boolean);
+              const mapped = activityMap[activity];
+              if (mapped) return mapped;
+              
+              // Fallback mapping for partial matches
+              const lowerActivity = activity.toLowerCase();
+              if (lowerActivity.includes('potato') || lowerActivity.includes('cereal') || lowerActivity.includes('barley')) return 'cereals';
+              if (lowerActivity.includes('fruit') || lowerActivity.includes('migdal') || lowerActivity.includes('orchard')) return 'fruit-orchards';
+              if (lowerActivity.includes('vine') || lowerActivity.includes('vin')) return 'vineyards';
+              if (lowerActivity.includes('vegetable')) return 'vegetables';
+              if (lowerActivity.includes('herb') || lowerActivity.includes('aromatic')) return 'aromatic-medicinal';
+              if (lowerActivity.includes('livestock') || lowerActivity.includes('pig') || lowerActivity.includes('animal')) return 'pasture-grassland';
+              
+              return 'other';
+            }).filter((item, index, array) => array.indexOf(item) === index); // Remove duplicates
+            
             form.setValue(formFieldName as any, mappedActivities);
+            console.log(`✅ Applied activities mapping:`, mappedActivities);
           } else if (formFieldName === 'country') {
             // Map country names to country codes
             const countryMap: Record<string, string> = {
               'Germany': 'DE',
               'Spania': 'ES',
               'Spain': 'ES',
-              'Romania': 'RO'
+              'Romania': 'RO',
+              'France': 'FR',
+              'Italy': 'IT',
+              'Polen': 'PL',
+              'Poland': 'PL'
             };
-            form.setValue(formFieldName as any, countryMap[value] || value);
+            const countryCode = countryMap[value] || value;
+            form.setValue(formFieldName as any, countryCode);
+            console.log(`✅ Applied country mapping: ${value} → ${countryCode}`);
           } else if (formFieldName === 'legalStatus') {
-            // Map legal status values
+            // Map legal status values to form options
             const legalStatusMap: Record<string, string> = {
               'GmbH': 'limited-company',
               'S.A.': 'joint-stock-company',
               'SRL': 'limited-company',
-              'PFA': 'individual-enterprise'
+              'PFA': 'individual-enterprise',
+              'LLC': 'limited-company',
+              'Inc': 'corporation',
+              'Ltd': 'limited-company'
             };
-            form.setValue(formFieldName as any, legalStatusMap[value] || value);
+            const mappedStatus = legalStatusMap[value] || value.toLowerCase().replace(/\s+/g, '-');
+            form.setValue(formFieldName as any, mappedStatus);
+            console.log(`✅ Applied legal status mapping: ${value} → ${mappedStatus}`);
+          } else if (formFieldName === 'hasLivestock' && typeof value === 'boolean') {
+            form.setValue(formFieldName as any, value);
+            console.log(`✅ Applied boolean field: ${formFieldName} = ${value}`);
+          } else if (formFieldName === 'hasTechnicalDocs' && typeof value === 'boolean') {
+            form.setValue(formFieldName as any, value);
+            console.log(`✅ Applied boolean field: ${formFieldName} = ${value}`);
           } else if (Array.isArray(value)) {
             form.setValue(formFieldName as any, value);
+            console.log(`✅ Applied array field: ${formFieldName}`, value);
           } else {
-            form.setValue(formFieldName as any, value.toString());
+            // Convert to string for text fields
+            const stringValue = typeof value === 'string' ? value : String(value);
+            form.setValue(formFieldName as any, stringValue);
+            console.log(`✅ Applied text field: ${formFieldName} = "${stringValue}"`);
           }
           
           appliedFields.push(formFieldName);
         } catch (error) {
-          console.warn(`Failed to apply field ${key}:`, error);
+          console.warn(`❌ Failed to apply field ${key}:`, error);
         }
+      } else {
+        console.log(`⚠️ Skipped field ${key}: no mapping or empty value`);
       }
     });
+    
+    console.log(`🎉 Applied ${appliedFields.length} fields total:`, appliedFields);
     
     toast({
       title: 'Data Applied Successfully',
