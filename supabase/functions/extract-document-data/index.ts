@@ -96,13 +96,17 @@ serve(async (req) => {
     // Parse and validate request
     const requestBody = await req.json();
     documentId = requestBody.documentId;
-    const { fileUrl, fileName, documentType } = requestBody;
+    // Support both parameter naming conventions
+    const fileUrl = requestBody.fileUrl || requestBody.documentUrl;
+    const fileName = requestBody.fileName || requestBody.documentName;
+    const documentType = requestBody.documentType;
     
     addDebugLog('REQUEST_PARSED', {
       documentId,
       fileUrl,
       fileName,
-      documentType
+      documentType,
+      originalParams: requestBody
     });
 
     // Validate required parameters
