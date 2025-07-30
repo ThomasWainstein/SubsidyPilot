@@ -456,13 +456,28 @@ export const useTempDocumentUpload = () => {
           extraction_id: data.extractionId || `ext-${documentId}`
         };
       } catch (error) {
-        console.warn('Extraction service unavailable, using mock data:', error);
+        // PRODUCTION SECURITY: No mock data fallbacks
+        // Extraction failures must be surfaced as errors, not hidden with fake data
+        logger.error('Extraction service failed', error as Error, {
+          documentId,
+          fileName,
+          documentType
+        });
         
-        // Fallback to mock data
-        extractionResult = {
-          extraction_data: generateMockExtraction(fileName),
-          extraction_id: `mock-ext-${documentId}`
-        };
+        const errorResult = extractionErrorHandler.handleExtractionFailure(error, {
+          documentId,
+          fileName,
+          documentType
+        });
+        
+        clearInterval(extractionInterval);
+        
+        updateDocument(documentId, {
+          extraction_status: 'failed',
+          error_message: errorResult.error?.message || 'Extraction failed'
+        });
+        
+        throw new Error(errorResult.error?.message || 'Extraction failed');
       }
 
       clearInterval(extractionInterval);
@@ -538,14 +553,18 @@ export const useTempDocumentUpload = () => {
           extraction_id: data.extractionId || `ext-${documentId}`
         };
       } catch (error) {
-        // Fallback to mock data for demo
-        console.warn('Extraction service unavailable, using mock data:', error);
+        // PRODUCTION SECURITY: No mock data fallbacks
+        logger.error('Manual extraction failed', error as Error, {
+          documentId,
+          fileName
+        });
         
-        const mockData = generateMockExtraction(fileName);
-        return {
-          extraction_data: mockData,
-          extraction_id: `mock-ext-${documentId}`
-        };
+        const errorResult = extractionErrorHandler.handleExtractionFailure(error, {
+          documentId,
+          fileName
+        });
+        
+        throw new Error(errorResult.error?.message || 'Extraction failed');
       }
     },
     onError: (error, variables) => {
