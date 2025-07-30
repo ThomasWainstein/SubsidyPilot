@@ -202,9 +202,12 @@ def find_executable_driver(driver_dir, driver_name):
                 analysis_size = 0
             log_step(f"🚨 AGGRESSIVE: 📄 ANALYSIS File: {analysis_file} | File: {analysis_is_file} | Executable: {analysis_is_executable} | Permissions: {analysis_permissions} | Size: {analysis_size}")
             
-            # AGGRESSIVE CRASH: If THIRD_PARTY_NOTICES is present, warn loudly
-            if "THIRD_PARTY_NOTICES" in analysis_file:
-                log_error(f"🚨 AGGRESSIVE: ❌ WARNING: THIRD_PARTY_NOTICES file detected in directory: {analysis_file}")
+            # NOTE: THIRD_PARTY_NOTICES files are normal documentation files in ChromeDriver directories
+            # Only warn if they would actually be selected as the driver binary
+            if "THIRD_PARTY_NOTICES" in analysis_file and analysis_file == driver_name:
+                log_error(f"🚨 CRITICAL: THIRD_PARTY_NOTICES file would be selected as driver: {analysis_file}")
+            elif "THIRD_PARTY_NOTICES" in analysis_file:
+                log_step(f"📄 INFO: Found documentation file (normal): {analysis_file}")
                 
     except Exception as e:
         log_error(f"🚨 AGGRESSIVE: ❌ Could not list driver directory: {e}")
