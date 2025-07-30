@@ -166,73 +166,109 @@ export const useTempDocumentUpload = () => {
 
   const processDocument = async (documentId: string) => {
     const document = documents.find(d => d.id === documentId);
-    if (!document) return;
+    if (!document) {
+      console.error('Document not found for processing:', documentId);
+      return;
+    }
+
+    console.log('📤 Starting document processing for:', document.file_name);
 
     try {
       // Step 1: Upload with immediate feedback
-      updateDocument(documentId, { upload_progress: 5 });
-      
-      // Simulate gradual upload progress
-      setTimeout(() => updateDocument(documentId, { upload_progress: 15 }), 200);
-      setTimeout(() => updateDocument(documentId, { upload_progress: 25 }), 500);
-      
-      const { fileUrl } = await uploadMutation.mutateAsync(document.file);
-      
       updateDocument(documentId, { 
-        file_url: fileUrl,
-        upload_progress: 35,
-        classification_status: 'processing'
+        upload_progress: 5,
+        error_message: undefined // Clear any previous errors
       });
-
-      // Step 2: Classify with progress updates
-      setTimeout(() => updateDocument(documentId, { upload_progress: 45 }), 200);
       
-      const classificationResult = await classifyMutation.mutateAsync({
-        documentId,
-        fileUrl,
-        fileName: document.file_name
-      });
+      // Simulate gradual upload progress with error handling
+      const progressInterval = setInterval(() => {
+        const currentDoc = documents.find(d => d.id === documentId);
+        if (currentDoc && currentDoc.upload_progress < 25) {
+          updateDocument(documentId, { 
+            upload_progress: Math.min(currentDoc.upload_progress + 5, 25) 
+          });
+        }
+      }, 300);
 
-      updateDocument(documentId, {
-        upload_progress: 55,
-        classification_status: 'completed',
-        predicted_category: classificationResult.predicted_category,
-        confidence: classificationResult.confidence,
-        extraction_status: 'processing'
-      });
+      try {
+        const { fileUrl } = await uploadMutation.mutateAsync(document.file);
+        clearInterval(progressInterval);
+        
+        console.log('✅ File uploaded successfully:', fileUrl);
+        
+        updateDocument(documentId, { 
+          file_url: fileUrl,
+          upload_progress: 35,
+          classification_status: 'processing'
+        });
 
-      // Step 3: Extract with progress feedback
-      setTimeout(() => updateDocument(documentId, { upload_progress: 70 }), 300);
-      setTimeout(() => updateDocument(documentId, { upload_progress: 85 }), 600);
-      
-      const extractionResult = await extractMutation.mutateAsync({
-        documentId,
-        fileUrl,
-        fileName: document.file_name
-      });
+        // Step 2: Classify with progress updates
+        setTimeout(() => updateDocument(documentId, { upload_progress: 45 }), 200);
+        
+        const classificationResult = await classifyMutation.mutateAsync({
+          documentId,
+          fileUrl,
+          fileName: document.file_name
+        });
 
-      updateDocument(documentId, {
-        upload_progress: 100,
-        extraction_status: 'completed',
-        extraction_data: extractionResult.extraction_data,
-        extraction_id: extractionResult.extraction_id
-      });
+        console.log('🏷️ Classification completed:', classificationResult);
 
-      toast({
-        title: 'Document Processed',
-        description: `${document.file_name} has been processed successfully.`,
-      });
+        updateDocument(documentId, {
+          upload_progress: 55,
+          classification_status: 'completed',
+          predicted_category: classificationResult.predicted_category,
+          confidence: classificationResult.confidence,
+          extraction_status: 'processing'
+        });
+
+        // Step 3: Extract with progress feedback
+        setTimeout(() => updateDocument(documentId, { upload_progress: 70 }), 300);
+        setTimeout(() => updateDocument(documentId, { upload_progress: 85 }), 600);
+        
+        const extractionResult = await extractMutation.mutateAsync({
+          documentId,
+          fileUrl,
+          fileName: document.file_name
+        });
+
+        console.log('📊 Extraction completed:', extractionResult);
+
+        updateDocument(documentId, {
+          upload_progress: 100,
+          extraction_status: 'completed',
+          extraction_data: extractionResult.extraction_data,
+          extraction_id: extractionResult.extraction_id
+        });
+
+        toast({
+          title: 'Document Processed Successfully',
+          description: `${document.file_name} has been processed and data extracted.`,
+        });
+
+      } catch (stepError) {
+        clearInterval(progressInterval);
+        throw stepError;
+      }
 
     } catch (error) {
-      console.error('Document processing error:', error);
+      console.error('❌ Document processing error:', error);
       
       // Show specific error message to user
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Don't reset progress to 0, keep it at current value to show partial progress
+      const currentDoc = documents.find(d => d.id === documentId);
+      const currentProgress = currentDoc?.upload_progress || 1;
       
       updateDocument(documentId, {
         classification_status: 'failed',
         extraction_status: 'failed',
-        upload_progress: 0,
+        upload_progress: Math.max(currentProgress, 1), // Maintain progress, don't go to 0
         error_message: errorMessage
       });
 

@@ -250,10 +250,15 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                 
                 {document.upload_progress > 0 && document.upload_progress < 100 && (
                   <div className="mb-2">
-                    <Progress value={document.upload_progress} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {document.upload_progress < 30 ? 'Uploading...' : 
-                       document.upload_progress < 50 ? 'Classifying...' : 
+                    <Progress 
+                      value={document.upload_progress} 
+                      className="h-2" 
+                      animated={true}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {document.upload_progress < 30 ? 'Uploading file...' : 
+                       document.upload_progress < 50 ? 'Classifying document...' : 
                        'Extracting data...'} {document.upload_progress}%
                     </p>
                   </div>
