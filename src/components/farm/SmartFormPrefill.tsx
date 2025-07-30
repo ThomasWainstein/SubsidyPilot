@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sparkles, FileText, AlertTriangle, Bug, Eye, Edit } from 'lucide-react';
+import { Sparkles, FileText, AlertTriangle, Bug, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { useFarmDocumentExtractions } from '@/hooks/useDocumentExtractions';
 import FullExtractionReview from '@/components/review/FullExtractionReview';
 import ExtractionDebugModal from './ExtractionDebugModal';
+import { mapExtractionToForm, validateMappedData, getFieldDisplayName, type MappingResult } from '@/lib/extraction/dataMapper';
 
 interface SmartFormPrefillProps {
   farmId: string;
   onApplyExtraction: (extractedData: any) => void;
   disabled?: boolean;
+  currentFormData?: any; // For bidirectional sync
+  onFormDataChange?: (data: any) => void; // For bidirectional sync
 }
 
 const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
   farmId,
   onApplyExtraction,
-  disabled = false
+  disabled = false,
+  currentFormData,
+  onFormDataChange
 }) => {
   const { data: extractions, isLoading } = useFarmDocumentExtractions(farmId);
   const [debugModalOpen, setDebugModalOpen] = useState(false);
   const [fullReviewOpen, setFullReviewOpen] = useState(false);
   const [selectedExtraction, setSelectedExtraction] = useState<any>(null);
+  const [mappingResults, setMappingResults] = useState<Map<string, MappingResult>>(new Map());
 
   if (isLoading) {
     return (
@@ -51,50 +57,44 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
     );
   }
 
+  // Process extractions and compute mapping results
+  useEffect(() => {
+    if (extractions && extractions.length > 0) {
+      const results = new Map<string, MappingResult>();
+      
+      extractions.forEach(extraction => {
+        const mappingResult = mapExtractionToForm(extraction.extracted_data as any, true, false);
+        results.set(extraction.id, mappingResult);
+      });
+      
+      setMappingResults(results);
+    }
+  }, [extractions]);
+
   const handleApplyExtraction = (extraction: any) => {
-    const extractedData = extraction.extracted_data as any;
+    const mappingResult = mappingResults.get(extraction.id);
     
-    // Map extracted fields to form fields - handle both nested and direct field structures
-    const mappedData: any = {};
-    
-    // Get the actual fields from either extractedFields or direct properties
-    const fields = extractedData.extractedFields || extractedData;
-    
-    if (fields.farmName) mappedData.name = fields.farmName;
-    if (fields.ownerName) mappedData.ownerName = fields.ownerName;
-    if (fields.address) mappedData.address = fields.address;
-    if (fields.totalHectares) {
-      // Convert to number if it's a string
-      const hectares = typeof fields.totalHectares === 'string' ? 
-        parseFloat(fields.totalHectares) : fields.totalHectares;
-      mappedData.total_hectares = hectares;
-    }
-    if (fields.legalStatus) mappedData.legal_status = fields.legalStatus;
-    if (fields.registrationNumber) mappedData.cnp_or_cui = fields.registrationNumber;
-    if (fields.revenue) mappedData.revenue = fields.revenue;
-    if (fields.country) mappedData.country = fields.country;
-    if (fields.email) mappedData.email = fields.email;
-    
-    // Handle arrays for certifications and activities
-    if (fields.certifications) {
-      if (Array.isArray(fields.certifications)) {
-        mappedData.certifications = fields.certifications;
-      } else if (typeof fields.certifications === 'string') {
-        // Split string into array if needed
-        mappedData.certifications = fields.certifications.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+    if (!mappingResult) {
+      // Fallback to real-time mapping if cached result not available
+      const result = mapExtractionToForm(extraction.extracted_data, true, false);
+      const validation = validateMappedData(result.mappedData);
+      
+      if (!validation.isValid) {
+        console.warn('Mapped data validation failed:', validation.errors);
       }
-    }
-    
-    if (fields.activities) {
-      if (Array.isArray(fields.activities)) {
-        mappedData.land_use_types = fields.activities;
-      } else if (typeof fields.activities === 'string') {
-        // Split string into array if needed
-        mappedData.land_use_types = fields.activities.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
-      }
+      
+      onApplyExtraction(result.mappedData);
+      return;
     }
 
-    onApplyExtraction(mappedData);
+    // Use cached mapping result
+    const validation = validateMappedData(mappingResult.mappedData);
+    
+    if (!validation.isValid) {
+      console.warn('Mapped data validation failed:', validation.errors);
+    }
+    
+    onApplyExtraction(mappingResult.mappedData);
   };
 
   const handleViewDebug = (extraction: any) => {
@@ -135,35 +135,61 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
           {uniqueExtractions.slice(0, 3).map((extraction) => {
             const extractedData = extraction.extracted_data as any;
             const confidence = extractedData?.confidence || 0;
-            
-            // Get fields from either extractedFields or direct properties
-            const fields = extractedData?.extractedFields || extractedData || {};
-            const extractedFields = Object.keys(fields).filter(key => 
-              !['confidence', 'error', 'debugInfo', 'rawResponse'].includes(key) && fields[key]
-            );
-            
             const documentName = extraction.farm_documents?.file_name || 'Document';
             const hasError = extractedData?.error;
+            
+            // Get mapping result for this extraction
+            const mappingResult = mappingResults.get(extraction.id);
+            const mappedFieldsCount = mappingResult?.stats.mappedFields || 0;
+            const totalFieldsCount = mappingResult?.stats.totalFields || 0;
+            const errorFieldsCount = mappingResult?.stats.errorFields || 0;
+            const unmappedFieldsCount = Object.keys(mappingResult?.unmappedFields || {}).length;
 
-            // Preview of extracted values with actual field names from the document
-            const extractedValues = extractedFields.slice(0, 3).map((field: string) => {
-              const value = fields[field];
-              const displayName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-              
-              if (Array.isArray(value) && value.length > 0) return `${displayName}: ${value.join(', ')}`;
-              if (value && typeof value === 'string') return `${displayName}: ${value}`;
-              if (typeof value === 'number') return `${displayName}: ${value}`;
-              return null;
-            }).filter(Boolean);
+            // Create preview from mapped data
+            const previewItems: string[] = [];
+            if (mappingResult?.mappedData) {
+              Object.entries(mappingResult.mappedData).slice(0, 3).forEach(([key, value]) => {
+                const displayName = getFieldDisplayName(key);
+                
+                if (Array.isArray(value) && value.length > 0) {
+                  previewItems.push(`${displayName}: ${value.join(', ')}`);
+                } else if (value && typeof value === 'string') {
+                  previewItems.push(`${displayName}: ${value}`);
+                } else if (typeof value === 'number') {
+                  previewItems.push(`${displayName}: ${value}`);
+                }
+              });
+            }
 
             return (
               <div key={extraction.id} className="border rounded-lg p-3 bg-background">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{documentName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {hasError ? 'Extraction failed' : `${extractedFields.length} fields extracted`}
-                    </p>
+                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                      {hasError ? (
+                        <span className="flex items-center">
+                          <XCircle className="h-3 w-3 mr-1 text-red-500" />
+                          Extraction failed
+                        </span>
+                      ) : (
+                        <>
+                          <span className="flex items-center">
+                            <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                            {mappedFieldsCount} mapped
+                          </span>
+                          {errorFieldsCount > 0 && (
+                            <span className="flex items-center text-amber-600">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              {errorFieldsCount} errors
+                            </span>
+                          )}
+                          {unmappedFieldsCount > 0 && (
+                            <span>{unmappedFieldsCount} unmapped</span>
+                          )}
+                        </>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {new Date(extraction.created_at).toLocaleString()}
                     </p>
@@ -188,25 +214,39 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                   <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                     {extractedData.error}
                   </div>
-                ) : extractedFields.length > 0 ? (
+                ) : mappedFieldsCount > 0 ? (
                   <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-muted-foreground">Mapped Fields Preview:</p>
+                      <div className="flex items-center space-x-1 text-xs">
+                        {mappingResult?.errors && mappingResult.errors.length > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {mappingResult.errors.length} errors
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                     <div className="space-y-1">
-                      {extractedValues.slice(0, 3).map((preview: string, idx: number) => (
+                      {previewItems.slice(0, 3).map((preview: string, idx: number) => (
                         <p key={idx} className="text-xs text-foreground bg-muted p-1 rounded">
                           {preview}
                         </p>
                       ))}
-                      {extractedFields.length > 3 && (
+                      {mappedFieldsCount > 3 && (
                         <p className="text-xs text-muted-foreground">
-                          +{extractedFields.length - 3} more fields
+                          +{mappedFieldsCount - 3} more mapped fields
+                        </p>
+                      )}
+                      {unmappedFieldsCount > 0 && (
+                        <p className="text-xs text-amber-600">
+                          {unmappedFieldsCount} unmapped fields available for review
                         </p>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
-                    No extractable data found in this document
+                    No mappable data found in this document
                   </div>
                 )}
 
@@ -214,16 +254,16 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                   <Button
                     size="sm"
                     onClick={() => handleFullReview(extraction)}
-                    disabled={disabled || hasError || extractedFields.length === 0}
+                    disabled={disabled || hasError || mappedFieldsCount === 0}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Eye className="h-3 w-3 mr-1" />
-                    {extractedFields.length > 0 ? 'Review & Apply' : 'No Data to Review'}
+                    {mappedFieldsCount > 0 ? `Review & Apply (${mappedFieldsCount})` : 'No Data to Review'}
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => handleApplyExtraction(extraction)}
-                    disabled={disabled || hasError || extractedFields.length === 0}
+                    disabled={disabled || hasError || mappedFieldsCount === 0}
                     variant="outline"
                   >
                     <Sparkles className="h-3 w-3 mr-1" />
@@ -238,11 +278,27 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                   </Button>
                 </div>
 
-                {!hasError && confidence < 0.5 && extractedFields.length > 0 && (
-                  <p className="text-xs text-amber-600 mt-2 flex items-center">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Low confidence - please review all fields carefully
-                  </p>
+                {!hasError && (
+                  <div className="mt-2 space-y-1">
+                    {confidence < 0.5 && mappedFieldsCount > 0 && (
+                      <p className="text-xs text-amber-600 flex items-center">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Low confidence - please review all fields carefully
+                      </p>
+                    )}
+                    {mappingResult?.errors && mappingResult.errors.length > 0 && (
+                      <p className="text-xs text-red-600 flex items-center">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        {mappingResult.errors.length} parsing errors occurred
+                      </p>
+                    )}
+                    {confidence > 0.8 && mappedFieldsCount > 5 && (
+                      <p className="text-xs text-green-600 flex items-center">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        High quality extraction ready for quick apply
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             );
