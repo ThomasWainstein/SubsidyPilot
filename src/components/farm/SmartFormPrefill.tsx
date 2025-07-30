@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, FileText, AlertTriangle, Bug } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sparkles, FileText, AlertTriangle, Bug, Eye, Edit } from 'lucide-react';
 import { useFarmDocumentExtractions } from '@/hooks/useDocumentExtractions';
+import FullExtractionReview from '@/components/review/FullExtractionReview';
 import ExtractionDebugModal from './ExtractionDebugModal';
 
 interface SmartFormPrefillProps {
@@ -19,6 +21,7 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
 }) => {
   const { data: extractions, isLoading } = useFarmDocumentExtractions(farmId);
   const [debugModalOpen, setDebugModalOpen] = useState(false);
+  const [fullReviewOpen, setFullReviewOpen] = useState(false);
   const [selectedExtraction, setSelectedExtraction] = useState<any>(null);
 
   if (isLoading) {
@@ -97,6 +100,17 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
   const handleViewDebug = (extraction: any) => {
     setSelectedExtraction(extraction);
     setDebugModalOpen(true);
+  };
+
+  const handleFullReview = (extraction: any) => {
+    setSelectedExtraction(extraction);
+    setFullReviewOpen(true);
+  };
+
+  const handleSaveFromReview = (correctedData: any) => {
+    // This would typically save to backend, but for form prefill we just apply
+    onApplyExtraction(correctedData);
+    setFullReviewOpen(false);
   };
 
   // Get unique extractions (deduplicate by document)
@@ -199,13 +213,21 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
                 <div className="flex gap-2">
                   <Button
                     size="sm"
+                    onClick={() => handleFullReview(extraction)}
+                    disabled={disabled || hasError || extractedFields.length === 0}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    {extractedFields.length > 0 ? 'Review & Apply' : 'No Data to Review'}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => handleApplyExtraction(extraction)}
                     disabled={disabled || hasError || extractedFields.length === 0}
-                    className="flex-1"
-                    variant={extractedFields.length > 0 ? "default" : "outline"}
+                    variant="outline"
                   >
                     <Sparkles className="h-3 w-3 mr-1" />
-                    {extractedFields.length > 0 ? 'Apply to Form' : 'No Data to Apply'}
+                    Quick Apply
                   </Button>
                   <Button
                     size="sm"
@@ -234,6 +256,25 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
         </div>
       </CardContent>
       
+      {/* Full Extraction Review Modal */}
+      <Dialog open={fullReviewOpen} onOpenChange={setFullReviewOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review Extracted Data</DialogTitle>
+          </DialogHeader>
+          {selectedExtraction && (
+            <FullExtractionReview
+              documentId={selectedExtraction.document_id}
+              extraction={selectedExtraction}
+              farmId={farmId || 'new'}
+              onSave={handleSaveFromReview}
+              onApplyToForm={onApplyExtraction}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Debug Modal */}
       {selectedExtraction && (
         <ExtractionDebugModal
           isOpen={debugModalOpen}

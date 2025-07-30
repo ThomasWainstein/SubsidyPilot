@@ -63,15 +63,18 @@ const FarmCreationForm = () => {
     : [];
 
   const handleApplyExtraction = (extractedData: any) => {
+    const appliedFields: string[] = [];
+    
     Object.keys(extractedData).forEach(key => {
       if (extractedData[key] !== undefined && extractedData[key] !== null) {
         form.setValue(key as any, extractedData[key]);
+        appliedFields.push(key);
       }
     });
     
     toast({
-      title: 'Data Applied',
-      description: 'AI-extracted data has been applied to the form. Please review and adjust as needed.',
+      title: 'Data Applied Successfully',
+      description: `Applied ${appliedFields.length} fields: ${appliedFields.slice(0, 3).join(', ')}${appliedFields.length > 3 ? ` and ${appliedFields.length - 3} more` : ''}`,
     });
   };
 
