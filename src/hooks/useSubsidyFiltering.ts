@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateMatchConfidence } from '@/utils/tagNormalization';
+import { logger } from '@/lib/logger';
 
 interface FilterState {
   confidenceFilter: number[];
@@ -47,7 +48,7 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('useSubsidyFiltering: Starting fetch, farmId:', farmId);
+        logger.debug('useSubsidyFiltering: Starting fetch', { farmId });
         setLoading(true);
         setError(null);
 
@@ -71,13 +72,13 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
         }
 
         // Get all subsidies from structured table - always fetch regardless of farm presence
-        console.log('useSubsidyFiltering: Fetching subsidies from subsidies_structured...');
+        logger.debug('useSubsidyFiltering: Fetching subsidies from subsidies_structured...');
         const { data: subsidiesData, error: subsidiesError } = await supabase
           .from('subsidies_structured')
           .select('*')
           .order('created_at', { ascending: false });
         
-        console.log('useSubsidyFiltering: Raw subsidies response:', { subsidiesData, subsidiesError });
+        logger.debug('useSubsidyFiltering: Raw subsidies response', { subsidiesData, subsidiesError });
 
         if (subsidiesError) {
           console.error('Subsidies fetch error:', subsidiesError);
@@ -111,7 +112,7 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
           };
         });
 
-        console.log('useSubsidyFiltering: Final subsidies with matches:', subsidiesWithMatches);
+        logger.debug('useSubsidyFiltering: Final subsidies with matches', { subsidiesWithMatches });
         setSubsidies(subsidiesWithMatches);
       } catch (err) {
         console.error('Data fetch error:', err);

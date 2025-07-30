@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface ExtractionState {
   documentId: string;
@@ -70,7 +71,7 @@ export const useExtractionOrchestrator = (options: ExtractionOrchestratorOptions
         errors: []
       });
 
-      console.log('🔄 Starting extraction orchestration:', { documentId, forceAI });
+      logger.debug('🔄 Starting extraction orchestration', { documentId, forceAI });
 
       // Call hybrid extraction with abort signal
       const { data, error } = await supabase.functions.invoke('hybrid-extraction', {
@@ -190,7 +191,7 @@ export const useExtractionOrchestrator = (options: ExtractionOrchestratorOptions
       return;
     }
     
-    console.log('🔄 Retrying extraction with AI fallback:', { documentId });
+    logger.debug('🔄 Retrying extraction with AI fallback', { documentId });
     await processDocument(documentId, documentUrl, forceAI);
   }, [states, processDocument]);
 

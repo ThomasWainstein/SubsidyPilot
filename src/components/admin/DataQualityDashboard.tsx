@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { assessSubsidyQuality, SubsidyQualityReport, generateReprocessingCandidates } from '@/utils/dataQuality';
+import { logger } from '@/lib/logger';
 
 interface DataQualityStats {
   totalSubsidies: number;
@@ -132,7 +133,7 @@ const DataQualityDashboard: React.FC = () => {
       const candidateIds = generateReprocessingCandidates(qualityReports);
       
       // In real implementation, trigger Edge function to reprocess
-      console.log('Would reprocess subsidies:', candidateIds);
+      logger.debug('Would reprocess subsidies:', candidateIds);
       
       // Mock success
       setTimeout(() => {

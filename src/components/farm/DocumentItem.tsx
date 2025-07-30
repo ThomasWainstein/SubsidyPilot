@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Eye, Trash2, Loader2 } from 'lucide-react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
 import { CATEGORY_LABELS, normalizeDocumentCategory } from '@/utils/documentValidation';
+import { logger } from '@/lib/logger';
 
 interface DocumentItemProps {
   document: FarmDocument;
@@ -19,7 +20,7 @@ const DocumentItem = ({ document, onDelete, onView, isDeleting }: DocumentItemPr
   const safeCategory = normalizeDocumentCategory(document.category);
   const categoryLabel = CATEGORY_LABELS[safeCategory] || 'Other';
   
-  console.log('DocumentItem rendering with category:', document.category, '-> normalized:', safeCategory);
+  logger.debug('DocumentItem rendering with category:', document.category, '-> normalized:', safeCategory);
   
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size';

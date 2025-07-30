@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react';
 import { getLocalExtractor, LocalExtractionResult } from '@/services/localTransformerExtraction';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 export interface UseLocalExtractionReturn {
   isExtracting: boolean;
@@ -30,7 +31,7 @@ export const useLocalExtraction = (): UseLocalExtractionReturn => {
     setIsExtracting(true);
     
     try {
-      console.log('🔄 Starting local extraction for document:', documentId);
+      logger.debug('🔄 Starting local extraction for document', { documentId });
       
       const result = await extractor.extractFromText(text, documentType);
       setLastResult(result);
@@ -53,7 +54,7 @@ export const useLocalExtraction = (): UseLocalExtractionReturn => {
         });
       }
       
-      console.log('✅ Local extraction completed:', {
+      logger.debug('✅ Local extraction completed', {
         fields: result.extractedFields.length,
         confidence: result.overallConfidence,
         fallbackRecommended: result.fallbackRecommended,

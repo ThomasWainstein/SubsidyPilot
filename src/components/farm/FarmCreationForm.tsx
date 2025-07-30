@@ -17,6 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/hooks/use-toast';
 import FileUploadField from '@/components/form/FileUploadField';
 import DocumentUploadSection from '@/components/farm/DocumentUploadSection';
+import { logger } from '@/lib/logger';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
@@ -66,7 +67,7 @@ const FarmCreationForm = () => {
     : [];
 
   const handleApplyExtraction = (extractedData: any) => {
-    console.log('🎯 Applying extracted data:', extractedData);
+    logger.debug('🎯 Applying extracted data:', extractedData);
     const appliedFields: string[] = [];
     
     // Enhanced field mapping from extracted data to form fields
@@ -97,7 +98,7 @@ const FarmCreationForm = () => {
       const formFieldName = fieldMapping[key];
       const value = extractedData[key];
       
-      console.log(`🔄 Processing field: ${key} → ${formFieldName}:`, value);
+      logger.debug(`🔄 Processing field: ${key} → ${formFieldName}:`, value);
       
       if (formFieldName && value !== undefined && value !== null && value !== '') {
         try {
@@ -139,7 +140,7 @@ const FarmCreationForm = () => {
             }).filter((item, index, array) => array.indexOf(item) === index); // Remove duplicates
             
             form.setValue(formFieldName as any, mappedActivities);
-            console.log(`✅ Applied activities mapping:`, mappedActivities);
+            logger.debug(`✅ Applied activities mapping:`, mappedActivities);
           } else if (formFieldName === 'country') {
             // Map country names to country codes
             const countryMap: Record<string, string> = {
@@ -154,7 +155,7 @@ const FarmCreationForm = () => {
             };
             const countryCode = countryMap[value] || value;
             form.setValue(formFieldName as any, countryCode);
-            console.log(`✅ Applied country mapping: ${value} → ${countryCode}`);
+            logger.debug(`✅ Applied country mapping: ${value} → ${countryCode}`);
           } else if (formFieldName === 'legalStatus') {
             // Map legal status values to form options
             const legalStatusMap: Record<string, string> = {
@@ -168,21 +169,21 @@ const FarmCreationForm = () => {
             };
             const mappedStatus = legalStatusMap[value] || value.toLowerCase().replace(/\s+/g, '-');
             form.setValue(formFieldName as any, mappedStatus);
-            console.log(`✅ Applied legal status mapping: ${value} → ${mappedStatus}`);
+            logger.debug(`✅ Applied legal status mapping: ${value} → ${mappedStatus}`);
           } else if (formFieldName === 'hasLivestock' && typeof value === 'boolean') {
             form.setValue(formFieldName as any, value);
-            console.log(`✅ Applied boolean field: ${formFieldName} = ${value}`);
+            logger.debug(`✅ Applied boolean field: ${formFieldName} = ${value}`);
           } else if (formFieldName === 'hasTechnicalDocs' && typeof value === 'boolean') {
             form.setValue(formFieldName as any, value);
-            console.log(`✅ Applied boolean field: ${formFieldName} = ${value}`);
+            logger.debug(`✅ Applied boolean field: ${formFieldName} = ${value}`);
           } else if (Array.isArray(value)) {
             form.setValue(formFieldName as any, value);
-            console.log(`✅ Applied array field: ${formFieldName}`, value);
+            logger.debug(`✅ Applied array field: ${formFieldName}`, value);
           } else {
             // Convert to string for text fields
             const stringValue = typeof value === 'string' ? value : String(value);
             form.setValue(formFieldName as any, stringValue);
-            console.log(`✅ Applied text field: ${formFieldName} = "${stringValue}"`);
+            logger.debug(`✅ Applied text field: ${formFieldName} = "${stringValue}"`);
           }
           
           appliedFields.push(formFieldName);
@@ -190,11 +191,11 @@ const FarmCreationForm = () => {
           console.warn(`❌ Failed to apply field ${key}:`, error);
         }
       } else {
-        console.log(`⚠️ Skipped field ${key}: no mapping or empty value`);
+        logger.debug(`⚠️ Skipped field ${key}: no mapping or empty value`);
       }
     });
     
-    console.log(`🎉 Applied ${appliedFields.length} fields total:`, appliedFields);
+    logger.debug(`🎉 Applied ${appliedFields.length} fields total:`, appliedFields);
     
     toast({
       title: 'Data Applied Successfully',
@@ -217,8 +218,8 @@ const FarmCreationForm = () => {
     }
 
     try {
-      console.log('Creating farm with data:', data);
-      console.log('User ID:', user.id);
+      logger.debug('Creating farm with data:', data);
+      logger.debug('User ID:', user.id);
       
       const farmData = {
         name: data.farmName,
@@ -248,9 +249,9 @@ const FarmCreationForm = () => {
         software_used: data.software,
       };
 
-      console.log('Submitting farm data to Supabase:', farmData);
+      logger.debug('Submitting farm data to Supabase:', farmData);
       const createdFarm = await createFarmMutation.mutateAsync(farmData);
-      console.log('Farm created successfully:', createdFarm);
+      logger.debug('Farm created successfully:', createdFarm);
       
       toast({
         title: 'Success',
@@ -271,7 +272,7 @@ const FarmCreationForm = () => {
 
   const handleFileUpload = (fieldName: string) => (file: File | null) => {
     if (file) {
-      console.log(`File selected for ${fieldName}:`, file.name);
+      logger.debug(`File selected for ${fieldName}:`, file.name);
       
       // Update upload state
       form.setValue(`uploadedFiles.${fieldName}`, {
