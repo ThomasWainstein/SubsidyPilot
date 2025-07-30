@@ -51,18 +51,45 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
   const handleApplyExtraction = (extraction: any) => {
     const extractedData = extraction.extracted_data as any;
     
-    // Map extracted fields to form fields
+    // Map extracted fields to form fields - handle both nested and direct field structures
     const mappedData: any = {};
     
-    if (extractedData.farmName) mappedData.name = extractedData.farmName;
-    if (extractedData.ownerName) mappedData.ownerName = extractedData.ownerName;
-    if (extractedData.address) mappedData.address = extractedData.address;
-    if (extractedData.totalHectares) mappedData.total_hectares = extractedData.totalHectares;
-    if (extractedData.legalStatus) mappedData.legal_status = extractedData.legalStatus;
-    if (extractedData.registrationNumber) mappedData.cnp_or_cui = extractedData.registrationNumber;
-    if (extractedData.revenue) mappedData.revenue = extractedData.revenue;
-    if (extractedData.certifications) mappedData.certifications = extractedData.certifications;
-    if (extractedData.activities) mappedData.land_use_types = extractedData.activities;
+    // Get the actual fields from either extractedFields or direct properties
+    const fields = extractedData.extractedFields || extractedData;
+    
+    if (fields.farmName) mappedData.name = fields.farmName;
+    if (fields.ownerName) mappedData.ownerName = fields.ownerName;
+    if (fields.address) mappedData.address = fields.address;
+    if (fields.totalHectares) {
+      // Convert to number if it's a string
+      const hectares = typeof fields.totalHectares === 'string' ? 
+        parseFloat(fields.totalHectares) : fields.totalHectares;
+      mappedData.total_hectares = hectares;
+    }
+    if (fields.legalStatus) mappedData.legal_status = fields.legalStatus;
+    if (fields.registrationNumber) mappedData.cnp_or_cui = fields.registrationNumber;
+    if (fields.revenue) mappedData.revenue = fields.revenue;
+    if (fields.country) mappedData.country = fields.country;
+    if (fields.email) mappedData.email = fields.email;
+    
+    // Handle arrays for certifications and activities
+    if (fields.certifications) {
+      if (Array.isArray(fields.certifications)) {
+        mappedData.certifications = fields.certifications;
+      } else if (typeof fields.certifications === 'string') {
+        // Split string into array if needed
+        mappedData.certifications = fields.certifications.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+      }
+    }
+    
+    if (fields.activities) {
+      if (Array.isArray(fields.activities)) {
+        mappedData.land_use_types = fields.activities;
+      } else if (typeof fields.activities === 'string') {
+        // Split string into array if needed
+        mappedData.land_use_types = fields.activities.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+      }
+    }
 
     onApplyExtraction(mappedData);
   };
@@ -94,16 +121,24 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
           {uniqueExtractions.slice(0, 3).map((extraction) => {
             const extractedData = extraction.extracted_data as any;
             const confidence = extractedData?.confidence || 0;
-            const extractedFields = Object.keys(extractedData?.extractedFields || {});
+            
+            // Get fields from either extractedFields or direct properties
+            const fields = extractedData?.extractedFields || extractedData || {};
+            const extractedFields = Object.keys(fields).filter(key => 
+              !['confidence', 'error', 'debugInfo', 'rawResponse'].includes(key) && fields[key]
+            );
+            
             const documentName = extraction.farm_documents?.file_name || 'Document';
             const hasError = extractedData?.error;
 
-            // Preview of extracted values
+            // Preview of extracted values with actual field names from the document
             const extractedValues = extractedFields.slice(0, 3).map((field: string) => {
-              const value = extractedData?.extractedFields?.[field];
-              if (Array.isArray(value) && value.length > 0) return `${field}: ${value.join(', ')}`;
-              if (value && typeof value === 'string') return `${field}: ${value}`;
-              if (typeof value === 'number') return `${field}: ${value}`;
+              const value = fields[field];
+              const displayName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              
+              if (Array.isArray(value) && value.length > 0) return `${displayName}: ${value.join(', ')}`;
+              if (value && typeof value === 'string') return `${displayName}: ${value}`;
+              if (typeof value === 'number') return `${displayName}: ${value}`;
               return null;
             }).filter(Boolean);
 
