@@ -214,7 +214,7 @@ ${documentText.substring(0, 4000)} // Limit text to avoid token limits
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
