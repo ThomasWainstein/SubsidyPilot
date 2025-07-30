@@ -72,7 +72,7 @@ class Config:
     
     def __init__(self):
         # Required environment variables
-        self.SUPABASE_URL = self._get_required_env("NEXT_PUBLIC_SUPABASE_URL")
+        self.SUPABASE_URL = self._get_required_env("SUPABASE_URL")
         self.SUPABASE_SERVICE_KEY = self._get_required_env("SUPABASE_SERVICE_ROLE_KEY")
         self.OPENAI_API_KEY = self._get_required_env("SCRAPER_RAW_GPT_API")
         

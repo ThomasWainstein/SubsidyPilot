@@ -192,7 +192,7 @@ jobs:
           echo "🤖 Starting AI agent processing..."
 
           # Debug environment variables (without exposing values)
-          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SUPABASE_URL: $([ -n \"$SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
           echo "✅ NEXT_PUBLIC_SUPABASE_ANON: $([ -n \"$NEXT_PUBLIC_SUPABASE_ANON\" ] && echo 'SET' || echo 'MISSING')"
           echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
           echo "✅ SCRAPER_RAW_GPT_API: $([ -n \"$SCRAPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
