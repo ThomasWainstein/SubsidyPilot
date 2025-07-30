@@ -67,3 +67,6 @@ verify_jwt = false
 
 [functions.hybrid-extraction]
 verify_jwt = true
+
+[functions.environment-diagnostic]
+verify_jwt = false
