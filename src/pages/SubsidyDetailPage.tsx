@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
+import { getRequirementLabel } from '@/utils/requirementLabels';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
 
 const SubsidyDetailPage = () => {
@@ -527,14 +528,20 @@ const SubsidyDetailPage = () => {
                   <CardContent>
                     {subsidy.application_requirements && Array.isArray(subsidy.application_requirements) && subsidy.application_requirements.length > 0 ? (
                       <ul className="space-y-3">
-                        {subsidy.application_requirements.map((req, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
-                            <span className="text-sm">
-                              {typeof req === 'string' ? req : (req && typeof req === 'object' && 'requirement' in req ? String(req.requirement) : String(req))}
-                            </span>
-                          </li>
-                        ))}
+                        {subsidy.application_requirements.map((req, idx) => {
+                          const key =
+                            typeof req === 'string'
+                              ? req
+                              : req && typeof req === 'object' && 'requirement' in req
+                              ? String(req.requirement)
+                              : String(req);
+                          return (
+                            <li key={idx} className="flex items-start gap-2">
+                              <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                              <span className="text-sm">{getRequirementLabel(key)}</span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     ) : subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 ? (
                       <ul className="space-y-3">
