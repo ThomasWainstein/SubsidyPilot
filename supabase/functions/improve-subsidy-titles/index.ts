@@ -20,11 +20,11 @@ serve(async (req) => {
 
     console.log('Starting subsidy title improvement...')
 
-    // Get all subsidies with "Subsidy Page" title
+    // Get all subsidies with placeholder or missing titles
     const { data: subsidies, error: fetchError } = await supabaseClient
       .from('subsidies_structured')
       .select('*')
-      .eq('title', 'Subsidy Page')
+      .or('title.eq.Subsidy Page,title.is.null,title.eq.')
 
     if (fetchError) {
       throw fetchError
@@ -39,19 +39,38 @@ serve(async (req) => {
         // Create a better title based on available data
         let newTitle = 'Agricultural Funding Program'
         
-        if (subsidy.agency && subsidy.sector) {
-          newTitle = `${subsidy.agency} - ${subsidy.sector} Grant`
+        // Handle sector as array
+        const sectors = Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : []);
+        const sectorText = sectors.slice(0, 2).join(', ');
+        
+        if (subsidy.agency && sectorText) {
+          newTitle = `${subsidy.agency} - ${sectorText} Grant`
         } else if (subsidy.agency) {
           newTitle = `${subsidy.agency} Agricultural Grant`
-        } else if (subsidy.sector) {
-          newTitle = `${subsidy.sector} Funding Program`
+        } else if (sectorText) {
+          newTitle = `${sectorText} Funding Program`
         } else if (subsidy.program) {
           newTitle = subsidy.program
+        } else {
+          // Generate from description or use agency name if available
+          if (subsidy.description && subsidy.description.length > 0) {
+            const descWords = subsidy.description.substring(0, 50).split(' ').slice(0, 6).join(' ')
+            newTitle = `${descWords}... Program`
+          } else {
+            newTitle = `Agricultural Program #${subsidy.id.substring(0, 8)}`
+          }
         }
 
-        // Add funding type if available
-        if (subsidy.funding_type && !newTitle.includes(subsidy.funding_type)) {
+        // Add funding type if available and meaningful
+        if (subsidy.funding_type && 
+            !newTitle.toLowerCase().includes(subsidy.funding_type.toLowerCase()) &&
+            subsidy.funding_type !== 'unknown') {
           newTitle += ` (${subsidy.funding_type})`
+        }
+        
+        // Ensure title doesn't exceed reasonable length
+        if (newTitle.length > 80) {
+          newTitle = newTitle.substring(0, 77) + '...'
         }
 
         // Update the title
