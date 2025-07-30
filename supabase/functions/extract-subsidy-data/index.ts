@@ -59,78 +59,37 @@ interface SubsidyExtractionResult {
 }
 
 const SUBSIDY_VERBATIM_EXTRACTION_PROMPT = `
-You are an expert document extraction assistant. Your task is to extract the full content of a subsidy webpage or document **verbatim**, preserving all original wording, formatting, punctuation, and structure, in any language, without summarization or paraphrasing.
+You are a domain expert tasked with extracting subsidy program data verbatim from the raw text of web pages or documents.
 
-Return a valid JSON object with the following keys exactly:
+OUTPUT a strict JSON object matching this structure:
 
 {
-  "title": string | null,
-  "contact": {
-    "email": string | null,
-    "phone": string | null,
-    "website": string | null
-  },
-  "period": {
-    "start_date": string | null,
-    "end_date": string | null,
-    "publication_date": string | null
-  },
-  "presentation": string | null,
-  "objectives": string | null,
-  "actions": string | null,
-  "eligibility": string | null,
+  "title": string or null,
+  "contact": { "email": string or null, "phone": string or null, "website": string or null },
+  "period": { "start_date": string or null, "end_date": string or null, "publication_date": string or null },
+  "presentation": string or null,
+  "objectives": string or null,
+  "actions": string or null,
+  "eligibility": string or null,
   "application_process": [
-    {
-      "step_number": integer,
-      "description": string,
-      "required_documents": [string]
-    }
+    { "step_number": integer, "description": string, "required_documents": [string] }
   ],
-  "funding": {
-    "amount": string | null,
-    "contribution_rate": string | null,
-    "type": string | null
-  },
-  "deadlines": {
-    "application_start": string | null,
-    "application_end": string | null,
-    "status": string | null
-  },
-  "documents": [ { "name": string, "format": string | null } ],
-  "additional_info": string | null,
+  "funding": { "amount": string or null, "contribution_rate": string or null, "type": string or null },
+  "deadlines": { "application_start": string or null, "application_end": string or null, "status": string or null },
+  "documents": [ { "name": string, "format": string or null } ],
+  "additional_info": string or null,
   "language": string,
-  "metadata": {
-    "source_url": string | null,
-    "extraction_date": string,
-    "confidence": object
-  }
+  "metadata": { "source_url": string or null, "extraction_date": string, "confidence": object }
 }
 
-CRITICAL EXTRACTION RULES:
-1. Extract ALL content verbatim - NO summarization, NO paraphrasing, NO translation
-2. Preserve exact original formatting, paragraphs, line breaks, bullet points
-3. Maintain all named entities, numbers, policy references, legal citations as-is
-4. If a section or field is missing, set its value to null or empty array
-5. Support multi-language documents, preserving language-specific text
-6. Include all tables, appendices, document references exactly as listed
-7. Preserve all links, emails, phone numbers, and addresses exactly
-8. Keep original punctuation, capitalization, and special characters
+Obey these rules:  
+- Do NOT summarize, paraphrase, or translate. Extract text exactly as-is, including original language.  
+- Preserve all formatting, punctuation, line breaks, and lists.  
+- If a section is absent, set it to null or empty arrays.  
+- Maintain exact entities, names, numbers, and references.  
+- Output valid JSON only, no explanations or markdown.
 
-SECTION MAPPING INSTRUCTIONS:
-- "title": Extract the main program title/heading exactly as shown
-- "presentation": Full introductory/overview text preserving all paragraphs
-- "objectives": Complete objectives section verbatim
-- "actions": All eligible/ineligible actions text exactly as written
-- "eligibility": Full eligibility criteria preserving all conditions and requirements
-- "application_process": Step-by-step process with exact wording and document names
-- "funding": All funding amounts, rates, types exactly as stated
-- "deadlines": All dates and timeline information verbatim
-- "documents": Every required document with exact names and formats
-- "additional_info": Any remaining content not categorized above
-
-If a key is missing or empty in source, assign null or empty array accordingly.
-
-Response must be valid JSON only, no explanations or markdown.
+When input text exceeds token limits, split intelligently and assemble results maintaining fidelity.
 `;
 
 async function extractTextFromFile(fileUrl: string, fileName: string): Promise<string> {
