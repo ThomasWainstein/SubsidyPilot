@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@/test/utils';
+import { render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { createMockSupabaseClient } from '@/test/mocks/supabase';
 import { useTempDocumentUpload } from '@/hooks/useTempDocumentUpload';
 import useHybridExtraction from '@/hooks/useHybridExtraction';
@@ -78,26 +79,31 @@ describe('Hybrid upload workflow', () => {
       });
     });
 
-    (useFarmDocumentExtractions as unknown as vi.Mock).mockReturnValue({
+    (useFarmDocumentExtractions as any).mockReturnValue({
       data: [mockExtraction],
       isLoading: false
     });
 
+    const Wrapper = wrapper;
     render(
-      <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />,
-      { wrapper }
+      <Wrapper>
+        <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />
+      </Wrapper>
     );
 
     expect(screen.getByText(/smart prefill available/i)).toBeDefined();
 
+    const Wrapper2 = wrapper;
     render(
-      <FullExtractionReview
-        documentId={docId}
-        extraction={mockExtraction}
-        farmId="farm1"
-        onSave={vi.fn()}
-        onApplyToForm={vi.fn()}
-      />, { wrapper }
+      <Wrapper2>
+        <FullExtractionReview
+          documentId={docId}
+          extraction={mockExtraction}
+          farmId="farm1"
+          onSave={vi.fn()}
+          onApplyToForm={vi.fn()}
+        />
+      </Wrapper2>
     );
 
     expect(screen.getByDisplayValue('Extracted Farm')).toBeDefined();
@@ -128,11 +134,13 @@ describe('Hybrid upload workflow', () => {
       result.current.updateDocument(docId, { extraction_status: 'failed' });
     });
 
-    (useFarmDocumentExtractions as unknown as vi.Mock).mockReturnValue({ data: [], isLoading: false });
+    (useFarmDocumentExtractions as any).mockReturnValue({ data: [], isLoading: false });
 
+    const Wrapper3 = wrapper;
     render(
-      <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />,
-      { wrapper }
+      <Wrapper3>
+        <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />
+      </Wrapper3>
     );
 
     expect(screen.getByText(/no ai-extracted data available/i)).toBeDefined();
@@ -166,11 +174,13 @@ describe('Hybrid upload workflow', () => {
       result.current.updateDocument(docId, { extraction_status: 'failed' });
     });
 
-    (useFarmDocumentExtractions as unknown as vi.Mock).mockReturnValue({ data: [], isLoading: false });
+    (useFarmDocumentExtractions as any).mockReturnValue({ data: [], isLoading: false });
 
+    const Wrapper4 = wrapper;
     render(
-      <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />,
-      { wrapper }
+      <Wrapper4>
+        <SmartFormPrefill farmId="farm1" onApplyExtraction={vi.fn()} />
+      </Wrapper4>
     );
 
     expect(screen.getByText(/no ai-extracted data available/i)).toBeDefined();
