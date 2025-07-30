@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, Clock, MapPin, Euro, Users, AlertCircle, Wand2 } from 'lucide-react';
-import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
+import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplay, formatFilterLabel } from '@/utils/subsidyFormatting';
 import { getRequirementLabel } from '@/utils/requirementLabels';
 import useSubsidyFormGeneration, { SubsidyFormSchema } from '@/hooks/useSubsidyFormGeneration';
 import DynamicSubsidyForm from './DynamicSubsidyForm';
@@ -284,11 +284,11 @@ export const EnhancedSubsidyDetail: React.FC<EnhancedSubsidyDetailProps> = ({
               <CardTitle className="text-lg">Focus Areas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {subsidy.sector && subsidy.sector.length > 0 && (
+              {subsidy.sector && getSectorDisplay(subsidy.sector).length > 0 && (
                 <div>
                   <h4 className="font-medium mb-2">Sectors</h4>
                   <div className="flex flex-wrap gap-1">
-                    {subsidy.sector.map((sector: string, index: number) => (
+                    {getSectorDisplay(subsidy.sector).map((sector: string, index: number) => (
                       <Badge key={index} variant="outline">{sector}</Badge>
                     ))}
                   </div>
