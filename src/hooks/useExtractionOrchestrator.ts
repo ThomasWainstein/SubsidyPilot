@@ -172,15 +172,13 @@ export const useExtractionOrchestrator = (options: UseExtractionOrchestratorOpti
         
         // Create document record
         const { data: documentData, error: documentError } = await supabase
-          .from('documents')
+          .from('farm_documents')
           .insert({
             farm_id: farmId,
             file_name: file.name,
-            file_path: uploadData.path,
             file_url: `${supabase.storage.from('farm-documents').getPublicUrl(uploadData.path).data.publicUrl}`,
-            category: category,
-            file_size: file.size,
-            upload_status: 'completed'
+            category: category as any, // Cast to match the enum type
+            file_size: file.size
           })
           .select()
           .single();
@@ -374,10 +372,10 @@ export const useExtractionOrchestrator = (options: UseExtractionOrchestratorOpti
     try {
       // Get document details for retry
       const { data: document } = await supabase
-        .from('documents')
+        .from('farm_documents')
         .select('file_url')
         .eq('id', documentId)
-        .single();
+        .maybeSingle();
       
       if (!document) {
         throw new Error('Document not found for retry');
