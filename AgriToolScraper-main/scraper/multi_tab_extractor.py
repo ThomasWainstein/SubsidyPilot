@@ -92,6 +92,9 @@ class MultiTabExtractor:
             # Additional wait for DSFR components to initialize
             time.sleep(2)
             
+            # Store original HTML for title extraction
+            original_html = self.driver.page_source
+            
             # Extract tab content
             tab_results = self._extract_tab_content()
             
@@ -107,6 +110,7 @@ class MultiTabExtractor:
                 'tab_content': tab_results['tab_content'],
                 'combined_text': combined_text,
                 'attachments': attachments,
+                'original_html': original_html,  # Store original HTML for title extraction
                 'extraction_metadata': {
                     'tabs_found': tab_results['tabs_found'],
                     'tabs_extracted': tab_results['tabs_extracted'],
@@ -659,10 +663,28 @@ def enhanced_extract_subsidy_details(url: str) -> Optional[Dict[str, Any]]:
         from urllib.parse import urlparse
         import re
         
-        # Create soup from combined text for structured extraction
-        # Note: This is a simplified approach - in production you might want to 
-        # parse the original HTML with the extracted tab information
-        fake_html = f"<html><body><h1>Subsidy Page</h1><div>{multi_tab_result['combined_text']}</div></body></html>"
+        # Create soup from combined text for structured extraction with proper title extraction
+        # Use the original page HTML for title extraction, then augment with tab content
+        from .discovery import extract_structured_content
+        from urllib.parse import urlparse
+        import re
+        
+        # First extract title from the original page
+        original_soup = BeautifulSoup(multi_tab_result.get('original_html', ''), 'html.parser')
+        
+        # Try enhanced title extraction on original HTML
+        try:
+            from enhanced_title_extractor import extract_enhanced_title
+            extracted_title = extract_enhanced_title(soup=original_soup, url=url)
+        except ImportError:
+            extracted_title = None
+        
+        # Create enriched soup that preserves title but includes tab content
+        if extracted_title:
+            fake_html = f"<html><body><h1>{extracted_title}</h1><div>{multi_tab_result['combined_text']}</div></body></html>"
+        else:
+            fake_html = f"<html><body><div>{multi_tab_result['combined_text']}</div></body></html>"
+        
         soup = BeautifulSoup(fake_html, 'html.parser')
         
         extracted = extract_structured_content(soup, url)

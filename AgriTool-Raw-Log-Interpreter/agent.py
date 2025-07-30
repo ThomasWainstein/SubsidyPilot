@@ -219,7 +219,20 @@ class LogInterpreterAgent:
     def call_openai_assistant(self, payload: str, file_content: str) -> Dict[str, Any]:
         """Call OpenAI Assistant to extract canonical fields"""
         system_prompt = """You are the SCRAPER_RAW_LOGS_INTERPRETER assistant. 
-        Extract canonical subsidy fields from the provided text content.
+        Extract canonical subsidy fields from the provided text content with ABSOLUTE PRECISION.
+        
+        CRITICAL TITLE EXTRACTION REQUIREMENTS:
+        - NEVER use "Subsidy Page" as a title - this is a placeholder that must be avoided
+        - Extract the ACTUAL, SPECIFIC title from the source page content
+        - Look for headings like "Aide à...", "Subvention pour...", specific program names
+        - If no clear title is found, create a descriptive title from agency + sector + purpose
+        - Title must be unique, descriptive, and reflect the actual subsidy program
+        
+        CONTENT EXTRACTION REQUIREMENTS:
+        - Extract content VERBATIM from source - no summarization or paraphrasing
+        - Preserve ALL original formatting, line breaks, and structure exactly as in source
+        - For lists (eligibility, documents, steps), maintain original order and wording
+        - Empty sections should be null, not {} or generic text
         
         CRITICAL: Always return array fields (amount, region, sector, documents, priority_groups, 
         application_requirements, questionnaire_steps, legal_entity_type, objectives, 
@@ -228,7 +241,7 @@ class LogInterpreterAgent:
         strings for these fields. Return empty arrays if no data is present.
         
         Return a JSON object with exactly these fields (use null for missing values):
-        - url, title, description, eligibility, documents (array), deadline (YYYY-MM-DD),
+        - url, title (NEVER "Subsidy Page"), description, eligibility, documents (array), deadline (YYYY-MM-DD),
         - amount (array of numbers), program, agency, region (array), sector (array), funding_type,
         - co_financing_rate (numeric), project_duration, payment_terms, application_method,
         - evaluation_criteria, previous_acceptance_rate (numeric), priority_groups (array),
@@ -241,6 +254,11 @@ class LogInterpreterAgent:
         - questionnaire_steps (array): For each requirement, generate a user-friendly question/instruction
           (e.g. [{"requirement": "Business Plan", "question": "Please upload your business plan (PDF or DOCX)."}])
         - requirements_extraction_status (string): Set to "extracted" if requirements found, "not_found" if unclear
+        
+        QUALITY ASSURANCE:
+        - Validate that title is meaningful and specific (not generic)
+        - Ensure all text fields contain actual content, not placeholders
+        - Verify arrays contain actual data items, not empty or generic entries
         
         Ensure all fields are present in your response."""
         
