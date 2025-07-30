@@ -67,13 +67,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ghostscript tesseract-ocr ocrmypdf openjdk-17-jre-headless
     
-    - name: Start Apache Tika Server
-      run: |
-        echo "🚀 Starting Apache Tika Server..."
-        cd AgriTool-Raw-Log-Interpreter
-        python tika_server_manager.py start
-        sleep 5
-        python tika_server_manager.py status
+    # DISABLED - Tika Server Management (until infrastructure is stable)
+    # - name: Start Apache Tika Server
+    #   run: |
+    #     echo "🚀 Starting Apache Tika Server..."
+    #     cd AgriTool-Raw-Log-Interpreter
+    #     python tika_server_manager.py start
+    #     sleep 5
+    #     python tika_server_manager.py status
     
     - name: Run Comprehensive Test Suite
       if: ${{ github.event.inputs.run_tests == 'true' }}
@@ -100,8 +101,8 @@ jobs:
         # Navigate to the appropriate directory
         cd AgriTool-Raw-Log-Interpreter
         
-        # Build the command with all parameters
-        PIPELINE_CMD="python pipeline_runner.py"
+        # Build the command with all parameters (Tika-free pipeline)
+        PIPELINE_CMD="python enhanced_agent.py --no-tika"
         
         if [ "$MAX_PAGES" != "0" ]; then
           PIPELINE_CMD="$PIPELINE_CMD --max-pages $MAX_PAGES"
@@ -121,12 +122,13 @@ jobs:
         echo "🚀 Executing: $PIPELINE_CMD"
         eval $PIPELINE_CMD
     
-    - name: Stop Tika Server
-      if: always()
-      run: |
-        echo "🛑 Stopping Apache Tika Server..."
-        cd AgriTool-Raw-Log-Interpreter
-        python tika_server_manager.py stop || echo "Tika server was not running"
+    # DISABLED - Tika Server Management (until infrastructure is stable)  
+    # - name: Stop Tika Server
+    #   if: always()
+    #   run: |
+    #     echo "🛑 Stopping Apache Tika Server..."
+    #     cd AgriTool-Raw-Log-Interpreter
+    #     python tika_server_manager.py stop || echo "Tika server was not running"
     
     - name: Upload Pipeline Logs
       if: always()
