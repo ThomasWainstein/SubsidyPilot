@@ -12,6 +12,7 @@ import {
   Clock,
   Target
 } from 'lucide-react';
+import SourceBadge from './SourceBadge';
 
 interface FieldData {
   key: string;
@@ -27,6 +28,8 @@ interface FieldData {
 interface ReviewSummaryProps {
   fields: FieldData[];
   className?: string;
+  extractionMethod?: 'rule-based' | 'ai-based' | 'merged';
+  extractionTime?: string;
 }
 
 interface StatCardProps {
@@ -82,7 +85,7 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-const ReviewSummary: React.FC<ReviewSummaryProps> = ({ fields, className = '' }) => {
+const ReviewSummary: React.FC<ReviewSummaryProps> = ({ fields, className = '', extractionMethod, extractionTime }) => {
   const totalFields = fields.length;
   
   if (totalFields === 0) {
@@ -100,6 +103,13 @@ const ReviewSummary: React.FC<ReviewSummaryProps> = ({ fields, className = '' })
   const rejectedCount = fields.filter(f => f.accepted === false).length;
   const modifiedCount = fields.filter(f => f.modified).length;
   const pendingCount = totalFields - acceptedCount - rejectedCount;
+
+  // Calculate method distribution for hybrid extraction
+  const methodCounts = fields.reduce((acc, field: any) => {
+    const source = field.source || 'unknown';
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Confidence analysis
   const highConfidenceCount = fields.filter(f => f.confidence >= 0.8).length;
@@ -162,9 +172,14 @@ const ReviewSummary: React.FC<ReviewSummaryProps> = ({ fields, className = '' })
       {/* Progress Overview */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center space-x-2">
-            <Clock className="w-5 h-5" />
-            <span>Review Progress</span>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-5 h-5" />
+              <span>Review Progress</span>
+            </div>
+            {extractionMethod && (
+              <SourceBadge source={extractionMethod} size="md" />
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -274,6 +289,37 @@ const ReviewSummary: React.FC<ReviewSummaryProps> = ({ fields, className = '' })
           </div>
         </CardContent>
       </Card>
+
+      {/* Extraction Method Breakdown */}
+      {Object.keys(methodCounts).length > 1 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Extraction Methods</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(methodCounts).map(([method, count]) => (
+                <div key={method} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <SourceBadge source={method as any} size="sm" />
+                  <span className="text-lg font-semibold">{count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Extraction Time */}
+      {extractionTime && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>Processed: {new Date(extractionTime).toLocaleString()}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

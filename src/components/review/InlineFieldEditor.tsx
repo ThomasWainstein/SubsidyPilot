@@ -29,6 +29,7 @@ import {
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ConfidenceBadge from './ConfidenceBadge';
+import SourceBadge from './SourceBadge';
 
 interface FieldData {
   key: string;
@@ -41,6 +42,7 @@ interface FieldData {
   modified?: boolean;
   placeholder?: string;
   options?: string[];
+  source?: 'rule-based' | 'ai-based' | 'merged' | 'manual';
 }
 
 interface InlineFieldEditorProps {
@@ -265,6 +267,12 @@ const InlineFieldEditor: React.FC<InlineFieldEditorProps> = ({
               field={field.label}
               size="sm"
             />
+            {field.source && (
+              <SourceBadge 
+                source={field.source}
+                size="sm"
+              />
+            )}
             {hasChanges && (
               <Badge 
                 variant="outline" 
