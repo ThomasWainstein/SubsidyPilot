@@ -83,6 +83,8 @@ This project uses two sets of Supabase credentials:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+Both values are **required**. The application will throw an error during startup if either variable is missing.
+
 ### Backend / Scraper
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON`
