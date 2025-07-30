@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import requests
 
@@ -27,11 +28,17 @@ class SupabaseUploader:
     def __init__(self):
         self.url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
         self.key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+        self.timeout_seconds = int(os.environ.get('SUPABASE_TIMEOUT', '10'))
         
         if not self.url or not self.key:
             raise ValueError("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are REQUIRED environment variables")
             
-        self.client: Client = create_client(self.url, self.key)
+        options = ClientOptions(
+            postgrest_client_timeout=self.timeout_seconds,
+            storage_client_timeout=self.timeout_seconds,
+            function_client_timeout=self.timeout_seconds,
+        )
+        self.client: Client = create_client(self.url, self.key, options=options)
         self.session_id = str(uuid.uuid4())
         self.run_start = datetime.utcnow().isoformat()
         
@@ -47,7 +54,12 @@ class SupabaseUploader:
             print(f"[INFO] Can also access subsidies table for compatibility.")
             return True
         except Exception as e:
-            print(f"[ERROR] Supabase connection failed: {e}")
+            if "timeout" in str(e).lower():
+                print(
+                    f"[ERROR] Supabase connection timed out after {self.timeout_seconds} seconds: {e}"
+                )
+            else:
+                print(f"[ERROR] Supabase connection failed: {e}")
             return False
     
     def create_log_entry(self, status: str, message: str, details: Optional[Dict] = None):
