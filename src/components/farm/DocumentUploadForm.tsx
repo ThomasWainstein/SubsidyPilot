@@ -12,6 +12,7 @@ import FileDropZone from './upload/FileDropZone';
 import FilePreviewList from './upload/FilePreviewList';
 import UploadProgress from './upload/UploadProgress';
 import PageErrorBoundary from '@/components/error/PageErrorBoundary';
+import { logger } from '@/lib/logger';
 
 interface DocumentUploadFormProps {
   farmId: string;
@@ -37,7 +38,7 @@ const DocumentUploadForm = ({ farmId, onUploadSuccess, onExtractionCompleted }: 
 
   // Validate category before setting it - only allow valid categories or empty string for clearing
   const handleCategoryChange = (value: string) => {
-    console.log('Category change requested:', value);
+    logger.debug('Category change requested:', value);
     
     // Allow empty string for clearing selection
     if (value === '') {

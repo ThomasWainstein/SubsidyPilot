@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { classifyDocumentText, ClassificationResult } from '@/services/documentClassification';
 import { toast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 export interface ClassificationComparison {
   predicted: ClassificationResult;
@@ -26,14 +27,14 @@ export const useDocumentClassification = () => {
     try {
       setIsClassifying(true);
       
-      console.log(`🔍 Classifying document: ${fileName}`);
+      logger.debug(`🔍 Classifying document: ${fileName}`);
       const prediction = await classifyDocumentText(text, fileName);
       setLastClassification(prediction);
       
       const agrees = prediction.category === userSelectedCategory;
       const confidence = prediction.confidence;
       
-      console.log(`📊 Classification result:`, {
+      logger.debug(`📊 Classification result`, {
         predicted: prediction.category,
         userSelected: userSelectedCategory,
         agrees,
@@ -101,7 +102,7 @@ export const useDocumentClassification = () => {
       if (error) {
         console.error('Failed to log classification comparison:', error);
       } else {
-        console.log('✅ Classification comparison logged successfully');
+        logger.debug('✅ Classification comparison logged successfully');
       }
     } catch (error) {
       console.error('Error logging classification:', error);

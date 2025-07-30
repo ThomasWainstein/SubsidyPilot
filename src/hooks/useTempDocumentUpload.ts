@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 export interface TempDocument {
   id: string;
@@ -246,7 +247,7 @@ export const useTempDocumentUpload = () => {
 
   // Enhanced upload with real progress and cancellation
   const uploadFile = async (documentId: string, file: File) => {
-    console.log('🚀 Starting enhanced upload for:', file.name);
+    logger.debug('🚀 Starting enhanced upload for:', file.name);
     
     // Validate file first
     const validation = validateFile(file);
@@ -333,7 +334,7 @@ export const useTempDocumentUpload = () => {
         last_updated: new Date().toISOString()
       });
 
-      console.log('✅ Upload completed:', filePath);
+      logger.debug('✅ Upload completed:', filePath);
 
       // Start classification immediately
       await startClassification(documentId, publicUrl, file.name);
@@ -386,7 +387,7 @@ export const useTempDocumentUpload = () => {
         confidence: 0.75 + Math.random() * 0.2 // 75-95% confidence
       };
 
-      console.log('🏷️ Classification completed:', classificationResult);
+      logger.debug('🏷️ Classification completed:', classificationResult);
 
       updateDocument(documentId, {
         classification_status: 'completed',
@@ -470,7 +471,7 @@ export const useTempDocumentUpload = () => {
 
       clearInterval(extractionInterval);
 
-      console.log('📊 Extraction completed:', extractionResult);
+      logger.debug('📊 Extraction completed:', extractionResult);
 
       updateDocument(documentId, {
         extraction_status: 'completed',
@@ -568,7 +569,7 @@ export const useTempDocumentUpload = () => {
     // Validate file before adding
     const validation = validateFile(file);
     
-    console.log('📋 Adding new document to state:', {
+    logger.debug('📋 Adding new document to state', {
       documentId,
       fileName: file.name,
       fileSize: file.size,
@@ -597,7 +598,7 @@ export const useTempDocumentUpload = () => {
 
     setDocuments(prev => {
       const updated = [...prev, newDocument];
-      console.log('📚 Documents state updated:', {
+      logger.debug('📚 Documents state updated', {
         totalDocs: updated.length,
         newDocument: {
           id: newDocument.id,
@@ -622,7 +623,7 @@ export const useTempDocumentUpload = () => {
   }, [validateFile, toast]);
 
   const processDocument = useCallback(async (documentId: string) => {
-    console.log('🎯 Starting processDocument for:', documentId);
+    logger.debug('🎯 Starting processDocument for:', documentId);
     
     // Get fresh document state to avoid stale closure issues
     setDocuments(currentDocs => {
@@ -632,7 +633,7 @@ export const useTempDocumentUpload = () => {
         return currentDocs;
       }
 
-      console.log('📤 Starting document processing for:', document.file_name);
+      logger.debug('📤 Starting document processing for:', document.file_name);
       
       // Start the upload process asynchronously
       uploadFile(documentId, document.file).catch(error => {
@@ -712,7 +713,7 @@ export const useTempDocumentUpload = () => {
         supabase.storage
           .from('farm-documents')
           .remove([fileName])
-          .then(() => console.log('🗑️ Cleaned up temp file:', fileName))
+          .then(() => logger.debug('🗑️ Cleaned up temp file:', fileName))
           .catch(err => console.warn('Failed to cleanup file:', err));
       }
     }

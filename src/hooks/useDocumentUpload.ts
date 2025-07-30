@@ -7,6 +7,7 @@ import { isValidDocumentCategory, normalizeDocumentCategory } from '@/utils/docu
 import { useDocumentClassification } from '@/hooks/useDocumentClassification';
 import { validateFileType, sanitizeFileName } from '@/utils/securityValidation';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface UseDocumentUploadProps {
   farmId: string;
@@ -24,7 +25,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
   const { classifyAndCompare, isClassifying } = useDocumentClassification();
 
   const addFiles = (files: File[]) => {
-    console.log(`📝 Processing ${files.length} files for upload validation`);
+    logger.debug(`📝 Processing ${files.length} files for upload validation`);
     const validFiles: File[] = [];
     
     files.forEach(file => {
@@ -41,7 +42,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
       }
 
       // Security validation
-      console.log('🔄 Starting file validation for:', file.name, 'Type:', file.type, 'Size:', file.size);
+      logger.debug('🔄 Starting file validation for:', file.name, 'Type:', file.type, 'Size:', file.size);
       const securityCheck = validateFileType(file);
       if (!securityCheck.isValid) {
         console.error('❌ Security validation failed:', securityCheck.error);
@@ -52,15 +53,15 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         });
         return;
       }
-      console.log('✅ Security validation passed for:', file.name);
+      logger.debug('✅ Security validation passed for:', file.name);
 
       // Document validation
-      console.log('🔄 Starting document validation for:', file.name);
+      logger.debug('🔄 Starting document validation for:', file.name);
       const validation = validateDocumentUpload(file, category || 'other');
       if (validation.isValid) {
         // Sanitize filename for security
         const sanitizedFile = new File([file], sanitizeFileName(file.name), { type: file.type });
-        console.log('✅ Document validation passed, sanitized filename:', sanitizeFileName(file.name));
+        logger.debug('✅ Document validation passed, sanitized filename:', sanitizeFileName(file.name));
         validFiles.push(sanitizedFile);
       } else {
         console.error('❌ Document validation failed:', validation.errors);
@@ -85,7 +86,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
     }
 
     if (validFiles.length > 0) {
-      console.log(`✅ Added ${validFiles.length} valid files to upload queue`);
+      logger.debug(`✅ Added ${validFiles.length} valid files to upload queue`);
       setSelectedFiles(prev => [...prev, ...validFiles]);
     }
   };
@@ -95,7 +96,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
   };
 
   const uploadFiles = async () => {
-    console.log('Upload initiated with category:', category);
+    logger.debug('Upload initiated with category:', category);
 
     // Validate inputs
     if (selectedFiles.length === 0) {
@@ -137,7 +138,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
 
     // Normalize category as a final safety check
     const normalizedCategory = normalizeDocumentCategory(category);
-    console.log('Using normalized category for upload:', normalizedCategory);
+    logger.debug('Using normalized category for upload:', normalizedCategory);
 
     setUploadProgress(0);
     setUploadedFiles([]);
@@ -147,16 +148,16 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
+        logger.debug(`Uploading file ${i + 1}/${totalFiles}:`, file.name, 'Category:', normalizedCategory);
         
         // Final security validation before upload
-        console.log('🔄 Final security validation before upload for:', file.name);
+        logger.debug('🔄 Final security validation before upload for:', file.name);
         const securityCheck = validateFileType(file);
         if (!securityCheck.isValid) {
           console.error('❌ Final security validation failed:', securityCheck.error);
           throw new Error(`Security validation failed for ${file.name}: ${securityCheck.error}`);
         }
-        console.log('✅ Final security validation passed for:', file.name);
+        logger.debug('✅ Final security validation passed for:', file.name);
         
         // Validate each file before upload
         const validation = validateDocumentUpload(file, normalizedCategory);
@@ -175,7 +176,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
         const fileExtension = file.name.toLowerCase().split('.').pop();
         
         if (uploadResult?.document?.id && fileExtension && supportedExtensions.includes(fileExtension)) {
-          console.log(`🤖 Triggering AI extraction for document: ${file.name} (${fileExtension})`);
+          logger.debug(`🤖 Triggering AI extraction for document: ${file.name} (${fileExtension})`);
           
           // Trigger extraction in background - don't await to avoid blocking upload
           const extractionPromise = supabase.functions.invoke('extract-document-data', {
@@ -206,7 +207,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
                   }
                 });
               } else {
-                console.log(`✅ AI extraction completed for ${file.name}:`, data);
+                logger.debug(`✅ AI extraction completed for ${file.name}:`, data);
                 if (data?.extractedData) {
                   onExtractionCompleted?.(file.name, data.extractedData);
                 }
@@ -229,7 +230,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
               });
             });
         } else {
-          console.log(`⏭️ Skipping AI extraction for ${file.name} (${fileExtension}) - not supported`);
+          logger.debug(`⏭️ Skipping AI extraction for ${file.name} (${fileExtension}) - not supported`);
         }
         
         // Track successful upload
@@ -242,7 +243,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
 
         // Trigger document classification in background for text files
         if (file.type === 'text/plain') {
-          console.log(`🔍 Starting background classification for: ${file.name}`);
+          logger.debug(`🔍 Starting background classification for: ${file.name}`);
           
           const reader = new FileReader();
           reader.onload = async (e) => {
@@ -255,7 +256,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
                   file.name,
                   normalizedCategory
                 );
-                console.log(`✅ Classification completed for: ${file.name}`);
+                logger.debug(`✅ Classification completed for: ${file.name}`);
               } catch (error) {
                 console.error('Background classification failed:', error);
               }
@@ -263,7 +264,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
           };
           reader.readAsText(file);
         } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-          console.log('📄 PDF classification will be handled after text extraction completes');
+          logger.debug('📄 PDF classification will be handled after text extraction completes');
         }
         
         setUploadProgress(((i + 1) / totalFiles) * 100);
@@ -276,7 +277,7 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
       setUploadProgress(0);
       setUploadedFiles([]);
       
-      console.log('✅ Upload completed successfully - form cleared');
+      logger.debug('✅ Upload completed successfully - form cleared');
       
       // Show success toast with file count
       toast({

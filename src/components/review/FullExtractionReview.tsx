@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { logger } from '@/lib/logger';
 import { 
   Edit3, 
   Save, 
@@ -430,7 +431,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
       });
 
       // Log application for debugging
-      console.log('Applied extraction data to form:', {
+      logger.debug('Applied extraction data to form', {
         appliedFields: Object.keys(mappedData),
         totalFields: validFields.length,
         documentId
