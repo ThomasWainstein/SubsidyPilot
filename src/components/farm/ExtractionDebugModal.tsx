@@ -59,7 +59,7 @@ const ExtractionDebugModal = ({
 
   // Use the new debug_info column, with fallback to embedded debugInfo
   const debugInfo = extraction?.debug_info || extraction?.extracted_data?.debugInfo || {};
-  const extractedFields = extraction?.extracted_data?.extractedFields || [];
+  const extractedFields = Object.keys(extraction?.extracted_data?.extractedFields || {});
   const confidence = extraction?.confidence_score || 0;
   const rawText = debugInfo.rawText || 'No raw text available';
   const rawResponse = extraction?.extracted_data?.rawResponse || 'No OpenAI response available';

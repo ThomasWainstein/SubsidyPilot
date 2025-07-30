@@ -94,13 +94,13 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
           {uniqueExtractions.slice(0, 3).map((extraction) => {
             const extractedData = extraction.extracted_data as any;
             const confidence = extractedData?.confidence || 0;
-            const extractedFields = extractedData?.extractedFields || [];
+            const extractedFields = Object.keys(extractedData?.extractedFields || {});
             const documentName = extraction.farm_documents?.file_name || 'Document';
             const hasError = extractedData?.error;
 
             // Preview of extracted values
             const extractedValues = extractedFields.slice(0, 3).map((field: string) => {
-              const value = extractedData[field];
+              const value = extractedData?.extractedFields?.[field];
               if (Array.isArray(value) && value.length > 0) return `${field}: ${value.join(', ')}`;
               if (value && typeof value === 'string') return `${field}: ${value}`;
               if (typeof value === 'number') return `${field}: ${value}`;

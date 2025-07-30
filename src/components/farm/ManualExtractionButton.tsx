@@ -79,7 +79,7 @@ const ManualExtractionButton = ({
         // Enhanced success feedback with details
         toast({
           title: t('common.extractionCompleted'),
-          description: `Successfully extracted ${extractedData.extractedFields?.length || 0} fields from ${fileName} (${Math.round((extractedData.confidence || 0) * 100)}% confidence)`,
+          description: `Successfully extracted ${Object.keys(extractedData.extractedFields || {}).length} fields from ${fileName} (${Math.round((extractedData.confidence || 0) * 100)}% confidence)`,
         });
 
         onExtractionComplete?.(extractedData);

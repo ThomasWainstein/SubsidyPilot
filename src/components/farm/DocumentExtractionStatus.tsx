@@ -95,7 +95,7 @@ const DocumentExtractionStatus: React.FC<DocumentExtractionStatusProps> = ({
 
   const extractedData = extraction.extracted_data as any;
   const confidence = extractedData?.confidence || 0;
-  const extractedFields = extractedData?.extractedFields || [];
+  const extractedFields = Object.keys(extractedData?.extractedFields || {});
   const hasError = extraction.status === 'failed' || extractedData?.error;
 
   return (
