@@ -23,6 +23,13 @@ export const useTempDocumentUpload = () => {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File): Promise<{ documentId: string; fileUrl: string }> => {
+      console.log('🚀 Starting file upload:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        timestamp: new Date().toISOString()
+      });
+
       // Generate temporary ID
       const documentId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
@@ -30,24 +37,51 @@ export const useTempDocumentUpload = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `temp-farm-creation/${documentId}.${fileExt}`;
       
+      console.log('📤 Uploading to Supabase storage:', {
+        bucket: 'farm-documents',
+        fileName,
+        documentId
+      });
+
       const { data, error } = await supabase.storage
         .from('farm-documents')
         .upload(fileName, file);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Storage upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      console.log('✅ Upload successful:', data);
 
       const { data: { publicUrl } } = supabase.storage
         .from('farm-documents')
         .getPublicUrl(fileName);
 
+      console.log('🔗 Public URL generated:', publicUrl);
+
       return { documentId, fileUrl: publicUrl };
     },
     onError: (error, file) => {
-      console.error('Upload failed:', error);
+      console.error('💥 Upload mutation failed:', {
+        error,
+        fileName: file.name,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+      
       toast({
         title: 'Upload Failed',
-        description: `Failed to upload ${file.name}. Please try again.`,
+        description: `Failed to upload ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
+      });
+    },
+    onSuccess: (result, file) => {
+      console.log('🎉 Upload mutation successful:', {
+        fileName: file.name,
+        documentId: result.documentId,
+        fileUrl: result.fileUrl,
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -151,6 +185,14 @@ export const useTempDocumentUpload = () => {
   const addDocument = (file: File) => {
     const documentId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    console.log('📋 Adding new document to state:', {
+      documentId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      timestamp: new Date().toISOString()
+    });
+    
     const newDocument: TempDocument = {
       id: documentId,
       file,
@@ -160,7 +202,19 @@ export const useTempDocumentUpload = () => {
       extraction_status: 'pending'
     };
 
-    setDocuments(prev => [...prev, newDocument]);
+    setDocuments(prev => {
+      const updated = [...prev, newDocument];
+      console.log('📚 Documents state updated:', {
+        totalDocs: updated.length,
+        newDocument: {
+          id: newDocument.id,
+          fileName: newDocument.file_name,
+          progress: newDocument.upload_progress
+        }
+      });
+      return updated;
+    });
+    
     return documentId;
   };
 

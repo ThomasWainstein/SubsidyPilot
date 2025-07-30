@@ -53,10 +53,24 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (disabled) return;
 
+    console.log('🎯 Files dropped:', {
+      fileCount: acceptedFiles.length,
+      files: acceptedFiles.map(f => ({
+        name: f.name,
+        size: f.size,
+        type: f.type
+      })),
+      timestamp: new Date().toISOString()
+    });
+
     for (const file of acceptedFiles) {
+      console.log(`🔄 Processing file: ${file.name}`);
       const documentId = addDocument(file);
+      
+      console.log(`📤 Scheduling processing for document ${documentId}`);
       // Show immediate uploading status
       setTimeout(() => {
+        console.log(`⚡ Starting processing for document ${documentId}`);
         // Process each document immediately after state update
         processDocument(documentId);
       }, 100);
