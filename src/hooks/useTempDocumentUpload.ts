@@ -456,28 +456,16 @@ export const useTempDocumentUpload = () => {
           extraction_id: data.extractionId || `ext-${documentId}`
         };
       } catch (error) {
-        // PRODUCTION SECURITY: No mock data fallbacks
-        // Extraction failures must be surfaced as errors, not hidden with fake data
-        logger.error('Extraction service failed', error as Error, {
-          documentId,
-          fileName,
-          documentType
-        });
-        
-        const errorResult = extractionErrorHandler.handleExtractionFailure(error, {
-          documentId,
-          fileName,
-          documentType
-        });
+        console.error('Extraction service failed:', error);
         
         clearInterval(extractionInterval);
         
         updateDocument(documentId, {
           extraction_status: 'failed',
-          error_message: errorResult.error?.message || 'Extraction failed'
+          error_message: error instanceof Error ? error.message : 'Extraction failed'
         });
         
-        throw new Error(errorResult.error?.message || 'Extraction failed');
+        throw new Error(error instanceof Error ? error.message : 'Extraction failed');
       }
 
       clearInterval(extractionInterval);
@@ -553,18 +541,8 @@ export const useTempDocumentUpload = () => {
           extraction_id: data.extractionId || `ext-${documentId}`
         };
       } catch (error) {
-        // PRODUCTION SECURITY: No mock data fallbacks
-        logger.error('Manual extraction failed', error as Error, {
-          documentId,
-          fileName
-        });
-        
-        const errorResult = extractionErrorHandler.handleExtractionFailure(error, {
-          documentId,
-          fileName
-        });
-        
-        throw new Error(errorResult.error?.message || 'Extraction failed');
+        console.error('Manual extraction failed:', error);
+        throw new Error(error instanceof Error ? error.message : 'Extraction failed');
       }
     },
     onError: (error, variables) => {
