@@ -24,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import AIFieldClassifier from './AIFieldClassifier';
+import { mapExtractionToForm, validateMappedData } from '@/lib/extraction/centralized-mapper';
 
 interface ExtractedField {
   fieldName: string;
@@ -272,8 +273,8 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
   const applyToForm = useCallback(() => {
     try {
       // Only include non-empty fields
-      const validFields = fields.filter(field => 
-        field.value !== null && field.value !== undefined && field.value !== '' && 
+      const validFields = fields.filter(field =>
+        field.value !== null && field.value !== undefined && field.value !== '' &&
         !(Array.isArray(field.value) && field.value.length === 0)
       );
       
@@ -286,56 +287,13 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
         return;
       }
 
-      const mappedData = validFields.reduce((acc, field) => {
-        // Map to form field names
-        const mapping: Record<string, string> = {
-          farmName: 'name',
-          ownerName: 'ownerName',
-          address: 'address',
-          totalHectares: 'total_hectares',
-          legalStatus: 'legal_status',
-          registrationNumber: 'cnp_or_cui',
-          revenue: 'revenue',
-          country: 'country',
-          email: 'email',
-          phone: 'phone',
-          certifications: 'certifications',
-          activities: 'land_use_types',
-          description: 'description',
-          department: 'department',
-          locality: 'locality'
-        };
-
-        const formField = mapping[field.fieldName] || field.fieldName;
-        let value = field.value;
-
-        // Data type transformations with validation
-        if (field.fieldName === 'totalHectares') {
-          if (typeof value === 'string') {
-            const numValue = parseFloat(value);
-            if (isNaN(numValue) || numValue <= 0) {
-              console.warn(`Invalid hectares value: ${value}`);
-              return acc; // Skip invalid values
-            }
-            value = numValue;
-          }
-        }
-        
-        if (['certifications', 'activities'].includes(field.fieldName) && typeof value === 'string') {
-          value = value.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
-        }
-
-        // Validate email format
-        if (field.fieldName === 'email' && typeof value === 'string') {
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            console.warn(`Invalid email format: ${value}`);
-            return acc; // Skip invalid email
-          }
-        }
-
-        acc[formField] = value;
+      const extractionData = validFields.reduce((acc, field) => {
+        acc[field.fieldName] = field.value;
         return acc;
-      }, {} as any);
+      }, {} as Record<string, any>);
+
+      const { mappedData, unmappedFields } = mapExtractionToForm(extractionData);
+      const validationErrors = validateMappedData(mappedData);
 
       if (Object.keys(mappedData).length === 0) {
         toast({
@@ -344,6 +302,14 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
           variant: 'destructive',
         });
         return;
+      }
+
+      if (validationErrors.length > 0) {
+        console.warn('Validation issues detected:', validationErrors);
+      }
+
+      if (unmappedFields.length > 0) {
+        console.debug('Unmapped fields from extraction:', unmappedFields);
       }
 
       // Apply with error boundary
