@@ -181,10 +181,11 @@ const AIFieldClassifier: React.FC<AIFieldClassifierProps> = ({
                     <button
                       onClick={() => toggleFieldAcceptance(index)}
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        field.accepted 
-                          ? 'bg-green-600 border-green-600 text-white' 
+                        field.accepted
+                          ? 'bg-green-600 border-green-600 text-white'
                           : 'border-gray-300'
-                      }`}
+                      } focus:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                      aria-label={`Toggle acceptance for ${field.originalKey}`}
                     >
                       {field.accepted && <Check className="h-3 w-3" />}
                     </button>
