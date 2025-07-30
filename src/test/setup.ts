@@ -1,75 +1,109 @@
+/**
+ * Test setup configuration for Vitest
+ */
+
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// Add custom matchers to avoid dependency issues
-expect.extend({
-  toBeInTheDocument(received) {
-    const pass = received != null;
-    return {
-      message: () => `expected element ${pass ? 'not ' : ''}to be in document`,
-      pass,
-    };
-  },
-  toBeDisabled(received) {
-    const pass = received?.disabled === true;
-    return {
-      message: () => `expected element ${pass ? 'not ' : ''}to be disabled`,
-      pass,
-    };
-  },
-  toBeChecked(received) {
-    const pass = received?.checked === true;
-    return {
-      message: () => `expected element ${pass ? 'not ' : ''}to be checked`,
-      pass,
-    };
-  },
-  toHaveClass(received, className) {
-    const pass = received?.classList?.contains(className) === true;
-    return {
-      message: () => `expected element ${pass ? 'not ' : ''}to have class ${className}`,
-      pass,
-    };
-  }
-});
-
-// Cleanup after each test
+// Run cleanup after each test case
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
+});
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // deprecated
+    removeListener: vi.fn(), // deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
 });
 
 // Mock IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+global.IntersectionObserver = vi.fn().mockImplementation((callback) => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
+  root: null,
+  rootMargin: '',
+  thresholds: [],
 }));
 
 // Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+global.ResizeObserver = vi.fn().mockImplementation((callback) => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }));
 
-// Mock window.matchMedia
-global.matchMedia = vi.fn().mockImplementation((query) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addListener: vi.fn(),
-  removeListener: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-}));
+// Mock URL.createObjectURL
+global.URL.createObjectURL = vi.fn(() => 'mocked-url');
+global.URL.revokeObjectURL = vi.fn();
 
-// Mock scrollIntoView
-Element.prototype.scrollIntoView = vi.fn();
+// Mock File constructor
+global.File = class MockFile {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+  webkitRelativePath: string;
 
-// Mock console methods to reduce noise in tests
-global.console = {
-  ...console,
-  warn: vi.fn(),
-  error: vi.fn(),
+  constructor(chunks: any[], filename: string, options: any = {}) {
+    this.name = filename;
+    this.size = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    this.type = options.type || '';
+    this.lastModified = options.lastModified || Date.now();
+    this.webkitRelativePath = '';
+  }
+
+  slice() {
+    return new MockFile([], '');
+  }
+
+  stream() {
+    return new ReadableStream();
+  }
+
+  text() {
+    return Promise.resolve('');
+  }
+
+  arrayBuffer() {
+    return Promise.resolve(new ArrayBuffer(0));
+  }
+} as any;
+
+// Extend expect with custom matchers
+expect.extend({
+  toBeInTheDocument(received: any) {
+    return {
+      pass: received != null,
+      message: () => `Expected element ${received ? 'not ' : ''}to be in the document`,
+    };
+  },
+  toHaveValue(received: any, expected: any) {
+    return {
+      pass: received?.value === expected,
+      message: () => `Expected element to have value ${expected}, but got ${received?.value}`,
+    };
+  },
+});
+
+// Suppress console warnings during tests
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('React Router')
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
 };
