@@ -125,7 +125,7 @@ def parallel_upload(supabase: Client, json_files: List[Path], max_workers: int =
     
     # Prepare arguments for parallel processing
     supabase_config = {
-        'url': os.environ["NEXT_PUBLIC_SUPABASE_URL"],
+        'url': os.environ["SUPABASE_URL"],
         'key': os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     }
     
@@ -162,7 +162,7 @@ def main():
         pass
     
     # Early validation of required environment variables
-    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     if missing_vars:
         print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
@@ -198,7 +198,7 @@ def main():
     try:
         # Initialize Supabase client
         supabase = create_client(
-            os.environ["NEXT_PUBLIC_SUPABASE_URL"],
+            os.environ["SUPABASE_URL"],
             os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         )
         logger.info("✅ Connected to Supabase")
