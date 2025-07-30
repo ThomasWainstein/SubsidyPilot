@@ -33,7 +33,7 @@ on:
         default: '10'
         type: string
       
-      # 🆕 NEW INPUT - Number of URLs to scrape per run
+      # NEW INPUT - Number of URLs to scrape per run
       urls_to_scrape:
         description: 'Number of URLs to scrape in this run (e.g., 10, 25, 100)'
         required: true
@@ -101,7 +101,7 @@ jobs:
         cd AgriTool-Raw-Log-Interpreter
         
         # Build the command with all parameters
-        PIPELINE_CMD="python enhanced_agent.py"
+        PIPELINE_CMD="python pipeline_runner.py"
         
         if [ "$MAX_PAGES" != "0" ]; then
           PIPELINE_CMD="$PIPELINE_CMD --max-pages $MAX_PAGES"
@@ -109,6 +109,10 @@ jobs:
         
         if [ "$DRY_RUN" = "true" ]; then
           PIPELINE_CMD="$PIPELINE_CMD --dry-run"
+        fi
+        
+        if [ "${{ github.event.inputs.run_tests }}" = "true" ]; then
+          PIPELINE_CMD="$PIPELINE_CMD --run-tests"
         fi
         
         PIPELINE_CMD="$PIPELINE_CMD --batch-size $BATCH_SIZE"
