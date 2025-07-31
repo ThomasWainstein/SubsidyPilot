@@ -12,7 +12,7 @@ Before running any scraper or upload scripts, set these required variables:
 export NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 export NEXT_PUBLIC_SUPABASE_ANON="your-anon-key"
 export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-export SCRAPER_RAW_GPT_API="your-openai-api-key"
+export SCRAPPER_RAW_GPT_API="your-openai-api-key"
 ```
 
 `SCRAPER_RAW_GPT_API` provides the OpenAI API key used by the extraction pipeline.
