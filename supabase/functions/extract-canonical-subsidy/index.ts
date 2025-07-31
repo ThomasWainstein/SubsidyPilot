@@ -218,21 +218,45 @@ serve(async (req) => {
     const validationErrors: string[] = [];
     const flaggedForAdmin: string[] = [];
 
+    // Enhanced validation: Check ALL canonical fields are present
+    const allCanonicalFields = [
+      ...CANONICAL_FIELD_PRIORITIES.high,
+      ...CANONICAL_FIELD_PRIORITIES.medium,
+      ...CANONICAL_FIELD_PRIORITIES.optional
+    ];
+
+    // Ensure every canonical field exists in output (even if empty)
+    for (const field of allCanonicalFields) {
+      if (!(field in canonicalResult)) {
+        canonicalResult[field] = null;
+      }
+    }
+
     // Check high-priority fields and flag missing ones
-    const highPriorityFields = CANONICAL_FIELD_PRIORITIES.high;
-    for (const field of highPriorityFields) {
-      if (!canonicalResult[field]) {
+    for (const field of CANONICAL_FIELD_PRIORITIES.high) {
+      const value = canonicalResult[field];
+      if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
         flaggedForAdmin.push(field);
+        validationErrors.push(`Missing high-priority field: ${field}`);
         console.log(`[CanonicalExtraction] High priority field missing: ${field}`);
       }
     }
 
     // Check medium-priority fields and flag missing ones
-    const mediumPriorityFields = CANONICAL_FIELD_PRIORITIES.medium;
-    for (const field of mediumPriorityFields) {
-      if (!canonicalResult[field]) {
+    for (const field of CANONICAL_FIELD_PRIORITIES.medium) {
+      const value = canonicalResult[field];
+      if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
         flaggedForAdmin.push(field);
+        validationErrors.push(`Missing medium-priority field: ${field}`);
         console.log(`[CanonicalExtraction] Medium priority field missing: ${field}`);
+      }
+    }
+
+    // Validate provenance: Every populated field must have source info
+    const provenanceErrors: string[] = [];
+    for (const [field, value] of Object.entries(canonicalResult)) {
+      if (value && !canonicalResult.source?.[field] && allCanonicalFields.includes(field)) {
+        provenanceErrors.push(`Missing source for field: ${field}`);
       }
     }
 
@@ -242,8 +266,15 @@ serve(async (req) => {
         canonicalResult.scheme_title === 'Agricultural Program' ||
         canonicalResult.scheme_title === 'Agricultural Funding Program' ||
         canonicalResult.scheme_title.trim() === '') {
-      flaggedForAdmin.push('scheme_title');
+      if (!flaggedForAdmin.includes('scheme_title')) {
+        flaggedForAdmin.push('scheme_title');
+      }
       validationErrors.push('Missing or invalid scheme_title - must be official program name');
+    }
+
+    // Add provenance validation errors
+    if (provenanceErrors.length > 0) {
+      validationErrors.push(...provenanceErrors);
     }
 
     // Create final canonical record with strict schema adherence
@@ -265,11 +296,16 @@ serve(async (req) => {
       audit: {
         extraction_timestamp: new Date().toISOString(),
         validation_errors: validationErrors,
-        fields_extracted: Object.keys(canonicalResult).length,
+        provenance_errors: provenanceErrors,
+        fields_extracted: Object.keys(canonicalResult).filter(k => canonicalResult[k] !== null).length,
+        fields_total: allCanonicalFields.length,
         fields_flagged: flaggedForAdmin.length,
+        high_priority_missing: flaggedForAdmin.filter(f => CANONICAL_FIELD_PRIORITIES.high.includes(f)).length,
+        medium_priority_missing: flaggedForAdmin.filter(f => CANONICAL_FIELD_PRIORITIES.medium.includes(f)).length,
         source_content_length: contentForExtraction.length,
-        has_attachments: rawLog.file_refs.length > 0,
-        canonical_compliance: 'strict'
+        has_attachments: rawLog.file_refs?.length > 0 || false,
+        canonical_compliance: 'strict',
+        completeness_score: ((allCanonicalFields.length - flaggedForAdmin.length) / allCanonicalFields.length) * 100
       }
     };
 
@@ -334,6 +370,44 @@ serve(async (req) => {
       .eq('id', raw_log_id);
 
     console.log(`[CanonicalExtraction] Successfully processed subsidy: ${insertedSubsidy[0].id}`);
+
+    // Post-processing validation check
+    const postValidationErrors: string[] = [];
+    
+    // Verify every canonical field is present in final record
+    const missingCanonicalFields = allCanonicalFields.filter(field => 
+      !(field in finalCanonicalRecord) || finalCanonicalRecord[field] === undefined
+    );
+    
+    if (missingCanonicalFields.length > 0) {
+      postValidationErrors.push(`Missing canonical fields in final record: ${missingCanonicalFields.join(', ')}`);
+    }
+    
+    // Verify flagged fields are actually missing/empty
+    const incorrectlyFlagged = finalCanonicalRecord.flagged_for_admin?.filter((field: string) => 
+      finalCanonicalRecord[field] && finalCanonicalRecord[field] !== '' && 
+      (!Array.isArray(finalCanonicalRecord[field]) || finalCanonicalRecord[field].length > 0)
+    ) || [];
+    
+    if (incorrectlyFlagged.length > 0) {
+      postValidationErrors.push(`Fields incorrectly flagged as missing: ${incorrectlyFlagged.join(', ')}`);
+    }
+    
+    if (postValidationErrors.length > 0) {
+      console.warn('[CanonicalExtraction] Post-validation errors:', postValidationErrors);
+      // Log to error table for admin review
+      await supabase.from('error_log').insert({
+        raw_log_id: raw_log_id,
+        error_type: 'post_validation_warning',
+        error_message: 'Canonical validation inconsistencies detected',
+        metadata: { 
+          errors: postValidationErrors,
+          subsidy_id: insertedSubsidy[0].id,
+          missing_canonical_fields: missingCanonicalFields,
+          incorrectly_flagged: incorrectlyFlagged
+        }
+      });
+    }
 
     return new Response(JSON.stringify({
       success: true,
