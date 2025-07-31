@@ -53,38 +53,64 @@ export function mapToCanonicalSchema(extractedData: Record<string, any>, sourceI
   const provenance: Record<string, string | string[]> = {};
   const flaggedForAdmin: string[] = [];
 
-  // Map extracted data to canonical fields
+  console.log('[CanonicalMapper] Starting mapping process...');
+  console.log('[CanonicalMapper] Input data:', JSON.stringify(extractedData, null, 2));
+
+  // First pass: Direct field mapping
   for (const [key, value] of Object.entries(extractedData)) {
     if (!value || value === '') continue;
 
-    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const canonicalField = FIELD_MAPPINGS[normalizedKey] || FIELD_MAPPINGS[key];
+    // Check if it's already a canonical field
+    const allCanonicalFields = [
+      ...CANONICAL_FIELD_PRIORITIES.high,
+      ...CANONICAL_FIELD_PRIORITIES.medium,
+      ...CANONICAL_FIELD_PRIORITIES.optional
+    ];
 
-    if (canonicalField) {
-      try {
-        canonicalData[canonicalField] = transformValue(canonicalField, value);
-        provenance[canonicalField] = sourceInfo[key] || 'extraction';
-      } catch (error) {
-        console.error(`Error mapping ${key} to ${canonicalField}:`, error);
-      }
-    } else if (key in CANONICAL_FIELD_PRIORITIES.high || 
-               key in CANONICAL_FIELD_PRIORITIES.medium || 
-               key in CANONICAL_FIELD_PRIORITIES.optional) {
+    if (allCanonicalFields.includes(key)) {
+      // Direct canonical field
       canonicalData[key] = transformValue(key, value);
-      provenance[key] = sourceInfo[key] || 'extraction';
+      provenance[key] = sourceInfo.web || sourceInfo.document || 'extraction';
+      console.log(`[CanonicalMapper] Direct mapping: ${key}`);
+    } else {
+      // Try field mapping
+      const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const canonicalField = FIELD_MAPPINGS[normalizedKey] || FIELD_MAPPINGS[key];
+
+      if (canonicalField && allCanonicalFields.includes(canonicalField)) {
+        canonicalData[canonicalField] = transformValue(canonicalField, value);
+        provenance[canonicalField] = sourceInfo.web || sourceInfo.document || 'extraction';
+        console.log(`[CanonicalMapper] Mapped: ${key} → ${canonicalField}`);
+      } else {
+        console.log(`[CanonicalMapper] Unmapped field: ${key} (not in canonical schema)`);
+      }
     }
   }
 
-  // Check for missing high-priority fields
+  // Check for missing high-priority fields and flag them
   for (const field of CANONICAL_FIELD_PRIORITIES.high) {
     if (!canonicalData[field]) {
       flaggedForAdmin.push(field);
+      console.log(`[CanonicalMapper] High priority field missing: ${field}`);
     }
   }
 
+  // Check for missing medium-priority fields and flag them
+  for (const field of CANONICAL_FIELD_PRIORITIES.medium) {
+    if (!canonicalData[field]) {
+      flaggedForAdmin.push(field);
+      console.log(`[CanonicalMapper] Medium priority field missing: ${field}`);
+    }
+  }
+
+  // Add system fields
   canonicalData.flagged_for_admin = flaggedForAdmin;
   canonicalData.source = provenance;
   canonicalData.last_updated = new Date().toISOString();
+
+  console.log('[CanonicalMapper] Mapping complete.');
+  console.log('[CanonicalMapper] Flagged fields:', flaggedForAdmin);
+  console.log('[CanonicalMapper] Final canonical data:', JSON.stringify(canonicalData, null, 2));
 
   return canonicalData;
 }
