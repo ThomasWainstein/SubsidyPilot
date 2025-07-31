@@ -80,11 +80,31 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y chromium-browser chromium-chromedriver xvfb file
+          
           # Install Chrome for better compatibility
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
+          
+          # Install Python document extraction dependencies (replaces Tika/Java)
+          sudo apt-get install -y \
+            tesseract-ocr \
+            tesseract-ocr-eng \
+            tesseract-ocr-fra \
+            tesseract-ocr-ron \
+            poppler-utils \
+            ghostscript \
+            libxml2-dev \
+            libxslt1-dev \
+            libffi-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libmagic1 \
+            libreoffice \
+            pandoc
+          
+          echo "✅ System dependencies installed - NO JAVA/TIKA REQUIRED"
 
       - name: 🖥️ Setup virtual display
         run: |

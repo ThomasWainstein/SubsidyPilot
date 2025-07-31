@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 AgriTool Scraper Core - Robust Web Scraping Engine
-Production-grade scraper with headless Chrome, OCR, and multi-tab extraction
+Production-grade scraper with headless Chrome and Python-native document extraction
+NO TIKA DEPENDENCIES - Pure Python document processing
 """
 
 import os
@@ -24,6 +25,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from bs4 import BeautifulSoup
 import requests
+
+# NEW: Python document extraction (replaces Tika)
+try:
+    from python_document_extractor import ScraperDocumentExtractor
+    PYTHON_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    PYTHON_EXTRACTOR_AVAILABLE = False
+    logging.warning("⚠️ Python document extractor not available")
 
 
 class ScrapingLogger:
@@ -56,11 +65,28 @@ class ScrapingLogger:
 class RobustWebDriver:
     """Production-grade WebDriver with retry logic and OCR capabilities"""
     
-    def __init__(self, headless: bool = True, timeout: int = 30):
+    def __init__(self, headless: bool = True, timeout: int = 30, enable_document_extraction: bool = True):
         self.logger = ScrapingLogger().get_logger()
         self.driver = None
         self.timeout = timeout
         self.temp_files = []
+        self.enable_document_extraction = enable_document_extraction
+        
+        # Initialize Python document extractor (replaces Tika)
+        if self.enable_document_extraction and PYTHON_EXTRACTOR_AVAILABLE:
+            try:
+                self.document_extractor = ScraperDocumentExtractor(
+                    enable_ocr=True,
+                    max_file_size_mb=25.0
+                )
+                self.logger.info("✅ Python document extractor initialized")
+            except Exception as e:
+                self.logger.warning(f"⚠️ Document extractor initialization failed: {e}")
+                self.document_extractor = None
+        else:
+            self.document_extractor = None
+            if self.enable_document_extraction:
+                self.logger.warning("⚠️ Document extraction disabled - python_document_extractor not available")
         
         try:
             self.driver = self._init_chrome_driver(headless)
@@ -130,7 +156,7 @@ class RobustWebDriver:
         return False
 
     def extract_full_content(self, url: str) -> Dict[str, Any]:
-        """Extract comprehensive content from a web page"""
+        """Extract comprehensive content from a web page with Python document extraction"""
         result = {
             'url': url,
             'title': '',
@@ -138,6 +164,8 @@ class RobustWebDriver:
             'text': '',
             'links': [],
             'attachments': [],
+            'document_extractions': {},
+            'combined_content': '',
             'metadata': {},
             'extraction_timestamp': time.time(),
             'success': False
@@ -157,6 +185,31 @@ class RobustWebDriver:
             
             # Handle overlays and multi-section content
             self._handle_overlays()
+            
+            # NEW: Extract text from downloaded documents (replaces Tika)
+            if self.document_extractor and result['attachments']:
+                downloaded_files = [
+                    att['local_path'] for att in result['attachments'] 
+                    if att['downloaded'] and att['local_path']
+                ]
+                
+                if downloaded_files:
+                    self.logger.info(f"📚 Extracting text from {len(downloaded_files)} documents...")
+                    result['document_extractions'] = self.document_extractor.extract_multiple_attachments(downloaded_files)
+                    
+                    # Create combined content (page + documents)
+                    merged_data = self.document_extractor.merge_page_and_attachment_content(
+                        {'url': url, 'title': result['title'], 'text': result['text']},
+                        result['document_extractions']
+                    )
+                    result['combined_content'] = merged_data['combined_text']
+                    result['extraction_summary'] = merged_data['extraction_summary']
+                    
+                    self.logger.info(f"✅ Document extraction complete: {merged_data['extraction_summary']['successful_extractions']} successful")
+                else:
+                    result['combined_content'] = f"=== PAGE TITLE ===\n{result['title']}\n\n=== PAGE CONTENT ===\n{result['text']}"
+            else:
+                result['combined_content'] = f"=== PAGE TITLE ===\n{result['title']}\n\n=== PAGE CONTENT ===\n{result['text']}"
             
             result['success'] = True
             self.logger.info(f"✅ Successfully extracted content from: {url}")
