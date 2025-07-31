@@ -164,8 +164,6 @@ jobs:
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
           # Legacy aliases for backward compatibility
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
-          OPENAI_API_KEY: ${{ secrets.SCRAPER_RAW_GPT_API }}
         run: |
           echo "📊 Validating scraping results..."
           
@@ -258,7 +256,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🤖 Starting AI agent processing..."
           
@@ -326,7 +324,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🧪 Running comprehensive QA test suite..."
           
@@ -365,7 +363,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🔍 Running data quality validation..."
           python -c "
