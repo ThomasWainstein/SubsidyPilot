@@ -11,6 +11,7 @@ import time
 import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+from logging_setup import setup_pipeline_logging, ensure_artifact_files, log_pipeline_stats
 
 # OpenAI client
 try:
@@ -33,7 +34,8 @@ class AIExtractor:
     """GPT-4 powered extraction engine for subsidy data"""
     
     def __init__(self):
-        self.logger = self._setup_logging()
+        ensure_artifact_files()
+        self.logger = setup_pipeline_logging("ai_extractor")
         self.openai_client = self._init_openai_client()
         self.supabase_client = self._init_supabase_client()
         

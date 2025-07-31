@@ -12,6 +12,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import hashlib
+from logging_setup import setup_pipeline_logging, ensure_artifact_files, log_pipeline_stats
 
 # Supabase client
 try:
@@ -26,7 +27,8 @@ class SupabaseUploader:
     """Robust uploader for scraped data to Supabase"""
     
     def __init__(self):
-        self.logger = self._setup_logging()
+        ensure_artifact_files()
+        self.logger = setup_pipeline_logging("supabase_uploader")
         self.client = self._init_supabase_client()
         
         # Upload statistics

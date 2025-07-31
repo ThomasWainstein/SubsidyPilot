@@ -197,8 +197,8 @@ class LogInterpreterAgent:
         
         # Initialize Python document extractor
         extractor = PythonDocumentExtractor(
-            ocr_enabled=True,
-            languages=['eng', 'fra', 'ron'],  # Multi-language OCR support
+            enable_ocr=True,
+            ocr_language='eng+fra+ron',  # Multi-language OCR support
             max_file_size_mb=10.0
         )
         
