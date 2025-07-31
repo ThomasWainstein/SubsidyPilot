@@ -23,7 +23,7 @@ interface EnvironmentDiagnostic {
 
 const REQUIRED_SECRETS = [
   'OPENAI_API_KEY',
-  'SCRAPPER_RAW_GPT_API', 
+  'SCRAPER_RAW_GPT_API', 
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_ANON_KEY'

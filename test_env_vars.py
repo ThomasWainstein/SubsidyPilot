@@ -63,7 +63,7 @@ def main() -> int:
 
     # Print found environment variables at start
     print("🔍 Environment variables found:")
-    for key in ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON', 'SUPABASE_SERVICE_ROLE_KEY', 'SCRAPPER_RAW_GPT_API']:
+    for key in ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON', 'SUPABASE_SERVICE_ROLE_KEY', 'SCRAPER_RAW_GPT_API']:
         value = os.getenv(key, 'NOT_SET')
         if 'KEY' in key or 'API' in key:
             # Mask sensitive values
@@ -76,7 +76,7 @@ def main() -> int:
         ('NEXT_PUBLIC_SUPABASE_URL', validate_supabase_url),
         ('NEXT_PUBLIC_SUPABASE_ANON', lambda x: (True, "Valid") if x and len(x) > 20 else (False, "Invalid anon key")),
         ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key),
-        ('SCRAPPER_RAW_GPT_API', validate_scraper_raw_gpt_api)
+        ('SCRAPER_RAW_GPT_API', validate_scraper_raw_gpt_api)
     ]
     
     errors: List[str] = []
@@ -104,7 +104,7 @@ def main() -> int:
         print(f"   export NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'")
         print(f"   export NEXT_PUBLIC_SUPABASE_ANON='your-anon-key'")
         print(f"   export SUPABASE_SERVICE_ROLE_KEY='your-service-role-key'")
-        print(f"   export SCRAPPER_RAW_GPT_API='your-openai-api-key'")
+        print(f"   export SCRAPER_RAW_GPT_API='your-openai-api-key'")
         
         return 1
     
