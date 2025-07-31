@@ -6,23 +6,15 @@ export const REQUIREMENT_LABELS: Record<string, string> = {
   project_budget: 'Budget prévisionnel'
 };
 
-export function getRequirementLabel(key: any): string {
-  // Handle non-string inputs safely
+export function getRequirementLabel(key: string): string {
   if (!key) return '';
-  
-  // Convert to string if it's not already
-  const keyStr = typeof key === 'string' ? key : String(key);
-  
-  // Check if it's a valid string before calling toLowerCase
-  if (typeof keyStr !== 'string' || !keyStr.trim()) return '';
-  
-  const normalized = keyStr.toLowerCase();
+  const normalized = key.toLowerCase();
   const label = REQUIREMENT_LABELS[normalized];
   if (label) {
     return label;
   }
   // Prettify key: replace underscores/hyphens with spaces and capitalize words
-  return keyStr
+  return key
     .replace(/[_-]+/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }

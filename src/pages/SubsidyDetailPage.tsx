@@ -12,15 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
 import { getRequirementLabel } from '@/utils/requirementLabels';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
-import { 
-  cleanMarkdownFormatting, 
-  parseEligibilityData, 
-  formatDocuments, 
-  hasContent,
-  formatArrayAsText,
-  cleanSubsidyDescription,
-  formatLanguages
-} from '@/utils/subsidyDataCleaning';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -200,380 +191,384 @@ const SubsidyDetailPage = () => {
             </div>
           </div>
 
-          {/* Main Content - Single Continuous Section */}
-          <div className="space-y-8">
-            {/* Description & Objectives */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-primary">Présentation</h2>
-              <div className="prose prose-gray max-w-none">
-                <div className="text-base leading-relaxed whitespace-pre-line">
-                  {cleanSubsidyDescription(subsidy.description) || getSubsidyDescription(subsidy)}
-                </div>
-              </div>
-              
-              {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Thematic Objectives</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {subsidy.objectives.map((obj, idx) => (
-                      <Badge key={idx} variant="outline">{obj}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {/* Tabbed Content */}
+          <Tabs defaultValue="presentation" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="presentation">Présentation</TabsTrigger>
+              <TabsTrigger value="eligibility">Pour qui ?</TabsTrigger>
+              <TabsTrigger value="timing">Quand ?</TabsTrigger>
+              <TabsTrigger value="application">Comment ?</TabsTrigger>
+            </TabsList>
 
-              {/* Eligible Actions */}
-              {subsidy.eligible_actions && Array.isArray(subsidy.eligible_actions) && subsidy.eligible_actions.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Eligible Actions</h3>
-                  <ul className="space-y-2">
-                    {subsidy.eligible_actions.map((action, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
-                        <span>{action}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Ineligible Actions */}
-              {subsidy.ineligible_actions && Array.isArray(subsidy.ineligible_actions) && subsidy.ineligible_actions.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Excluded Actions</h3>
-                  <ul className="space-y-2">
-                    {subsidy.ineligible_actions.map((action, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" />
-                        <span>{action}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Eligibility Section */}
-            <div className="space-y-4 border-t pt-8">
-              <h2 className="text-2xl font-semibold text-primary">Pour qui ?</h2>
-              
-              {/* Parse and display eligibility data */}
-              {(() => {
-                const eligibilityList = parseEligibilityData(subsidy.eligibility);
-                const hasEligibilityText = subsidy.eligibility && 
-                  typeof subsidy.eligibility === 'string' && 
-                  !subsidy.eligibility.startsWith('[');
-                  
-                return (
-                  <>
-                    {hasEligibilityText && (
-                      <div className="prose prose-gray max-w-none">
-                        <div className="text-base leading-relaxed whitespace-pre-line">
-                          {cleanMarkdownFormatting(subsidy.eligibility)}
+            <TabsContent value="presentation" className="mt-6">
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Description & Objectives
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                        {getSubsidyDescription(subsidy)}
+                      </p>
+                      
+                      {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2">Thematic Objectives:</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {subsidy.objectives.map((obj, idx) => (
+                              <Badge key={idx} variant="outline">{obj}</Badge>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
-                    {eligibilityList.length > 0 && (
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium mb-3">Eligible Organizations</h3>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Eligible Actions */}
+                  {subsidy.eligible_actions && Array.isArray(subsidy.eligible_actions) && subsidy.eligible_actions.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          Eligible Actions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                         <ul className="space-y-2">
-                          {eligibilityList.map((item, idx) => (
+                          {subsidy.eligible_actions.map((action, idx) => (
                             <li key={idx} className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
-                              <span>{item}</span>
+                              <span>{action}</span>
                             </li>
                           ))}
                         </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Ineligible Actions */}
+                  {subsidy.ineligible_actions && Array.isArray(subsidy.ineligible_actions) && subsidy.ineligible_actions.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-red-500" />
+                          Excluded Actions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {subsidy.ineligible_actions.map((action, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" />
+                              <span>{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Program Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {subsidy.program && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Program</dt>
+                          <dd className="text-sm">{subsidy.program}</dd>
+                        </div>
+                      )}
+                      
+                      {subsidy.funding_source && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Funding Source</dt>
+                          <dd className="text-sm">{subsidy.funding_source}</dd>
+                        </div>
+                      )}
+
+                      {subsidy.co_financing_rate && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Co-financing Rate</dt>
+                          <dd className="text-sm">{subsidy.co_financing_rate}%</dd>
+                        </div>
+                      )}
+
+                      {subsidy.project_duration && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Project Duration</dt>
+                          <dd className="text-sm">{subsidy.project_duration}</dd>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Investment Types */}
+                  {subsidy.investment_types && Array.isArray(subsidy.investment_types) && subsidy.investment_types.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Investment Types</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {subsidy.investment_types.map((type, idx) => (
+                            <Badge key={idx} variant="secondary" className="mr-2">{type}</Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="eligibility" className="mt-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Eligibility Criteria
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                      {subsidy.eligibility || 'No specific eligibility criteria provided.'}
+                    </p>
+
+                    {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">Eligible Beneficiary Types:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {subsidy.beneficiary_types.map((type, idx) => (
+                            <Badge key={idx} variant="outline">{type}</Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
-                  </>
-                );
-              })()}
 
-              {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Eligible Beneficiary Types</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {subsidy.beneficiary_types.map((type, idx) => (
-                      <Badge key={idx} variant="outline">{type}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Legal Entity Types</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {subsidy.legal_entity_type.map((type, idx) => (
-                      <Badge key={idx} variant="secondary">{type}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Priority Groups</h3>
-                  <div className="space-y-2">
-                    {subsidy.priority_groups.map((group, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>{typeof group === 'string' ? group : JSON.stringify(group)}</span>
+                    {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">Legal Entity Types:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {subsidy.legal_entity_type.map((type, idx) => (
+                            <Badge key={idx} variant="secondary">{type}</Badge>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    )}
+                  </CardContent>
+                </Card>
 
-              {hasContent(subsidy.conditional_eligibility) && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Special Cases & Conditions</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">
-                      {typeof subsidy.conditional_eligibility === 'object' ? 
-                        Object.entries(subsidy.conditional_eligibility).map(([key, value]) => (
-                          <div key={key} className="mb-2">
-                            <strong>{key}:</strong> {String(value)}
-                          </div>
-                        )) :
-                        String(subsidy.conditional_eligibility)
-                      }
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Timing Section */}
-            <div className="space-y-4 border-t pt-8">
-              <h2 className="text-2xl font-semibold text-primary">Quand ?</h2>
-              
-              <div className="space-y-3">
-                {subsidy.deadline && (
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-orange-500" />
-                    <div>
-                      <span className="text-lg font-medium">Application deadline: </span>
-                      <span className="text-lg">{new Date(subsidy.deadline).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}</span>
-                    </div>
-                  </div>
+                {/* Special Cases */}
+                {subsidy.conditional_eligibility && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Special Cases & Conditions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="text-sm text-gray-600 whitespace-pre-wrap">
+                        {JSON.stringify(subsidy.conditional_eligibility, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
                 )}
 
-                {subsidy.application_window_start && (
-                  <div className="mt-4">
-                    <span className="font-medium">Application Opens: </span>
-                    <span>{new Date(subsidy.application_window_start).toLocaleDateString()}</span>
-                  </div>
-                )}
-
-                {subsidy.application_window_end && (
-                  <div>
-                    <span className="font-medium">Application Closes: </span>
-                    <span>{new Date(subsidy.application_window_end).toLocaleDateString()}</span>
-                  </div>
-                )}
-
-
-                {subsidy.project_duration && (
-                  <div>
-                    <span className="font-medium">Project Duration: </span>
-                    <span>{subsidy.project_duration}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Application Process Section */}
-            <div className="space-y-4 border-t pt-8">
-              <h2 className="text-2xl font-semibold text-primary">Comment ?</h2>
-              
-              {/* Application Requirements */}
-              {subsidy.application_requirements && (
-                <div className="space-y-4">
-                  {Array.isArray(subsidy.application_requirements) ? (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Application Steps</h3>
-                      <div className="space-y-4">
-                        {subsidy.application_requirements.map((req: any, index: number) => (
-                          <div key={index} className="border-l-4 border-primary/30 pl-6 py-2">
-                            <div className="flex items-start space-x-3">
-                              <Badge variant="outline" className="mt-1">
-                                Step {index + 1}
-                              </Badge>
-                              <div className="flex-1 space-y-2">
-                                <p className="text-base">{req.step_description || req}</p>
-                                {req.required_files && Array.isArray(req.required_files) && req.required_files.length > 0 && (
-                                  <div>
-                                    <p className="text-sm font-medium text-muted-foreground mb-2">Required Files:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                       {req.required_files.map((file: any, fileIndex: number) => (
-                                         <Badge key={fileIndex} variant="secondary" className="text-sm">
-                                           {getRequirementLabel(file)}
-                                         </Badge>
-                                       ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {req.web_portal && (
-                                  <div>
-                                    <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                                      <a href={req.web_portal} target="_blank" rel="noopener noreferrer">
-                                        Access Application Portal →
-                                      </a>
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                {/* Priority Groups */}
+                {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Priority Groups</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {subsidy.priority_groups.map((group, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span>{typeof group === 'string' ? group : JSON.stringify(group)}</span>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="prose prose-gray max-w-none">
-                      <p className="text-base leading-relaxed whitespace-pre-line">
-                        {typeof subsidy.application_requirements === 'string' 
-                          ? subsidy.application_requirements 
-                          : JSON.stringify(subsidy.application_requirements, null, 2)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Required Documents */}
-              {(() => {
-                const formattedDocs = formatDocuments(subsidy.documents);
-                return formattedDocs.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-medium mb-3">Required Documents</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {formattedDocs.map((doc, index) => (
-                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <FileText className="h-5 w-5 text-blue-600" />
-                          <div className="flex-1">
-                            {doc.url ? (
-                              <a 
-                                href={doc.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline"
-                              >
-                                {doc.text}
-                              </a>
-                            ) : (
-                              <span className="text-sm">{doc.text}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-
-            </div>
-
-            {/* Program Information */}
-            <div className="space-y-4 border-t pt-8">
-              <h2 className="text-2xl font-semibold text-primary">Program Information</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-base">
-                {subsidy.program && (
-                  <div>
-                    <span className="font-medium text-gray-700">Program: </span>
-                    <span>{subsidy.program}</span>
-                  </div>
-                )}
-                
-                {subsidy.funding_source && (
-                  <div>
-                    <span className="font-medium text-gray-700">Funding Source: </span>
-                    <span>{subsidy.funding_source}</span>
-                  </div>
-                )}
-
-                {subsidy.co_financing_rate && (
-                  <div>
-                    <span className="font-medium text-gray-700">Co-financing Rate: </span>
-                    <span>{subsidy.co_financing_rate}%</span>
-                  </div>
-                )}
-
-                {subsidy.agency && (
-                  <div>
-                    <span className="font-medium text-gray-700">Managing Agency: </span>
-                    <span>{subsidy.agency}</span>
-                  </div>
-                )}
-
-                {subsidy.language && (
-                  <div>
-                    <span className="font-medium text-gray-700">Language: </span>
-                    <span>{formatLanguages(subsidy.language)}</span>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
+            </TabsContent>
 
-              {/* Investment Types */}
-              {subsidy.investment_types && Array.isArray(subsidy.investment_types) && subsidy.investment_types.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Investment Types</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {subsidy.investment_types.map((type, idx) => (
-                      <Badge key={idx} variant="secondary">{type}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <TabsContent value="timing" className="mt-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Application Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {subsidy.application_window_start && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Application Opens</dt>
+                        <dd className="text-sm">{new Date(subsidy.application_window_start).toLocaleDateString()}</dd>
+                      </div>
+                    )}
 
-              {/* Sector Information */}
-              {subsidy.sector && getSectorDisplay(subsidy.sector).length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Sectors</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {getSectorDisplay(subsidy.sector).map((sector: string, index: number) => (
-                      <Badge key={index} variant="outline">{sector}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    {subsidy.application_window_end && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Application Closes</dt>
+                        <dd className="text-sm">{new Date(subsidy.application_window_end).toLocaleDateString()}</dd>
+                      </div>
+                    )}
 
+                    {subsidy.deadline && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Final Deadline</dt>
+                        <dd className="text-sm font-semibold text-orange-600">
+                          {new Date(subsidy.deadline).toLocaleDateString()}
+                        </dd>
+                      </div>
+                    )}
 
-            </div>
+                    {subsidy.submission_conditions && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Submission Conditions</dt>
+                        <dd className="text-sm">{subsidy.submission_conditions}</dd>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Extraction Metadata */}
-            {subsidy.audit && typeof subsidy.audit === 'object' && subsidy.audit !== null && (
-              <div className="mt-12 pt-6 border-t border-dashed">
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">Extraction Information</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-muted-foreground">
-                  <div>
-                    <span className="font-medium">Extracted:</span>
-                    <p>{new Date(subsidy.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Method:</span>
-                    <p>AI</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Source:</span>
-                    <p>Web scraping</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Status:</span>
-                    <p>Processed</p>
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment & Duration</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {subsidy.payment_terms && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Payment Terms</dt>
+                        <dd className="text-sm">{subsidy.payment_terms}</dd>
+                      </div>
+                    )}
+
+                    {subsidy.project_duration && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Project Duration</dt>
+                        <dd className="text-sm">{subsidy.project_duration}</dd>
+                      </div>
+                    )}
+
+                    {subsidy.reporting_requirements && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Reporting Requirements</dt>
+                        <dd className="text-sm">{subsidy.reporting_requirements}</dd>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            )}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="application" className="mt-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Application Process
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {subsidy.application_method && (
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-2">Application Method:</h4>
+                        <p className="text-sm text-gray-600">{subsidy.application_method}</p>
+                      </div>
+                    )}
+
+                    {subsidy.questionnaire_steps && Array.isArray(subsidy.questionnaire_steps) && subsidy.questionnaire_steps.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3">Application Steps:</h4>
+                        <ol className="space-y-3">
+                          {subsidy.questionnaire_steps.map((step, idx) => (
+                            <li key={idx} className="flex items-start gap-3">
+                              <span className="step-number">{idx + 1}</span>
+                              <span className="text-sm">
+                                {typeof step === 'object' && step !== null ? (
+                                  <>
+                                    <span>{(step as any).question}</span>
+                                    {(step as any).requirement && (
+                                      <span className="ml-2 text-muted-foreground">({(step as any).requirement})</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  JSON.stringify(step)
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileDown className="w-5 h-5" />
+                      Required Documents
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {subsidy.application_requirements && Array.isArray(subsidy.application_requirements) && subsidy.application_requirements.length > 0 ? (
+                      <ul className="space-y-3">
+                        {subsidy.application_requirements.map((req, idx) => {
+                          const key =
+                            typeof req === 'string'
+                              ? req
+                              : req && typeof req === 'object' && 'requirement' in req
+                              ? String(req.requirement)
+                              : String(req);
+                          return (
+                            <li key={idx} className="flex items-start gap-2">
+                              <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                              <span className="text-sm">{getRequirementLabel(key)}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 ? (
+                      <ul className="space-y-3">
+                        {subsidy.documents.map((doc, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                            <span className="text-sm">
+                              {typeof doc === 'string' ? doc : (doc && typeof doc === 'object' && 'name' in doc ? String(doc.name) : `Document ${idx + 1}`)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500">No specific document requirements listed.</p>
+                    )}
+
+                    {subsidy.evaluation_criteria && (
+                      <div className="mt-6 pt-4 border-t">
+                        <h4 className="font-medium mb-2">Evaluation Criteria:</h4>
+                        <p className="text-sm text-gray-600">{subsidy.evaluation_criteria}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

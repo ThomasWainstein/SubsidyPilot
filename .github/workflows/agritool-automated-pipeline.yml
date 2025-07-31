@@ -55,10 +55,10 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install Python Dependencies
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests tika ocrmypdf ghostscript
+        pip install requests tika python-tika ocrmypdf tesseract-ocr ghostscript
         # Install additional dependencies as needed
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
@@ -72,27 +72,8 @@ jobs:
         echo "🚀 Starting Apache Tika Server..."
         cd AgriTool-Raw-Log-Interpreter
         python tika_server_manager.py start
-        if [ $? -ne 0 ]; then
-          echo "❌ Failed to start Tika server"
-          exit 1
-        fi
-    
-    - name: Wait for Tika Server Ready
-      run: |
-        echo "⏳ Waiting for Tika server to be ready..."
-        for i in {1..30}; do
-          if curl -s --connect-timeout 5 http://localhost:9998/tika/version; then
-            echo "✅ Tika server is ready"
-            break
-          else
-            echo "⏳ Attempt $i/30: Tika server not ready, waiting 5 seconds..."
-            sleep 5
-          fi
-          if [ $i -eq 30 ]; then
-            echo "❌ Tika server failed to start after 150 seconds"
-            exit 1
-          fi
-        done
+        sleep 5
+        python tika_server_manager.py status
     
     - name: Run Comprehensive Test Suite
       if: ${{ github.event.inputs.run_tests == 'true' }}
@@ -119,8 +100,8 @@ jobs:
         # Navigate to the appropriate directory
         cd AgriTool-Raw-Log-Interpreter
         
-        # Build the command with all parameters (with Tika pipeline)
-        PIPELINE_CMD="python enhanced_agent.py"
+        # Build the command with all parameters
+        PIPELINE_CMD="python pipeline_runner.py"
         
         if [ "$MAX_PAGES" != "0" ]; then
           PIPELINE_CMD="$PIPELINE_CMD --max-pages $MAX_PAGES"

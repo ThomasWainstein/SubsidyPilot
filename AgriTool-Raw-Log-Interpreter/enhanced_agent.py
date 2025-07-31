@@ -36,12 +36,8 @@ try:
     from tika import parser as tika_parser
     import sys
     import os
-    
-    # TIKA SERVER DISABLED - Use buffer-based extraction only
-    # sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'AgriToolScraper-main'))
-    # from pdf_extraction_pipeline import PDFExtractionPipeline
-    from robust_pdf_extractor import DocumentExtractor
-    
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'AgriToolScraper-main'))
+    from pdf_extraction_pipeline import PDFExtractionPipeline
     import pytesseract
     from PIL import Image
     import io
@@ -163,12 +159,17 @@ class RawLogInterpreterAgent:
             return []
     
     def extract_file_content(self, file_refs: List[str]) -> str:
-        """Extract text content from attached files using robust non-Tika extraction"""
+        """Extract text content from attached files using robust PDF extraction pipeline"""
         content = ""
         
-        # Initialize robust document extractor (Tika-free)
-        document_extractor = DocumentExtractor()
-        self.logger.info(f"🚀 Starting file extraction for {len(file_refs)} files (Tika-free mode)")
+        # Initialize robust PDF extraction pipeline
+        pdf_pipeline = PDFExtractionPipeline(
+            max_file_size_mb=10.0,  # Allow larger files since we have preprocessing
+            max_retries=3,
+            initial_retry_delay=5.0,
+            max_retry_delay=60.0,
+            enable_ocr=True  # Enable OCR for scanned documents
+        )
         
         for file_ref in file_refs:
             try:
@@ -180,26 +181,71 @@ class RawLogInterpreterAgent:
                     # Skip non-URL references for now
                     continue
                 
-                # Extract text based on file type using robust non-Tika extractor
-                if file_ref.lower().endswith(('.pdf', '.docx', '.doc', '.txt')):
+                # Extract text based on file type
+                if file_ref.lower().endswith('.pdf'):
+                    # Use robust PDF extraction pipeline
+                    temp_file_path = None
                     try:
-                        self.logger.info(f"📄 Processing document: {file_ref}")
+                        self.logger.info(f"🔄 Starting robust PDF extraction for: {file_ref}")
                         
-                        # Use robust document extractor (Tika-free)
-                        extracted_text = document_extractor.extract_content(file_content, file_ref)
+                        # Save to temp file for processing
+                        import tempfile
+                        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                            temp_file.write(file_content)
+                            temp_file.flush()
+                            temp_file_path = temp_file.name
+                            
+                        # Extract using robust pipeline
+                        extracted_text, temp_files = pdf_pipeline.extract_text(temp_file_path)
                         
                         if extracted_text and extracted_text.strip():
                             content += f"\n\n--- Content from {file_ref} ---\n"
                             content += extracted_text
-                            self.logger.info(f"✅ Successfully extracted content from: {file_ref}")
+                            self.logger.info(f"✅ Successfully extracted {len(extracted_text)} characters from PDF: {file_ref}")
                         else:
-                            self.logger.warning(f"⚠️ No content extracted from: {file_ref}")
-                            content += f"\n\n--- Failed to extract content from {file_ref}: Empty result ---\n"
-                            
-                    except Exception as extraction_error:
-                        self.logger.error(f"❌ Document extraction failed for {file_ref}: {extraction_error}")
-                        self.logger.debug(f"Extraction error details: {traceback.format_exc()}")
-                        content += f"\n\n--- Failed to extract content from {file_ref}: {str(extraction_error)} ---\n"
+                            self.logger.warning(f"⚠️ No text extracted from PDF: {file_ref}")
+                            content += f"\n\n--- No text content extracted from {file_ref} ---\n"
+                        
+                        # Cleanup temp files
+                        pdf_pipeline.cleanup_temp_files(temp_files)
+                        
+                    except Exception as pdf_error:
+                        self.logger.warning(f"❌ Robust PDF extraction failed for {file_ref}: {pdf_error}")
+                        self.logger.debug(f"PDF extraction error details: {traceback.format_exc()}")
+                        
+                        # Fallback to basic tika parsing
+                        try:
+                            self.logger.info(f"🔄 Attempting fallback extraction for: {file_ref}")
+                            parsed = tika_parser.from_buffer(file_content)
+                            if parsed.get('content'):
+                                content += f"\n\n--- Content from {file_ref} (fallback) ---\n"
+                                content += parsed['content']
+                                self.logger.info(f"✅ Fallback extraction successful for: {file_ref}")
+                            else:
+                                self.logger.warning(f"⚠️ Fallback extraction returned no content for: {file_ref}")
+                                content += f"\n\n--- Failed to extract content from {file_ref}: {str(pdf_error)} ---\n"
+                        except Exception as fallback_error:
+                            self.logger.error(f"❌ Both robust and fallback extraction failed for {file_ref}: {fallback_error}")
+                            content += f"\n\n--- Failed to extract content from {file_ref}: {str(fallback_error)} ---\n"
+                    
+                    finally:
+                        # Always cleanup the original temp file
+                        if temp_file_path and os.path.exists(temp_file_path):
+                            try:
+                                os.unlink(temp_file_path)
+                                self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
+                            except Exception as cleanup_error:
+                                self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
+                
+                elif file_ref.lower().endswith(('.docx', '.doc')):
+                    parsed = tika_parser.from_buffer(file_content)
+                    if parsed.get('content'):
+                        content += f"\n\n--- Content from {file_ref} ---\n"
+                        content += parsed['content']
+                
+                elif file_ref.lower().endswith(('.txt', '.text')):
+                    content += f"\n\n--- Content from {file_ref} ---\n"
+                    content += file_content.decode('utf-8', errors='ignore')
                 
             except Exception as e:
                 self.logger.warning(f"Failed to extract content from {file_ref}: {e}")
@@ -748,43 +794,17 @@ Return only the JSON object, no explanations or additional text."""
                 time.sleep(60)  # Wait before retrying
 
 def main():
-    """Main function to run the interpreter agent"""
-    import argparse
+    """Main entry point"""
+    # Create and run enhanced agent
+    agent = RawLogInterpreterAgent()
     
-    parser = argparse.ArgumentParser(description='AgriTool Raw Log Interpreter Agent')
-    parser.add_argument('--single-batch', action='store_true', help='Process only one batch and exit')
-    parser.add_argument('--no-tika', action='store_true', help='Run without Tika server (buffer mode only)')
-    parser.add_argument('--max-pages', type=int, default=0, help='Maximum pages to scrape (0 = unlimited)')
-    parser.add_argument('--dry-run', action='store_true', help='Dry run mode (no database writes)')
-    parser.add_argument('--run-tests', action='store_true', help='Run comprehensive test suite')
-    parser.add_argument('--batch-size', type=int, default=25, help='AI agent batch size')
-    parser.add_argument('--urls-to-scrape', type=int, default=25, help='Number of URLs to scrape')
-    
-    args = parser.parse_args()
-    
-    print("🌱 Starting AgriTool Raw Log Interpreter Agent")
-    print(f"📊 Configuration: batch_size={args.batch_size}, urls_to_scrape={args.urls_to_scrape}")
-    if args.no_tika:
-        print("🔧 Running in Tika-free mode (buffer extraction only)")
-    
-    try:
-        agent = RawLogInterpreterAgent()
-        
-        if args.single_batch:
-            print("🔄 Running single batch processing...")
-            result = agent.process_batch()
-            print(f"✅ Processed: {result['processed']}, Failed: {result['failed']}")
-        else:
-            print("🔄 Starting continuous processing...")
-            agent.run_continuous()
-            
-    except KeyboardInterrupt:
-        print("⏹️ Agent stopped by user")
-    except Exception as e:
-        print(f"❌ Agent failed with error: {e}")
-        import traceback
-        traceback.print_exc()
-
+    # Check if running single batch or continuous
+    if "--single-batch" in sys.argv:
+        stats = agent.process_batch()
+        print(f"Single batch processing complete: {stats}")
+        sys.exit(0)
+    else:
+        agent.run_continuous()
 
 if __name__ == "__main__":
     main()
