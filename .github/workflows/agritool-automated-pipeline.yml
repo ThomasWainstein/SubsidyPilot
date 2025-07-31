@@ -133,15 +133,10 @@ jobs:
         run: |
           echo "🕷️ Starting robust scraper pipeline..."
           
-          # Build scraping command using CORRECT CLI subcommand structure
-          SCRAPE_CMD="python main.py pipeline --site franceagrimer"
+          # Build scraping command using ACTUAL CLI arguments (NO subcommands)
+          SCRAPE_CMD="python main.py --url https://www.franceagrimer.fr/rechercher-une-aide"
           
-          # Set max URLs to scrape based on input  
-          if [ "${{ github.event.inputs.urls_to_scrape || '25' }}" != "0" ]; then
-            SCRAPE_CMD="$SCRAPE_CMD --urls-to-scrape ${{ github.event.inputs.urls_to_scrape || '25' }}"
-          fi
-          
-          # Set max pages if specified
+          # Set max pages if specified (ignore urls_to_scrape as CLI doesn't support it)
           if [ "${{ github.event.inputs.max_pages || '0' }}" != "0" ]; then
             SCRAPE_CMD="$SCRAPE_CMD --max-pages ${{ github.event.inputs.max_pages }}"
           fi
