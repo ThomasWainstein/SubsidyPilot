@@ -164,6 +164,48 @@ export type Database = {
           },
         ]
       }
+      document_extraction_status: {
+        Row: {
+          coverage_percentage: number | null
+          created_at: string
+          document_type: string
+          document_url: string
+          extracted_schema: Json | null
+          extraction_errors: Json | null
+          extraction_status: string
+          field_count: number | null
+          id: string
+          subsidy_id: string
+          updated_at: string
+        }
+        Insert: {
+          coverage_percentage?: number | null
+          created_at?: string
+          document_type: string
+          document_url: string
+          extracted_schema?: Json | null
+          extraction_errors?: Json | null
+          extraction_status?: string
+          field_count?: number | null
+          id?: string
+          subsidy_id: string
+          updated_at?: string
+        }
+        Update: {
+          coverage_percentage?: number | null
+          created_at?: string
+          document_type?: string
+          document_url?: string
+          extracted_schema?: Json | null
+          extraction_errors?: Json | null
+          extraction_status?: string
+          field_count?: number | null
+          id?: string
+          subsidy_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_extractions: {
         Row: {
           confidence_score: number | null
@@ -671,6 +713,8 @@ export type Database = {
           agency: string | null
           amount_max: number | null
           amount_min: number | null
+          application_docs: Json | null
+          application_schema: Json | null
           categories: string[] | null
           code: string
           created_at: string | null
@@ -696,6 +740,8 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          application_docs?: Json | null
+          application_schema?: Json | null
           categories?: string[] | null
           code: string
           created_at?: string | null
@@ -721,6 +767,8 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          application_docs?: Json | null
+          application_schema?: Json | null
           categories?: string[] | null
           code?: string
           created_at?: string | null
