@@ -126,7 +126,7 @@ jobs:
       - name: 🕷️ Run AgriTool scraper with enhanced extraction
         working-directory: ./AgriToolScraper-main
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
           DISPLAY: ':99'
@@ -155,9 +155,9 @@ jobs:
         id: validation
         working-directory: ./AgriToolScraper-main
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "📊 Validating scraping results..."
           
