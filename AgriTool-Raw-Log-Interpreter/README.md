@@ -152,7 +152,7 @@ This enables frontend teams to build dynamic "Apply" flows that automatically gu
 
 The agent can process various file types attached to raw logs:
 
-- **PDF/DOCX**: Text extraction using Apache Tika
+- **PDF/DOCX**: Text extraction using Python-native libraries (pdfplumber, python-docx)
 - **TXT**: Direct text reading
 - **Images (PNG/JPG/TIFF)**: OCR using Tesseract
 

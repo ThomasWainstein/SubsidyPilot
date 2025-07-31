@@ -38,10 +38,10 @@ def test_robust_pdf_extraction():
             import inspect
             source = inspect.getsource(agent.extract_file_content)
             
-            if "PDFExtractionPipeline" in source:
-                print("✅ Agent has robust PDF extraction pipeline integrated")
+            if "PythonDocumentExtractor" in source:
+                print("✅ Agent has Python document extraction integrated")
             else:
-                print("❌ Agent missing robust PDF extraction pipeline")
+                print("❌ Agent missing Python document extraction")
                 return False
             
             if "temp_file_path" in source and "finally:" in source:
@@ -49,19 +49,19 @@ def test_robust_pdf_extraction():
             else:
                 print("⚠️ Agent may have temp file cleanup issues")
             
-            if "fallback" in source.lower() and "tika_parser.from_buffer" in source:
-                print("✅ Agent has fallback to basic Tika parsing")
+            if "extract_document_text" in source:
+                print("✅ Agent has Python document extraction methods")
             else:
-                print("⚠️ Agent missing fallback extraction")
+                print("⚠️ Agent missing extraction methods")
             
             # Test enhanced agent too
             enhanced_agent = EnhancedAgent()
             enhanced_source = inspect.getsource(enhanced_agent.extract_file_content)
             
-            if "PDFExtractionPipeline" in enhanced_source:
-                print("✅ Enhanced agent has robust PDF extraction pipeline integrated")
+            if "PythonDocumentExtractor" in enhanced_source:
+                print("✅ Enhanced agent has Python document extraction integrated")
             else:
-                print("❌ Enhanced agent missing robust PDF extraction pipeline")
+                print("❌ Enhanced agent missing Python document extraction")
                 return False
             
             print("\n🎉 All tests passed! The robust PDF extraction pipeline is properly integrated.")

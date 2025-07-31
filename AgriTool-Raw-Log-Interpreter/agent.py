@@ -32,11 +32,11 @@ try:
     from supabase import create_client, Client
     from openai import OpenAI
     import requests
-    from tika import parser as tika_parser
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'AgriToolScraper-main'))
-    from pdf_extraction_pipeline import PDFExtractionPipeline
+    # Import Python document extractor instead of Tika
+    sys.path.append(os.path.dirname(__file__))
+    from python_document_extractor import PythonDocumentExtractor
     import pytesseract
     from PIL import Image
     import io
@@ -175,16 +175,14 @@ class LogInterpreterAgent:
             return False
     
     def extract_file_content(self, file_refs: List[str]) -> str:
-        """Extract text content from attached files using robust PDF extraction pipeline"""
+        """Extract text content from attached files using Python document extraction"""
         content = ""
         
-        # Initialize robust PDF extraction pipeline
-        pdf_pipeline = PDFExtractionPipeline(
-            max_file_size_mb=10.0,  # Allow larger files since we have preprocessing
-            max_retries=3,
-            initial_retry_delay=5.0,
-            max_retry_delay=60.0,
-            enable_ocr=True  # Enable OCR for scanned documents
+        # Initialize Python document extractor
+        extractor = PythonDocumentExtractor(
+            ocr_enabled=True,
+            languages=['eng', 'fra', 'ron'],  # Multi-language OCR support
+            max_file_size_mb=10.0
         )
         
         for file_ref in file_refs:
@@ -199,66 +197,43 @@ class LogInterpreterAgent:
                     file_content = response
                 
                 # Extract text based on file type
-                if file_ref.lower().endswith('.pdf'):
-                    # Use robust PDF extraction pipeline
-                    temp_file_path = None
-                    try:
-                        self.logger.info(f"🔄 Starting robust PDF extraction for: {file_ref}")
+                # Use Python document extractor for all document types
+                temp_file_path = None
+                try:
+                    # Determine file extension and handle supported document types
+                    if file_ref.lower().endswith(('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.odt')):
+                        file_ext = os.path.splitext(file_ref)[1].lower()
                         
-                        # Save to temp file for processing
+                        # Save to temp file for document extraction
                         import tempfile
-                        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
                             temp_file.write(file_content)
-                            temp_file.flush()
                             temp_file_path = temp_file.name
-                            
-                        # Extract using robust pipeline
-                        extracted_text, temp_files = pdf_pipeline.extract_text(temp_file_path)
                         
-                        if extracted_text and extracted_text.strip():
+                        self.logger.info(f"📄 Attempting Python document extraction for: {file_ref}")
+                        
+                        # Extract using Python document extractor
+                        extraction_result = extractor.extract_document_text(temp_file_path)
+                        
+                        if extraction_result['success'] and extraction_result.get('text_content'):
                             content += f"\n\n--- Content from {file_ref} ---\n"
-                            content += extracted_text
-                            self.logger.info(f"✅ Successfully extracted {len(extracted_text)} characters from PDF: {file_ref}")
+                            content += extraction_result['text_content']
+                            
+                            # Add extraction metadata
+                            metadata = extraction_result.get('metadata', {})
+                            if metadata:
+                                content += f"\n--- Extracted using: {metadata.get('method', 'unknown')}"
+                                if metadata.get('page_count'):
+                                    content += f", {metadata['page_count']} pages"
+                                if metadata.get('ocr_applied'):
+                                    content += f", OCR applied"
+                                content += " ---"
+                            
+                            self.logger.info(f"✅ Python document extraction successful for: {file_ref}")
                         else:
-                            self.logger.warning(f"⚠️ No text extracted from PDF: {file_ref}")
-                            content += f"\n\n--- No text content extracted from {file_ref} ---\n"
-                        
-                        # Cleanup temp files
-                        pdf_pipeline.cleanup_temp_files(temp_files)
-                        
-                    except Exception as pdf_error:
-                        self.logger.warning(f"❌ Robust PDF extraction failed for {file_ref}: {pdf_error}")
-                        self.logger.debug(f"PDF extraction error details: {traceback.format_exc()}")
-                        
-                        # Fallback to basic tika parsing
-                        try:
-                            self.logger.info(f"🔄 Attempting fallback extraction for: {file_ref}")
-                            parsed = tika_parser.from_buffer(file_content)
-                            if parsed.get('content'):
-                                content += f"\n\n--- Content from {file_ref} (fallback) ---\n"
-                                content += parsed['content']
-                                self.logger.info(f"✅ Fallback extraction successful for: {file_ref}")
-                            else:
-                                self.logger.warning(f"⚠️ Fallback extraction returned no content for: {file_ref}")
-                                content += f"\n\n--- Failed to extract content from {file_ref}: {str(pdf_error)} ---\n"
-                        except Exception as fallback_error:
-                            self.logger.error(f"❌ Both robust and fallback extraction failed for {file_ref}: {fallback_error}")
-                            content += f"\n\n--- Failed to extract content from {file_ref}: {str(fallback_error)} ---\n"
-                    
-                    finally:
-                        # Always cleanup the original temp file
-                        if temp_file_path and os.path.exists(temp_file_path):
-                            try:
-                                os.unlink(temp_file_path)
-                                self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
-                            except Exception as cleanup_error:
-                                self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
-                
-                elif file_ref.lower().endswith(('.docx', '.doc')):
-                    parsed = tika_parser.from_buffer(file_content)
-                    if parsed.get('content'):
-                        content += f"\n\n--- Content from {file_ref} ---\n"
-                        content += parsed['content']
+                            error_msg = extraction_result.get('error', 'Unknown extraction error')
+                            self.logger.warning(f"❌ Document extraction failed for {file_ref}: {error_msg}")
+                            content += f"\n\n--- Failed to extract content from {file_ref}: {error_msg} ---\n"
                 
                 elif file_ref.lower().endswith(('.txt', '.text')):
                     content += f"\n\n--- Content from {file_ref} ---\n"

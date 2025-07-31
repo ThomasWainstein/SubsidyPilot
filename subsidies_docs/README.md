@@ -17,7 +17,7 @@ subsidies_docs/
 
 The GitHub Actions workflow includes an automated PDF extraction pipeline that:
 
-1. **Health Checks**: Verifies Apache Tika server availability
+1. **Health Checks**: Verifies Python document extraction dependencies
 2. **Preprocessing**: Optimizes large PDFs using Ghostscript
 3. **OCR Support**: Processes scanned PDFs with Tesseract OCR
 4. **Retry Logic**: Handles extraction failures with exponential backoff
@@ -54,7 +54,7 @@ The pipeline automatically runs as part of the "Agritool Automated Pipeline" wor
 
 ### Environment Variables
 
-- `TIKA_URL`: Apache Tika server endpoint (default: http://localhost:9998/tika)
+- `EXTRACTION_METHOD`: Document extraction method (default: python-native)
 - `PYTHONPATH`: Set to include AgriToolScraper-main directory
 
 ### Customization Options
@@ -63,7 +63,7 @@ The pipeline can be customized through the `PDFExtractionPipeline` class:
 
 ```python
 pipeline = PDFExtractionPipeline(
-    tika_url="http://localhost:9998/tika",
+    extraction_method="python-native",
     max_file_size_mb=5.0,          # Size threshold for optimization
     max_retries=3,                 # Number of retry attempts
     initial_retry_delay=5.0,       # Initial retry delay in seconds
@@ -79,7 +79,7 @@ pipeline = PDFExtractionPipeline(
 
 - **Ghostscript**: PDF optimization
 - **Tesseract OCR**: Text extraction from scanned documents
-- **Java Runtime**: Apache Tika server
+- **Python Libraries**: Document extraction libraries (pdfplumber, python-docx, etc.)
 - **ocrmypdf**: OCR processing pipeline
 
 ### Installation
@@ -88,7 +88,7 @@ The GitHub Actions workflow automatically installs all dependencies. For local d
 
 ```bash
 # Ubuntu/Debian
-sudo apt-get install ghostscript tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra default-jre ocrmypdf
+sudo apt-get install ghostscript tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra ocrmypdf poppler-utils
 
 # Python dependencies
 pip install requests ocrmypdf
@@ -98,14 +98,14 @@ pip install requests ocrmypdf
 
 1. **Size Check**: Files larger than 5MB are optimized with Ghostscript
 2. **OCR Detection**: Scanned PDFs are detected and processed with OCR if enabled
-3. **Extraction**: Text extraction via Apache Tika with retry logic
+3. **Extraction**: Text extraction via Python-native libraries with retry logic
 4. **Cleanup**: Temporary files are automatically cleaned up
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **Tika Server Not Starting**: Check Java installation and port availability
+- **Python Libraries Missing**: Check pip installation and library dependencies
 - **Ghostscript Optimization Fails**: Verify Ghostscript installation
 - **OCR Processing Errors**: Ensure Tesseract and ocrmypdf are properly installed
 - **Large File Timeouts**: Increase timeout values or enable preprocessing
