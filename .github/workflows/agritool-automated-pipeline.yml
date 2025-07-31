@@ -107,20 +107,20 @@ jobs:
 
       - name: ✅ Verify environment variables
         env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🔍 Verifying required environment variables..."
-          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SCRAPPER_RAW_GPT_API: $([ -n \"$SCRAPPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
-          
-          # Fail if any required secrets are missing
-          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SCRAPPER_RAW_GPT_API" ]; then
-            echo "❌ One or more required environment variables are missing!"
-            exit 1
-          fi
+          python -c "
+          import sys
+          sys.path.append('.')
+          from utils.env_loader import validate_environment
+          if not validate_environment('Scraper Job'):
+              sys.exit(1)
+          "
           echo "✅ All required environment variables are properly set"
 
       - name: 🕷️ Run AgriTool scraper with enhanced extraction
@@ -157,15 +157,15 @@ jobs:
         id: validation
         working-directory: ./AgriToolScraper-main
         env:
-          # Primary env vars (what the secrets actually provide)
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          # Backward compatibility aliases for legacy code
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          # Legacy aliases for backward compatibility
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+          OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "📊 Validating scraping results..."
           
@@ -234,20 +234,20 @@ jobs:
 
       - name: ✅ Verify AI agent environment variables
         env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🔍 Verifying AI agent environment variables..."
-          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SCRAPPER_RAW_GPT_API: $([ -n \"$SCRAPPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
-          
-          # Fail if any required secrets are missing
-          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SCRAPPER_RAW_GPT_API" ]; then
-            echo "❌ One or more required environment variables are missing!"
-            exit 1
-          fi
+          python -c "
+          import sys
+          sys.path.append('.')
+          from utils.env_loader import validate_environment
+          if not validate_environment('AI Agent Job'):
+              sys.exit(1)
+          "
           echo "✅ All required environment variables are properly set"
 
       - name: 🤖 Run AI Log Interpreter Agent
