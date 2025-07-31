@@ -39,16 +39,16 @@ ENV_VAR_MAPPINGS = {
     'SUPABASE_ANON_KEY': ['NEXT_PUBLIC_SUPABASE_ANON', 'SUPABASE_ANON_KEY', 'SUPABASE_ANON'],
     
     # OpenAI API key variations
-    'SCRAPER_RAW_GPT_API': ['SCRAPER_RAW_GPT_API', 'SCRAPPER_RAW_GPT_API', 'OPENAI_API_KEY'],
-    'SCRAPPER_RAW_GPT_API': ['SCRAPER_RAW_GPT_API', 'SCRAPPER_RAW_GPT_API', 'OPENAI_API_KEY'],
-    'OPENAI_API_KEY': ['SCRAPER_RAW_GPT_API', 'SCRAPPER_RAW_GPT_API', 'OPENAI_API_KEY'],
+    'SCRAPPER_RAW_GPT_API': ['SCRAPPER_RAW_GPT_API', 'SCRAPER_RAW_GPT_API', 'OPENAI_API_KEY'],
+    'SCRAPER_RAW_GPT_API': ['SCRAPPER_RAW_GPT_API', 'SCRAPER_RAW_GPT_API', 'OPENAI_API_KEY'],
+    'OPENAI_API_KEY': ['SCRAPPER_RAW_GPT_API', 'SCRAPER_RAW_GPT_API', 'OPENAI_API_KEY'],
 }
 
 # Required environment variables for pipeline operations
 REQUIRED_ENV_VARS = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
-    'SCRAPER_RAW_GPT_API'
+    'SCRAPPER_RAW_GPT_API'
 ]
 
 def load_env_vars(debug: bool = False) -> Dict[str, str]:
@@ -145,7 +145,7 @@ def get_openai_api_key() -> str:
         OpenAI API key string
     """
     load_env_vars()  # Ensure variables are loaded
-    return os.environ['SCRAPER_RAW_GPT_API']
+    return os.environ['SCRAPPER_RAW_GPT_API']
 
 def validate_environment(script_name: str = "Unknown") -> bool:
     """
