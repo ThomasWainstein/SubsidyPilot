@@ -98,6 +98,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 📁 Create required directories
+        run: |
+          mkdir -p data/scraped
+          mkdir -p logs
+
       - name: ✅ Verify environment variables
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
