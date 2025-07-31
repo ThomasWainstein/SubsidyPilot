@@ -283,6 +283,10 @@ class LogInterpreterAgent:
                             self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
                         except Exception as cleanup_error:
                             self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
+            
+            except Exception as e:
+                self.logger.error(f"Error processing file {file_ref}: {e}")
+                content += f"\n\n--- Error processing {file_ref}: {str(e)} ---\n"
         
         return content
     
