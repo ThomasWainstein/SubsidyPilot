@@ -581,6 +581,19 @@ class PythonDocumentExtractor:
                 results[file_path].error = str(e)
                 
         return results
+    
+    def extract_document_text(self, file_path: str) -> Dict[str, Any]:
+        """
+        Extract text from document and return as dictionary.
+        
+        Args:
+            file_path: Path to document file
+            
+        Returns:
+            Dict containing extraction results
+        """
+        result = self.extract_document(file_path)
+        return result.to_dict()
 
 
 def extract_document_text(

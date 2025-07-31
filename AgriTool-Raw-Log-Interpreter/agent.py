@@ -21,6 +21,34 @@ from decimal import Decimal
 import asyncio
 from pathlib import Path
 
+# Import logging setup functions
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "scraper"))
+    from logging_setup import ensure_artifact_files
+except ImportError:
+    # Fallback if logging_setup is not available
+    def ensure_artifact_files():
+        """Fallback implementation"""
+        import os
+        from pathlib import Path
+        from datetime import datetime
+        
+        required_paths = [
+            "data/logs/scraper.log",
+            "data/logs/uploader.log", 
+            "data/logs/ai_extractor.log",
+            "logs/pipeline.log"
+        ]
+        
+        for file_path in required_paths:
+            path = Path(file_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if not path.exists():
+                with open(path, 'w') as f:
+                    f.write(f"# {path.stem} log file created at {datetime.now()}\n")
+                    f.write("# This file ensures artifact upload compatibility\n")
+
 # Load environment variables
 try:
     from dotenv import load_dotenv
@@ -116,6 +144,8 @@ class LogInterpreterAgent:
     
     def __init__(self, config: Config):
         self.config = config
+        # Ensure log files exist for artifact uploads
+        ensure_artifact_files()
         self.logger = self._setup_logging()
         self.supabase = self._init_supabase()
         self.openai_client = self._init_openai()
