@@ -133,17 +133,22 @@ jobs:
         run: |
           echo "🕷️ Starting robust scraper pipeline..."
           
-          # Build scraping command using correct CLI arguments
-          SCRAPE_CMD="python main.py --site franceagrimer --output-dir data"
+          # Build scraping command using CORRECT CLI subcommand structure
+          SCRAPE_CMD="python main.py pipeline --site franceagrimer"
           
-          # Set max URLs to scrape based on input
+          # Set max URLs to scrape based on input  
           if [ "${{ github.event.inputs.urls_to_scrape || '25' }}" != "0" ]; then
-            SCRAPE_CMD="$SCRAPE_CMD --max-urls ${{ github.event.inputs.urls_to_scrape || '25' }}"
+            SCRAPE_CMD="$SCRAPE_CMD --urls-to-scrape ${{ github.event.inputs.urls_to_scrape || '25' }}"
           fi
           
           # Set max pages if specified
           if [ "${{ github.event.inputs.max_pages || '0' }}" != "0" ]; then
             SCRAPE_CMD="$SCRAPE_CMD --max-pages ${{ github.event.inputs.max_pages }}"
+          fi
+          
+          # Add dry run flag if specified
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            SCRAPE_CMD="$SCRAPE_CMD --dry-run"
           fi
           
           echo "🚀 Executing: $SCRAPE_CMD"
