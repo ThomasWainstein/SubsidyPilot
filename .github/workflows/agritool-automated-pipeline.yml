@@ -98,11 +98,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: ✅ Verify environment variables
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+        run: |
+          echo "🔍 Verifying required environment variables..."
+          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SCRAPPER_RAW_GPT_API: $([ -n \"$SCRAPPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
+          
+          # Fail if any required secrets are missing
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SCRAPPER_RAW_GPT_API" ]; then
+            echo "❌ One or more required environment variables are missing!"
+            exit 1
+          fi
+          echo "✅ All required environment variables are properly set"
+
       - name: 🕷️ Run AgriTool scraper with enhanced extraction
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
           DISPLAY: ':99'
         run: |
           echo "🕷️ Starting robust scraper pipeline..."
@@ -134,6 +152,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "📊 Validating scraping and upload results..."
           
@@ -210,25 +229,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: ✅ Verify AI agent environment variables
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+        run: |
+          echo "🔍 Verifying AI agent environment variables..."
+          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
+          echo "✅ SCRAPPER_RAW_GPT_API: $([ -n \"$SCRAPPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
+          
+          # Fail if any required secrets are missing
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SCRAPPER_RAW_GPT_API" ]; then
+            echo "❌ One or more required environment variables are missing!"
+            exit 1
+          fi
+          echo "✅ All required environment variables are properly set"
+
       - name: 🤖 Run AI Log Interpreter Agent
         id: agent-run
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🤖 Starting AI agent processing..."
-          
-          # Debug environment variables (without exposing values)
-          echo "✅ NEXT_PUBLIC_SUPABASE_URL: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SUPABASE_SERVICE_ROLE_KEY: $([ -n \"$SUPABASE_SERVICE_ROLE_KEY\" ] && echo 'SET' || echo 'MISSING')"
-          echo "✅ SCRAPER_RAW_GPT_API: $([ -n \"$SCRAPER_RAW_GPT_API\" ] && echo 'SET' || echo 'MISSING')"
-          
-          # Ensure required secret is present
-          if [ -z "$SCRAPER_RAW_GPT_API" ]; then
-            echo "❌ SCRAPER_RAW_GPT_API missing!"
-            exit 1
-          fi
           
           # Run the AI extraction with specified batch size
           BATCH_SIZE="${{ github.event.inputs.agent_batch_size || '25' }}"
@@ -292,7 +318,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🧪 Running comprehensive QA test suite..."
           
@@ -329,6 +355,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
           echo "🔍 Running data quality validation..."
           python -c "
