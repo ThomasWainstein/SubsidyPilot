@@ -93,15 +93,17 @@ jobs:
         env:
           DISPLAY: ':99'
 
-      - name: 📦 Install dependencies - Scraper
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       - name: 📁 Create required directories
+        working-directory: ./AgriToolScraper-main
         run: |
           mkdir -p data/scraped
           mkdir -p logs
+
+      - name: 📦 Install dependencies - Scraper
+        working-directory: ./AgriToolScraper-main  
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: ✅ Verify environment variables
         env:
@@ -122,6 +124,7 @@ jobs:
           echo "✅ All required environment variables are properly set"
 
       - name: 🕷️ Run AgriTool scraper with enhanced extraction
+        working-directory: ./AgriToolScraper-main
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -130,65 +133,51 @@ jobs:
         run: |
           echo "🕷️ Starting robust scraper pipeline..."
           
-          # Build scraping command
-          SCRAPE_CMD="python main.py scrape --site franceagrimer --urls-to-scrape ${{ github.event.inputs.urls_to_scrape || '25' }}"
+          # Build scraping command using correct CLI arguments
+          SCRAPE_CMD="python main.py --site franceagrimer --output-dir data"
           
-          if [ "${{ github.event.inputs.max_pages || '0' }}" != "0" ]; then
-            SCRAPE_CMD="$SCRAPE_CMD --max-pages ${{ github.event.inputs.max_pages }}"
+          # Set max URLs to scrape based on input
+          if [ "${{ github.event.inputs.urls_to_scrape || '25' }}" != "0" ]; then
+            SCRAPE_CMD="$SCRAPE_CMD --max-urls ${{ github.event.inputs.urls_to_scrape || '25' }}"
           fi
           
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            SCRAPE_CMD="$SCRAPE_CMD --dry-run"
+          # Set max pages if specified
+          if [ "${{ github.event.inputs.max_pages || '0' }}" != "0" ]; then
+            SCRAPE_CMD="$SCRAPE_CMD --max-pages ${{ github.event.inputs.max_pages }}"
           fi
           
           echo "🚀 Executing: $SCRAPE_CMD"
           eval $SCRAPE_CMD
           
-          # Upload scraped data to Supabase
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" != "true" ]; then
-            echo "☁️ Uploading scraped data to Supabase..."
-            python main.py upload --data-dir data/scraped --batch-size 50
-          else
-            echo "🧪 Dry run: Skipping upload"
-          fi
+          echo "✅ Scraping completed - data automatically saved to Supabase during extraction"
 
       - name: 📊 Validate scraping results
         id: validation
+        working-directory: ./AgriToolScraper-main
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
         run: |
-          echo "📊 Validating scraping and upload results..."
+          echo "📊 Validating scraping results..."
           
-          # Count scraped files
-          SCRAPED_FILES=$(find data/scraped -name "*.json" 2>/dev/null | wc -l || echo "0")
+          # Count scraped files in the correct directory structure
+          SCRAPED_FILES=$(find data -name "*.json" 2>/dev/null | wc -l || echo "0")
           echo "📄 Scraped files found: $SCRAPED_FILES"
           
-          # Check upload logs for success
-          if [ -f "logs/supabase_uploader.log" ]; then
-            UPLOADED=$(grep -c "Successfully uploaded" logs/supabase_uploader.log || echo "0")
-            echo "☁️ Records uploaded: $UPLOADED"
-            echo "records=$UPLOADED" >> $GITHUB_OUTPUT
-            
-            if [ "$UPLOADED" -gt "0" ] || [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-              echo "success=true" >> $GITHUB_OUTPUT
-              echo "✅ Pipeline validation successful"
-            else
-              echo "success=false" >> $GITHUB_OUTPUT
-              echo "❌ Pipeline validation failed - no uploads found"
-            fi
+          # Check if scraper completed successfully by looking at log files
+          if [ -d "data" ] && [ "$SCRAPED_FILES" -gt "0" ]; then
+            echo "records=$SCRAPED_FILES" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Scraping validation successful - $SCRAPED_FILES files processed"
+          elif [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
+            echo "records=0" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Dry run validation successful"
           else
-            # Fallback: check if files were scraped for dry run
-            if [ "$SCRAPED_FILES" -gt "0" ] || [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-              echo "records=$SCRAPED_FILES" >> $GITHUB_OUTPUT
-              echo "success=true" >> $GITHUB_OUTPUT
-              echo "✅ Scraping validation successful"
-            else
-              echo "records=0" >> $GITHUB_OUTPUT
-              echo "success=false" >> $GITHUB_OUTPUT
-              echo "❌ Scraping validation failed"
-            fi
+            echo "records=0" >> $GITHUB_OUTPUT
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "❌ Scraping validation failed - no files found"
           fi
 
       - name: 📦 Upload scraper artifacts
@@ -230,6 +219,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: 📦 Install dependencies - Agent
+        working-directory: ./AgriTool-Raw-Log-Interpreter
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
@@ -254,6 +244,7 @@ jobs:
 
       - name: 🤖 Run AI Log Interpreter Agent
         id: agent-run
+        working-directory: ./AgriTool-Raw-Log-Interpreter
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -261,27 +252,27 @@ jobs:
         run: |
           echo "🤖 Starting AI agent processing..."
           
-          # Run the AI extraction with specified batch size
+          # Run the AI agent with specified batch size
           BATCH_SIZE="${{ github.event.inputs.agent_batch_size || '25' }}"
           
           if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             echo "🧪 Running in test mode (limited processing)"
-            python main.py extract --batch-size 5 --max-records 10
+            python agent.py --batch-size 5 --single-batch
           else
-            echo "🚀 Running full AI extraction (batch size: $BATCH_SIZE)"
-            python main.py extract --batch-size "$BATCH_SIZE"
+            echo "🚀 Running full AI agent processing (batch size: $BATCH_SIZE)"
+            python agent.py --batch-size "$BATCH_SIZE" --single-batch
           fi
           
           # Extract processing statistics from logs
-          if [ -f "logs/ai_extractor.log" ]; then
-            PROCESSED=$(grep -c "Successfully extracted" logs/ai_extractor.log || echo "0")
+          if [ -f "agent.log" ]; then
+            PROCESSED=$(grep -c "Successfully processed" agent.log || echo "0")
             echo "processed=$PROCESSED" >> $GITHUB_OUTPUT
             echo "success=true" >> $GITHUB_OUTPUT
             echo "✅ AI processing completed - $PROCESSED records processed"
           else
             echo "processed=0" >> $GITHUB_OUTPUT
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ AI processing failed - no extraction logs found"
+            echo "❌ AI processing failed - no agent logs found"
           fi
 
       - name: 📦 Upload agent artifacts
