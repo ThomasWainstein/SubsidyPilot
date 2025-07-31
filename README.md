@@ -15,7 +15,7 @@ export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 export SCRAPPER_RAW_GPT_API="your-openai-api-key"
 ```
 
-`SCRAPER_RAW_GPT_API` provides the OpenAI API key used by the extraction pipeline.
+`SCRAPPER_RAW_GPT_API` provides the OpenAI API key used by the extraction pipeline.
 
 For local development, copy `.env.example` to `.env` and fill in your values. Scripts will auto-load `.env` if `python-dotenv` is installed.
 
