@@ -610,7 +610,7 @@ def main():
         pass
     
     # Early validation of required environment variables
-    required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     if missing_vars:
         print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")

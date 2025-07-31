@@ -26,12 +26,12 @@ class SupabaseUploader:
     """Handles all Supabase operations for the scraper."""
     
     def __init__(self):
-        self.url = os.environ.get('SUPABASE_URL')
+        self.url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
         self.key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
         self.timeout_seconds = int(os.environ.get('SUPABASE_TIMEOUT', '10'))
         
         if not self.url or not self.key:
-            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are REQUIRED environment variables")
+            raise ValueError("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are REQUIRED environment variables")
             
         options = ClientOptions(
             postgrest_client_timeout=self.timeout_seconds,
