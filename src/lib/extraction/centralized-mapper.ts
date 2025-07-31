@@ -4,6 +4,12 @@
  */
 
 import { logger } from '@/lib/logger';
+import { 
+  CanonicalSubsidyData, 
+  FIELD_MAPPINGS as CANONICAL_FIELD_MAPPINGS, 
+  validateCanonicalData, 
+  CANONICAL_FIELD_PRIORITIES 
+} from './canonicalSchema';
 
 export interface ExtractionData {
   [key: string]: any;
@@ -14,9 +20,11 @@ export interface FormData {
 }
 
 export interface MappingResult {
-  mappedData: FormData;
+  mappedData: FormData | CanonicalSubsidyData;
   unmappedFields: string[];
   errors: string[];
+  flaggedForAdmin?: string[];
+  provenance?: Record<string, string | string[]>;
   mappingStats: {
     totalFields: number;
     mappedFields: number;
@@ -245,6 +253,108 @@ export function mapFormToExtraction(formData: FormData): ExtractionData {
   });
   
   return extractionData;
+}
+
+/**
+ * Maps extraction data to canonical subsidy schema
+ */
+export function mapToCanonicalSchema(
+  extractionData: ExtractionData, 
+  sourceInfo: Record<string, string> = {}
+): MappingResult {
+  const canonicalData: CanonicalSubsidyData = {};
+  const unmappedFields: string[] = [];
+  const errors: string[] = [];
+  const provenance: Record<string, string | string[]> = {};
+  let mappedCount = 0;
+
+  logger.debug('Starting canonical schema mapping', { extractionData });
+
+  // Map extracted data to canonical fields
+  for (const [key, value] of Object.entries(extractionData)) {
+    if (!value || value === '') continue;
+
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const canonicalField = CANONICAL_FIELD_MAPPINGS[normalizedKey] || CANONICAL_FIELD_MAPPINGS[key];
+
+    if (canonicalField) {
+      try {
+        // Apply transformations based on field type
+        const transformedValue = transformCanonicalValue(canonicalField, value);
+        (canonicalData as any)[canonicalField] = transformedValue;
+        
+        // Track provenance
+        const source = sourceInfo[key] || 'extraction';
+        provenance[canonicalField] = source;
+        
+        mappedCount++;
+        logger.debug(`Mapped canonical field: ${key} → ${canonicalField}`, {
+          originalValue: value,
+          transformedValue
+        });
+      } catch (error) {
+        errors.push(`Error mapping ${key} to ${canonicalField}: ${error}`);
+        logger.warn(`Transform error for ${key}`, { error });
+      }
+    } else {
+      unmappedFields.push(key);
+      logger.debug(`Unmapped field: ${key}`, { value });
+    }
+  }
+
+  // Validate and flag missing high-priority fields
+  const validation = validateCanonicalData(canonicalData);
+  canonicalData.flagged_for_admin = validation.flaggedForAdmin;
+  canonicalData.source = provenance;
+  canonicalData.last_updated = new Date().toISOString();
+
+  const mappingStats = {
+    totalFields: Object.keys(extractionData).length,
+    mappedFields: mappedCount,
+    successRate: Object.keys(extractionData).length > 0 
+      ? (mappedCount / Object.keys(extractionData).length) * 100 
+      : 0
+  };
+
+  logger.success('Canonical mapping completed', { mappingStats, flaggedFields: validation.flaggedForAdmin.length });
+
+  return {
+    mappedData: canonicalData,
+    unmappedFields,
+    errors,
+    flaggedForAdmin: validation.flaggedForAdmin,
+    provenance,
+    mappingStats
+  };
+}
+
+function transformCanonicalValue(fieldName: string, value: any): any {
+  // Handle arrays
+  if (['eligible_countries', 'eligible_regions', 'sectoral_scope', 'farming_practices', 
+       'crop_specifications', 'required_documents', 'sustainability_goals', 
+       'eligible_beneficiary_types', 'data_source'].includes(fieldName)) {
+    if (typeof value === 'string') {
+      return value.split(/[,;]/).map(v => v.trim()).filter(v => v);
+    }
+    return Array.isArray(value) ? value : [value];
+  }
+
+  // Handle numbers
+  if (['total_budget', 'aid_intensity_max', 'minimum_aid_amount', 'maximum_aid_amount'].includes(fieldName)) {
+    const num = typeof value === 'string' ? parseFloat(value.replace(/[^\d.-]/g, '')) : Number(value);
+    return isNaN(num) ? undefined : num;
+  }
+
+  // Handle dates
+  if (['application_deadline', 'scheme_duration', 'last_updated'].includes(fieldName)) {
+    try {
+      return new Date(value).toISOString();
+    } catch {
+      return value; // Keep original if can't parse
+    }
+  }
+
+  return value;
 }
 
 /**

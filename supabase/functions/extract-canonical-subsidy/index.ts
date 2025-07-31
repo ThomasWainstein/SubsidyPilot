@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { mapToCanonicalSchema, CANONICAL_FIELD_PRIORITIES } from './canonicalMapper.ts';
 
 // Robust array processing utilities (Deno version)
 const CANONICAL_ARRAY_FIELDS = [
@@ -344,8 +345,48 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert subsidy data extraction agent for the AgriTool platform.
-Your task is to analyze unstructured raw subsidy logs from FranceAgriMer subsidy pages (in French or English), including messy web page text and attached files, and convert each subsidy record into a strictly structured JSON object conforming to the canonical schema below.
+            content: `You are a specialized subsidy data extraction agent. Extract ONLY the following canonical fields from the provided content.
+
+CANONICAL SCHEMA (USE ONLY THESE FIELDS):
+
+HIGH PRIORITY (flag if missing):
+- scheme_id: Official code/identifier
+- scheme_title: Title in original language
+- scheme_title_en: English title
+- legal_basis: Legal regulation reference
+- aid_category: State aid classification
+- wto_classification: WTO category
+- eligible_countries: ISO country codes array
+- eligible_regions: NUTS/FADN codes array
+- application_deadline: ISO date format
+- scheme_duration: Date range
+- funding_source: EAFRD/EAGF/National/Other
+- total_budget: Number in euros
+- aid_intensity_max: Maximum percentage
+- minimum_aid_amount: Minimum euros
+- maximum_aid_amount: Maximum euros
+- eligible_beneficiary_types: Types array
+- enterprise_size_criteria: SME/large/other
+- sectoral_scope: NACE codes array
+- financial_thresholds: Crisis/targeting rules
+
+MEDIUM PRIORITY:
+- land_requirements, livestock_requirements, farming_practices, crop_specifications
+- application_method, required_documents, assessment_criteria, monitoring_requirements
+- cross_compliance, state_aid_cumulation, primary_objective, sustainability_goals
+
+OPTIONAL:
+- managing_authority, data_source, quality_flags
+
+RULES:
+1. Use ONLY the canonical field names above
+2. Preserve original language content
+3. Arrays must be properly formatted
+4. Numbers without currency symbols
+5. Dates in ISO format
+6. If a field cannot be filled, do NOT include it
+
+Return ONLY a JSON object with the canonical fields found.
 
 CRITICAL TITLE EXTRACTION RULES:
 - ALWAYS extract the OFFICIAL program/subsidy name from the page's main title, H1 heading, or program name field

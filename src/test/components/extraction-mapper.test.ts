@@ -17,13 +17,14 @@ describe('Centralized Extraction Mapper', () => {
     };
 
     const result = mapExtractionToForm(extractionData);
+    const mappedData = result.mappedData as any;
 
-    expect(result.mappedData.name).toBe('Test Farm');
-    expect(result.mappedData.address).toBe('123 Main St');
-    expect(result.mappedData.total_hectares).toBe(50);
-    expect(result.mappedData.legal_status).toBe('srl');
-    expect(result.mappedData.country).toBe('RO');
-    expect(result.mappedData.land_use_types).toEqual(['vegetables']);
+    expect(mappedData.name).toBe('Test Farm');
+    expect(mappedData.address).toBe('123 Main St');
+    expect(mappedData.total_hectares).toBe(50);
+    expect(mappedData.legal_status).toBe('srl');
+    expect(mappedData.country).toBe('RO');
+    expect(mappedData.land_use_types).toEqual(['vegetables']);
   });
 
   it('handles type transformations correctly', () => {
@@ -34,10 +35,11 @@ describe('Centralized Extraction Mapper', () => {
     };
 
     const result = mapExtractionToForm(extractionData);
+    const mappedData = result.mappedData as any;
 
-    expect(result.mappedData.total_hectares).toBe(25.5);
-    expect(result.mappedData.staff_count).toBe(10);
-    expect(result.mappedData.livestock_present).toBe(true);
+    expect(mappedData.total_hectares).toBe(25.5);
+    expect(mappedData.staff_count).toBe(10);
+    expect(mappedData.livestock_present).toBe(true);
   });
 
   it('validates mapped data correctly', () => {
