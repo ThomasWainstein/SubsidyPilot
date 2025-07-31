@@ -233,10 +233,14 @@ Please extract all available information and return as valid JSON.
             extracted_data['extraction_timestamp'] = time.time()
             extracted_data['model_used'] = 'gpt-4-turbo-preview'
             
-            # Validate and clean data
-            extracted_data = self._validate_extracted_data(extracted_data)
-            
-            return extracted_data
+        # Validate and clean data
+        extracted_data = self._validate_extracted_data(extracted_data)
+        
+        # Enhanced quality validation
+        quality_score = self._assess_extraction_quality(extracted_data, raw_text)
+        extracted_data['extraction_quality_score'] = quality_score
+        
+        return extracted_data
             
         except json.JSONDecodeError as e:
             self.logger.error(f"❌ JSON decode error: {e}")
@@ -248,42 +252,65 @@ Please extract all available information and return as valid JSON.
             return None
     
     def _get_extraction_prompt(self) -> str:
-        """Get the extraction system prompt"""
-        return """You are an expert at extracting structured information from French agricultural subsidy and funding pages.
+        """Get the enhanced extraction system prompt with comprehensive field coverage"""
+        
+        # Read the canonical extraction prompt
+        prompt_file = Path(__file__).parent.parent / "AgriTool-Raw-Log-Interpreter" / "extraction_prompt.md"
+        if prompt_file.exists():
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                canonical_prompt = f.read()
+            return canonical_prompt
+        
+        # Fallback enhanced prompt if file not found
+        return """You are an expert at extracting comprehensive structured information from French agricultural subsidy and funding pages.
+
+CRITICAL: NEVER SIMPLIFY OR FLATTEN COMPLEX INFORMATION. Extract ALL details completely.
 
 Extract the following information and return it as valid JSON:
 
 {
   "title": "Exact title of the subsidy program",
-  "description": "Full description of the program",
-  "eligibility": "Who is eligible (as text or array)",
-  "amount": [min_amount, max_amount],  // Always as array, even for single amounts
-  "deadline": "YYYY-MM-DD",  // ISO format
-  "region": ["Region1", "Region2"],  // Always as array
-  "sector": ["Sector1", "Sector2"],  // Always as array  
-  "funding_type": "Type of funding (grant, loan, etc.)",
-  "agency": "Funding agency name",
-  "application_method": "How to apply",
-  "documents": [
-    {"type": "document_type", "description": "Document description"}
+  "description": "Complete detailed description - do not summarize",
+  "eligibility": "Complete eligibility criteria with all conditions and exclusions",
+  "amount": [min_amount, max_amount],
+  "co_financing_rate": base_percentage,
+  "co_financing_bonuses": [
+    {"condition": "Condition description", "bonus": bonus_percentage, "details": "Full details"}
   ],
-  "application_requirements": ["Requirement1", "Requirement2"],
-  "legal_entity_type": ["Type1", "Type2"],
+  "funding_calculation": "Complete funding calculation rules and limits",
+  "regulatory_framework": "All EU regulations, laws, and legal references",
+  "deadline": "YYYY-MM-DD",
+  "application_window": "Complete application timing and deadlines",
+  "region": ["Region1", "Region2"],
+  "sector": ["Sector1", "Sector2"],
+  "funding_type": "Type of funding",
+  "agency": "Funding agency name",
+  "application_method": "Complete application process",
+  "documents": [
+    {"name": "Document name", "mandatory": true/false, "description": "Details"}
+  ],
+  "evaluation_criteria": ["Criterion 1", "Criterion 2"],
+  "selection_process": "Detailed evaluation process",
+  "application_requirements": ["All requirements"],
+  "legal_entity_type": ["All eligible types with conditions"],
+  "special_conditions": ["All conditional eligibility scenarios"],
+  "legal_exclusions": ["All exclusion criteria"],
+  "contact_information": "Complete contact details",
   "language": "fr",
   "project_duration": "Duration if specified",
-  "co_financing_rate": percentage_if_specified,
   "requirements_extraction_status": "extracted"
 }
 
 CRITICAL RULES:
-1. ALWAYS use arrays for: amount, region, sector, documents, application_requirements, legal_entity_type
-2. Extract EXACT titles, not generic ones
-3. Include ALL available information
-4. Use null for missing fields
-5. Dates in ISO format (YYYY-MM-DD)
-6. Return ONLY valid JSON, no explanations
-7. Handle French content correctly
-8. Preserve original formatting and details"""
+1. EXTRACT ALL INFORMATION - do not simplify or summarize
+2. Include ALL funding rates, bonuses, and conditional amounts
+3. Extract ALL legal references and regulatory frameworks
+4. Include ALL document requirements (mandatory and optional)
+5. Capture ALL deadlines and application windows
+6. Extract ALL eligibility criteria including exclusions
+7. Return ONLY valid JSON, no explanations
+8. Use arrays for multi-value fields
+9. Preserve French language exactly as written"""
     
     def _validate_extracted_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and clean extracted data"""
@@ -318,6 +345,33 @@ CRITICAL RULES:
             data['language'] = 'fr'
         
         return data
+    
+    def _assess_extraction_quality(self, extracted_data: Dict[str, Any], source_text: str) -> float:
+        """Assess the quality of extraction against source content"""
+        try:
+            # Import here to avoid circular dependencies
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'AgriTool-Raw-Log-Interpreter'))
+            from quality_validator import SubsidyQualityValidator
+            
+            validator = SubsidyQualityValidator()
+            quality_score = validator.validate_extraction(extracted_data, source_text)
+            
+            # Log quality assessment
+            if quality_score.coverage_score < 70:
+                self.logger.warning(f"Low extraction quality: {quality_score.coverage_score:.1f}%")
+                if quality_score.critical_missing:
+                    self.logger.warning(f"Critical missing: {', '.join(quality_score.critical_missing)}")
+            
+            return quality_score.coverage_score
+            
+        except ImportError:
+            self.logger.warning("Quality validator not available")
+            return 0.0
+        except Exception as e:
+            self.logger.error(f"Quality assessment failed: {e}")
+            return 0.0
     
     def _save_structured_data(self, data: Dict[str, Any], raw_log_id: str) -> None:
         """Save structured data to subsidies_structured table"""
