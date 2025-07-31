@@ -409,12 +409,75 @@ jobs:
           retention-days: 14
 
   # =============================================================================
-  # JOB 4: PIPELINE SUMMARY & NOTIFICATIONS
+  # JOB 4: CLEANUP
+  # =============================================================================
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [scrape-and-upload, ai-agent-processing, quality-assurance]
+    if: always()
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📋 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧹 Clean temporary files and data
+        run: |
+          echo "🧹 Starting cleanup process..."
+          
+          # Clean up scraped data and logs from scraper
+          echo "🗑️ Cleaning scraper temporary files..."
+          rm -rf data/scraped/* || true
+          rm -rf logs/* || true
+          rm -f *.log || true
+          rm -f upload_stats.json || true
+          
+          # Clean up agent logs and temporary files
+          echo "🗑️ Cleaning agent temporary files..."
+          rm -f agent_stats.json || true
+          rm -f agent.log || true
+          rm -f ai_extractor.log || true
+          rm -f supabase_uploader.log || true
+          
+          # Clean up QA artifacts
+          echo "🗑️ Cleaning QA temporary files..."
+          rm -f qa_report.json || true
+          rm -f qa_report.html || true
+          rm -f test_results.xml || true
+          
+          # Clean up any lock files or temp directories
+          echo "🗑️ Cleaning lock files and temp directories..."
+          find . -name "*.lock" -type f -delete || true
+          find . -name "*.tmp" -type f -delete || true
+          find . -name ".pytest_cache" -type d -exec rm -rf {} + || true
+          find . -name "__pycache__" -type d -exec rm -rf {} + || true
+          
+          # Clean up any remaining Chrome/browser processes (failsafe)
+          echo "🗑️ Cleaning up browser processes..."
+          pkill -f chrome || true
+          pkill -f chromium || true
+          pkill -f Xvfb || true
+          
+          echo "✅ Cleanup completed successfully"
+
+      - name: 📊 Report cleanup results
+        run: |
+          echo "📊 Cleanup Summary:"
+          echo "  🗑️ Temporary files cleaned"
+          echo "  🗑️ Log files removed"
+          echo "  🗑️ Cache directories cleared"
+          echo "  🗑️ Lock files removed"
+          echo "  🧹 Browser processes terminated"
+          echo "✅ System ready for next pipeline run"
+
+  # =============================================================================
+  # JOB 5: PIPELINE SUMMARY & NOTIFICATIONS
   # =============================================================================
   pipeline-summary:
     name: 📋 Pipeline Summary
     runs-on: ubuntu-latest
-    needs: [scrape-and-upload, ai-agent-processing, quality-assurance]
+    needs: [scrape-and-upload, ai-agent-processing, quality-assurance, cleanup]
     if: always()
     
     steps:
