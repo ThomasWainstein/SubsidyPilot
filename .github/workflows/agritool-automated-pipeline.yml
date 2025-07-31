@@ -36,9 +36,14 @@ on:
           - 'true'
           - 'false'
       agent_batch_size:
-        description: 'AI agent batch size'
+        description: 'AI agent batch size (number of logs per batch)'
         required: false
         default: '50'
+        type: string
+      max_concurrent_extractions:
+        description: 'Maximum concurrent OpenAI API calls'
+        required: false
+        default: '5'
         type: string
       urls_to_scrape:
         description: 'Number of URLs to scrape in this run (e.g., 10, 25, 100)'
@@ -282,18 +287,20 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
           SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+          # Batch processing configuration
+          BATCH_SIZE: ${{ github.event.inputs.agent_batch_size || '50' }}
+          MAX_CONCURRENT_EXTRACTIONS: ${{ github.event.inputs.max_concurrent_extractions || '5' }}
         run: |
           echo "🤖 Starting AI agent processing..."
-          
-          # Run the AI agent with specified batch size
-          BATCH_SIZE="${{ github.event.inputs.agent_batch_size || '25' }}"
+          echo "📊 Batch size: $BATCH_SIZE"
+          echo "⚡ Max concurrent extractions: $MAX_CONCURRENT_EXTRACTIONS"
           
           if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             echo "🧪 Running in test mode (limited processing)"
-            python agent.py --batch-size 5 --single-batch
+            python agent.py --batch-size 5 --max-concurrent 2 --single-batch
           else
-            echo "🚀 Running full AI agent processing (batch size: $BATCH_SIZE)"
-            python agent.py --batch-size "$BATCH_SIZE" --single-batch
+            echo "🚀 Running full AI agent processing"
+            python agent.py --batch-size "$BATCH_SIZE" --max-concurrent "$MAX_CONCURRENT_EXTRACTIONS" --single-batch
           fi
           
           # Extract processing statistics from logs
