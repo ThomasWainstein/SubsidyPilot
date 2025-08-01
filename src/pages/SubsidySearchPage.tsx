@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import DocumentProcessingPipeline from '@/components/admin/DocumentProcessingPipeline';
 import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
 import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
+import AIPrefillDemo from '@/components/test/AIPrefillDemo';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -132,8 +133,13 @@ const SubsidySearchPage = () => {
             </div>
             
             {/* Schema Extraction Test */}
-            <div className="mb-8">
+            <div className="mb-6">
               <SchemaExtractionDemo className="max-w-4xl mx-auto" />
+            </div>
+            
+            {/* AI Prefill Demo */}
+            <div className="mb-8">
+              <AIPrefillDemo className="max-w-4xl mx-auto" />
             </div>
 
             {error ? (
