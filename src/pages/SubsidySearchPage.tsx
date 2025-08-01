@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import DocumentProcessingPipeline from '@/components/admin/DocumentProcessingPipeline';
 import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
+import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -126,8 +127,13 @@ const SubsidySearchPage = () => {
             <SearchHeader />
             
             {/* Document Processing Test */}
-            <div className="mb-8">
+            <div className="mb-6">
               <DocumentProcessingDemo className="max-w-4xl mx-auto" />
+            </div>
+            
+            {/* Schema Extraction Test */}
+            <div className="mb-8">
+              <SchemaExtractionDemo className="max-w-4xl mx-auto" />
             </div>
 
             {error ? (
