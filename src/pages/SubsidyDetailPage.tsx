@@ -69,7 +69,10 @@ const SubsidyDetailPage = () => {
               { generalCriteria: subsidy.eligibility, eligibleEntities: [], legalEntityTypes: [], geographicScope: [] } : 
               aiExtracted.eligibility,
             description: subsidy.description || aiExtracted.description,
-            sourceUrl: subsidy.url
+            meta: {
+              ...aiExtracted.meta,
+              sourceUrl: subsidy.url
+            }
           };
           
           setExtractedData(mergedData);
