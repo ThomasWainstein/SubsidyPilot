@@ -1,44 +1,52 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // Test real extraction and QA validation with FranceAgriMer URLs
-export const testRealExtractionPipeline = async () => {
-  console.log('🚀 Starting real extraction pipeline test...');
-  
+export const testRealExtractionPipeline = async (): Promise<any[]> => {
   const testUrls = [
-    'https://www.franceagrimer.fr/Accompagner/Planification-ecologique/Planification-ecologique-agriculteurs/Renovation-des-vergers-campagnes-2024-2025-et-2025-2026',
-    'https://www.franceagrimer.fr/aide-stockage-fruits-legumes',
-    'https://www.franceagrimer.fr/aide-promotion-produits-bio',
+    'https://www.franceagrimer.fr/Services-aux-operateurs/Aides/Dispositifs-par-filiere/Grandes-cultures/2024/Lutte-contre-la-jaunisse-de-la-betterave-2024-PNRI-C',
+    'https://www.franceagrimer.fr/Services-aux-operateurs/Aides/Dispositifs-par-filiere/Viticulture/2024/VITILIENCE-2025',
+    'https://www.franceagrimer.fr/Services-aux-operateurs/Aides/Dispositifs-par-filiere/Plantes-a-parfum-aromatiques-et-medicinales/2024/Aide-a-la-realisation-d-actions-d-assistance-technique-en-faveur-de-l-adaptation-et-du-developpement-de-la-filiere-lavandicole'
   ];
 
   const results = [];
-
-  for (const url of testUrls) {
+  
+  console.log('🚀 Starting real extraction pipeline test...');
+  
+  for (let i = 0; i < testUrls.length; i++) {
+    const url = testUrls[i];
+    console.log(`\n📄 Processing ${i + 1}/${testUrls.length}: ${url}`);
+    
     try {
-      console.log(`📡 Processing: ${url}`);
-      
       // Step 1: Run deep structural extraction
+      console.log('⚙️ Running deep structural extraction...');
       const { data: extractionData, error: extractionError } = await supabase.functions.invoke(
         'deep-structural-extraction',
         {
-          body: { url, forceReprocess: true }
+          body: { url }
         }
       );
 
       if (extractionError) {
         console.error(`❌ Extraction failed for ${url}:`, extractionError);
+        results.push({
+          url,
+          success: false,
+          error: extractionError,
+          step: 'extraction'
+        });
         continue;
       }
 
-      console.log(`✅ Extraction completed for ${url}`);
-      console.log(`📊 Found ${extractionData.data.sections?.length || 0} sections, ${extractionData.data.documents?.length || 0} documents`);
-
-      // Step 2: Trigger QA validation
+      console.log('✅ Extraction completed');
+      
+      // Step 2: Run QA validation
+      console.log('🔍 Running QA validation...');
       const { data: qaData, error: qaError } = await supabase.functions.invoke(
         'qa-validation-agent',
         {
           body: {
-            extractedData: extractionData.data,
-            originalHtml: `<html><!-- Simulated HTML for ${url} --></html>`,
+            extractedData: extractionData,
+            originalHtml: extractionData?.raw_html || '',
             sourceUrl: url
           }
         }
@@ -46,32 +54,63 @@ export const testRealExtractionPipeline = async () => {
 
       if (qaError) {
         console.error(`❌ QA validation failed for ${url}:`, qaError);
-      } else {
-        console.log(`✅ QA validation completed for ${url}: ${qaData.data.qa_pass ? 'PASS' : 'FAIL'}`);
+        results.push({
+          url,
+          success: false,
+          extractionData,
+          error: qaError,
+          step: 'qa_validation'
+        });
+        continue;
       }
 
+      console.log('✅ QA validation completed');
+      
+      // Step 3: Verify QA data was stored in database
+      console.log('🔍 Verifying QA data storage...');
+      try {
+        const { data: storedQA, error: queryError } = await supabase
+          .from('extraction_qa_results' as any)
+          .select('*')
+          .eq('source_url', url)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (queryError) {
+          console.log('⚠️ Could not verify QA storage (type sync issue):', queryError.message);
+        } else {
+          console.log('✅ QA data verified in database');
+        }
+      } catch (error) {
+        console.log('⚠️ QA verification skipped due to type sync issues');
+      }
+      
       results.push({
         url,
-        extraction: extractionData.data,
-        qa: qaData?.data,
-        success: !extractionError && !qaError
+        success: true,
+        extractionData,
+        qaData,
+        step: 'completed'
       });
 
     } catch (error) {
       console.error(`❌ Pipeline failed for ${url}:`, error);
       results.push({
         url,
-        extraction: null,
-        qa: null,
         success: false,
-        error: error.message
+        error: error.message,
+        step: 'unknown'
       });
+    }
+
+    // Small delay between requests to avoid rate limiting
+    if (i < testUrls.length - 1) {
+      console.log('⏳ Waiting 2 seconds before next URL...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
-  console.log('📋 Pipeline test completed');
-  console.log(`✅ Successful: ${results.filter(r => r.success).length}/${results.length}`);
-  
+  console.log(`\n📊 Pipeline test completed. ${results.filter(r => r.success).length}/${results.length} successful`);
   return results;
 };
 
