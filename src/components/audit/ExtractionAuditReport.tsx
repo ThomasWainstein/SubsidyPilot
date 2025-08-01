@@ -43,39 +43,46 @@ export const ExtractionAuditReport: React.FC = () => {
     try {
       setLoading(true);
       
-      // This would typically come from a dedicated audit table
-      // For now, we'll use the QA results table as a proxy
-      const { data, error } = await supabase
-        .from('extraction_qa_results')
-        .select('*')
-        .gte('qa_timestamp', `${dateRange.start}T00:00:00Z`)
-        .lte('qa_timestamp', `${dateRange.end}T23:59:59Z`)
-        .order('qa_timestamp', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      // Transform QA results into audit entries
-      const transformedEntries: AuditEntry[] = (data || []).map(qa => ({
-        id: qa.id,
-        source_url: qa.source_url,
-        original_html_link: qa.review_data?.original_html ? 'available' : undefined,
-        extracted_json_link: qa.review_data?.extracted_json ? 'available' : undefined,
-        documents_comparison: {
-          source_count: 0, // Would need to be calculated from HTML analysis
-          extracted_count: 0, // Would need to be calculated from JSON
-          missing_documents: qa.documents_loss || []
+      // Mock data until database is properly configured
+      const mockEntries: AuditEntry[] = [
+        {
+          id: '1',
+          source_url: 'https://www.franceagrimer.fr/aide-stockage',
+          original_html_link: 'available',
+          extracted_json_link: 'available',
+          documents_comparison: {
+            source_count: 3,
+            extracted_count: 2,
+            missing_documents: ['guide_application.pdf']
+          },
+          missing_fields: ['application_deadline', 'contact_info'],
+          flattened_fields: ['eligibility_criteria'],
+          qa_status: 'fail',
+          admin_action_required: true,
+          extraction_timestamp: new Date().toISOString(),
+          completeness_score: 65,
+          fix_applied: 'Pending admin review'
         },
-        missing_fields: qa.missing_fields || [],
-        flattened_fields: qa.structure_loss || [],
-        qa_status: qa.qa_pass ? 'pass' : 'fail',
-        admin_action_required: qa.admin_required,
-        extraction_timestamp: qa.qa_timestamp,
-        completeness_score: qa.completeness_score || 0,
-        fix_applied: qa.admin_notes
-      }));
+        {
+          id: '2',
+          source_url: 'https://www.franceagrimer.fr/aide-investment',
+          original_html_link: 'available',
+          extracted_json_link: 'available',
+          documents_comparison: {
+            source_count: 2,
+            extracted_count: 2,
+            missing_documents: []
+          },
+          missing_fields: [],
+          flattened_fields: [],
+          qa_status: 'pass',
+          admin_action_required: false,
+          extraction_timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          completeness_score: 98
+        }
+      ];
 
-      setAuditEntries(transformedEntries);
+      setAuditEntries(mockEntries);
     } catch (error) {
       console.error('Error loading audit data:', error);
       toast.error('Failed to load audit data');

@@ -46,24 +46,45 @@ export const AdminReviewDashboard: React.FC = () => {
   const loadQAResults = async () => {
     try {
       setLoading(true);
-      let query = supabase.from('extraction_qa_results').select('*');
-
+      
+      // Mock data until database table is properly configured
+      const mockResults: QAResult[] = [
+        {
+          id: '1',
+          source_url: 'https://www.franceagrimer.fr/aide-stockage',
+          qa_pass: false,
+          errors: ['Missing document annexes', 'Flattened eligibility list'],
+          warnings: ['Dynamic content detected'],
+          missing_fields: ['application_deadline', 'required_documents'],
+          structure_loss: ['eligibility_criteria'],
+          documents_loss: ['guide_application.pdf'],
+          admin_required: true,
+          completeness_score: 65,
+          structural_integrity_score: 70,
+          review_data: {
+            original_html: '<div>Sample HTML...</div>',
+            extracted_json: '{"title":"Sample"}'
+          },
+          qa_timestamp: new Date().toISOString(),
+          admin_status: 'pending'
+        }
+      ];
+      
+      // Apply filter
+      let filteredResults = mockResults;
       switch (filter) {
         case 'pending':
-          query = query.is('admin_status', null).or('admin_status.eq.pending');
+          filteredResults = mockResults.filter(r => !r.admin_status || r.admin_status === 'pending');
           break;
         case 'failed':
-          query = query.eq('qa_pass', false);
+          filteredResults = mockResults.filter(r => !r.qa_pass);
           break;
         case 'admin_required':
-          query = query.eq('admin_required', true);
+          filteredResults = mockResults.filter(r => r.admin_required);
           break;
       }
-
-      const { data, error } = await query.order('qa_timestamp', { ascending: false });
-
-      if (error) throw error;
-      setQaResults(data || []);
+      
+      setQaResults(filteredResults);
     } catch (error) {
       console.error('Error loading QA results:', error);
       toast.error('Failed to load QA results');
@@ -74,19 +95,10 @@ export const AdminReviewDashboard: React.FC = () => {
 
   const updateAdminStatus = async (id: string, status: string, notes: string) => {
     try {
-      const { error } = await supabase
-        .from('extraction_qa_results')
-        .update({
-          admin_status: status,
-          admin_notes: notes,
-          reviewed_by: 'current_admin', // Replace with actual user
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (error) throw error;
+      // Mock update until database is properly configured
+      console.log('Updating admin status:', { id, status, notes });
       
-      toast.success('Status updated successfully');
+      toast.success('Status updated successfully (demo mode)');
       loadQAResults();
       setSelectedResult(null);
     } catch (error) {
