@@ -16,6 +16,8 @@ import { handleApiError } from '@/utils/errorHandling';
 import { Search, AlertCircle, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import DocumentProcessingPipeline from '@/components/admin/DocumentProcessingPipeline';
+import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -122,6 +124,11 @@ const SubsidySearchPage = () => {
         <main className="flex-grow py-4 md:py-6 px-4">
           <div className="container mx-auto">
             <SearchHeader />
+            
+            {/* Document Processing Test */}
+            <div className="mb-8">
+              <DocumentProcessingDemo className="max-w-4xl mx-auto" />
+            </div>
 
             {error ? (
               <EmptyState

@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, subsidyId, forceReprocess = false } = await req.json();
+    const { action = 'download_all', forceReprocess = false } = await req.json();
     
     console.log(`Starting document processing: ${action}`);
 
@@ -26,7 +26,7 @@ serve(async (req) => {
       .from('subsidies_structured')
       .select('id, title, url, documents')
       .not('documents', 'is', null)
-      .limit(5); // Process 5 for testing
+      .limit(3); // Process first 3 for initial test
 
     if (error) throw new Error(`Failed to fetch subsidies: ${error.message}`);
 
@@ -35,51 +35,83 @@ serve(async (req) => {
     let totalDocuments = 0;
     let processedDocuments = 0;
     const errors: string[] = [];
+    const processedResults: any[] = [];
 
     for (const subsidy of subsidies) {
       if (!subsidy.documents || !Array.isArray(subsidy.documents)) continue;
       
       totalDocuments += subsidy.documents.length;
+      console.log(`Processing subsidy: ${subsidy.title} (${subsidy.documents.length} docs)`);
       
       for (const doc of subsidy.documents) {
         try {
-          console.log(`Processing: ${doc.filename || doc.url}`);
+          const docUrl = typeof doc === 'string' ? doc : doc.url;
+          const docFilename = typeof doc === 'string' ? 
+            docUrl.split('/').pop() : 
+            doc.filename || doc.url.split('/').pop();
           
-          // Record document processing status
-          const { error: statusError } = await supabase
+          console.log(`Processing document: ${docFilename}`);
+          
+          // Record document processing status in database
+          const { data: statusData, error: statusError } = await supabase
             .from('document_extraction_status')
             .upsert({
               subsidy_id: subsidy.id,
-              document_url: doc.url,
-              document_type: getDocumentType(doc.filename || doc.url),
+              document_url: docUrl,
+              document_type: getDocumentType(docFilename || ''),
               extraction_status: 'processing',
               extracted_schema: {
-                filename: doc.filename,
-                originalUrl: doc.url,
-                processedAt: new Date().toISOString()
+                filename: docFilename,
+                originalUrl: docUrl,
+                subsidyTitle: subsidy.title,
+                processedAt: new Date().toISOString(),
+                step: 'document_cataloging'
               },
               field_count: 0,
-              coverage_percentage: 0
-            });
+              coverage_percentage: 0,
+              extraction_errors: []
+            })
+            .select('id')
+            .single();
 
           if (statusError) {
-            errors.push(`Status update failed for ${doc.filename}: ${statusError.message}`);
+            console.error(`Status update failed for ${docFilename}:`, statusError);
+            errors.push(`Status update failed for ${docFilename}: ${statusError.message}`);
           } else {
             processedDocuments++;
+            processedResults.push({
+              id: statusData.id,
+              filename: docFilename,
+              url: docUrl,
+              subsidyTitle: subsidy.title,
+              status: 'cataloged'
+            });
+            console.log(`✅ Cataloged: ${docFilename}`);
           }
           
         } catch (error) {
-          console.error(`Error processing ${doc.filename}:`, error);
-          errors.push(`${doc.filename}: ${error.message}`);
+          console.error(`Error processing document:`, error);
+          errors.push(`Document processing error: ${error.message}`);
         }
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
+    // Update batch processing summary
+    const summary = {
       totalSubsidies: subsidies.length,
       documentsFound: totalDocuments,
       documentsDownloaded: processedDocuments,
+      successRate: totalDocuments > 0 ? ((processedDocuments / totalDocuments) * 100).toFixed(1) + '%' : '0%',
+      processedAt: new Date().toISOString(),
+      errors: errors.slice(0, 5)
+    };
+
+    console.log('Processing Summary:', summary);
+
+    return new Response(JSON.stringify({
+      success: true,
+      ...summary,
+      processedResults: processedResults.slice(0, 5), // Return first 5 for display
       errors: errors.slice(0, 10)
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -89,7 +121,8 @@ serve(async (req) => {
     console.error('Document processing error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error.message,
+      timestamp: new Date().toISOString()
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
