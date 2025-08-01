@@ -136,7 +136,8 @@ const SubsidyDetailPage = () => {
           {/* Comprehensive Subsidy Display */}
           <ComprehensiveSubsidyDisplay 
             subsidy={subsidy} 
-            extractedData={extractedData} 
+            extractedData={extractedData}
+            currentLanguage={language}
           />
         </div>
       </main>

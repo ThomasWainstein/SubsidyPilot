@@ -31,10 +31,19 @@ export const TranslatedField = ({
   // Check if we have native content in the target language
   const hasNativeTranslation = typeof content === 'object' && content && content[currentLanguage];
   
+  // Only consider it "translated" if:
+  // 1. We don't have native content in target language
+  // 2. We have content in a different language
+  // 3. The target content is actually different from original (indicating translation occurred)
+  const isActuallyTranslated = !hasNativeTranslation && 
+    currentLanguage !== originalLanguage && 
+    originalContent && 
+    targetContent !== originalContent &&
+    targetContent.length > 0;
+  
   // Determine what to display
   const displayText = showOriginal ? originalContent : targetContent;
-  const isActuallyTranslated = !hasNativeTranslation && currentLanguage !== originalLanguage && originalContent && targetContent !== originalContent;
-  const shouldShowToggle = isActuallyTranslated && originalContent !== targetContent;
+  const shouldShowToggle = isActuallyTranslated && originalContent !== targetContent && originalContent.length > 0;
 
   if (children) {
     return (
