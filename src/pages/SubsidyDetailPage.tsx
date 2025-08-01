@@ -204,7 +204,7 @@ const SubsidyDetailPage = () => {
                   size="lg"
                   className="min-w-[160px]"
                 >
-                  {isApplying ? t('subsidies.processing') || 'Processing...' : t('subsidies.startApplication') || 'Start Application'}
+                  {isApplying ? 'Processing...' : 'Start Application'}
                 </Button>
                 
                 {subsidy.url && (
@@ -214,13 +214,13 @@ const SubsidyDetailPage = () => {
                     size="lg"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    {t('subsidies.viewOfficialPage') || 'View Official Page'}
+                    View Official Page
                   </Button>
                 )}
                 
                 <Button variant="outline" size="lg">
                   <Download className="w-4 h-4 mr-2" />
-                  {t('subsidies.downloadFactsheet') || 'Download Factsheet'}
+                  Download Factsheet
                 </Button>
               </div>
             </div>
@@ -242,7 +242,7 @@ const SubsidyDetailPage = () => {
           <section id="description" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <FileText className="w-6 h-6" />
-              {t('subsidies.description') || 'Description & Objectives'}
+              Description & Objectives
             </h2>
             
             <div className="space-y-4">
@@ -260,7 +260,7 @@ const SubsidyDetailPage = () => {
 
               {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-2">{t('subsidies.objectives') || 'Objectives'}:</h3>
+                  <h3 className="font-semibold mb-2">Objectives:</h3>
                   <div className="flex flex-wrap gap-2">
                     {subsidy.objectives.map((obj, idx) => (
                       <Badge key={idx} variant="outline">{obj}</Badge>
@@ -274,7 +274,7 @@ const SubsidyDetailPage = () => {
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
-                    {t('subsidies.eligibleActions') || 'Eligible Actions'}
+                    Eligible Actions
                   </h3>
                   <ul className="space-y-2">
                     {subsidy.eligible_actions.map((action, idx) => (
@@ -298,7 +298,7 @@ const SubsidyDetailPage = () => {
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-red-500" />
-                    {t('subsidies.excludedActions') || 'Excluded Actions'}
+                    Excluded Actions
                   </h3>
                   <ul className="space-y-2">
                     {subsidy.ineligible_actions.map((action, idx) => (
@@ -325,12 +325,12 @@ const SubsidyDetailPage = () => {
           <section id="eligibility" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Users className="w-6 h-6" />
-              {t('subsidies.eligibility') || 'Eligibility Criteria'}
+              Eligibility Criteria
             </h2>
 
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold mb-3">{t('subsidies.generalCriteria') || 'General Criteria'}</h3>
+                <h3 className="font-semibold mb-3">General Criteria</h3>
                 <TranslatedField 
                   content={subsidy.eligibility}
                   fieldKey="eligibility"
@@ -338,7 +338,7 @@ const SubsidyDetailPage = () => {
                 >
                   {({ text }) => (
                     <p className="text-muted-foreground">
-                      {text || t('subsidies.noSpecificCriteria') || 'No specific eligibility criteria provided.'}
+                      {text || 'No specific eligibility criteria provided.'}
                     </p>
                   )}
                 </TranslatedField>
@@ -347,7 +347,7 @@ const SubsidyDetailPage = () => {
               {/* Beneficiary Types */}
               {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">{t('subsidies.beneficiaryTypes') || 'Eligible Beneficiary Types'}</h3>
+                  <h3 className="font-semibold mb-3">Eligible Beneficiary Types</h3>
                   <ul className="space-y-2">
                     {subsidy.beneficiary_types.map((type, idx) => (
                       <li key={idx} className="flex items-center gap-2">
@@ -362,7 +362,7 @@ const SubsidyDetailPage = () => {
               {/* Legal Entity Types */}
               {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">{t('subsidies.legalEntityTypes') || 'Legal Entity Types'}</h3>
+                  <h3 className="font-semibold mb-3">Legal Entity Types</h3>
                   <ul className="space-y-2">
                     {subsidy.legal_entity_type.map((type, idx) => (
                       <li key={idx} className="flex items-center gap-2">
@@ -377,7 +377,7 @@ const SubsidyDetailPage = () => {
               {/* Priority Groups */}
               {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">{t('subsidies.priorityGroups') || 'Priority Groups'}</h3>
+                  <h3 className="font-semibold mb-3">Priority Groups</h3>
                   <ul className="space-y-2">
                     {subsidy.priority_groups.map((group, idx) => (
                       <li key={idx} className="flex items-center gap-2">
@@ -397,14 +397,14 @@ const SubsidyDetailPage = () => {
           <section id="application" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <FileText className="w-6 h-6" />
-              {t('subsidies.howToApply') || 'How to Apply'}
+              How to Apply
             </h2>
 
             <div className="space-y-6">
               {/* Application Method */}
               {subsidy.application_method && (
                 <div>
-                  <h3 className="font-semibold mb-3">{t('subsidies.applicationMethod') || 'Application Method'}</h3>
+                  <h3 className="font-semibold mb-3">Application Method</h3>
                   <TranslatedField 
                     content={subsidy.application_method}
                     fieldKey="application_method"
@@ -419,7 +419,7 @@ const SubsidyDetailPage = () => {
               {/* Evaluation Criteria */}
               {subsidy.evaluation_criteria && Array.isArray(subsidy.evaluation_criteria) && subsidy.evaluation_criteria.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">{t('subsidies.evaluationCriteria') || 'Evaluation Criteria'}</h3>
+                  <h3 className="font-semibold mb-3">Evaluation Criteria</h3>
                   <ul className="space-y-2">
                     {subsidy.evaluation_criteria.map((criteria, idx) => (
                       <li key={idx} className="flex items-start gap-2">
@@ -445,7 +445,7 @@ const SubsidyDetailPage = () => {
           <section id="timeline" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Clock className="w-6 h-6" />
-              {t('subsidies.keyDates') || 'Key Dates & Timeline'}
+              Key Dates & Timeline
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -454,7 +454,7 @@ const SubsidyDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-green-500" />
                     <div>
-                      <div className="font-medium">{t('subsidies.applicationOpens') || 'Application Opens'}</div>
+                      <div className="font-medium">Application Opens</div>
                       <div className="text-sm text-muted-foreground">
                         {new Date(subsidy.application_window_start).toLocaleDateString()}
                       </div>
@@ -466,7 +466,7 @@ const SubsidyDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <Calendar className={`w-5 h-5 ${deadlineStatus.urgent ? 'text-red-500' : 'text-orange-500'}`} />
                     <div>
-                      <div className="font-medium">{t('subsidies.deadline') || 'Application Deadline'}</div>
+                      <div className="font-medium">Application Deadline</div>
                       <div className={`text-sm ${deadlineStatus.urgent ? 'text-red-600' : 'text-muted-foreground'}`}>
                         {new Date(subsidy.deadline).toLocaleDateString()} - {deadlineStatus.status}
                       </div>
@@ -478,7 +478,7 @@ const SubsidyDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <Clock className="w-5 h-5 text-blue-500" />
                     <div>
-                      <div className="font-medium">{t('subsidies.projectDuration') || 'Project Duration'}</div>
+                      <div className="font-medium">Project Duration</div>
                       <div className="text-sm text-muted-foreground">{subsidy.project_duration}</div>
                     </div>
                   </div>
@@ -490,7 +490,7 @@ const SubsidyDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <Euro className="w-5 h-5 text-green-500" />
                     <div>
-                      <div className="font-medium">{t('subsidies.coFinancingRate') || 'Co-financing Rate'}</div>
+                      <div className="font-medium">Co-financing Rate</div>
                       <div className="text-sm text-muted-foreground">{subsidy.co_financing_rate}%</div>
                     </div>
                   </div>
@@ -500,7 +500,7 @@ const SubsidyDetailPage = () => {
                   <div className="flex items-center gap-3">
                     <Building2 className="w-5 h-5 text-purple-500" />
                     <div>
-                      <div className="font-medium">{t('subsidies.fundingSource') || 'Funding Source'}</div>
+                      <div className="font-medium">Funding Source</div>
                       <div className="text-sm text-muted-foreground">{subsidy.funding_source}</div>
                     </div>
                   </div>
@@ -515,7 +515,7 @@ const SubsidyDetailPage = () => {
           <section id="links" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <ExternalLink className="w-6 h-6" />
-              {t('subsidies.resourcesLinks') || 'Resources & Links'}
+              Resources & Links
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -523,8 +523,8 @@ const SubsidyDetailPage = () => {
                 <Button variant="outline" className="justify-start h-auto p-4" onClick={() => window.open(subsidy.url, '_blank')}>
                   <Globe className="w-5 h-5 mr-3" />
                   <div className="text-left">
-                    <div className="font-medium">{t('subsidies.officialPage') || 'Official Program Page'}</div>
-                    <div className="text-sm text-muted-foreground">{t('subsidies.viewFullDetails') || 'View full details and latest updates'}</div>
+                    <div className="font-medium">Official Program Page</div>
+                    <div className="text-sm text-muted-foreground">View full details and latest updates</div>
                   </div>
                 </Button>
               )}
@@ -533,7 +533,7 @@ const SubsidyDetailPage = () => {
                 <Button variant="outline" className="justify-start h-auto p-4">
                   <Building2 className="w-5 h-5 mr-3" />
                   <div className="text-left">
-                    <div className="font-medium">{t('subsidies.contactAgency') || 'Contact Agency'}</div>
+                    <div className="font-medium">Contact Agency</div>
                     <div className="text-sm text-muted-foreground">{subsidy.agency}</div>
                   </div>
                 </Button>
@@ -542,16 +542,16 @@ const SubsidyDetailPage = () => {
               <Button variant="outline" className="justify-start h-auto p-4">
                 <FileDown className="w-5 h-5 mr-3" />
                 <div className="text-left">
-                  <div className="font-medium">{t('subsidies.downloadPdf') || 'Download PDF Guide'}</div>
-                  <div className="text-sm text-muted-foreground">{t('subsidies.completeApplicationGuide') || 'Complete application guide'}</div>
+                  <div className="font-medium">Download PDF Guide</div>
+                  <div className="text-sm text-muted-foreground">Complete application guide</div>
                 </div>
               </Button>
 
               <Button variant="outline" className="justify-start h-auto p-4">
                 <ExternalLink className="w-5 h-5 mr-3" />
                 <div className="text-left">
-                  <div className="font-medium">{t('subsidies.legalFramework') || 'Legal Framework'}</div>
-                  <div className="text-sm text-muted-foreground">{t('subsidies.regulationsAndLaws') || 'View regulations and applicable laws'}</div>
+                  <div className="font-medium">Legal Framework</div>
+                  <div className="text-sm text-muted-foreground">View regulations and applicable laws</div>
                 </div>
               </Button>
             </div>
@@ -560,7 +560,7 @@ const SubsidyDetailPage = () => {
             <div className="mt-6 p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground">
                 <AlertCircle className="w-4 h-4 inline mr-2" />
-                {t('subsidies.legalDisclaimer') || 'This is an AI-generated summary. Always refer to the official documentation for complete and up-to-date information. Some content may have been automatically translated.'}
+                This is an AI-generated summary. Always refer to the official documentation for complete and up-to-date information. Some content may have been automatically translated.
               </p>
             </div>
           </section>
