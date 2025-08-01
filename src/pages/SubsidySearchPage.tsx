@@ -16,10 +16,7 @@ import { handleApiError } from '@/utils/errorHandling';
 import { Search, AlertCircle, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import DocumentProcessingPipeline from '@/components/admin/DocumentProcessingPipeline';
-import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
-import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
-import AIPrefillDemo from '@/components/test/AIPrefillDemo';
+import AdminPanelLink from '@/components/admin/AdminPanelLink';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -125,21 +122,11 @@ const SubsidySearchPage = () => {
 
         <main className="flex-grow py-4 md:py-6 px-4">
           <div className="container mx-auto">
-            <SearchHeader />
-            
-            {/* Document Processing Test */}
-            <div className="mb-6">
-              <DocumentProcessingDemo className="max-w-4xl mx-auto" />
-            </div>
-            
-            {/* Schema Extraction Test */}
-            <div className="mb-6">
-              <SchemaExtractionDemo className="max-w-4xl mx-auto" />
-            </div>
-            
-            {/* AI Prefill Demo */}
-            <div className="mb-8">
-              <AIPrefillDemo className="max-w-4xl mx-auto" />
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex-1">
+                <SearchHeader />
+              </div>
+              <AdminPanelLink />
             </div>
 
             {error ? (
