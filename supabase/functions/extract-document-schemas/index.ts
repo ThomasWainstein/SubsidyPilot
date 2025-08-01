@@ -315,14 +315,36 @@ Generate 15-25 realistic fields with French labels and proper validation rules.`
 }
 
 function countFields(schema: any): number {
-  if (schema.form_structure) {
-    // New format: sections as objects with fields as objects
-    return Object.values(schema.form_structure).reduce((sum: number, section: any) => 
-      sum + Object.keys(section).length, 0);
-  } else if (schema.sections) {
-    // Old format: sections as array with fields arrays
-    return schema.sections.reduce((sum: number, s: any) => sum + (s.fields?.length || 0), 0);
+  // 1. New canonical: object of sections, each with fields as objects
+  if (schema.form_structure && typeof schema.form_structure === 'object') {
+    let total = 0;
+    for (const sectionKey of Object.keys(schema.form_structure)) {
+      const section = schema.form_structure[sectionKey];
+      if (Array.isArray(section.fields)) {
+        // If it's an array (legacy), sum length
+        total += section.fields.length;
+      } else if (typeof section === 'object') {
+        // Otherwise count all direct keys that look like fields
+        // Ignore keys with "section" or obviously not field entries
+        total += Object.keys(section)
+          .filter(k => typeof section[k] === 'object' && ('type' in section[k] || 'label' in section[k]))
+          .length;
+      }
+    }
+    // Also handle "sections" array if present (OpenAI format)
+    if (Array.isArray(schema.form_structure.sections)) {
+      for (const section of schema.form_structure.sections) {
+        if (Array.isArray(section.fields)) total += section.fields.length;
+      }
+    }
+    return total;
   }
+
+  // 2. "sections" at top level
+  if (Array.isArray(schema.sections)) {
+    return schema.sections.reduce((sum, s) => sum + (Array.isArray(s.fields) ? s.fields.length : 0), 0);
+  }
+
   return 0;
 }
 
