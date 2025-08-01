@@ -147,15 +147,17 @@ async function extractStructuredContent(html: string, sourceUrl: string): Promis
   }
 
   const extractionPrompt = `
-You are an expert at extracting structured subsidy information while preserving ALL original formatting, hierarchy, and logical structure.
+You must extract and preserve the full hierarchical structure (all headings, subheadings, bullet points, numbered lists, tables, and all annexes/documents with names, types, sizes, download links) as they appear on the source FranceAgriMer page.
 
 CRITICAL REQUIREMENTS:
-1. Extract EVERY piece of content - no summarization or collapsing
-2. Preserve ALL bullet points, sub-bullets, numbered lists, and indentation
-3. Identify and extract ALL linked documents with metadata
-4. Map content to specific sections while maintaining structure
-5. Flag any content that cannot be categorized
-6. NEVER use "Not specified" - if data exists but is unclear, include it with a warning
+- Every list and sublist must remain an array. No bullets or tables may be flattened into text blobs.
+- For any field or section that exists on the page, you must extract its content; if you cannot parse it, note the error and include the raw HTML chunk as unparsed_html for admin review.
+- For every annex/document, provide (if present): name, file type, download link, file size.
+- NEVER output "Not specified" unless the field is truly absent on the source.
+- If a section is a table, extract it as a list of objects (one per row).
+- If you encounter dynamic or JavaScript-loaded content, flag it for admin with a warning.
+- Output must match the visible structure.
+- If any field is missed or ambiguous, include an explicit warning in the output JSON under extraction_warnings.
 
 HTML Content:
 ${html}
@@ -166,27 +168,20 @@ Return a JSON object with this EXACT structure:
   "title": "Exact page title",
   "sections": [
     {
-      "type": "heading|paragraph|list|numbered_list|table|document_link",
-      "level": 1-6,
-      "content": "Exact text content",
-      "children": [...nested items...],
-      "metadata": {
-        "tag": "original HTML tag",
-        "className": "CSS classes if any",
-        "href": "link URL if applicable",
-        "fileType": "pdf|doc|xls etc if document",
-        "fileSize": "size if available"
-      }
+      "heading": "Section heading",
+      "type": "list|numbered_list|table|text",
+      "content": [...], // Array for list/table, string for text
+      "unparsed_html": "..." // Only if failed to extract
     }
   ],
   "documents": [
     {
       "name": "Document name",
+      "type": "pdf|doc|xls|other",
+      "size": "File size",
       "url": "Full document URL",
-      "type": "pdf|doc|docx|xls|xlsx",
-      "size": "File size if available",
-      "description": "Context or description",
-      "isRequired": true/false
+      "parse_status": "success|failed",
+      "parse_error": "... (if failed)"
     }
   ],
   "eligibility": [...structured sections for who can apply...],
@@ -194,6 +189,10 @@ Return a JSON object with this EXACT structure:
   "evaluationCriteria": [...structured sections for evaluation...],
   "deadlines": [...structured sections for dates and deadlines...],
   "amounts": [...structured sections for funding amounts...],
+  "extraction_warnings": [
+    "List any issues or ambiguities encountered"
+  ],
+  "original_html_snippet": "Key HTML sections for admin traceability",
   "completeness": {
     "hasStructuredContent": true/false,
     "hasDocuments": true/false,
@@ -206,7 +205,7 @@ Return a JSON object with this EXACT structure:
 
 EXTRACTION RULES:
 - Keep ALL original text, spacing, and structure
-- For lists: preserve nesting levels exactly
+- For lists: preserve nesting levels exactly as arrays
 - For documents: extract name, type, size, and full URL
 - For sections: map to appropriate category but preserve ALL content
 - Flag unmappable content in warnings, never omit it
