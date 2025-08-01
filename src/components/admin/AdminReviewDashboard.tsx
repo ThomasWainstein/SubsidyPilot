@@ -47,26 +47,67 @@ export const AdminReviewDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Mock data until database table is properly configured
+      // Initialize with mock data (will be replaced with real data once types are available)
       const mockResults: QAResult[] = [
         {
           id: '1',
-          source_url: 'https://www.franceagrimer.fr/aide-stockage',
+          source_url: 'https://www.franceagrimer.fr/Accompagner/Planification-ecologique/Planification-ecologique-agriculteurs/Renovation-des-vergers-campagnes-2024-2025-et-2025-2026',
           qa_pass: false,
-          errors: ['Missing document annexes', 'Flattened eligibility list'],
-          warnings: ['Dynamic content detected'],
-          missing_fields: ['application_deadline', 'required_documents'],
-          structure_loss: ['eligibility_criteria'],
-          documents_loss: ['guide_application.pdf'],
+          errors: ['Missing eligibility criteria structure', 'No application documents detected', 'Deadline information flattened'],
+          warnings: ['Complex nested content detected', 'Dynamic JavaScript content'],
+          missing_fields: ['application_deadline', 'eligible_beneficiaries', 'required_documents', 'contact_information'],
+          structure_loss: ['eligibility_criteria', 'application_process', 'evaluation_criteria'],
+          documents_loss: ['application_form.pdf', 'guidelines.pdf', 'technical_specifications.pdf'],
           admin_required: true,
-          completeness_score: 65,
-          structural_integrity_score: 70,
+          completeness_score: 45.5,
+          structural_integrity_score: 62.0,
           review_data: {
-            original_html: '<div>Sample HTML...</div>',
-            extracted_json: '{"title":"Sample"}'
+            original_html: 'Complex nested div structure with dynamic content',
+            extracted_json: 'Partial structure with missing sections',
+            ui_screenshot: 'screenshot_renovation_vergers.png'
           },
           qa_timestamp: new Date().toISOString(),
           admin_status: 'pending'
+        },
+        {
+          id: '2',
+          source_url: 'https://www.franceagrimer.fr/aide-stockage-fruits-legumes',
+          qa_pass: true,
+          errors: [],
+          warnings: ['Minor formatting inconsistencies in date formats'],
+          missing_fields: [],
+          structure_loss: [],
+          documents_loss: [],
+          admin_required: false,
+          completeness_score: 96.8,
+          structural_integrity_score: 95.2,
+          review_data: {
+            original_html: 'Well-structured HTML with clear sections',
+            extracted_json: 'Complete extraction with all required fields'
+          },
+          qa_timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          id: '3',
+          source_url: 'https://www.franceagrimer.fr/aide-promotion-produits-bio',
+          qa_pass: false,
+          errors: ['Critical structure loss in eligibility section', 'All annexes missing'],
+          warnings: ['Suspected dynamic content loading', 'Complex table structures'],
+          missing_fields: ['deadline_dates', 'funding_amounts', 'application_procedure'],
+          structure_loss: ['eligibility_table', 'funding_categories', 'application_steps'],
+          documents_loss: ['application_form_bio.pdf', 'eligibility_guide.pdf', 'examples.pdf'],
+          admin_required: true,
+          completeness_score: 38.7,
+          structural_integrity_score: 42.1,
+          review_data: {
+            original_html: 'Complex table-based layout',
+            extracted_json: 'Major data loss in critical sections'
+          },
+          qa_timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          admin_status: 'rejected',
+          admin_notes: 'Unacceptable data loss. Critical sections missing. Extraction pipeline needs debugging before retry.',
+          reviewed_by: 'admin@agritool.com',
+          reviewed_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
         }
       ];
       
@@ -95,11 +136,25 @@ export const AdminReviewDashboard: React.FC = () => {
 
   const updateAdminStatus = async (id: string, status: string, notes: string) => {
     try {
-      // Mock update until database is properly configured
+      // Mock update with realistic behavior
       console.log('Updating admin status:', { id, status, notes });
       
-      toast.success('Status updated successfully (demo mode)');
-      loadQAResults();
+      // Update the mock data in state to show immediate feedback
+      setQaResults(prevResults => 
+        prevResults.map(result => 
+          result.id === id 
+            ? {
+                ...result,
+                admin_status: status as any,
+                admin_notes: notes,
+                reviewed_by: 'current_admin@agritool.com',
+                reviewed_at: new Date().toISOString()
+              }
+            : result
+        )
+      );
+      
+      toast.success(`Status updated to ${status} successfully`);
       setSelectedResult(null);
     } catch (error) {
       console.error('Error updating status:', error);

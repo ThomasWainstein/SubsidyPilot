@@ -43,29 +43,29 @@ export const ExtractionAuditReport: React.FC = () => {
     try {
       setLoading(true);
       
-      // Mock data until database is properly configured
+      // Mock audit data based on realistic QA results
       const mockEntries: AuditEntry[] = [
         {
           id: '1',
-          source_url: 'https://www.franceagrimer.fr/aide-stockage',
+          source_url: 'https://www.franceagrimer.fr/Accompagner/Planification-ecologique/Planification-ecologique-agriculteurs/Renovation-des-vergers-campagnes-2024-2025-et-2025-2026',
           original_html_link: 'available',
           extracted_json_link: 'available',
           documents_comparison: {
-            source_count: 3,
+            source_count: 5,
             extracted_count: 2,
-            missing_documents: ['guide_application.pdf']
+            missing_documents: ['application_form.pdf', 'guidelines.pdf', 'technical_specifications.pdf']
           },
-          missing_fields: ['application_deadline', 'contact_info'],
-          flattened_fields: ['eligibility_criteria'],
+          missing_fields: ['application_deadline', 'eligible_beneficiaries', 'required_documents', 'contact_information'],
+          flattened_fields: ['eligibility_criteria', 'application_process', 'evaluation_criteria'],
           qa_status: 'fail',
           admin_action_required: true,
           extraction_timestamp: new Date().toISOString(),
-          completeness_score: 65,
+          completeness_score: 45.5,
           fix_applied: 'Pending admin review'
         },
         {
           id: '2',
-          source_url: 'https://www.franceagrimer.fr/aide-investment',
+          source_url: 'https://www.franceagrimer.fr/aide-stockage-fruits-legumes',
           original_html_link: 'available',
           extracted_json_link: 'available',
           documents_comparison: {
@@ -77,8 +77,61 @@ export const ExtractionAuditReport: React.FC = () => {
           flattened_fields: [],
           qa_status: 'pass',
           admin_action_required: false,
-          extraction_timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          completeness_score: 98
+          extraction_timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          completeness_score: 96.8
+        },
+        {
+          id: '3',
+          source_url: 'https://www.franceagrimer.fr/aide-promotion-produits-bio',
+          original_html_link: 'available',
+          extracted_json_link: 'available',
+          documents_comparison: {
+            source_count: 4,
+            extracted_count: 1,
+            missing_documents: ['application_form_bio.pdf', 'eligibility_guide.pdf', 'examples.pdf']
+          },
+          missing_fields: ['deadline_dates', 'funding_amounts', 'application_procedure'],
+          flattened_fields: ['eligibility_table', 'funding_categories', 'application_steps'],
+          qa_status: 'fail',
+          admin_action_required: true,
+          extraction_timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          completeness_score: 38.7,
+          fix_applied: 'Rejected by admin - requires re-extraction'
+        },
+        {
+          id: '4',
+          source_url: 'https://www.franceagrimer.fr/aide-equipement-agricole-durable',
+          original_html_link: 'available',
+          extracted_json_link: 'available',
+          documents_comparison: {
+            source_count: 3,
+            extracted_count: 3,
+            missing_documents: []
+          },
+          missing_fields: [],
+          flattened_fields: [],
+          qa_status: 'pass',
+          admin_action_required: false,
+          extraction_timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+          completeness_score: 98.5
+        },
+        {
+          id: '5',
+          source_url: 'https://www.franceagrimer.fr/aide-investissement-transformation',
+          original_html_link: 'available',
+          extracted_json_link: 'available',
+          documents_comparison: {
+            source_count: 4,
+            extracted_count: 2,
+            missing_documents: ['technical_specifications.pdf', 'application_guide.pdf']
+          },
+          missing_fields: ['contact_information', 'evaluation_criteria', 'application_forms'],
+          flattened_fields: ['investment_categories', 'eligibility_conditions', 'funding_brackets'],
+          qa_status: 'fail',
+          admin_action_required: true,
+          extraction_timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+          completeness_score: 72.3,
+          fix_applied: 'Under review - dynamic content issues identified'
         }
       ];
 
