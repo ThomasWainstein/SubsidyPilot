@@ -20,9 +20,10 @@ export const DataProvenancePanel = () => {
   const fetchDataSummary = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_data_summary');
+      // Use any cast until types are updated
+      const { data, error } = await (supabase as any).rpc('get_data_summary');
       if (error) throw error;
-      setDataSummary(data || []);
+      setDataSummary((data as DataSummary[]) || []);
     } catch (error) {
       console.error('Error fetching data summary:', error);
       toast({
@@ -50,7 +51,7 @@ export const DataProvenancePanel = () => {
       if (countError) throw countError;
 
       // Perform the purge using a database function
-      const { error } = await supabase.rpc('complete_data_purge');
+      const { error } = await (supabase as any).rpc('complete_data_purge');
       if (error) throw error;
 
       toast({
