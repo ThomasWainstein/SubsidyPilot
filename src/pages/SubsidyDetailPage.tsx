@@ -3,20 +3,22 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown, Globe, Download, Anchor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay } from '@/utils/subsidyFormatting';
-import { getRequirementLabel } from '@/utils/requirementLabels';
+import { useLanguage } from '@/contexts/language';
+import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
+import { getLocalizedContent } from '@/utils/language';
+import { TranslatedField } from '@/components/subsidy/TranslatedField';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { language, t } = useLanguage();
   const [isApplying, setIsApplying] = useState(false);
 
   const { data: subsidy, isLoading, error } = useQuery({
@@ -57,12 +59,12 @@ const SubsidyDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <main className="flex-grow py-6 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="text-center mt-2 text-gray-500">Loading subsidy details...</p>
+            <p className="text-center mt-2 text-muted-foreground">Loading subsidy details...</p>
           </div>
         </main>
       </div>
@@ -71,13 +73,13 @@ const SubsidyDetailPage = () => {
 
   if (error || !subsidy) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <main className="flex-grow py-6 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center py-12">
               <h2 className="text-xl font-semibold mb-2">Subsidy Not Found</h2>
-              <p className="text-gray-500 mb-4">The requested subsidy could not be found.</p>
+              <p className="text-muted-foreground mb-4">The requested subsidy could not be found.</p>
               <Button onClick={() => navigate('/search')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Search
@@ -89,11 +91,23 @@ const SubsidyDetailPage = () => {
     );
   }
 
+  // Navigation sections
+  const sections = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'description', label: 'Description' },
+    { id: 'eligibility', label: 'Eligibility' },
+    { id: 'application', label: 'How to Apply' },
+    { id: 'timeline', label: 'Timeline' },
+    { id: 'links', label: 'Resources' }
+  ];
+
+  const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-grow py-6 px-4">
-        <div className="container mx-auto max-w-6xl">
+      <main className="flex-grow">
+        <div className="container mx-auto max-w-5xl px-4 py-6">
           {/* Header */}
           <div className="mb-6">
             <Button 
@@ -102,78 +116,95 @@ const SubsidyDetailPage = () => {
               className="mb-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Search
+              Back
             </Button>
-            
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold mb-4">
-                  {getSubsidyTitle(subsidy)}
-                </h1>
-                
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {getSectorDisplay(subsidy.sector).map((sector, idx) => (
-                    <Badge key={idx} variant="secondary">{sector}</Badge>
-                  ))}
-                  {subsidy.funding_type && (
-                    <Badge variant="outline">{subsidy.funding_type}</Badge>
-                  )}
-                  {subsidy.objectives && Array.isArray(subsidy.objectives) && 
-                    subsidy.objectives.slice(0, 3).map((obj, idx) => (
-                      <Badge key={idx} variant="default">{obj}</Badge>
-                    ))
-                  }
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                  {subsidy.deadline && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-orange-500" />
-                      <div>
-                        <div className="font-medium">Deadline</div>
-                        <div className="text-gray-600">{new Date(subsidy.deadline).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-500" />
-                    <div>
-                      <div className="font-medium">Region</div>
-                      <div className="text-gray-600">{getRegionDisplay(subsidy.region)}</div>
-                    </div>
+            {/* Quick Navigation */}
+            <div className="flex items-center gap-2 mb-6 pb-4 border-b overflow-x-auto">
+              {sections.map((section) => (
+                <Button
+                  key={section.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' })}
+                  className="whitespace-nowrap"
+                >
+                  <Anchor className="w-3 h-3 mr-1" />
+                  {section.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Title */}
+            <div className="mb-6">
+              <TranslatedField 
+                content={subsidy.title}
+                fieldKey="title"
+                currentLanguage={language}
+                className="mb-4"
+              >
+                {({ text }) => (
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    {text || getSubsidyTitle(subsidy)}
+                  </h1>
+                )}
+              </TranslatedField>
+            </div>
+
+            {/* Info Bar */}
+            <div id="overview" className="bg-card border rounded-lg p-6 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 text-sm">
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Program</div>
+                  <div className="font-semibold">{subsidy.program || subsidy.funding_type || 'N/A'}</div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Agency</div>
+                  <div className="font-semibold">{subsidy.agency || 'N/A'}</div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Funding</div>
+                  <div className="font-semibold text-green-600">{formatFundingAmount(subsidy.amount)}</div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Eligible Entities</div>
+                  <div className="font-semibold">
+                    {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) ? 
+                      subsidy.legal_entity_type.slice(0, 2).join(', ') + 
+                      (subsidy.legal_entity_type.length > 2 ? '...' : '') : 'All types'}
                   </div>
-                  
-                  {formatFundingAmount(subsidy.amount) && (
-                    <div className="flex items-center gap-2">
-                      <Euro className="w-4 h-4 text-green-500" />
-                      <div>
-                        <div className="font-medium">Funding</div>
-                        <div className="text-gray-600">{formatFundingAmount(subsidy.amount)}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {subsidy.agency && (
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-purple-500" />
-                      <div>
-                        <div className="font-medium">Agency</div>
-                        <div className="text-gray-600">{subsidy.agency}</div>
-                      </div>
-                    </div>
-                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Deadline</div>
+                  <div className={`font-semibold ${deadlineStatus.urgent ? 'text-red-600' : 'text-foreground'}`}>
+                    {deadlineStatus.status}
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Region</div>
+                  <div className="font-semibold">{getRegionDisplay(subsidy.region)}</div>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-medium">Duration</div>
+                  <div className="font-semibold">{subsidy.project_duration || 'N/A'}</div>
                 </div>
               </div>
-
-              <div className="flex flex-col gap-3">
+              
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t">
                 <Button 
                   onClick={handleApply}
                   disabled={isApplying}
                   size="lg"
                   className="min-w-[160px]"
                 >
-                  {isApplying ? 'Processing...' : 'Start Application'}
+                  {isApplying ? t('subsidies.processing') || 'Processing...' : t('subsidies.startApplication') || 'Start Application'}
                 </Button>
                 
                 {subsidy.url && (
@@ -181,394 +212,358 @@ const SubsidyDetailPage = () => {
                     variant="outline" 
                     onClick={() => window.open(subsidy.url, '_blank')}
                     size="lg"
-                    className="min-w-[160px]"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    View Official Page
+                    {t('subsidies.viewOfficialPage') || 'View Official Page'}
                   </Button>
                 )}
+                
+                <Button variant="outline" size="lg">
+                  <Download className="w-4 h-4 mr-2" />
+                  {t('subsidies.downloadFactsheet') || 'Download Factsheet'}
+                </Button>
               </div>
+            </div>
+
+            {/* Sectors and Objectives */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {getSectorDisplay(subsidy.sector).map((sector, idx) => (
+                <Badge key={idx} variant="secondary">{sector}</Badge>
+              ))}
+              {subsidy.objectives && Array.isArray(subsidy.objectives) && 
+                subsidy.objectives.slice(0, 3).map((obj, idx) => (
+                  <Badge key={idx} variant="outline">{obj}</Badge>
+                ))
+              }
             </div>
           </div>
 
-          {/* Tabbed Content */}
-          <Tabs defaultValue="presentation" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="presentation">Présentation</TabsTrigger>
-              <TabsTrigger value="eligibility">Pour qui ?</TabsTrigger>
-              <TabsTrigger value="timing">Quand ?</TabsTrigger>
-              <TabsTrigger value="application">Comment ?</TabsTrigger>
-            </TabsList>
+          {/* Description Section */}
+          <section id="description" className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-6 h-6" />
+              {t('subsidies.description') || 'Description & Objectives'}
+            </h2>
+            
+            <div className="space-y-4">
+              <TranslatedField 
+                content={subsidy.description}
+                fieldKey="description"
+                currentLanguage={language}
+              >
+                {({ text }) => (
+                  <p className="text-lg leading-relaxed text-muted-foreground">
+                    {text || getSubsidyDescription(subsidy)}
+                  </p>
+                )}
+              </TranslatedField>
 
-            <TabsContent value="presentation" className="mt-6">
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        Description & Objectives
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                        {getSubsidyDescription(subsidy)}
-                      </p>
-                      
-                      {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-2">Thematic Objectives:</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {subsidy.objectives.map((obj, idx) => (
-                              <Badge key={idx} variant="outline">{obj}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Eligible Actions */}
-                  {subsidy.eligible_actions && Array.isArray(subsidy.eligible_actions) && subsidy.eligible_actions.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                          Eligible Actions
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {subsidy.eligible_actions.map((action, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
-                              <span>{action}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Ineligible Actions */}
-                  {subsidy.ineligible_actions && Array.isArray(subsidy.ineligible_actions) && subsidy.ineligible_actions.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <AlertCircle className="w-5 h-5 text-red-500" />
-                          Excluded Actions
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {subsidy.ineligible_actions.map((action, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <AlertCircle className="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" />
-                              <span>{action}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  )}
+              {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2">{t('subsidies.objectives') || 'Objectives'}:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {subsidy.objectives.map((obj, idx) => (
+                      <Badge key={idx} variant="outline">{obj}</Badge>
+                    ))}
+                  </div>
                 </div>
+              )}
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Program Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {subsidy.program && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Program</dt>
-                          <dd className="text-sm">{subsidy.program}</dd>
-                        </div>
-                      )}
-                      
-                      {subsidy.funding_source && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Funding Source</dt>
-                          <dd className="text-sm">{subsidy.funding_source}</dd>
-                        </div>
-                      )}
-
-                      {subsidy.co_financing_rate && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Co-financing Rate</dt>
-                          <dd className="text-sm">{subsidy.co_financing_rate}%</dd>
-                        </div>
-                      )}
-
-                      {subsidy.project_duration && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Project Duration</dt>
-                          <dd className="text-sm">{subsidy.project_duration}</dd>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Investment Types */}
-                  {subsidy.investment_types && Array.isArray(subsidy.investment_types) && subsidy.investment_types.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Investment Types</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {subsidy.investment_types.map((type, idx) => (
-                            <Badge key={idx} variant="secondary" className="mr-2">{type}</Badge>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+              {/* Eligible Actions */}
+              {subsidy.eligible_actions && Array.isArray(subsidy.eligible_actions) && subsidy.eligible_actions.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    {t('subsidies.eligibleActions') || 'Eligible Actions'}
+                  </h3>
+                  <ul className="space-y-2">
+                    {subsidy.eligible_actions.map((action, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
+                        <TranslatedField 
+                          content={action}
+                          fieldKey={`eligible_action_${idx}`}
+                          currentLanguage={language}
+                        >
+                          {({ text }) => <span>{text}</span>}
+                        </TranslatedField>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            </TabsContent>
+              )}
 
-            <TabsContent value="eligibility" className="mt-6">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      Eligibility Criteria
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                      {subsidy.eligibility || 'No specific eligibility criteria provided.'}
+              {/* Ineligible Actions */}
+              {subsidy.ineligible_actions && Array.isArray(subsidy.ineligible_actions) && subsidy.ineligible_actions.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    {t('subsidies.excludedActions') || 'Excluded Actions'}
+                  </h3>
+                  <ul className="space-y-2">
+                    {subsidy.ineligible_actions.map((action, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" />
+                        <TranslatedField 
+                          content={action}
+                          fieldKey={`ineligible_action_${idx}`}
+                          currentLanguage={language}
+                        >
+                          {({ text }) => <span>{text}</span>}
+                        </TranslatedField>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <Separator className="my-8" />
+
+          {/* Eligibility Section */}
+          <section id="eligibility" className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-6 h-6" />
+              {t('subsidies.eligibility') || 'Eligibility Criteria'}
+            </h2>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold mb-3">{t('subsidies.generalCriteria') || 'General Criteria'}</h3>
+                <TranslatedField 
+                  content={subsidy.eligibility}
+                  fieldKey="eligibility"
+                  currentLanguage={language}
+                >
+                  {({ text }) => (
+                    <p className="text-muted-foreground">
+                      {text || t('subsidies.noSpecificCriteria') || 'No specific eligibility criteria provided.'}
                     </p>
+                  )}
+                </TranslatedField>
+              </div>
 
-                    {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-medium mb-2">Eligible Beneficiary Types:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {subsidy.beneficiary_types.map((type, idx) => (
-                            <Badge key={idx} variant="outline">{type}</Badge>
-                          ))}
-                        </div>
+              {/* Beneficiary Types */}
+              {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">{t('subsidies.beneficiaryTypes') || 'Eligible Beneficiary Types'}</h3>
+                  <ul className="space-y-2">
+                    {subsidy.beneficiary_types.map((type, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>{type}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Legal Entity Types */}
+              {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">{t('subsidies.legalEntityTypes') || 'Legal Entity Types'}</h3>
+                  <ul className="space-y-2">
+                    {subsidy.legal_entity_type.map((type, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                        <span>{type}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Priority Groups */}
+              {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">{t('subsidies.priorityGroups') || 'Priority Groups'}</h3>
+                  <ul className="space-y-2">
+                    {subsidy.priority_groups.map((group, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span>{typeof group === 'string' ? group : JSON.stringify(group)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <Separator className="my-8" />
+
+          {/* Application Section */}
+          <section id="application" className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-6 h-6" />
+              {t('subsidies.howToApply') || 'How to Apply'}
+            </h2>
+
+            <div className="space-y-6">
+              {/* Application Method */}
+              {subsidy.application_method && (
+                <div>
+                  <h3 className="font-semibold mb-3">{t('subsidies.applicationMethod') || 'Application Method'}</h3>
+                  <TranslatedField 
+                    content={subsidy.application_method}
+                    fieldKey="application_method"
+                    currentLanguage={language}
+                  >
+                    {({ text }) => <p className="text-muted-foreground">{text}</p>}
+                  </TranslatedField>
+                </div>
+              )}
+
+
+              {/* Evaluation Criteria */}
+              {subsidy.evaluation_criteria && Array.isArray(subsidy.evaluation_criteria) && subsidy.evaluation_criteria.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">{t('subsidies.evaluationCriteria') || 'Evaluation Criteria'}</h3>
+                  <ul className="space-y-2">
+                    {subsidy.evaluation_criteria.map((criteria, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
+                        <TranslatedField 
+                          content={criteria}
+                          fieldKey={`evaluation_criteria_${idx}`}
+                          currentLanguage={language}
+                        >
+                          {({ text }) => <span>{text}</span>}
+                        </TranslatedField>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <Separator className="my-8" />
+
+          {/* Timeline Section */}
+          <section id="timeline" className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <Clock className="w-6 h-6" />
+              {t('subsidies.keyDates') || 'Key Dates & Timeline'}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                {subsidy.application_window_start && (
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-green-500" />
+                    <div>
+                      <div className="font-medium">{t('subsidies.applicationOpens') || 'Application Opens'}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(subsidy.application_window_start).toLocaleDateString()}
                       </div>
-                    )}
-
-                    {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-medium mb-2">Legal Entity Types:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {subsidy.legal_entity_type.map((type, idx) => (
-                            <Badge key={idx} variant="secondary">{type}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Special Cases */}
-                {subsidy.conditional_eligibility && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Special Cases & Conditions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <pre className="text-sm text-gray-600 whitespace-pre-wrap">
-                        {JSON.stringify(subsidy.conditional_eligibility, null, 2)}
-                      </pre>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )}
 
-                {/* Priority Groups */}
-                {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Priority Groups</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {subsidy.priority_groups.map((group, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                            <span>{typeof group === 'string' ? group : JSON.stringify(group)}</span>
-                          </div>
-                        ))}
+                {subsidy.deadline && (
+                  <div className="flex items-center gap-3">
+                    <Calendar className={`w-5 h-5 ${deadlineStatus.urgent ? 'text-red-500' : 'text-orange-500'}`} />
+                    <div>
+                      <div className="font-medium">{t('subsidies.deadline') || 'Application Deadline'}</div>
+                      <div className={`text-sm ${deadlineStatus.urgent ? 'text-red-600' : 'text-muted-foreground'}`}>
+                        {new Date(subsidy.deadline).toLocaleDateString()} - {deadlineStatus.status}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
+                )}
+
+                {subsidy.project_duration && (
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-blue-500" />
+                    <div>
+                      <div className="font-medium">{t('subsidies.projectDuration') || 'Project Duration'}</div>
+                      <div className="text-sm text-muted-foreground">{subsidy.project_duration}</div>
+                    </div>
+                  </div>
                 )}
               </div>
-            </TabsContent>
 
-            <TabsContent value="timing" className="mt-6">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="w-5 h-5" />
-                      Application Timeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {subsidy.application_window_start && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Application Opens</dt>
-                        <dd className="text-sm">{new Date(subsidy.application_window_start).toLocaleDateString()}</dd>
-                      </div>
-                    )}
+              <div className="space-y-4">
+                {subsidy.co_financing_rate && (
+                  <div className="flex items-center gap-3">
+                    <Euro className="w-5 h-5 text-green-500" />
+                    <div>
+                      <div className="font-medium">{t('subsidies.coFinancingRate') || 'Co-financing Rate'}</div>
+                      <div className="text-sm text-muted-foreground">{subsidy.co_financing_rate}%</div>
+                    </div>
+                  </div>
+                )}
 
-                    {subsidy.application_window_end && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Application Closes</dt>
-                        <dd className="text-sm">{new Date(subsidy.application_window_end).toLocaleDateString()}</dd>
-                      </div>
-                    )}
-
-                    {subsidy.deadline && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Final Deadline</dt>
-                        <dd className="text-sm font-semibold text-orange-600">
-                          {new Date(subsidy.deadline).toLocaleDateString()}
-                        </dd>
-                      </div>
-                    )}
-
-                    {subsidy.submission_conditions && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Submission Conditions</dt>
-                        <dd className="text-sm">{subsidy.submission_conditions}</dd>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment & Duration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {subsidy.payment_terms && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Payment Terms</dt>
-                        <dd className="text-sm">{subsidy.payment_terms}</dd>
-                      </div>
-                    )}
-
-                    {subsidy.project_duration && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Project Duration</dt>
-                        <dd className="text-sm">{subsidy.project_duration}</dd>
-                      </div>
-                    )}
-
-                    {subsidy.reporting_requirements && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Reporting Requirements</dt>
-                        <dd className="text-sm">{subsidy.reporting_requirements}</dd>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                {subsidy.funding_source && (
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-5 h-5 text-purple-500" />
+                    <div>
+                      <div className="font-medium">{t('subsidies.fundingSource') || 'Funding Source'}</div>
+                      <div className="text-sm text-muted-foreground">{subsidy.funding_source}</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </TabsContent>
+            </div>
+          </section>
 
-            <TabsContent value="application" className="mt-6">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      Application Process
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {subsidy.application_method && (
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2">Application Method:</h4>
-                        <p className="text-sm text-gray-600">{subsidy.application_method}</p>
-                      </div>
-                    )}
+          <Separator className="my-8" />
 
-                    {subsidy.questionnaire_steps && Array.isArray(subsidy.questionnaire_steps) && subsidy.questionnaire_steps.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-3">Application Steps:</h4>
-                        <ol className="space-y-3">
-                          {subsidy.questionnaire_steps.map((step, idx) => (
-                            <li key={idx} className="flex items-start gap-3">
-                              <span className="step-number">{idx + 1}</span>
-                              <span className="text-sm">
-                                {typeof step === 'object' && step !== null ? (
-                                  <>
-                                    <span>{(step as any).question}</span>
-                                    {(step as any).requirement && (
-                                      <span className="ml-2 text-muted-foreground">({(step as any).requirement})</span>
-                                    )}
-                                  </>
-                                ) : (
-                                  JSON.stringify(step)
-                                )}
-                              </span>
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+          {/* Links & Resources Section */}
+          <section id="links" className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <ExternalLink className="w-6 h-6" />
+              {t('subsidies.resourcesLinks') || 'Resources & Links'}
+            </h2>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileDown className="w-5 h-5" />
-                      Required Documents
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {subsidy.application_requirements && Array.isArray(subsidy.application_requirements) && subsidy.application_requirements.length > 0 ? (
-                      <ul className="space-y-3">
-                        {subsidy.application_requirements.map((req, idx) => {
-                          const key =
-                            typeof req === 'string'
-                              ? req
-                              : req && typeof req === 'object' && 'requirement' in req
-                              ? String(req.requirement)
-                              : String(req);
-                          return (
-                            <li key={idx} className="flex items-start gap-2">
-                              <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
-                              <span className="text-sm">{getRequirementLabel(key)}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 ? (
-                      <ul className="space-y-3">
-                        {subsidy.documents.map((doc, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
-                            <span className="text-sm">
-                              {typeof doc === 'string' ? doc : (doc && typeof doc === 'object' && 'name' in doc ? String(doc.name) : `Document ${idx + 1}`)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-gray-500">No specific document requirements listed.</p>
-                    )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {subsidy.url && (
+                <Button variant="outline" className="justify-start h-auto p-4" onClick={() => window.open(subsidy.url, '_blank')}>
+                  <Globe className="w-5 h-5 mr-3" />
+                  <div className="text-left">
+                    <div className="font-medium">{t('subsidies.officialPage') || 'Official Program Page'}</div>
+                    <div className="text-sm text-muted-foreground">{t('subsidies.viewFullDetails') || 'View full details and latest updates'}</div>
+                  </div>
+                </Button>
+              )}
 
-                    {subsidy.evaluation_criteria && (
-                      <div className="mt-6 pt-4 border-t">
-                        <h4 className="font-medium mb-2">Evaluation Criteria:</h4>
-                        <p className="text-sm text-gray-600">{subsidy.evaluation_criteria}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+              {subsidy.agency && (
+                <Button variant="outline" className="justify-start h-auto p-4">
+                  <Building2 className="w-5 h-5 mr-3" />
+                  <div className="text-left">
+                    <div className="font-medium">{t('subsidies.contactAgency') || 'Contact Agency'}</div>
+                    <div className="text-sm text-muted-foreground">{subsidy.agency}</div>
+                  </div>
+                </Button>
+              )}
+
+              <Button variant="outline" className="justify-start h-auto p-4">
+                <FileDown className="w-5 h-5 mr-3" />
+                <div className="text-left">
+                  <div className="font-medium">{t('subsidies.downloadPdf') || 'Download PDF Guide'}</div>
+                  <div className="text-sm text-muted-foreground">{t('subsidies.completeApplicationGuide') || 'Complete application guide'}</div>
+                </div>
+              </Button>
+
+              <Button variant="outline" className="justify-start h-auto p-4">
+                <ExternalLink className="w-5 h-5 mr-3" />
+                <div className="text-left">
+                  <div className="font-medium">{t('subsidies.legalFramework') || 'Legal Framework'}</div>
+                  <div className="text-sm text-muted-foreground">{t('subsidies.regulationsAndLaws') || 'View regulations and applicable laws'}</div>
+                </div>
+              </Button>
+            </div>
+
+            {/* Legal Disclaimer */}
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <AlertCircle className="w-4 h-4 inline mr-2" />
+                {t('subsidies.legalDisclaimer') || 'This is an AI-generated summary. Always refer to the official documentation for complete and up-to-date information. Some content may have been automatically translated.'}
+              </p>
+            </div>
+          </section>
         </div>
       </main>
     </div>
