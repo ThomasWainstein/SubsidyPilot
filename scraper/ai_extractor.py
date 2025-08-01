@@ -233,8 +233,8 @@ Please extract all available information and return as valid JSON.
             extracted_data['extraction_timestamp'] = time.time()
             extracted_data['model_used'] = 'gpt-4-turbo-preview'
             
-        # Validate and clean data
-        extracted_data = self._validate_extracted_data(extracted_data)
+            # Validate and clean data
+            extracted_data = self._validate_extracted_data(extracted_data)
         
         # Enhanced quality validation
         quality_score = self._assess_extraction_quality(extracted_data, raw_text)
