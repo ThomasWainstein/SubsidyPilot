@@ -288,11 +288,17 @@ Generate 15-25 realistic fields with French labels and proper validation rules.`
     throw new Error(`Failed to parse extracted schema as JSON: ${parseError}`);
   }
 
+  // Normalize schema structure to canonical format
+  schema = normalizeSchema(schema);
+  
+  // Count fields accurately
+  const fieldCount = countFields(schema);
+
   // Validate and enhance the schema
   if (!schema.documentTitle) schema.documentTitle = `Schema for ${filename}`;
   if (!schema.documentType) schema.documentType = 'application_form';
   if (!schema.extractionConfidence) schema.extractionConfidence = 85;
-  if (!schema.totalFields) schema.totalFields = schema.sections?.reduce((total: number, section: any) => total + (section.fields?.length || 0), 0) || 0;
+  schema.totalFields = fieldCount; // Use accurate count
   if (!schema.extractedAt) schema.extractedAt = new Date().toISOString();
   if (!schema.metadata) {
     schema.metadata = {
@@ -306,6 +312,56 @@ Generate 15-25 realistic fields with French labels and proper validation rules.`
 
   console.log(`✅ Successfully extracted schema with ${schema.totalFields} fields`);
   return schema;
+}
+
+function countFields(schema: any): number {
+  if (schema.form_structure) {
+    // New format: sections as objects with fields as objects
+    return Object.values(schema.form_structure).reduce((sum: number, section: any) => 
+      sum + Object.keys(section).length, 0);
+  } else if (schema.sections) {
+    // Old format: sections as array with fields arrays
+    return schema.sections.reduce((sum: number, s: any) => sum + (s.fields?.length || 0), 0);
+  }
+  return 0;
+}
+
+function normalizeSchema(raw: any): any {
+  // If already in canonical format with form_structure, return as-is
+  if (raw.form_structure) return raw;
+  
+  // Check if there's a filename-based top-level key
+  const filenameKey = Object.keys(raw).find(k => 
+    k.startsWith('formulaire_') || 
+    k.startsWith('decision_') || 
+    k.includes('_AAP_') ||
+    k.includes('.pdf')
+  );
+  
+  if (filenameKey && raw[filenameKey]) {
+    // Move nested object up one level and preserve other properties
+    const nested = raw[filenameKey];
+    return { ...nested, ...raw, [filenameKey]: undefined };
+  }
+  
+  // Convert sections array to form_structure if needed
+  if (raw.sections && Array.isArray(raw.sections)) {
+    const form_structure: any = {};
+    for (const section of raw.sections) {
+      const sectionName = section.section_name || section.title || 'Unknown Section';
+      form_structure[sectionName] = {};
+      
+      if (section.fields && Array.isArray(section.fields)) {
+        for (const field of section.fields) {
+          const fieldName = field.label || field.name || `field_${Object.keys(form_structure[sectionName]).length}`;
+          form_structure[sectionName][fieldName] = { ...field };
+        }
+      }
+    }
+    return { ...raw, form_structure, sections: raw.sections }; // Keep both for compatibility
+  }
+  
+  return raw; // Already normalized or unknown format
 }
 
 function createMockSchema(doc: any): DocumentSchema {
