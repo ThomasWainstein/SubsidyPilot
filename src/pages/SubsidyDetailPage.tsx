@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { ComprehensiveSubsidyDisplay } from '@/components/subsidy/ComprehensiveSubsidyDisplay';
+import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
 import { toast } from 'sonner';
 
@@ -16,7 +17,39 @@ const SubsidyDetailPage = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const [extractedData, setExtractedData] = useState<Partial<DocumentContent>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userFarms, setUserFarms] = useState<any[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+
+  // Get current user and their farms
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      
+      if (user) {
+        const { data: farms, error } = await supabase
+          .from('farms')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (!error && farms) {
+          setUserFarms(farms);
+        }
+      }
+    };
+
+    getCurrentUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user || null);
+      if (!session?.user) {
+        setUserFarms([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
@@ -148,11 +181,20 @@ const SubsidyDetailPage = () => {
           </div>
 
           {/* Comprehensive Subsidy Display */}
-          <ComprehensiveSubsidyDisplay 
-            subsidy={subsidy} 
-            extractedData={extractedData}
-            currentLanguage={language}
-          />
+          <div className="space-y-6">
+            <ComprehensiveSubsidyDisplay 
+              subsidy={subsidy} 
+              extractedData={extractedData}
+              currentLanguage={language}
+            />
+            
+            {/* Application Form Section */}
+            <ExtractedFormApplication
+              subsidyId={subsidyId!}
+              subsidyTitle={subsidy.title || 'Subsidy Program'}
+              farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
+            />
+          </div>
         </div>
       </main>
     </div>
