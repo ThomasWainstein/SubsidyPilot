@@ -43,9 +43,9 @@ const SubsidyDetailPage = () => {
         // Parse document content first
         const documentContent = await parseDocumentContent(subsidy.url);
         
-        if (documentContent?.extractedText) {
+        if (documentContent?.meta?.extractedText) {
           // Use AI to extract comprehensive structured data
-          const aiExtracted = await extractStructuredData(documentContent.extractedText);
+          const aiExtracted = await extractStructuredData(documentContent.meta.extractedText);
           
           // Merge all available data sources
           const mergedData: Partial<DocumentContent> = {
@@ -54,9 +54,20 @@ const SubsidyDetailPage = () => {
             // Enrich with subsidy data
             programName: subsidy.title || aiExtracted.programName,
             agency: subsidy.agency || aiExtracted.agency,
-            fundingAmount: (typeof subsidy.amount === 'string' ? subsidy.amount : JSON.stringify(subsidy.amount)) || aiExtracted.fundingAmount,
-            deadline: subsidy.deadline || aiExtracted.deadline,
-            eligibility: subsidy.eligibility || aiExtracted.eligibility,
+            funding: {
+              ...aiExtracted.funding,
+              fundingDetails: (typeof subsidy.amount === 'string' ? subsidy.amount : JSON.stringify(subsidy.amount)) || aiExtracted.funding?.fundingDetails
+            },
+            timeline: {
+              ...aiExtracted.timeline,
+              applicationPeriod: {
+                ...aiExtracted.timeline?.applicationPeriod,
+                end: subsidy.deadline || aiExtracted.timeline?.applicationPeriod?.end
+              }
+            },
+            eligibility: typeof subsidy.eligibility === 'string' ? 
+              { generalCriteria: subsidy.eligibility, eligibleEntities: [], legalEntityTypes: [], geographicScope: [] } : 
+              aiExtracted.eligibility,
             description: subsidy.description || aiExtracted.description,
             sourceUrl: subsidy.url
           };
@@ -64,7 +75,7 @@ const SubsidyDetailPage = () => {
           setExtractedData(mergedData);
           
           toast.success('Document analysis complete', {
-            description: `Extracted comprehensive details with ${mergedData.extractionConfidence || 85}% confidence`
+            description: `Extracted comprehensive details with ${mergedData.meta?.extractionConfidence || 85}% confidence`
           });
         }
       } catch (error) {

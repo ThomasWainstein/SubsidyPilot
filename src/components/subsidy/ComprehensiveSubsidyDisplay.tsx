@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   Download, 
   ExternalLink, 
@@ -23,7 +24,8 @@ import {
   Scale,
   Link,
   BookOpen,
-  HelpCircle
+  HelpCircle,
+  Shield
 } from 'lucide-react';
 import { DocumentContent } from '@/utils/documentParser';
 import { formatFundingDisplay, getDeadlineInfo, cleanContent } from '@/utils/contentFormatting';
@@ -142,7 +144,7 @@ export const ComprehensiveSubsidyDisplay = ({
                       )}
                       {doc.mandatory && (
                         <Badge variant="destructive" className="text-xs">
-                          Obligatoire
+                          Required
                         </Badge>
                       )}
                     </div>
@@ -152,7 +154,7 @@ export const ComprehensiveSubsidyDisplay = ({
                   <Button variant="outline" size="sm" asChild>
                     <a href={doc.url} target="_blank" rel="noopener noreferrer">
                       <Download className="w-4 h-4 mr-1" />
-                      Télécharger
+                      Download
                     </a>
                   </Button>
                 )}
@@ -182,22 +184,26 @@ export const ComprehensiveSubsidyDisplay = ({
     );
   };
 
-  // Process data
-  const deadlineInfo = getDeadlineInfo(subsidy.deadline || extractedData.deadline);
-  const fundingDisplay = formatFundingDisplay(subsidy.amount || extractedData.fundingAmount);
-  const programName = extractedData.programName || subsidy.title || subsidy.program;
-  const managingAgency = extractedData.agency || subsidy.agency || "FranceAgriMer";
+  // Process data using new interface structure
+  const deadlineInfo = getDeadlineInfo(
+    extractedData?.timeline?.applicationPeriod?.end || subsidy.deadline
+  );
+  const fundingDisplay = formatFundingDisplay(
+    extractedData?.funding?.fundingDetails || subsidy.amount
+  );
+  const programName = extractedData?.programName || subsidy.title || subsidy.program;
+  const managingAgency = extractedData?.agency || subsidy.agency || "Managing Agency";
 
   // Create navigation sections
   const navigationSections = [
-    { id: 'overview', label: 'Aperçu' },
-    { id: 'description', label: 'Description & Objectifs' },
-    { id: 'eligibility', label: 'Conditions d\'éligibilité' },
-    { id: 'application', label: 'Comment candidater' },
-    { id: 'evaluation', label: 'Critères d\'évaluation' },
-    { id: 'documents', label: 'Documents associés' },
-    { id: 'timeline', label: 'Calendrier' },
-    { id: 'contact', label: 'Contact & Aide' }
+    { id: 'overview', label: 'Overview' },
+    { id: 'description', label: 'Description & Objectives' },
+    { id: 'eligibility', label: 'Eligibility Conditions' },
+    { id: 'application', label: 'How to Apply' },
+    { id: 'evaluation', label: 'Evaluation Criteria' },
+    { id: 'documents', label: 'Associated Documents' },
+    { id: 'timeline', label: 'Timeline' },
+    { id: 'contact', label: 'Contact & Support' }
   ];
 
   return (
@@ -226,55 +232,56 @@ export const ComprehensiveSubsidyDisplay = ({
         <CardContent className="pt-6">
           <div className="mb-6">
             <h1 className="text-2xl font-bold mb-2">{programName}</h1>
-            <p className="text-muted-foreground">Géré par {managingAgency}</p>
+            <p className="text-muted-foreground">Managed by {managingAgency}</p>
           </div>
 
           {/* Key Information Grid */}
           {renderInfoGrid([
             {
-              label: "Programme de financement",
-              value: subsidy.funding_type || subsidy.program || "Aide publique",
+              label: "Funding Program",
+              value: subsidy.funding_type || subsidy.program || "Public Aid",
               icon: <Target className="w-4 h-4" />
             },
             {
-              label: "Organisme gestionnaire", 
+              label: "Managing Agency", 
               value: managingAgency,
               icon: <Building className="w-4 h-4" />
             },
             {
-              label: "Financement disponible",
+              label: "Available Funding",
               value: fundingDisplay,
               icon: <Euro className="w-4 h-4" />
             },
             {
-              label: "Qui peut candidater?",
-              value: Array.isArray(subsidy.legal_entity_type) ? 
+              label: "Who Can Apply?",
+              value: extractedData?.eligibility?.eligibleEntities?.slice(0, 2).join(', ') + 
+                (extractedData?.eligibility?.eligibleEntities && extractedData.eligibility.eligibleEntities.length > 2 ? '...' : '') ||
+                Array.isArray(subsidy.legal_entity_type) ? 
                 subsidy.legal_entity_type.slice(0, 2).join(', ') + (subsidy.legal_entity_type.length > 2 ? '...' : '') :
-                "Voir conditions",
+                "See conditions",
               icon: <Users className="w-4 h-4" />
             },
             {
-              label: "Date limite de candidature",
+              label: "Application Deadline",
               value: deadlineInfo.text,
               icon: <Calendar className="w-4 h-4" />,
               urgent: deadlineInfo.urgent
             },
             {
-              label: "Couverture géographique",
-              value: Array.isArray(subsidy.region) ? 
-                subsidy.region.join(', ') || "France entière" : 
-                "France entière",
+              label: "Geographic Coverage",
+              value: extractedData?.geography?.regions?.join(', ') ||
+                (Array.isArray(subsidy.region) ? subsidy.region.join(', ') : "Entire territory"),
               icon: <MapPin className="w-4 h-4" />
             },
             {
-              label: "Durée du projet",
-              value: extractedData.projectDuration || subsidy.project_duration || "Non spécifiée",
+              label: "Project Duration",
+              value: extractedData?.timeline?.projectDuration || subsidy.project_duration || "Not specified",
               icon: <Clock className="w-4 h-4" />
             },
             {
-              label: "Taux de cofinancement",
-              value: extractedData.coFinancingRate || 
-                (subsidy.co_financing_rate ? `${subsidy.co_financing_rate}%` : "Voir détails"),
+              label: "Co-financing Rate",
+              value: extractedData?.funding?.coFinancingRate || 
+                (subsidy.co_financing_rate ? `${subsidy.co_financing_rate}%` : "See details"),
               icon: <FileCheck className="w-4 h-4" />
             }
           ])}
@@ -282,21 +289,21 @@ export const ComprehensiveSubsidyDisplay = ({
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t">
             <Button size="lg" className="min-w-[160px]">
-              Candidater maintenant
+              Start Application
             </Button>
             
             {(subsidy.url || subsidy.source_url) && (
               <Button variant="outline" size="lg" asChild>
                 <a href={subsidy.url || subsidy.source_url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Page officielle
+                  Official Page
                 </a>
               </Button>
             )}
             
             <Button variant="outline" size="lg">
               <Download className="w-4 h-4 mr-2" />
-              Guide de candidature
+              Download Application Guide
             </Button>
           </div>
         </CardContent>
@@ -305,14 +312,14 @@ export const ComprehensiveSubsidyDisplay = ({
       {/* Description & Objectives */}
       <div id="description">
         {renderCleanSection(
-          "Description & Objectifs", 
-          extractedData.description || subsidy.description,
+          "Description & Objectives", 
+          extractedData?.description || subsidy.description,
           <FileText className="w-5 h-5" />
         )}
         
         {/* Program Objectives */}
-        {(subsidy.objectives || extractedData.objectives) && renderCleanSection(
-          "Objectifs du programme",
+        {(subsidy.objectives || extractedData?.objectives) && renderCleanSection(
+          "Program Objectives",
           subsidy.objectives || extractedData.objectives,
           <Target className="w-5 h-5" />,
           false
@@ -322,75 +329,143 @@ export const ComprehensiveSubsidyDisplay = ({
       {/* Eligibility Section */}
       <div id="eligibility">
         {renderCleanSection(
-          "Conditions d'éligibilité", 
-          extractedData.eligibility || subsidy.eligibility,
+          "Eligibility Conditions", 
+          extractedData?.eligibility?.generalCriteria || subsidy.eligibility,
           <Users className="w-5 h-5" />
         )}
 
-        {/* Legal Entity Types */}
-        {(subsidy.legal_entity_type || extractedData.legalEntityTypes) && renderCleanSection(
-          "Types d'entités juridiques éligibles",
-          subsidy.legal_entity_type || extractedData.legalEntityTypes,
-          <Scale className="w-5 h-5" />,
-          false
-        )}
-
-        {/* Beneficiary Types */}
-        {(subsidy.beneficiary_types || extractedData.beneficiaryTypes) && renderCleanSection(
-          "Types de bénéficiaires",
-          subsidy.beneficiary_types || extractedData.beneficiaryTypes,
-          <Building className="w-5 h-5" />,
-          false
-        )}
+        {/* Detailed Eligibility Grid */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Scale className="w-5 h-5" />
+              Eligibility Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium text-sm mb-2">Legal Entity Types</h4>
+                <div className="flex flex-wrap gap-1">
+                  {extractedData?.eligibility?.legalEntityTypes && extractedData.eligibility.legalEntityTypes.length > 0 ? 
+                    extractedData.eligibility.legalEntityTypes.map((type, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">{type}</Badge>
+                    )) : 
+                    <span className="text-sm text-muted-foreground">Not specified</span>
+                  }
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-sm mb-2">Eligible Entities</h4>
+                <div className="flex flex-wrap gap-1">
+                  {extractedData?.eligibility?.eligibleEntities && extractedData.eligibility.eligibleEntities.length > 0 ? 
+                    extractedData.eligibility.eligibleEntities.map((type, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">{type}</Badge>
+                    )) : 
+                    <span className="text-sm text-muted-foreground">Not specified</span>
+                  }
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-sm mb-2">Eligible Expenses</h4>
+                <div className="flex flex-wrap gap-1">
+                  {extractedData?.funding?.eligibleExpenses && extractedData.funding.eligibleExpenses.length > 0 ? 
+                    extractedData.funding.eligibleExpenses.map((expense, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">{expense}</Badge>
+                    )) : 
+                    <span className="text-sm text-muted-foreground">Not specified</span>
+                  }
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-sm mb-2">Excluded Expenses</h4>
+                <div className="flex flex-wrap gap-1">
+                  {extractedData?.funding?.excludedExpenses && extractedData.funding.excludedExpenses.length > 0 ? 
+                    extractedData.funding.excludedExpenses.map((expense, index) => (
+                      <Badge key={index} variant="destructive" className="text-xs">{expense}</Badge>
+                    )) : 
+                    <span className="text-sm text-muted-foreground">Not specified</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Eligible and Ineligible Actions */}
-      {(subsidy.eligible_actions || extractedData.eligibleActions) && renderCleanSection(
-        "Actions et investissements éligibles",
-        subsidy.eligible_actions || extractedData.eligibleActions,
-        <CheckCircle className="w-5 h-5 text-green-600" />,
-        false
-      )}
-
-      {(subsidy.ineligible_actions || extractedData.excludedActions) && renderCleanSection(
-        "Actions exclues",
-        subsidy.ineligible_actions || extractedData.excludedActions,
-        <XCircle className="w-5 h-5 text-red-600" />,
-        false
-      )}
 
       <Separator className="my-8" />
 
       {/* Application Process */}
       <div id="application">
-        {renderCleanSection(
-          "Comment candidater", 
-          extractedData.applicationProcess || subsidy.application_method,
-          <FileCheck className="w-5 h-5" />
-        )}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileCheck className="w-5 h-5" />
+              How to Apply
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {extractedData?.applicationProcess?.steps && extractedData.applicationProcess.steps.length > 0 ? (
+              <ol className="space-y-3">
+                {extractedData.applicationProcess.steps.map((step, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
+                      {index + 1}
+                    </div>
+                    <span className="text-sm">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-muted-foreground">Application process details not available</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Evaluation Criteria */}
       <div id="evaluation">
-        {(extractedData.evaluationCriteria || subsidy.evaluation_criteria) && renderCleanSection(
-          "Critères d'évaluation",
-          extractedData.evaluationCriteria || subsidy.evaluation_criteria,
-          <CheckCircle className="w-5 h-5" />
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Evaluation & Selection Process
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Evaluation Criteria</h4>
+                {extractedData?.applicationProcess?.evaluationCriteria && extractedData.applicationProcess.evaluationCriteria.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {extractedData.applicationProcess.evaluationCriteria.map((criteria, index) => (
+                      <li key={index}>{criteria}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No evaluation criteria specified</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Required Documents */}
       <div id="documents">
         {renderDocumentSection(
-          "Documents obligatoires", 
-          extractedData.requiredDocuments || [],
+          "Required Documents", 
+          extractedData?.documents?.required || [],
           <FileText className="w-5 h-5 text-red-600" />
         )}
 
         {/* Associated Documents */}
         {renderDocumentSection(
-          "Documents associés & Ressources", 
-          extractedData.associatedDocuments || [],
+          "Associated Documents & Resources", 
+          extractedData?.documents?.associated || [],
           <Download className="w-5 h-5" />
         )}
       </div>
@@ -401,109 +476,157 @@ export const ComprehensiveSubsidyDisplay = ({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Calendar className="w-5 h-5" />
-              Calendrier et dates clés
+              Timeline and Key Dates
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {extractedData.applicationOpens && (
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-sm">Ouverture des candidatures</span>
-                <span className="text-sm text-muted-foreground">{extractedData.applicationOpens}</span>
-              </div>
-            )}
-            {(extractedData.deadline || subsidy.deadline) && (
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-sm">Date limite de candidature</span>
-                <span className={`text-sm ${deadlineInfo.urgent ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                  {deadlineInfo.text}
-                </span>
-              </div>
-            )}
-            {extractedData.projectDuration && (
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-sm">Durée du projet</span>
-                <span className="text-sm text-muted-foreground">{extractedData.projectDuration}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Legal Framework */}
-      {(extractedData.legalReferences || subsidy.compliance_requirements) && renderCleanSection(
-        "Cadre légal et réglementaire",
-        extractedData.legalReferences || subsidy.compliance_requirements,
-        <Scale className="w-5 h-5" />
-      )}
-
-      {/* Contact Information */}
-      <div id="contact">
-        {(extractedData.contactInfo || extractedData.contactEmail) && (
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Mail className="w-5 h-5" />
-                Contact et assistance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {extractedData.contactInfo && (
-                <div className="text-sm">{cleanContent(extractedData.contactInfo)}</div>
-              )}
-              {extractedData.contactEmail && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <a href={`mailto:${extractedData.contactEmail}`} className="text-primary hover:underline text-sm">
-                    {extractedData.contactEmail}
-                  </a>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">Application Period</h4>
+                <div className="space-y-2 text-sm">
+                  {extractedData?.timeline?.applicationPeriod?.start && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Opens:</span>
+                      <span>{new Date(extractedData.timeline.applicationPeriod.start).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {extractedData?.timeline?.applicationPeriod?.end && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Deadline:</span>
+                      <span className="font-medium text-destructive">{new Date(extractedData.timeline.applicationPeriod.end).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {extractedData.contactPhone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <a href={`tel:${extractedData.contactPhone}`} className="text-primary hover:underline text-sm">
-                    {extractedData.contactPhone}
-                  </a>
-                </div>
-              )}
+              </div>
               
-              {/* FAQ Section */}
-              {extractedData.faqs && extractedData.faqs.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4" />
-                    Questions fréquentes
-                  </h4>
-                  <div className="space-y-3">
-                    {extractedData.faqs.map((faq, index) => (
-                      <div key={index} className="border rounded-lg p-3">
-                        <div className="font-medium text-sm mb-1">{faq.question}</div>
-                        <div className="text-sm text-muted-foreground">{faq.answer}</div>
-                        {faq.url && (
-                          <a href={faq.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs mt-1 inline-block">
-                            Voir plus d'informations
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+              <div>
+                <h4 className="font-medium mb-2">Project Details</h4>
+                <div className="space-y-2 text-sm">
+                  {extractedData?.timeline?.projectDuration && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span>{extractedData.timeline.projectDuration}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Legal Disclaimer */}
-      {extractedData.legalDisclaimer && (
-        <Card className="bg-muted/30 border-muted">
-          <CardContent className="pt-4">
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              <strong>Avertissement légal :</strong> {cleanContent(extractedData.legalDisclaimer)}
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      {/* Contact Information & Support */}
+      <div id="contact">
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="w-5 h-5" />
+              Contact & Support
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Legal References</h4>
+                {extractedData?.legal?.legalBasis && extractedData.legal.legalBasis.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {extractedData.legal.legalBasis.map((ref, index) => (
+                      <li key={index}>{ref}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No legal references specified</p>
+                )}
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Contact Information</h4>
+                <div className="space-y-2 text-sm">
+                  {(extractedData?.contact?.primaryEmail || extractedData?.contact?.secondaryEmail) && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        <span className="font-medium">Email Support</span>
+                      </div>
+                      {extractedData?.contact?.primaryEmail && (
+                        <div className="pl-6">
+                          <a href={`mailto:${extractedData.contact.primaryEmail}`} className="text-primary hover:underline">
+                            {extractedData.contact.primaryEmail}
+                          </a>
+                        </div>
+                      )}
+                      {extractedData?.contact?.secondaryEmail && (
+                        <div className="pl-6">
+                          <a href={`mailto:${extractedData.contact.secondaryEmail}`} className="text-primary hover:underline">
+                            {extractedData.contact.secondaryEmail}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {extractedData?.contact?.phone && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <span className="font-medium">Phone Support</span>
+                      </div>
+                      <div className="pl-6">
+                        <a href={`tel:${extractedData.contact.phone}`} className="text-primary hover:underline">
+                          {extractedData.contact.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Frequently Asked Questions</h4>
+                {extractedData?.faq && extractedData.faq.length > 0 ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    {extractedData.faq.map((faq, index) => (
+                      <AccordionItem key={index} value={`item-${index}`}>
+                        <AccordionTrigger className="text-left text-sm">
+                          {faq.question}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-sm text-muted-foreground">
+                          {faq.answer}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No FAQs available</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Legal Disclaimer & Compliance */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Legal Disclaimer & Compliance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {extractedData?.legal?.compliance && extractedData.legal.compliance.length > 0 ? (
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <ul className="space-y-1">
+                {extractedData.legal.compliance.map((item, index) => (
+                  <li key={index} className="text-sm text-muted-foreground">{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No legal disclaimer provided</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
