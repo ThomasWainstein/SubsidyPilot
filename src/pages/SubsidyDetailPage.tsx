@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,20 +6,30 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, AlertCircle, CheckCircle, Users, Clock, FileDown, Globe, Download, Anchor } from 'lucide-react';
+import { 
+  ArrowLeft, Calendar, MapPin, Euro, Building2, FileText, ExternalLink, 
+  AlertCircle, CheckCircle, Users, Clock, FileDown, Globe, Download, 
+  Anchor, Phone, Mail
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/language';
-import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getSectorDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
-import { getLocalizedContent } from '@/utils/language';
 import { TranslatedField } from '@/components/subsidy/TranslatedField';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
+import { 
+  getCleanLocalizedContent, 
+  formatFundingDisplay, 
+  formatArrayForDisplay,
+  getDeadlineInfo 
+} from '@/utils/contentFormatting';
+import { parseDocumentContent, getDocumentType } from '@/utils/documentParser';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [isApplying, setIsApplying] = useState(false);
+  const [documentContent, setDocumentContent] = useState<any>(null);
 
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
@@ -36,8 +46,19 @@ const SubsidyDetailPage = () => {
     enabled: !!subsidyId
   });
 
+  // Parse documents if available
+  useEffect(() => {
+    if (subsidy?.url) {
+      parseDocumentContent(subsidy.url).then(content => {
+        if (content) {
+          setDocumentContent(content);
+        }
+      });
+    }
+  }, [subsidy?.url]);
+
   // Check data quality when subsidy loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (subsidy) {
       SubsidyDataQuality.checkSubsidyQuality(subsidy);
     }
@@ -48,7 +69,6 @@ const SubsidyDetailPage = () => {
     
     setIsApplying(true);
     
-    // TODO: Implement application logic here
     toast({
       title: "Application Started",
       description: "This feature will be implemented soon. You'll be able to apply for subsidies directly.",
@@ -98,10 +118,16 @@ const SubsidyDetailPage = () => {
     { id: 'eligibility', label: 'Eligibility' },
     { id: 'application', label: 'How to Apply' },
     { id: 'timeline', label: 'Timeline' },
-    { id: 'links', label: 'Resources' }
+    { id: 'resources', label: 'Resources' }
   ];
 
-  const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+  const deadlineInfo = getDeadlineInfo(subsidy.deadline);
+  
+  // Clean and format all content
+  const cleanTitle = getCleanLocalizedContent(subsidy.title, language) || subsidy.program || 'Agricultural Grant Program';
+  const cleanDescription = getCleanLocalizedContent(subsidy.description, language);
+  const cleanEligibility = getCleanLocalizedContent(subsidy.eligibility, language);
+  const cleanApplicationMethod = getCleanLocalizedContent(subsidy.application_method, language);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -116,7 +142,7 @@ const SubsidyDetailPage = () => {
               className="mb-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              Back to Search
             </Button>
 
             {/* Quick Navigation */}
@@ -137,18 +163,14 @@ const SubsidyDetailPage = () => {
 
             {/* Title */}
             <div className="mb-6">
-              <TranslatedField 
-                content={subsidy.title}
-                fieldKey="title"
-                currentLanguage={language}
-                className="mb-4"
-              >
-                {({ text }) => (
-                  <h1 className="text-3xl font-bold tracking-tight">
-                    {text || getSubsidyTitle(subsidy)}
-                  </h1>
-                )}
-              </TranslatedField>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">
+                {cleanTitle}
+              </h1>
+              {subsidy.agency && (
+                <p className="text-lg text-muted-foreground">
+                  Managed by {subsidy.agency}
+                </p>
+              )}
             </div>
 
             {/* Info Bar */}
@@ -156,43 +178,44 @@ const SubsidyDetailPage = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 text-sm">
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Program</div>
-                  <div className="font-semibold">{subsidy.program || subsidy.funding_type || 'N/A'}</div>
+                  <div className="font-semibold">{subsidy.program || subsidy.funding_type || 'Grant Program'}</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Agency</div>
-                  <div className="font-semibold">{subsidy.agency || 'N/A'}</div>
+                  <div className="font-semibold">{subsidy.agency || 'Not specified'}</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Funding</div>
-                  <div className="font-semibold text-green-600">{formatFundingAmount(subsidy.amount)}</div>
+                  <div className="font-semibold text-green-600">{formatFundingDisplay(subsidy.amount)}</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Eligible Entities</div>
                   <div className="font-semibold">
-                    {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) ? 
-                      subsidy.legal_entity_type.slice(0, 2).join(', ') + 
-                      (subsidy.legal_entity_type.length > 2 ? '...' : '') : 'All types'}
+                    {formatArrayForDisplay(subsidy.legal_entity_type, 'All entities')}
                   </div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Deadline</div>
-                  <div className={`font-semibold ${deadlineStatus.urgent ? 'text-red-600' : 'text-foreground'}`}>
-                    {deadlineStatus.status}
+                  <div className={`font-semibold flex items-center gap-1 ${deadlineInfo.urgent ? 'text-red-600' : 'text-foreground'}`}>
+                    {deadlineInfo.icon === 'calendar' && <Calendar className="w-3 h-3" />}
+                    {deadlineInfo.icon === 'clock' && <Clock className="w-3 h-3" />}
+                    {deadlineInfo.icon === 'alert-circle' && <AlertCircle className="w-3 h-3" />}
+                    {deadlineInfo.text}
                   </div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Region</div>
-                  <div className="font-semibold">{getRegionDisplay(subsidy.region)}</div>
+                  <div className="font-semibold">{formatArrayForDisplay(subsidy.region, 'All regions')}</div>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="text-muted-foreground font-medium">Duration</div>
-                  <div className="font-semibold">{subsidy.project_duration || 'N/A'}</div>
+                  <div className="font-semibold">{subsidy.project_duration || 'Not specified'}</div>
                 </div>
               </div>
               
@@ -225,14 +248,19 @@ const SubsidyDetailPage = () => {
               </div>
             </div>
 
-            {/* Sectors and Objectives */}
+            {/* Categories and Tags */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {getSectorDisplay(subsidy.sector).map((sector, idx) => (
-                <Badge key={idx} variant="secondary">{sector}</Badge>
-              ))}
+              {subsidy.sector && Array.isArray(subsidy.sector) && 
+                subsidy.sector.map((sector, idx) => (
+                  <Badge key={idx} variant="secondary">{sector}</Badge>
+                ))
+              }
+              {subsidy.funding_type && (
+                <Badge variant="outline">{subsidy.funding_type}</Badge>
+              )}
               {subsidy.objectives && Array.isArray(subsidy.objectives) && 
                 subsidy.objectives.slice(0, 3).map((obj, idx) => (
-                  <Badge key={idx} variant="outline">{obj}</Badge>
+                  <Badge key={idx} variant="default">{obj}</Badge>
                 ))
               }
             </div>
@@ -245,25 +273,42 @@ const SubsidyDetailPage = () => {
               Description & Objectives
             </h2>
             
-            <div className="space-y-4">
-              <TranslatedField 
-                content={subsidy.description}
-                fieldKey="description"
-                currentLanguage={language}
-              >
-                {({ text }) => (
-                  <p className="text-lg leading-relaxed text-muted-foreground">
-                    {text || getSubsidyDescription(subsidy)}
-                  </p>
-                )}
-              </TranslatedField>
+            <div className="space-y-6">
+              {cleanDescription && (
+                <div className="prose max-w-none">
+                  <TranslatedField 
+                    content={subsidy.description}
+                    fieldKey="description"
+                    currentLanguage={language}
+                  >
+                    {({ text }) => (
+                      <div className="text-lg leading-relaxed">
+                        {text.split('\n\n').map((paragraph, idx) => (
+                          <p key={idx} className="mb-4">{paragraph}</p>
+                        ))}
+                      </div>
+                    )}
+                  </TranslatedField>
+                </div>
+              )}
+
+              {/* Document extracted content */}
+              {documentContent?.description && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="font-medium mb-2">From Official Documentation:</h4>
+                  <p className="text-sm">{documentContent.description}</p>
+                </div>
+              )}
 
               {subsidy.objectives && Array.isArray(subsidy.objectives) && subsidy.objectives.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-2">Objectives:</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <h3 className="font-semibold mb-3">Program Objectives</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.objectives.map((obj, idx) => (
-                      <Badge key={idx} variant="outline">{obj}</Badge>
+                      <div key={idx} className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
+                        <span className="text-sm">{obj}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -274,22 +319,16 @@ const SubsidyDetailPage = () => {
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
-                    Eligible Actions
+                    Eligible Actions & Investments
                   </h3>
-                  <ul className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.eligible_actions.map((action, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
+                      <div key={idx} className="flex items-start gap-2">
                         <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
-                        <TranslatedField 
-                          content={action}
-                          fieldKey={`eligible_action_${idx}`}
-                          currentLanguage={language}
-                        >
-                          {({ text }) => <span>{text}</span>}
-                        </TranslatedField>
-                      </li>
+                        <span className="text-sm">{action}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
@@ -300,20 +339,14 @@ const SubsidyDetailPage = () => {
                     <AlertCircle className="w-5 h-5 text-red-500" />
                     Excluded Actions
                   </h3>
-                  <ul className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.ineligible_actions.map((action, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
+                      <div key={idx} className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" />
-                        <TranslatedField 
-                          content={action}
-                          fieldKey={`ineligible_action_${idx}`}
-                          currentLanguage={language}
-                        >
-                          {({ text }) => <span>{text}</span>}
-                        </TranslatedField>
-                      </li>
+                        <span className="text-sm">{action}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
             </div>
@@ -329,33 +362,45 @@ const SubsidyDetailPage = () => {
             </h2>
 
             <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-3">General Criteria</h3>
-                <TranslatedField 
-                  content={subsidy.eligibility}
-                  fieldKey="eligibility"
-                  currentLanguage={language}
-                >
-                  {({ text }) => (
-                    <p className="text-muted-foreground">
-                      {text || 'No specific eligibility criteria provided.'}
-                    </p>
-                  )}
-                </TranslatedField>
-              </div>
+              {cleanEligibility && (
+                <div>
+                  <h3 className="font-semibold mb-3">General Requirements</h3>
+                  <TranslatedField 
+                    content={subsidy.eligibility}
+                    fieldKey="eligibility"
+                    currentLanguage={language}
+                  >
+                    {({ text }) => (
+                      <div className="prose max-w-none">
+                        {text.split('\n\n').map((paragraph, idx) => (
+                          <p key={idx} className="mb-2">{paragraph}</p>
+                        ))}
+                      </div>
+                    )}
+                  </TranslatedField>
+                </div>
+              )}
+
+              {/* Document extracted eligibility */}
+              {documentContent?.eligibility && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="font-medium mb-2">From Official Documentation:</h4>
+                  <p className="text-sm">{documentContent.eligibility}</p>
+                </div>
+              )}
 
               {/* Beneficiary Types */}
               {subsidy.beneficiary_types && Array.isArray(subsidy.beneficiary_types) && subsidy.beneficiary_types.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">Eligible Beneficiary Types</h3>
-                  <ul className="space-y-2">
+                  <h3 className="font-semibold mb-3">Eligible Beneficiaries</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.beneficiary_types.map((type, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>{type}</span>
-                      </li>
+                        <span className="text-sm">{type}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
@@ -363,14 +408,14 @@ const SubsidyDetailPage = () => {
               {subsidy.legal_entity_type && Array.isArray(subsidy.legal_entity_type) && subsidy.legal_entity_type.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3">Legal Entity Types</h3>
-                  <ul className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.legal_entity_type.map((type, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-blue-500" />
-                        <span>{type}</span>
-                      </li>
+                        <span className="text-sm">{type}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
@@ -378,14 +423,14 @@ const SubsidyDetailPage = () => {
               {subsidy.priority_groups && Array.isArray(subsidy.priority_groups) && subsidy.priority_groups.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3">Priority Groups</h3>
-                  <ul className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {subsidy.priority_groups.map((group, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span>{typeof group === 'string' ? group : JSON.stringify(group)}</span>
-                      </li>
+                        <span className="text-sm">{typeof group === 'string' ? group : JSON.stringify(group)}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
             </div>
@@ -402,38 +447,84 @@ const SubsidyDetailPage = () => {
 
             <div className="space-y-6">
               {/* Application Method */}
-              {subsidy.application_method && (
+              {cleanApplicationMethod && (
                 <div>
-                  <h3 className="font-semibold mb-3">Application Method</h3>
+                  <h3 className="font-semibold mb-3">Application Process</h3>
                   <TranslatedField 
                     content={subsidy.application_method}
                     fieldKey="application_method"
                     currentLanguage={language}
                   >
-                    {({ text }) => <p className="text-muted-foreground">{text}</p>}
+                    {({ text }) => (
+                      <div className="prose max-w-none">
+                        {text.split('\n\n').map((paragraph, idx) => (
+                          <p key={idx} className="mb-2">{paragraph}</p>
+                        ))}
+                      </div>
+                    )}
                   </TranslatedField>
                 </div>
               )}
 
+              {/* Document extracted application process */}
+              {documentContent?.applicationProcess && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="font-medium mb-2">From Official Documentation:</h4>
+                  <ol className="text-sm space-y-1">
+                    {documentContent.applicationProcess.map((step: string, idx: number) => (
+                      <li key={idx}>{idx + 1}. {step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* Document Requirements */}
+              {subsidy.documents && Array.isArray(subsidy.documents) && subsidy.documents.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Required Documents</h3>
+                  <div className="space-y-2">
+                    {subsidy.documents.map((doc: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2 p-3 bg-muted/30 rounded">
+                        <FileText className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium text-sm">
+                            {typeof doc === 'string' ? doc : doc.name || `Document ${idx + 1}`}
+                          </div>
+                          {typeof doc === 'object' && doc.description && (
+                            <div className="text-xs text-muted-foreground mt-1">{doc.description}</div>
+                          )}
+                          {typeof doc === 'object' && doc.mandatory !== undefined && (
+                            <Badge 
+                              variant={doc.mandatory ? "default" : "outline"} 
+                              className="text-xs mt-1"
+                            >
+                              {doc.mandatory ? "Mandatory" : "Optional"}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Evaluation Criteria */}
-              {subsidy.evaluation_criteria && Array.isArray(subsidy.evaluation_criteria) && subsidy.evaluation_criteria.length > 0 && (
+              {subsidy.evaluation_criteria && (
                 <div>
                   <h3 className="font-semibold mb-3">Evaluation Criteria</h3>
-                  <ul className="space-y-2">
-                    {subsidy.evaluation_criteria.map((criteria, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
-                        <TranslatedField 
-                          content={criteria}
-                          fieldKey={`evaluation_criteria_${idx}`}
-                          currentLanguage={language}
-                        >
-                          {({ text }) => <span>{text}</span>}
-                        </TranslatedField>
-                      </li>
-                    ))}
-                  </ul>
+                  <TranslatedField 
+                    content={subsidy.evaluation_criteria}
+                    fieldKey="evaluation_criteria"
+                    currentLanguage={language}
+                  >
+                    {({ text }) => (
+                      <div className="prose max-w-none">
+                        {text.split('\n\n').map((paragraph, idx) => (
+                          <p key={idx} className="mb-2">{paragraph}</p>
+                        ))}
+                      </div>
+                    )}
+                  </TranslatedField>
                 </div>
               )}
             </div>
@@ -445,18 +536,24 @@ const SubsidyDetailPage = () => {
           <section id="timeline" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Clock className="w-6 h-6" />
-              Key Dates & Timeline
+              Timeline & Key Dates
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
+                <h3 className="font-medium">Application Period</h3>
+                
                 {subsidy.application_window_start && (
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-green-500" />
                     <div>
-                      <div className="font-medium">Application Opens</div>
+                      <div className="font-medium">Opens</div>
                       <div className="text-sm text-muted-foreground">
-                        {new Date(subsidy.application_window_start).toLocaleDateString()}
+                        {new Date(subsidy.application_window_start).toLocaleDateString('en-GB', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
                       </div>
                     </div>
                   </div>
@@ -464,16 +561,24 @@ const SubsidyDetailPage = () => {
 
                 {subsidy.deadline && (
                   <div className="flex items-center gap-3">
-                    <Calendar className={`w-5 h-5 ${deadlineStatus.urgent ? 'text-red-500' : 'text-orange-500'}`} />
+                    <Calendar className={`w-5 h-5 ${deadlineInfo.urgent ? 'text-red-500' : 'text-orange-500'}`} />
                     <div>
-                      <div className="font-medium">Application Deadline</div>
-                      <div className={`text-sm ${deadlineStatus.urgent ? 'text-red-600' : 'text-muted-foreground'}`}>
-                        {new Date(subsidy.deadline).toLocaleDateString()} - {deadlineStatus.status}
+                      <div className="font-medium">Deadline</div>
+                      <div className={`text-sm ${deadlineInfo.urgent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                        {new Date(subsidy.deadline).toLocaleDateString('en-GB', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })} - {deadlineInfo.text}
                       </div>
                     </div>
                   </div>
                 )}
+              </div>
 
+              <div className="space-y-4">
+                <h3 className="font-medium">Project Details</h3>
+                
                 {subsidy.project_duration && (
                   <div className="flex items-center gap-3">
                     <Clock className="w-5 h-5 text-blue-500" />
@@ -483,9 +588,7 @@ const SubsidyDetailPage = () => {
                     </div>
                   </div>
                 )}
-              </div>
 
-              <div className="space-y-4">
                 {subsidy.co_financing_rate && (
                   <div className="flex items-center gap-3">
                     <Euro className="w-5 h-5 text-green-500" />
@@ -511,8 +614,8 @@ const SubsidyDetailPage = () => {
 
           <Separator className="my-8" />
 
-          {/* Links & Resources Section */}
-          <section id="links" className="mb-8">
+          {/* Resources Section */}
+          <section id="resources" className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <ExternalLink className="w-6 h-6" />
               Resources & Links
@@ -520,11 +623,15 @@ const SubsidyDetailPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {subsidy.url && (
-                <Button variant="outline" className="justify-start h-auto p-4" onClick={() => window.open(subsidy.url, '_blank')}>
+                <Button 
+                  variant="outline" 
+                  className="justify-start h-auto p-4" 
+                  onClick={() => window.open(subsidy.url, '_blank')}
+                >
                   <Globe className="w-5 h-5 mr-3" />
                   <div className="text-left">
                     <div className="font-medium">Official Program Page</div>
-                    <div className="text-sm text-muted-foreground">View full details and latest updates</div>
+                    <div className="text-sm text-muted-foreground">View complete details and application forms</div>
                   </div>
                 </Button>
               )}
@@ -533,8 +640,8 @@ const SubsidyDetailPage = () => {
                 <Button variant="outline" className="justify-start h-auto p-4">
                   <Building2 className="w-5 h-5 mr-3" />
                   <div className="text-left">
-                    <div className="font-medium">Contact Agency</div>
-                    <div className="text-sm text-muted-foreground">{subsidy.agency}</div>
+                    <div className="font-medium">Contact {subsidy.agency}</div>
+                    <div className="text-sm text-muted-foreground">Get support and ask questions</div>
                   </div>
                 </Button>
               )}
@@ -542,13 +649,13 @@ const SubsidyDetailPage = () => {
               <Button variant="outline" className="justify-start h-auto p-4">
                 <FileDown className="w-5 h-5 mr-3" />
                 <div className="text-left">
-                  <div className="font-medium">Download PDF Guide</div>
-                  <div className="text-sm text-muted-foreground">Complete application guide</div>
+                  <div className="font-medium">Download Application Guide</div>
+                  <div className="text-sm text-muted-foreground">Step-by-step application instructions</div>
                 </div>
               </Button>
 
               <Button variant="outline" className="justify-start h-auto p-4">
-                <ExternalLink className="w-5 h-5 mr-3" />
+                <FileText className="w-5 h-5 mr-3" />
                 <div className="text-left">
                   <div className="font-medium">Legal Framework</div>
                   <div className="text-sm text-muted-foreground">View regulations and applicable laws</div>
@@ -556,11 +663,23 @@ const SubsidyDetailPage = () => {
               </Button>
             </div>
 
+            {/* Contact Information */}
+            {documentContent?.contactInfo && (
+              <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  Contact Information
+                </h4>
+                <p className="text-sm">{documentContent.contactInfo}</p>
+              </div>
+            )}
+
             {/* Legal Disclaimer */}
             <div className="mt-6 p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground">
                 <AlertCircle className="w-4 h-4 inline mr-2" />
-                This is an AI-generated summary. Always refer to the official documentation for complete and up-to-date information. Some content may have been automatically translated.
+                This information is for guidance only. Always refer to the official program documentation 
+                for complete and up-to-date requirements. Some content may have been translated or summarized.
               </p>
             </div>
           </section>
