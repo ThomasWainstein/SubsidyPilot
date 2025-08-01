@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
 import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
 import AIPrefillDemo from '@/components/test/AIPrefillDemo';
+import { QuickSchemaTest } from '@/components/test/QuickSchemaTest';
 import { Settings, Database, Bot, FileText } from 'lucide-react';
 
 const AdminPanel: React.FC = () => {
@@ -50,6 +51,7 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="schemas" className="space-y-4">
+          <QuickSchemaTest />
           <Card>
             <CardHeader>
               <CardTitle>Schema Extraction Testing</CardTitle>
