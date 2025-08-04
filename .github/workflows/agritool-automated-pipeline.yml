@@ -11,7 +11,7 @@
 # 7. Performance optimization and resource management
 # =============================================================================
 
-name: 🌾 AgriTool Enhanced Automated Pipeline
+name: AgriTool Enhanced Automated Pipeline
 
 on:
   workflow_dispatch:
