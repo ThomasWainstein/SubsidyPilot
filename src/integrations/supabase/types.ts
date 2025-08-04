@@ -357,6 +357,38 @@ export type Database = {
         }
         Relationships: []
       }
+      farm_document_extraction_status: {
+        Row: {
+          document_id: string
+          status: string
+          field_count: number | null
+          last_updated: string
+          error: string | null
+        }
+        Insert: {
+          document_id: string
+          status?: string
+          field_count?: number | null
+          last_updated?: string
+          error?: string | null
+        }
+        Update: {
+          document_id?: string
+          status?: string
+          field_count?: number | null
+          last_updated?: string
+          error?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_farm_document_extraction_status_document_id",
+            columns: ["document_id"],
+            isOneToOne: true,
+            referencedRelation: "farm_documents",
+            referencedColumns: ["id"],
+          },
+        ]
+      }
       farm_documents: {
         Row: {
           category: Database["public"]["Enums"]["document_category"]
