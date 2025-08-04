@@ -147,17 +147,28 @@ async function extractStructuredContent(html: string, sourceUrl: string): Promis
   }
 
   const extractionPrompt = `
-You must extract and preserve the full hierarchical structure (all headings, subheadings, bullet points, numbered lists, tables, and all annexes/documents with names, types, sizes, download links) as they appear on the source FranceAgriMer page.
+Extract and preserve COMPLETE hierarchical structure using structured markdown format. Every heading, subheading, bullet point, numbered list, table, and indentation level must be maintained exactly as it appears in the source.
 
 CRITICAL REQUIREMENTS:
-- Every list and sublist must remain an array. No bullets or tables may be flattened into text blobs.
-- For any field or section that exists on the page, you must extract its content; if you cannot parse it, note the error and include the raw HTML chunk as unparsed_html for admin review.
-- For every annex/document, provide (if present): name, file type, download link, file size.
-- NEVER output "Not specified" unless the field is truly absent on the source.
-- If a section is a table, extract it as a list of objects (one per row).
-- If you encounter dynamic or JavaScript-loaded content, flag it for admin with a warning.
-- Output must match the visible structure.
-- If any field is missed or ambiguous, include an explicit warning in the output JSON under extraction_warnings.
+
+### Hierarchical Structure as Markdown
+- Convert ALL content to structured markdown with preserved hierarchy
+- Use proper markdown syntax: # for headings, - for bullets, 1. for numbered lists
+- Preserve exact nesting with proper indentation (2 spaces per level)
+- Tables must use markdown table format | Column | Column |
+- Code blocks for technical content using backticks
+
+### Structure Types to Preserve
+- Headings: #, ##, ### etc. for h1, h2, h3
+- Lists: - for bullets with proper indentation
+- Numbered: 1., 2. etc. with sub-numbering 1.1, 1.2
+- Tables: Markdown table format with proper alignment
+
+### Content Extraction Rules
+- Extract content AS MARKDOWN preserving all visual hierarchy
+- If you cannot parse structure, include raw HTML in code blocks
+- NEVER flatten lists or remove indentation
+- Preserve bold, italic, and other formatting using markdown syntax
 
 HTML Content:
 ${html}
@@ -166,50 +177,45 @@ Return a JSON object with this EXACT structure:
 {
   "url": "${sourceUrl}",
   "title": "Exact page title",
-  "sections": [
-    {
-      "heading": "Section heading",
-      "type": "list|numbered_list|table|text",
-      "content": [...], // Array for list/table, string for text
-      "unparsed_html": "..." // Only if failed to extract
-    }
-  ],
+  "content_markdown": "# Complete structured markdown content with preserved hierarchy\\n\\n## Section 1\\n- Bullet point 1\\n  - Sub-bullet 1\\n  - Sub-bullet 2\\n- Bullet point 2\\n\\n### Subsection\\n1. Numbered item 1\\n   1. Sub-numbered item\\n2. Numbered item 2",
+  "structured_sections": {
+    "eligibility": "## Eligibility Criteria\\n\\n- French farmers with valid SIRET\\n  - Individual farmers\\n  - Agricultural cooperatives\\n- Project location requirements\\n  - Must be in rural designated areas",
+    "application_steps": "## Application Process\\n\\n1. **Preparation Phase**\\n   1. Gather required documents\\n   2. Complete eligibility self-assessment\\n2. **Submission Phase**\\n   1. Online application portal\\n   2. Document upload",
+    "evaluation_criteria": "## Evaluation Criteria\\n\\n### Technical Merit (40 points)\\n- Innovation level\\n- Technical feasibility\\n\\n### Economic Impact (35 points)\\n- Job creation potential\\n- Revenue projections",
+    "deadlines": "## Important Dates\\n\\n- **Application Opens**: Date\\n- **Application Deadline**: Date\\n- **Decision Notification**: Date",
+    "amounts": "## Funding Details\\n\\n### Grant Amounts\\n- **Minimum**: Amount\\n- **Maximum**: Amount\\n- **Co-financing Rate**: Percentage"
+  },
   "documents": [
     {
       "name": "Document name",
       "type": "pdf|doc|xls|other",
       "size": "File size",
       "url": "Full document URL",
-      "parse_status": "success|failed",
-      "parse_error": "... (if failed)"
+      "markdown_link": "[Document Name](full-url) (PDF, 2MB)"
     }
   ],
-  "eligibility": [...structured sections for who can apply...],
-  "applicationSteps": [...structured sections for how to apply...],
-  "evaluationCriteria": [...structured sections for evaluation...],
-  "deadlines": [...structured sections for dates and deadlines...],
-  "amounts": [...structured sections for funding amounts...],
   "extraction_warnings": [
-    "List any issues or ambiguities encountered"
+    "List any hierarchical preservation issues"
   ],
-  "original_html_snippet": "Key HTML sections for admin traceability",
   "completeness": {
     "hasStructuredContent": true/false,
     "hasDocuments": true/false,
     "hasEligibility": true/false,
     "hasApplicationSteps": true/false,
     "missingFields": ["field1", "field2"],
-    "warnings": ["warning1", "warning2"]
+    "warnings": ["warning1", "warning2"],
+    "markdown_quality_score": 0-100,
+    "structure_integrity": 0-100
   }
 }
 
 EXTRACTION RULES:
-- Keep ALL original text, spacing, and structure
-- For lists: preserve nesting levels exactly as arrays
-- For documents: extract name, type, size, and full URL
-- For sections: map to appropriate category but preserve ALL content
+- Keep ALL original text, spacing, and structure in markdown format
+- For lists: preserve nesting levels exactly with proper markdown indentation
+- For documents: create proper markdown links with metadata
+- For sections: extract as clean markdown with hierarchy preserved
 - Flag unmappable content in warnings, never omit it
-- Include metadata for all elements to preserve context
+- Ensure markdown will render identically to source visual structure
 `;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -260,20 +266,23 @@ async function storeStructuredExtraction(supabase: any, extraction: DeepExtracti
     .upsert({
       url: extraction.url,
       title: extraction.title,
-      description: extraction.sections.find(s => s.type === 'paragraph')?.content || 'No description available',
-      eligibility: extraction.eligibility.map(e => e.content).join('\n'),
-      application_method: extraction.applicationSteps.map(s => s.content).join('\n'),
-      evaluation_criteria: extraction.evaluationCriteria.map(e => e.content).join('\n'),
-      documents: extraction.documents,
+      description: extraction.content_markdown?.split('\n').slice(0, 3).join(' ').substring(0, 500) || 'No description available',
+      eligibility: extraction.structured_sections?.eligibility || '',
+      application_method: extraction.structured_sections?.application_steps || '',
+      evaluation_criteria: extraction.structured_sections?.evaluation_criteria || '',
+      documents: extraction.documents || [],
       audit: {
-        sections: extraction.sections,
+        content_markdown: extraction.content_markdown,
+        structured_sections: extraction.structured_sections,
         completeness: extraction.completeness,
         extraction_timestamp: new Date().toISOString(),
-        extraction_method: 'deep_structural'
+        extraction_method: 'deep_structural_markdown',
+        markdown_quality: extraction.completeness?.markdown_quality_score || 0,
+        structure_integrity: extraction.completeness?.structure_integrity || 0
       },
       requirements_extraction_status: 'deep_complete',
-      missing_fields: extraction.completeness.missingFields,
-      audit_notes: extraction.completeness.warnings.join('; '),
+      missing_fields: extraction.completeness?.missingFields || [],
+      audit_notes: extraction.completeness?.warnings?.join('; ') || '',
       updated_at: new Date().toISOString()
     })
     .select('id')

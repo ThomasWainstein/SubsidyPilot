@@ -1,108 +1,103 @@
-# Structural Extraction Prompt - Lossless AgriTool Standard
+# Hierarchical Structure Preservation Prompt - AgriTool Lossless Standard
 
 ## Core Mission
-You must extract and preserve the full hierarchical structure (all headings, subheadings, bullet points, numbered lists, tables, and all annexes/documents with names, types, sizes, download links) as they appear on the source FranceAgriMer page.
+Extract and preserve COMPLETE hierarchical structure using structured markdown format. Every heading, subheading, bullet point, numbered list, table, and indentation level must be maintained exactly as it appears in the source.
 
 ## CRITICAL REQUIREMENTS
 
-### 1. Structure Preservation
-- **Every list and sublist must remain an array.** No bullets or tables may be flattened into text blobs.
-- Preserve exact nesting levels, indentation, and hierarchical relationships
-- Tables must be extracted as arrays of objects (one per row)
-- Numbered lists must maintain sequence and sub-numbering
+### 1. Hierarchical Structure as Markdown
+- **Convert ALL content to structured markdown with preserved hierarchy**
+- Use proper markdown syntax: `#` for headings, `-` for bullets, `1.` for numbered lists
+- Preserve exact nesting with proper indentation (2 spaces per level)
+- Tables must use markdown table format `| Column | Column |`
+- Code blocks for technical content using ```
 
-### 2. Content Extraction Rules
-- For any field or section that exists on the page, you must extract its content
-- If you cannot parse it, note the error and include the raw HTML chunk as `unparsed_html` for admin review
-- **NEVER output "Not specified"** unless the field is truly absent on the source
-- If a section is ambiguous, include it with a warning rather than omit it
+### 2. Structure Types to Preserve
+- **Headings**: `#`, `##`, `###` etc. for h1, h2, h3
+- **Lists**: `-` for bullets with proper indentation
+- **Numbered**: `1.`, `2.` etc. with sub-numbering `1.1`, `1.2`
+- **Tables**: Markdown table format with proper alignment
+- **Definitions**: Use `:` for definition lists when appropriate
 
-### 3. Document & Annex Handling
-For every annex/document, provide (if present):
-- `name`: Exact document name as shown
-- `type`: File extension (pdf, doc, xls, other)
-- `size`: File size if available
-- `url`: Complete download link
-- `parse_status`: "success" or "failed"
-- `parse_error`: Description if parsing failed
+### 3. Content Extraction Rules
+- Extract content AS MARKDOWN preserving all visual hierarchy
+- If you cannot parse structure, include raw HTML in code blocks
+- **NEVER flatten lists or remove indentation**
+- Preserve bold, italic, and other formatting using markdown syntax
+- Include original spacing and line breaks
 
-### 4. Dynamic Content Detection
-- If you encounter dynamic or JavaScript-loaded content, flag it for admin with a warning
-- Note any content that appears to be loaded asynchronously
-- Flag suspected missing content due to JS rendering
+### 4. Document & Annex Handling
+For every document, create markdown links:
+```markdown
+## Documents Required
+- [Document Name](full-url) (PDF, 2MB) - Description
+- [Application Form](url) (DOC, 500KB) - Required submission form
+```
 
 ### 5. Error Handling & Warnings
-- If any field is missed or ambiguous, include an explicit warning in `extraction_warnings`
-- Include evidence (HTML snippets) for any parsing failures
-- Flag potential data loss or structural collapse
+- Flag extraction issues in a dedicated markdown section
+- Include code blocks with problematic HTML when needed
+- Preserve partial structure rather than omit sections
 
 ## Required Output Format
 
 ```json
 {
   "title": "Exact page title",
-  "sections": [
-    {
-      "heading": "Section heading",
-      "type": "list|numbered_list|table|text",
-      "content": [...], // Array for list/table, string for text
-      "unparsed_html": "..." // Only if failed to extract
-    }
-  ],
+  "content_markdown": "# Complete structured markdown content with preserved hierarchy\n\n## Section 1\n- Bullet point 1\n  - Sub-bullet 1\n  - Sub-bullet 2\n- Bullet point 2\n\n### Subsection\n1. Numbered item 1\n   1. Sub-numbered item\n2. Numbered item 2\n\n| Table Col 1 | Table Col 2 |\n|-------------|-------------|\n| Data 1      | Data 2      |",
+  "structured_sections": {
+    "eligibility": "## Eligibility Criteria\n\n- French farmers with valid SIRET\n  - Individual farmers\n  - Agricultural cooperatives\n  - Producer groups\n- Project location requirements\n  - Must be in rural designated areas\n  - Environmental compliance required",
+    "application_steps": "## Application Process\n\n1. **Preparation Phase**\n   1. Gather required documents\n   2. Complete eligibility self-assessment\n2. **Submission Phase**\n   1. Online application portal\n   2. Document upload\n3. **Review Phase**\n   - Administrative review (30 days)\n   - Technical evaluation",
+    "evaluation_criteria": "## Evaluation Criteria\n\n### Technical Merit (40 points)\n- Innovation level\n- Technical feasibility\n\n### Economic Impact (35 points)\n- Job creation potential\n- Revenue projections\n\n### Environmental Impact (25 points)\n- Sustainability measures\n- Carbon footprint reduction",
+    "deadlines": "## Important Dates\n\n- **Application Opens**: January 15, 2024\n- **Application Deadline**: March 31, 2024\n- **Decision Notification**: June 15, 2024\n- **Project Start**: September 1, 2024",
+    "amounts": "## Funding Details\n\n### Grant Amounts\n- **Minimum**: €10,000\n- **Maximum**: €500,000\n- **Co-financing Rate**: 40-60% depending on:\n  - Applicant type\n  - Project location\n  - Innovation level\n\n### Payment Schedule\n- 30% upon contract signature\n- 40% at mid-project milestone\n- 30% upon completion"
+  },
   "documents": [
     {
-      "name": "Document name",
-      "type": "pdf|doc|xls|other",
-      "size": "File size",
-      "url": "Full document URL",
-      "parse_status": "success|failed",
-      "parse_error": "... (if failed)"
+      "name": "Application Guide",
+      "type": "pdf", 
+      "size": "2.5MB",
+      "url": "https://full-url/guide.pdf",
+      "markdown_link": "[Application Guide](https://full-url/guide.pdf) (PDF, 2.5MB)"
     }
   ],
-  "eligibility": [...], // Structured array of eligibility criteria
-  "application_steps": [...], // Structured array of application steps
-  "evaluation_criteria": [...], // Structured array of evaluation criteria
-  "deadlines": [...], // Structured array of dates and deadlines
-  "amounts": [...], // Structured array of funding amounts
   "extraction_warnings": [
-    "List any issues or ambiguities encountered"
+    "List any hierarchical preservation issues"
   ],
-  "original_html_snippet": "Key HTML sections for admin traceability",
   "completeness": {
     "sections_extracted": 0,
-    "lists_preserved": 0,
-    "documents_found": 0,
-    "warnings_count": 0,
-    "confidence_score": 0-100
+    "hierarchy_preserved": 0,
+    "markdown_quality_score": 0-100,
+    "structure_integrity": 0-100
   }
 }
 ```
 
 ## Validation Requirements
 
-The extraction will be validated against these criteria:
-1. **Zero flattening**: No lists collapsed into paragraphs
-2. **Complete document capture**: All annexes/forms present with metadata
-3. **Structural integrity**: Hierarchy and nesting preserved exactly
-4. **Content completeness**: No "Not specified" where source has content
-5. **Admin traceability**: Clear warnings and HTML evidence for any issues
+1. **Perfect Markdown Structure**: All content rendered as valid markdown with preserved hierarchy
+2. **No Flattening**: Every list, table, and heading maintains exact nesting levels  
+3. **Visual Fidelity**: Markdown output when rendered must match source visual structure
+4. **Complete Capture**: All documents referenced with proper markdown links
+5. **Readability**: Markdown is clean, properly formatted, and human-readable
 
-## Failure Conditions
+## Markdown Quality Standards
 
-The following will result in QA failure:
-- Any list or table flattened into text
-- Missing documents that exist in source
-- "Not specified" used where source contains content
-- Structural hierarchy lost or simplified
-- Missing extraction warnings for ambiguous content
+- Consistent heading hierarchy (`#`, `##`, `###`)
+- Proper list indentation (2 spaces per level)
+- Valid table syntax with alignment
+- Proper code blocks for technical content
+- Clean line breaks and spacing
+- Bold/italic formatting where appropriate
 
 ## Success Definition
 
-A successful extraction must:
-- Preserve 100% of visible structure and hierarchy
-- Capture all documents with complete metadata
-- Flag all ambiguities rather than make assumptions
-- Provide admin review data for any uncertain content
-- Score 95%+ on structural integrity validation
+Perfect hierarchical extraction means:
+- **100% visual structure preserved** in markdown format
+- **All lists maintain exact nesting** with proper indentation
+- **Tables rendered correctly** in markdown format
+- **Documents linked properly** with metadata
+- **Markdown renders identically** to source visual hierarchy
+- **95%+ structure integrity score**
 
-This is the standard for "lossless extraction" - anything less compromises the platform's credibility and blocks future AI-powered features.
+This ensures users see the exact same hierarchy and organization as the original document, enabling perfect comprehension and usability.
