@@ -11,6 +11,7 @@ import logging
 from typing import Dict, List, Any, Optional, Tuple
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+from markdownify import markdownify as md
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -66,14 +67,15 @@ class MultiTabExtractor:
     def extract_all_tabs(self, url: str) -> Dict[str, Any]:
         """
         Extract content from all tabs on a FranceAgriMer subsidy page.
-        
+
         Args:
             url: URL of the subsidy detail page
-            
+
         Returns:
             Dictionary containing:
-            - tab_content: Dict with tab content by name
-            - combined_text: All tab content combined with section markers
+            - tab_content: Dict mapping tab keys to {'text': ..., 'markdown': ...}
+            - combined_text: All tab content combined with legacy section markers
+            - combined_markdown: All tab content combined with Markdown headings
             - attachments: List of document links found across all tabs
             - extraction_metadata: Metadata about the extraction process
         """
@@ -101,14 +103,15 @@ class MultiTabExtractor:
             # Extract attachments from all content
             attachments = self._extract_all_attachments(tab_results['tab_content'])
             
-            # Combine all text with section markers
-            combined_text = self._combine_tab_content(tab_results['tab_content'])
-            
+            # Combine all text with section markers and markdown headings
+            combined_text, combined_markdown = self._combine_tab_content(tab_results['tab_content'])
+
             # Prepare result
             result = {
                 'url': url,
                 'tab_content': tab_results['tab_content'],
                 'combined_text': combined_text,
+                'combined_markdown': combined_markdown,
                 'attachments': attachments,
                 'original_html': original_html,  # Store original HTML for title extraction
                 'extraction_metadata': {
@@ -121,9 +124,11 @@ class MultiTabExtractor:
                     'extraction_timestamp': time.time()
                 }
             }
-            
-            logger.info(f"Multi-tab extraction completed. Found {len(tab_results['tab_content'])} tabs, "
-                       f"{len(attachments)} attachments, {len(combined_text)} chars total")
+
+            logger.info(
+                f"Multi-tab extraction completed. Found {len(tab_results['tab_content'])} tabs, "
+                f"{len(attachments)} attachments, {len(combined_text)} chars total"
+            )
             
             return result
             
@@ -133,6 +138,7 @@ class MultiTabExtractor:
                 'url': url,
                 'tab_content': {},
                 'combined_text': '',
+                'combined_markdown': '',
                 'attachments': [],
                 'extraction_metadata': {
                     'error': str(e),
@@ -149,9 +155,11 @@ class MultiTabExtractor:
         Extract content from all available tabs using multiple strategies.
         
         Returns:
-            Dictionary with extraction results and metadata
+            Dictionary with extraction results and metadata. The `tab_content`
+            field maps tab keys to dictionaries containing both plain text and
+            markdown representations.
         """
-        tab_content = {}
+        tab_content: Dict[str, Dict[str, str]] = {}
         tabs_found = []
         tabs_extracted = []
         tabs_failed = []
@@ -227,9 +235,11 @@ class MultiTabExtractor:
         
         # Process each tab
         for i, tab_element in enumerate(tab_elements):
+            tab_text = ''
             try:
-                # Get tab label
-                tab_text = self._clean_text(tab_element.text or tab_element.get_attribute('textContent') or '')
+                # Get tab label from raw HTML
+                tab_label_html = tab_element.get_attribute("innerHTML") or ""
+                tab_text = self._clean_text(BeautifulSoup(tab_label_html, 'html.parser').get_text())
                 tab_key = self._normalize_tab_key(tab_text)
                 
                 if not tab_text.strip():
@@ -267,15 +277,16 @@ class MultiTabExtractor:
                 
                 # Extract content from the now-active tab panel
                 content = self._extract_active_tab_content(tab_element)
-                
-                if content and content.strip():
+
+                if content and content["text"].strip():
                     if tab_key in tab_content:
                         # Merge content if tab key already exists
-                        tab_content[tab_key] += "\n\n" + content
+                        tab_content[tab_key]["text"] += "\n\n" + content["text"]
+                        tab_content[tab_key]["markdown"] += "\n\n" + content["markdown"]
                     else:
                         tab_content[tab_key] = content
                     tabs_extracted.append(tab_text)
-                    logger.debug(f"Extracted {len(content)} chars from tab '{tab_text}'")
+                    logger.debug(f"Extracted {len(content['text'])} chars from tab '{tab_text}'")
                 else:
                     logger.warning(f"No content extracted from tab '{tab_text}'")
                     tabs_failed.append(tab_text)
@@ -294,9 +305,9 @@ class MultiTabExtractor:
             'tabs_failed': tabs_failed
         }
     
-    def _extract_active_tab_content(self, tab_element) -> str:
+    def _extract_active_tab_content(self, tab_element) -> Dict[str, str]:
         """
-        Extract content from the currently active tab panel.
+        Extract content from the currently active tab panel and return both plain text and markdown.
         """
         content_selectors = [
             # Try to find associated panel via aria-controls
@@ -310,7 +321,8 @@ class MultiTabExtractor:
             '.fr-tabs__panel:not([hidden])',
         ]
         
-        content_text = ""
+        content_texts: List[str] = []
+        content_markdowns: List[str] = []
         
         for selector in content_selectors:
             if not selector:
@@ -318,20 +330,25 @@ class MultiTabExtractor:
             
             try:
                 panel_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                
+
                 for panel in panel_elements:
                     if panel.is_displayed():
-                        panel_text = self._clean_text(panel.text or panel.get_attribute('textContent') or '')
+                        panel_html = panel.get_attribute("innerHTML") or ""
+                        panel_text = self._clean_text(BeautifulSoup(panel_html, 'html.parser').get_text())
                         if panel_text and len(panel_text) > 20:  # Only meaningful content
-                            content_text += panel_text + "\n\n"
-                
-                if content_text.strip():
+                            content_texts.append(panel_text)
+                            content_markdowns.append(md(panel_html))
+
+                if content_texts:
                     break
                     
             except Exception as e:
                 logger.debug(f"Content selector {selector} failed: {e}")
         
-        return content_text.strip()
+        return {
+            "text": "\n\n".join(content_texts).strip(),
+            "markdown": "\n\n".join(content_markdowns).strip(),
+        }
     
     def _extract_from_dom(self) -> Dict[str, Any]:
         """
@@ -354,28 +371,31 @@ class MultiTabExtractor:
         
         for panel in panel_elements:
             try:
-                # Get panel content
-                panel_text = self._clean_text(panel.get_text())
-                
+                # Get panel content as HTML
+                panel_html = panel.decode_contents() if hasattr(panel, 'decode_contents') else ''
+                panel_text = self._clean_text(BeautifulSoup(panel_html, 'html.parser').get_text())
+                panel_markdown = md(panel_html) if panel_html else ""
+
                 if not panel_text or len(panel_text) < 20:
                     continue
-                
+
                 # Try to identify which tab this panel belongs to
                 panel_id = panel.get('id', '')
                 tab_key = self._identify_tab_from_panel(panel, panel_text, soup)
-                
+
                 if tab_key:
                     tabs_found.append(tab_key)
-                    
+
                     if tab_key in tab_content:
                         # Merge content if key already exists
-                        tab_content[tab_key] += "\n\n" + panel_text
+                        tab_content[tab_key]["text"] += "\n\n" + panel_text
+                        tab_content[tab_key]["markdown"] += "\n\n" + panel_markdown
                     else:
-                        tab_content[tab_key] = panel_text
-                    
+                        tab_content[tab_key] = {"text": panel_text, "markdown": panel_markdown}
+
                     tabs_extracted.append(tab_key)
                     logger.debug(f"Extracted {len(panel_text)} chars for tab '{tab_key}'")
-                
+
             except Exception as e:
                 logger.warning(f"Failed to process panel: {e}")
         
@@ -395,7 +415,8 @@ class MultiTabExtractor:
             # Look for tab with aria-controls pointing to this panel
             tab_button = soup.select_one(f'[aria-controls="{panel_id}"]')
             if tab_button:
-                tab_text = self._clean_text(tab_button.get_text())
+                tab_html = tab_button.decode_contents()
+                tab_text = self._clean_text(BeautifulSoup(tab_html, 'html.parser').get_text())
                 return self._normalize_tab_key(tab_text)
         
         # Strategy 2: Analyze content to guess tab type
@@ -427,35 +448,41 @@ class MultiTabExtractor:
         Fallback method to extract any available content from the page.
         """
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        
+
         # Remove navigation and footer elements
         for tag in soup(['header', 'footer', 'nav', 'script', 'style']):
             tag.decompose()
-        
+
         # Extract main content
-        main_content = ""
+        main_html = ""
         content_selectors = [
-            'main', '[role="main"]', '.main-content', '.content', 
+            'main', '[role="main"]', '.main-content', '.content',
             'article', '.entry-content', '.post-content'
         ]
-        
+
         for selector in content_selectors:
             content_elem = soup.select_one(selector)
             if content_elem:
-                main_content = self._clean_text(content_elem.get_text())
+                main_html = content_elem.decode_contents()
                 break
-        
-        if not main_content:
+
+        if not main_html:
             # Fallback to body content
             body = soup.find('body')
             if body:
-                main_content = self._clean_text(body.get_text())
-        
+                main_html = body.decode_contents()
+
+        if not main_html:
+            return {'content': {}}
+
+        main_text = self._clean_text(BeautifulSoup(main_html, 'html.parser').get_text())
+        main_markdown = md(main_html)
+
         return {
-            'content': {'main_content': main_content} if main_content else {}
+            'content': {'main_content': {"text": main_text, "markdown": main_markdown}}
         }
     
-    def _extract_all_attachments(self, tab_content: Dict[str, str]) -> List[Dict[str, str]]:
+    def _extract_all_attachments(self, tab_content: Dict[str, Dict[str, str]]) -> List[Dict[str, str]]:
         """
         Extract document attachments from all tab content and current page.
         """
@@ -502,7 +529,7 @@ class MultiTabExtractor:
         
         return unique_attachments
     
-    def _determine_link_source_tab(self, link_element, tab_content: Dict[str, str]) -> str:
+    def _determine_link_source_tab(self, link_element, tab_content: Dict[str, Dict[str, str]]) -> str:
         """
         Determine which tab a document link belongs to based on its context.
         """
@@ -519,41 +546,49 @@ class MultiTabExtractor:
                 break
         
         # Match against tab content to find best fit
-        for tab_name, tab_text in tab_content.items():
-            if link_text in tab_text.lower() or any(word in context_text for word in tab_text.lower().split()[:20]):
+        for tab_name, tab_data in tab_content.items():
+            tab_text_lower = tab_data.get('text', '').lower()
+            if link_text in tab_text_lower or any(word in context_text for word in tab_text_lower.split()[:20]):
                 return tab_name
         
         return 'unknown'
     
-    def _combine_tab_content(self, tab_content: Dict[str, str]) -> str:
+    def _combine_tab_content(self, tab_content: Dict[str, Dict[str, str]]) -> Tuple[str, str]:
         """
-        Combine all tab content into a single text with clear section markers.
+        Combine all tab content into plain text and markdown strings with clear section markers.
         """
         if not tab_content:
-            return ""
-        
+            return "", ""
+
         # Define preferred order for tabs
         preferred_order = ['presentation', 'pour_qui', 'quand', 'comment']
-        
-        combined_parts = []
-        
+
+        combined_text_parts: List[str] = []
+        combined_markdown_parts: List[str] = []
+
         # Add tabs in preferred order first
         for tab_key in preferred_order:
             if tab_key in tab_content:
                 section_name = self._get_section_name(tab_key)
-                content = tab_content[tab_key].strip()
-                if content:
-                    combined_parts.append(f"== {section_name} ==\n{content}")
-        
+                text_content = tab_content[tab_key]["text"].strip()
+                markdown_content = tab_content[tab_key]["markdown"].strip()
+                if text_content:
+                    combined_text_parts.append(f"== {section_name} ==\n{text_content}")
+                if markdown_content:
+                    combined_markdown_parts.append(f"## {section_name}\n\n{markdown_content}")
+
         # Add any remaining tabs
         for tab_key, content in tab_content.items():
             if tab_key not in preferred_order:
                 section_name = self._get_section_name(tab_key)
-                content = content.strip()
-                if content:
-                    combined_parts.append(f"== {section_name} ==\n{content}")
-        
-        return "\n\n".join(combined_parts)
+                text_content = content["text"].strip()
+                markdown_content = content["markdown"].strip()
+                if text_content:
+                    combined_text_parts.append(f"== {section_name} ==\n{text_content}")
+                if markdown_content:
+                    combined_markdown_parts.append(f"## {section_name}\n\n{markdown_content}")
+
+        return "\n\n".join(combined_text_parts), "\n\n".join(combined_markdown_parts)
     
     def _get_section_name(self, tab_key: str) -> str:
         """
@@ -589,7 +624,7 @@ class MultiTabExtractor:
         normalized = tab_text_lower.replace(' ', '_').replace('?', '').replace('é', 'e')
         return ''.join(c for c in normalized if c.isalnum() or c == '_')
     
-    def _calculate_completeness_score(self, tab_content: Dict[str, str]) -> float:
+    def _calculate_completeness_score(self, tab_content: Dict[str, Dict[str, str]]) -> float:
         """
         Calculate a completeness score based on extracted content.
         """
@@ -601,14 +636,14 @@ class MultiTabExtractor:
         found_count = 0
         
         for expected_key in self.expected_tabs.keys():
-            if expected_key in tab_content and len(tab_content[expected_key]) > 50:
+            if expected_key in tab_content and len(tab_content[expected_key]["text"]) > 50:
                 found_count += 1
         
         # Base score on tab coverage
         coverage_score = found_count / expected_count
         
         # Bonus for total content amount
-        total_length = sum(len(content) for content in tab_content.values())
+        total_length = sum(len(content["text"]) for content in tab_content.values())
         length_bonus = min(0.2, total_length / 10000)  # Up to 20% bonus for substantial content
         
         return min(1.0, coverage_score + length_bonus)
