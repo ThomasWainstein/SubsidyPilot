@@ -81,7 +81,7 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
   };
 
   const StatusCell = ({ document }: { document: any }) => {
-    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id);
+    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id, 2000);
     return (
       <div className="flex items-center gap-2">
         {getStatusIcon(extractionStatus.status, document.extraction?.confidence_score)}

@@ -8,7 +8,10 @@ interface FarmDocumentExtractionStatus {
   error?: string;
 }
 
-export const useFarmDocumentExtractionStatus = (documentId?: string) => {
+export const useFarmDocumentExtractionStatus = (
+  documentId?: string,
+  refetchInterval?: number
+) => {
   const [extractionStatus, setExtractionStatus] = useState<FarmDocumentExtractionStatus>({
     status: 'not_extracted'
   });
@@ -43,10 +46,15 @@ export const useFarmDocumentExtractionStatus = (documentId?: string) => {
   }, []);
 
   useEffect(() => {
-    if (documentId) {
-      refreshStatus(documentId);
+    if (!documentId) return;
+
+    refreshStatus(documentId);
+
+    if (refetchInterval) {
+      const interval = setInterval(() => refreshStatus(documentId), refetchInterval);
+      return () => clearInterval(interval);
     }
-  }, [documentId, refreshStatus]);
+  }, [documentId, refreshStatus, refetchInterval]);
 
   return {
     extractionStatus,
