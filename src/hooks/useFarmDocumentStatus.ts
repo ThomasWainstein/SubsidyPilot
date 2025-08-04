@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 const POLLING_INTERVAL = 2000; // Poll every 2 seconds
 
 export interface DocumentStatus {
-  status: 'completed' | 'failed' | 'processing' | 'not_extracted';
+  status: 'completed' | 'failed' | 'processing' | 'pending' | 'not_extracted';
   confidence_score: number | null;
   error_message: string | null;
   field_count: number;
@@ -55,4 +55,3 @@ export const useFarmDocumentStatus = (documentId: string) => {
 };
 
 export default useFarmDocumentStatus;
-

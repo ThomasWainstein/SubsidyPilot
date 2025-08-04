@@ -14,16 +14,12 @@ import {
   Clock,
   Sparkles,
   Trash2,
-  Bug,
-  Download
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
 import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DocumentListTableProps {
   farmId: string;
@@ -65,7 +61,6 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     return colors[category] || colors.other;
   };
 
-  // NEW: ExtractionStatus using useFarmDocumentStatus polling hook
   const ExtractionStatus = ({ document }: { document: any }) => {
     const { data: extractionStatus } = useFarmDocumentStatus(document.id);
 
@@ -127,10 +122,8 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     );
   };
 
-  // Unchanged, assumes you still have useLatestDocumentExtraction for logs
   const ExtractionLogsButton = ({ documentId }: { documentId: string }) => {
-    // If you have a polling log hook, use that instead
-    // For now, left unchanged from your code
+    // Placeholder for future log dialog
     return null; // Implement as needed
   };
 
