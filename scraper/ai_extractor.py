@@ -10,6 +10,7 @@ import json
 import time
 import logging
 from typing import Dict, Any, List, Optional
+import re
 from pathlib import Path
 from logging_setup import setup_pipeline_logging, ensure_artifact_files, log_pipeline_stats
 
@@ -216,13 +217,13 @@ Please extract all available information and return as valid JSON. Preserve mark
                 temperature=0.1,
                 max_tokens=4000
             )
-            
+
             # Track token usage
             self.stats['tokens_used'] += response.usage.total_tokens
-            
+
             # Parse JSON response
             content = response.choices[0].message.content.strip()
-            
+
             # Extract JSON from response (handle markdown code blocks)
             if "```json" in content:
                 json_start = content.find("```json") + 7
@@ -232,28 +233,31 @@ Please extract all available information and return as valid JSON. Preserve mark
                 json_start = content.find("```") + 3
                 json_end = content.find("```", json_start)
                 content = content[json_start:json_end].strip()
-            
+
             extracted_data = json.loads(content)
-            
+
             # Add metadata
             extracted_data['url'] = url
             extracted_data['extraction_timestamp'] = time.time()
             extracted_data['model_used'] = 'gpt-4-turbo-preview'
-            
+
             # Validate and clean data
             extracted_data = self._validate_extracted_data(extracted_data)
-        
-        # Enhanced quality validation
-        quality_score = self._assess_extraction_quality(extracted_data, raw_text)
-        extracted_data['extraction_quality_score'] = quality_score
-        
-        return extracted_data
-            
+
+            # Ensure markdown and plain text variants
+            self._ensure_text_variants(extracted_data, is_markdown)
+
+            # Enhanced quality validation
+            quality_score = self._assess_extraction_quality(extracted_data, raw_content)
+            extracted_data['extraction_quality_score'] = quality_score
+
+            return extracted_data
+
         except json.JSONDecodeError as e:
             self.logger.error(f"❌ JSON decode error: {e}")
             self.logger.error(f"Raw response: {content[:500]}...")
             return None
-            
+
         except Exception as e:
             self.logger.error(f"❌ GPT-4 extraction error: {e}")
             return None
@@ -352,8 +356,34 @@ CRITICAL RULES:
         # Set default language
         if 'language' not in data:
             data['language'] = 'fr'
-        
+
         return data
+
+    def _strip_markdown(self, text: str) -> str:
+        """Very basic markdown stripper to produce plain text."""
+        text = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1', text)
+        text = re.sub(r'[#*`_>]+', '', text)
+        return text.strip()
+
+    def _ensure_text_variants(self, data: Dict[str, Any], is_markdown: bool) -> None:
+        """Ensure both plain text and markdown variants for key fields."""
+        fields = [
+            'description',
+            'eligibility',
+            'application_method',
+            'requirements',
+            'funding',
+            'contact_information'
+        ]
+        for field in fields:
+            md_key = f"{field}_markdown"
+            plain_val = data.get(field)
+            md_val = data.get(md_key)
+
+            if md_val and not plain_val:
+                data[field] = self._strip_markdown(md_val)
+            elif plain_val and not md_val and is_markdown:
+                data[md_key] = plain_val
     
     def _assess_extraction_quality(self, extracted_data: Dict[str, Any], source_text: str) -> float:
         """Assess the quality of extraction against source content"""
@@ -391,7 +421,9 @@ CRITICAL RULES:
             'url': data.get('url'),
             'title': data.get('title'),
             'description': data.get('description'),
+            'description_markdown': data.get('description_markdown'),
             'eligibility': data.get('eligibility'),
+            'eligibility_markdown': data.get('eligibility_markdown'),
             'amount': data.get('amount'),
             'deadline': data.get('deadline'),
             'region': data.get('region', []),
@@ -399,6 +431,10 @@ CRITICAL RULES:
             'funding_type': data.get('funding_type'),
             'agency': data.get('agency'),
             'application_method': data.get('application_method'),
+            'application_method_markdown': data.get('application_method_markdown'),
+            'requirements_markdown': data.get('requirements_markdown'),
+            'funding_markdown': data.get('funding_markdown'),
+            'contact_information_markdown': data.get('contact_information_markdown'),
             'documents': json.dumps(data.get('documents', [])),
             'application_requirements': json.dumps(data.get('application_requirements', [])),
             'legal_entity_type': data.get('legal_entity_type', []),
