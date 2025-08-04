@@ -6,6 +6,7 @@ import { getLocalExtractor, LocalExtractionResult } from '@/services/localTransf
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { validate as uuidValidate } from 'uuid';
 
 export interface UseLocalExtractionReturn {
   isExtracting: boolean;
@@ -29,16 +30,25 @@ export const useLocalExtraction = (): UseLocalExtractionReturn => {
     documentType: string
   ): Promise<LocalExtractionResult | null> => {
     setIsExtracting(true);
-    
+
+    const isValidDocumentId = uuidValidate(documentId);
+
     try {
       logger.debug('🔄 Starting local extraction for document', { documentId });
-      
+
       const result = await extractor.extractFromText(text, documentType);
       setLastResult(result);
-      
-      // Log the local extraction attempt
-      await logLocalExtractionAttempt(documentId, result);
-      
+
+      // Log the local extraction attempt if documentId is a valid UUID
+      if (isValidDocumentId) {
+        await logLocalExtractionAttempt(documentId, result);
+      } else {
+        logger.warn('Skipping local extraction log for temporary document ID', { documentId });
+        toast.warning('Upload incomplete', {
+          description: 'Extraction attempt not logged. Please try again once upload completes.'
+        });
+      }
+
       // Show success/warning messages based on result
       if (result.errorMessage) {
         toast.error('Local extraction failed', {
@@ -76,8 +86,16 @@ export const useLocalExtraction = (): UseLocalExtractionReturn => {
       };
       
       setLastResult(errorResult);
-      await logLocalExtractionAttempt(documentId, errorResult);
-      
+
+      if (isValidDocumentId) {
+        await logLocalExtractionAttempt(documentId, errorResult);
+      } else {
+        logger.warn('Skipping local extraction log for temporary document ID', { documentId });
+        toast.warning('Upload incomplete', {
+          description: 'Extraction attempt not logged. Please try again once upload completes.'
+        });
+      }
+
       toast.error('Local extraction failed', {
         description: 'Will attempt cloud extraction instead'
       });
@@ -109,6 +127,11 @@ const logLocalExtractionAttempt = async (
   documentId: string,
   result: LocalExtractionResult
 ): Promise<void> => {
+  if (!uuidValidate(documentId)) {
+    logger.warn('Skipping local extraction log for temporary document ID', { documentId });
+    return;
+  }
+
   try {
     const { error } = await supabase
       .from('document_extractions')
