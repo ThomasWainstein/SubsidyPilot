@@ -14,12 +14,17 @@ import {
   Clock,
   Sparkles,
   Trash2,
+  Bug,
+  FileSearch,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
 import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
+import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import ExtractionDebugModal from './ExtractionDebugModal';
+import { useNavigate } from 'react-router-dom';
 
 interface DocumentListTableProps {
   farmId: string;
@@ -29,6 +34,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   const { t } = useLanguage();
   const { data: documents = [], isLoading } = useFarmDocuments(farmId);
   const deleteDocumentMutation = useDeleteDocument();
+  const navigate = useNavigate();
 
   const handleView = (document: any) => {
     window.open(document.file_url, '_blank');
@@ -38,6 +44,10 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     if (confirm(`Are you sure you want to delete "${document.file_name}"?`)) {
       await deleteDocumentMutation.mutateAsync({ documentId: document.id, farmId });
     }
+  };
+
+  const handleViewExtraction = (document: any) => {
+    navigate(`/farm/${farmId}/document-review/${document.id}`);
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -122,9 +132,30 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     );
   };
 
-  const ExtractionLogsButton = ({ documentId }: { documentId: string }) => {
-    // Placeholder for future log dialog
-    return null; // Implement as needed
+  const ExtractionLogsButton = ({ document }: { document: any }) => {
+    const { data: extraction } = useLatestDocumentExtraction(document.id);
+    const [isOpen, setIsOpen] = React.useState(false);
+
+    if (!extraction) return null;
+
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsOpen(true)}
+          className="h-7 w-7 p-0"
+        >
+          <Bug className="h-3 w-3" />
+        </Button>
+        <ExtractionDebugModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          extraction={extraction}
+          documentName={document.file_name}
+        />
+      </>
+    );
   };
 
   if (documents.length === 0) {
@@ -207,7 +238,15 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
                       category={document.category}
                       className="text-xs h-7 px-2"
                     />
-                    <ExtractionLogsButton documentId={document.id} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewExtraction(document)}
+                      className="h-7 w-7 p-0"
+                    >
+                      <FileSearch className="h-3 w-3" />
+                    </Button>
+                    <ExtractionLogsButton document={document} />
                     <Button
                       variant="ghost"
                       size="sm"
