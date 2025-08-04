@@ -98,10 +98,10 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
   const renderExtractionBadge = () => {
     if (!extractionStatus || extractionStatus.status === 'not_extracted') {
       return (
-        <Badge variant="outline" className="text-xs">
-          <Sparkles className="h-3 w-3 mr-1" />
-          {t('common.readyToExtract')}
-        </Badge>
+          <Badge variant="outline" className="text-xs">
+            <Sparkles className="h-3 w-3 mr-1" />
+            Ready to Extract
+          </Badge>
       );
     }
 
@@ -135,7 +135,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
         return (
           <Badge variant="outline" className="text-xs">
             <Sparkles className="h-3 w-3 mr-1" />
-            {t('common.readyToExtract')}
+            Ready to Extract
           </Badge>
         );
     }

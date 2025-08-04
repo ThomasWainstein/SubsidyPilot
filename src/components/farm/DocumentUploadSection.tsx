@@ -73,11 +73,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       // Show immediate uploading status
       setTimeout(() => {
         logger.debug(`⚡ Starting processing for document ${documentId}`);
-        // Only attempt extraction if document has a valid UUID
-        if (!uuidValidate(documentId)) {
-          logger.warn(`Skipping processing for invalid document id ${documentId}`);
-          return;
-        }
+      // Always process document, even with temp ID
         processDocument(documentId);
       }, 100);
     }
@@ -121,14 +117,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
   };
 
   const handleProcessDocument = (documentId: string) => {
-    if (!uuidValidate(documentId)) {
-      toast({
-        title: 'Document upload not complete',
-        description: 'Please wait and try again.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    // Allow processing for all documents, including temp IDs
     processDocument(documentId);
   };
 
@@ -153,34 +142,39 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
-      if (isTempId(document.id)) {
-        return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Waiting for upload</Badge>;
-      }
-      return <Badge variant="outline"><Sparkles className="h-3 w-3 mr-1" />Ready to Extract</Badge>;
+      return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>;
     }
-    return <Badge variant="outline">{isTempId(document.id) ? 'Waiting...' : 'Uploading...'}</Badge>;
+    if (document.upload_status === 'uploading' || document.upload_progress < 100) {
+      return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Uploading</Badge>;
+    }
+    return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Waiting</Badge>;
   };
 
   const getStatusMessage = (document: any) => {
     if (document.extraction_status === 'processing') {
-      return <span className="text-xs text-muted-foreground">Extracting data, please wait...</span>;
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-pulse">⚡</span> Extracting data, please wait...
+      </span>;
     }
     if (document.extraction_status === 'completed') {
-      return <span className="text-xs text-green-600">Data extracted successfully</span>;
+      return <span className="text-xs text-green-600">✓ Data extracted successfully</span>;
     }
     if (document.extraction_status === 'failed') {
-      return <span className="text-xs text-red-600">Extraction failed, click retry</span>;
+      return <span className="text-xs text-red-600">✗ Extraction failed, click retry</span>;
+    }
+    if (document.upload_status === 'uploading' || document.upload_progress < 100) {
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-pulse">⬆️</span> Uploading file...
+      </span>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
-      if (isTempId(document.id)) {
-        return <span className="text-xs text-muted-foreground">Waiting for upload confirmation...</span>;
-      }
-      return <span className="text-xs text-blue-600">Click to start extraction</span>;
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-bounce">⏳</span> Processing document...
+      </span>;
     }
-    if (document.upload_progress < 100) {
-      return <span className="text-xs text-muted-foreground">Uploading file...</span>;
-    }
-    return null;
+    return <span className="text-xs text-muted-foreground flex items-center gap-1">
+      <span className="animate-pulse">⏳</span> Preparing...
+    </span>;
   };
 
   const completedExtractions = getCompletedDocuments();
@@ -271,7 +265,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                         size="sm"
                         variant="outline"
                         onClick={() => handleProcessDocument(document.id)}
-                        disabled={isProcessing || !uuidValidate(document.id)}
+                        disabled={isProcessing}
                       >
                         <Sparkles className="h-3 w-3 mr-1" />
                         {document.extraction_status === 'failed' ? 'Retry' : 'Start'} Extraction

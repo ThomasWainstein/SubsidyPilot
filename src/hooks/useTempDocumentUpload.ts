@@ -380,40 +380,16 @@ export const useTempDocumentUpload = () => {
       }
       if (!fileUrl) throw new Error('Failed to upload file');
 
-      // Create a record in Supabase to obtain a persistent UUID
-      const { data, error } = await supabase
-        .from('farm_documents')
-        .insert({
-          file_name: doc.file_name,
-          file_type: doc.file_type,
-          file_size: doc.file_size,
-          file_url: fileUrl,
-        })
-        .select('id')
-        .single();
-
-      if (error || !data?.id) {
-        throw new Error(error?.message || 'Failed to create document record');
-      }
-
-      const newId = data.id as string;
-
-      // Replace temp ID with actual UUID
-      setDocuments(prev => prev.map(d => d.id === documentId ? { ...d, id: newId } : d));
-
-      // Validate UUID before invoking extraction
-      if (newId.startsWith('temp-')) {
-        throw new Error('Invalid document UUID');
-      }
-
-      updateDocument(newId, {
+      // Skip creating database record for temp documents during the upload process
+      // We'll use the temp ID until the final farm is created
+      updateDocument(documentId, {
         extraction_status: 'processing',
         last_updated: new Date().toISOString()
       });
 
       const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-document-data', {
         body: {
-          documentId: newId,
+          documentId: documentId, // Use temp ID for now
           fileUrl,
           fileName: doc.file_name
         }
@@ -423,11 +399,13 @@ export const useTempDocumentUpload = () => {
         throw new Error(extractionError.message);
       }
 
-      updateDocument(newId, {
+      updateDocument(documentId, {
         extraction_status: 'completed',
         extraction_data: extractionData,
+        extraction_id: documentId, // Store temp ID as extraction ID
         last_updated: new Date().toISOString()
       });
+
 
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Processing failed';
@@ -460,7 +438,8 @@ export const useTempDocumentUpload = () => {
     removeDocument,
     getExtractedData,
     getCompletedDocuments,
-    isProcessing
+    isProcessing,
+    updateDocument
   };
 };
 
