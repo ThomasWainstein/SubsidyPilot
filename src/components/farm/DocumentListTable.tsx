@@ -18,7 +18,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
 
 interface DocumentListTableProps {
@@ -62,7 +62,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   };
 
   const ExtractionStatus = ({ document }: { document: any }) => {
-    const { data: extraction } = useLatestDocumentExtraction(document.id);
+      const { data: extraction } = useFarmDocumentStatus(document.id);
     
     if (!extraction) {
       return (
