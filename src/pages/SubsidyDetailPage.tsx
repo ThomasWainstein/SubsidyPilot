@@ -10,6 +10,7 @@ import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { HierarchicalSubsidyDisplay } from '@/components/subsidy/HierarchicalSubsidyDisplay';
 import { NewComprehensiveSubsidyDisplay } from '@/components/subsidy/NewComprehensiveSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
+import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
 import { toast } from 'sonner';
 
@@ -195,6 +196,14 @@ const SubsidyDetailPage = () => {
                 currentLanguage={language}
               />
             )}
+            
+            {/* Schema Extraction Status */}
+            <SchemaExtractionStatus
+              subsidyId={subsidyId!}
+              title="Application Form Schema"
+              autoRefresh={true}
+              showDetails={true}
+            />
             
             {/* Application Form Section */}
             <ExtractedFormApplication
