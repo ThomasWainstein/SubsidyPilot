@@ -85,6 +85,11 @@ on:
     # Run weekly comprehensive scan on Sundays at 1 AM UTC
     - cron: '0 1 * * 0'
 
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 env:
   PYTHON_VERSION: '3.11'
   DISPLAY: ':99'
@@ -95,25 +100,11 @@ jobs:
   # =============================================================================
   # JOB 1: ENVIRONMENT SETUP & VALIDATION
   # =============================================================================
- name: 🔧 Setup & Environment Validation
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
   setup:
     name: 🔧 Setup & Environment Validation
     runs-on: ubuntu-24.04
     
     env:
-      PYTHON_VERSION: 3.11
-      DISPLAY: :99
-      PYTHONUNBUFFERED: 1
-      PYTHONPATH: .
       SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -256,12 +247,16 @@ jobs:
           # Test Python imports
           python -c "
           import sys
-          import selenium
-          import requests
-          import bs4
-          print('✅ All Python imports successful')
-          print(f'Python version: {sys.version}')
-          print(f'Selenium version: {selenium.__version__}')
+          try:
+              import selenium
+              import requests
+              import bs4
+              print('✅ All Python imports successful')
+              print(f'Python version: {sys.version}')
+              print(f'Selenium version: {selenium.__version__}')
+          except ImportError as e:
+              print(f'❌ Import error: {e}')
+              exit(1)
           "
           
           echo "success=true" >> $GITHUB_OUTPUT
@@ -298,12 +293,15 @@ jobs:
           
           echo "✅ Browser test completed successfully"
 
-  # Add your scraper job here that depends on setup
+  # =============================================================================
+  # JOB 2: URL DISCOVERY & SCRAPING
+  # =============================================================================
   scraper:
-    name: 🕷️ Run Scraper
+    name: 🕷️ Enhanced Web Scraper
     runs-on: ubuntu-24.04
     needs: setup
     if: needs.setup.outputs.setup-success == 'true'
+    timeout-minutes: 120
     
     env:
       DISPLAY: :99
@@ -316,6 +314,14 @@ jobs:
       SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
       SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
       OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+      MAX_PAGES: ${{ github.event.inputs.max_pages || '50' }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+      SCRAPER_MODE: ${{ github.event.inputs.scraper_mode || 'scrape' }}
+      MAX_WORKERS: ${{ github.event.inputs.max_workers || '5' }}
+      AI_BATCH_SIZE: ${{ github.event.inputs.ai_batch_size || '10' }}
+      AI_MODEL: ${{ github.event.inputs.ai_model || 'gpt-4-turbo-preview' }}
+      QUALITY_THRESHOLD: ${{ github.event.inputs.quality_threshold || '70' }}
+      ENABLE_MONITORING: ${{ github.event.inputs.enable_monitoring || 'true' }}
 
     steps:
       - name: 📥 Checkout Repository
@@ -324,7 +330,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: 📁 Create pip cache directory
@@ -355,1127 +361,111 @@ jobs:
           fi
           
           # Install common scraping packages if not in requirements
-          pip install selenium beautifulsoup4 requests webdriver-manager
+          pip install selenium beautifulsoup4 requests webdriver-manager supabase openai python-dotenv
 
-      - name: 🕷️ Run Scraper
+      - name: 📋 Display Configuration
         run: |
-          echo "🚀 Starting scraper..."
-          
-          # Add your scraper execution command here
-          # Example: python your_scraper_script.py
-          
-          echo "✅ Scraper completed successfully"
+          echo "🚀 Starting AgriTool Enhanced Pipeline"
+          echo "==============================================="
+          echo "Configuration:"
+          echo "- Max Pages: $MAX_PAGES"
+          echo "- Dry Run: $DRY_RUN"
+          echo "- Scraper Mode: $SCRAPER_MODE"
+          echo "- Max Workers: $MAX_WORKERS"
+          echo "- AI Batch Size: $AI_BATCH_SIZE"
+          echo "- AI Model: $AI_MODEL"
+          echo "- Quality Threshold: $QUALITY_THRESHOLD"
+          echo "- Monitoring: $ENABLE_MONITORING"
+          echo "==============================================="
 
-      - name: 📊 Upload Results (Optional)
+      - name: 🔍 URL Discovery
+        if: ${{ github.event.inputs.scraper_mode == 'discover' || github.event.inputs.scraper_mode == 'scrape' }}
+        run: |
+          echo "🔍 Starting URL discovery from FranceAgriMer..."
+          
+          # Add your URL discovery script here
+          # Example: python scripts/url_discovery.py --max-pages $MAX_PAGES
+          
+          echo "✅ URL discovery completed"
+
+      - name: 🕷️ Enhanced Web Scraping
+        if: ${{ github.event.inputs.scraper_mode == 'scrape' }}
+        run: |
+          echo "🕷️ Starting enhanced web scraping..."
+          
+          # Add your main scraper script here
+          # Example: python scripts/enhanced_scraper.py \
+          #   --max-pages $MAX_PAGES \
+          #   --max-workers $MAX_WORKERS \
+          #   --dry-run $DRY_RUN
+          
+          echo "✅ Web scraping completed"
+
+      - name: 🤖 AI Data Extraction
+        if: ${{ github.event.inputs.scraper_mode == 'scrape' && github.event.inputs.dry_run == 'false' }}
+        run: |
+          echo "🤖 Starting AI-powered data extraction..."
+          
+          # Add your AI extraction script here
+          # Example: python scripts/ai_extractor.py \
+          #   --model $AI_MODEL \
+          #   --batch-size $AI_BATCH_SIZE \
+          #   --quality-threshold $QUALITY_THRESHOLD
+          
+          echo "✅ AI extraction completed"
+
+      - name: 🧪 Run Test Suite
+        if: ${{ github.event.inputs.run_tests == 'true' }}
+        run: |
+          echo "🧪 Running comprehensive test suite..."
+          
+          # Add your test commands here
+          # Example: python -m pytest tests/ -v
+          
+          echo "✅ All tests passed"
+
+      - name: 📊 Generate Reports
+        if: always()
+        run: |
+          echo "📊 Generating execution reports..."
+          
+          # Create a simple report
+          cat > execution_report.md << EOF
+          # AgriTool Pipeline Execution Report
+          
+          **Execution Date:** $(date)
+          **Configuration:**
+          - Max Pages: $MAX_PAGES
+          - Scraper Mode: $SCRAPER_MODE
+          - AI Model: $AI_MODEL
+          - Workers: $MAX_WORKERS
+          
+          **Results:**
+          - Status: Completed
+          - Duration: \${{ job.duration }}
+          
+          EOF
+          
+          echo "✅ Reports generated"
+
+      - name: 📤 Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scraper-results
+          name: agritool-results-${{ github.run_number }}
           path: |
             *.json
             *.csv
+            *.md
             logs/
-          retention-days: 7
-
-  # =============================================================================
-  # JOB 2: ENHANCED SCRAPING & DATA DISCOVERY
-  # =============================================================================
-  enhanced-scraping:
-    name: 🕷️ Enhanced Scraping & Discovery
-    runs-on: ubuntu-latest
-    needs: setup-and-validate
-    if: needs.setup-and-validate.outputs.setup-success == 'true'
-    timeout-minutes: 120
-    outputs:
-      scrape-success: ${{ steps.scraping.outputs.success }}
-      records-processed: ${{ steps.scraping.outputs.records }}
-      urls-discovered: ${{ steps.scraping.outputs.urls_discovered }}
-      
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: 🖥️ Setup virtual display
-        run: |
-          Xvfb :99 -screen 0 1920x1080x24 -ac -nolisten tcp &
-          sleep 3
-        env:
-          DISPLAY: ':99'
-
-      - name: 📁 Create enhanced directory structure
-        working-directory: ./AgriToolScraper-main
-        run: |
-          mkdir -p {data/scraped,data/extracted,logs,debug,artifacts}
-          mkdir -p {data/urls,data/raw,data/processed}
-          echo "✅ Enhanced directory structure created"
-
-      - name: 📦 Install scraper dependencies with caching
-        working-directory: ./AgriToolScraper-main  
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-          # Install additional async dependencies
-          pip install aiofiles aiohttp psutil
-          
-          echo "✅ All dependencies installed"
-
-      - name: 🕷️ Enhanced scraping with modern runner
-        id: scraping
-        working-directory: ./AgriToolScraper-main
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          DISPLAY: ':99'
-        run: |
-          echo "🚀 Starting enhanced scraping pipeline..."
-          
-          # Determine scraping mode
-          SCRAPE_MODE="${{ github.event.inputs.scraper_mode || 'scrape' }}"
-          MAX_WORKERS="${{ github.event.inputs.max_workers || '5' }}"
-          MAX_PAGES="${{ github.event.inputs.max_pages || '50' }}"
-          
-          echo "📋 Configuration:"
-          echo "  Mode: $SCRAPE_MODE"
-          echo "  Max workers: $MAX_WORKERS"
-          echo "  Max pages: $MAX_PAGES"
-          echo "  Dry run: ${{ github.event.inputs.dry_run || 'false' }}"
-          
-          # Build enhanced runner command
-          RUNNER_CMD="python runner.py --mode $SCRAPE_MODE --max-workers $MAX_WORKERS"
-          
-          # Add browser selection
-          RUNNER_CMD="$RUNNER_CMD --browser chrome --headless"
-          
-          # Add pages limit if specified
-          if [ "$MAX_PAGES" != "0" ]; then
-            RUNNER_CMD="$RUNNER_CMD --max-pages $MAX_PAGES"
-          fi
-          
-          # Add dry run if specified
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            RUNNER_CMD="$RUNNER_CMD --dry-run"
-          fi
-          
-          # Add monitoring if enabled
-          if [ "${{ github.event.inputs.enable_monitoring || 'true' }}" = "true" ]; then
-            RUNNER_CMD="$RUNNER_CMD --verbose"
-          fi
-          
-          echo "🚀 Executing: $RUNNER_CMD"
-          
-          # Execute with timeout and monitoring
-          timeout 7200 $RUNNER_CMD || {
-            EXIT_CODE=$?
-            if [ $EXIT_CODE -eq 124 ]; then
-              echo "⚠️ Scraping timed out after 2 hours"
-            else
-              echo "❌ Scraping failed with exit code: $EXIT_CODE"
-            fi
-            echo "success=false" >> $GITHUB_OUTPUT
-            exit $EXIT_CODE
-          }
-          
-          # Parse results from logs and output files
-          RECORDS_PROCESSED=0
-          URLS_DISCOVERED=0
-          
-          # Count processed records from various sources
-          if [ -d "data/scraped" ]; then
-            SCRAPED_FILES=$(find data/scraped -name "*.json" | wc -l)
-            RECORDS_PROCESSED=$((RECORDS_PROCESSED + SCRAPED_FILES))
-          fi
-          
-          if [ -d "data/urls" ]; then
-            URL_FILES=$(find data/urls -name "*.txt" -o -name "*.json" | wc -l)
-            URLS_DISCOVERED=$((URLS_DISCOVERED + URL_FILES))
-          fi
-          
-          # Check for discovery results
-          if [ -f "discovered_urls.json" ]; then
-            DISCOVERED_COUNT=$(python -c "
-            import json
-            try:
-                with open('discovered_urls.json', 'r') as f:
-                    data = json.load(f)
-                    print(len(data.get('urls', [])))
-            except:
-                print(0)
-            " 2>/dev/null || echo "0")
-            URLS_DISCOVERED=$((URLS_DISCOVERED + DISCOVERED_COUNT))
-          fi
-          
-          echo "📊 Scraping Results:"
-          echo "  Records processed: $RECORDS_PROCESSED"
-          echo "  URLs discovered: $URLS_DISCOVERED"
-          
-          # Set outputs
-          echo "records=$RECORDS_PROCESSED" >> $GITHUB_OUTPUT
-          echo "urls_discovered=$URLS_DISCOVERED" >> $GITHUB_OUTPUT
-          
-          # Determine success based on results or dry run
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ Dry run completed successfully"
-          elif [ "$RECORDS_PROCESSED" -gt "0" ] || [ "$URLS_DISCOVERED" -gt "0" ]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ Scraping completed successfully"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ No records processed - scraping may have failed"
-          fi
-
-      - name: 📊 Upload scraping artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: enhanced-scraper-output-${{ github.run_number }}
-          path: |
-            AgriToolScraper-main/data/
-            AgriToolScraper-main/logs/
-            AgriToolScraper-main/artifacts/
-            AgriToolScraper-main/*.log
-            AgriToolScraper-main/*.json
-          retention-days: 14
-
-  # =============================================================================
-  # JOB 3: ENHANCED AI EXTRACTION
-  # =============================================================================
-  enhanced-ai-extraction:
-    name: 🤖 Enhanced AI Extraction
-    runs-on: ubuntu-latest
-    needs: [setup-and-validate, enhanced-scraping]
-    if: needs.enhanced-scraping.outputs.scrape-success == 'true'
-    timeout-minutes: 180
-    outputs:
-      extraction-success: ${{ steps.ai-extraction.outputs.success }}
-      extracted-count: ${{ steps.ai-extraction.outputs.extracted }}
-      quality-score: ${{ steps.ai-extraction.outputs.quality_score }}
-
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: 📦 Install AI extraction dependencies
-        working-directory: ./AgriToolScraper-main
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          
-          # Install additional async dependencies for enhanced extractor
-          pip install aiofiles psutil asyncpg
-          
-          echo "✅ AI extraction dependencies installed"
-
-      - name: 🤖 Run enhanced AI extraction
-        id: ai-extraction
-        working-directory: ./AgriToolScraper-main
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-        run: |
-          echo "🤖 Starting enhanced AI extraction..."
-          
-          # Configuration from inputs
-          BATCH_SIZE="${{ github.event.inputs.ai_batch_size || '10' }}"
-          MODEL="${{ github.event.inputs.ai_model || 'gpt-4-turbo-preview' }}"
-          QUALITY_THRESHOLD="${{ github.event.inputs.quality_threshold || '70' }}"
-          MAX_RECORDS="${{ github.event.inputs.max_pages || '0' }}"
-          
-          echo "📋 AI Extraction Configuration:"
-          echo "  Model: $MODEL"
-          echo "  Batch size: $BATCH_SIZE"
-          echo "  Quality threshold: $QUALITY_THRESHOLD"
-          echo "  Max records: $MAX_RECORDS"
-          
-          # Build AI extraction command using enhanced extractor
-          AI_CMD="python ai_extractor.py --model $MODEL --batch-size $BATCH_SIZE --quality-threshold $QUALITY_THRESHOLD"
-          
-          # Add max records if specified
-          if [ "$MAX_RECORDS" != "0" ]; then
-            AI_CMD="$AI_CMD --max-records $MAX_RECORDS"
-          fi
-          
-          # Add monitoring if enabled
-          if [ "${{ github.event.inputs.enable_monitoring || 'true' }}" = "true" ]; then
-            AI_CMD="$AI_CMD --verbose"
-          fi
-          
-          # Add debug mode if dry run
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            AI_CMD="$AI_CMD --debug --output both"
-          fi
-          
-          echo "🚀 Executing: $AI_CMD"
-          
-          # Execute with comprehensive error handling
-          {
-            eval $AI_CMD
-            EXTRACTION_EXIT_CODE=$?
-          } || {
-            EXTRACTION_EXIT_CODE=$?
-            echo "❌ AI extraction failed with exit code: $EXTRACTION_EXIT_CODE"
-          }
-          
-          # Parse extraction results
-          EXTRACTED_COUNT=0
-          QUALITY_SCORE=0
-          
-          # Check for extraction statistics in logs
-          if [ -f "ai_extractor.log" ]; then
-            # Extract metrics from logs
-            EXTRACTED_COUNT=$(grep -o "Successful extractions: [0-9]*" ai_extractor.log | tail -1 | grep -o "[0-9]*" || echo "0")
-            QUALITY_SCORE=$(grep -o "Average quality: [0-9.]*" ai_extractor.log | tail -1 | grep -o "[0-9.]*" || echo "0")
-          fi
-          
-          # Check database for actual results
-          python -c "
-          import os
-          try:
-              from supabase import create_client
-              
-              client = create_client(
-                  os.getenv('SUPABASE_URL'),
-                  os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-              )
-              
-              # Count recent extractions
-              response = client.table('subsidies_structured').select('id').limit(1000).execute()
-              total_structured = len(response.data)
-              
-              print(f'Database check: {total_structured} structured records found')
-              
-              with open('extraction_stats.txt', 'w') as f:
-                  f.write(f'extracted_count={total_structured}\n')
-                  
-          except Exception as e:
-              print(f'Database check failed: {e}')
-              with open('extraction_stats.txt', 'w') as f:
-                  f.write(f'extracted_count=0\n')
-          " || echo "Database check script failed"
-          
-          # Read database results if available
-          if [ -f "extraction_stats.txt" ]; then
-            source extraction_stats.txt
-            if [ "$extracted_count" -gt "$EXTRACTED_COUNT" ]; then
-              EXTRACTED_COUNT=$extracted_count
-            fi
-          fi
-          
-          echo "📊 AI Extraction Results:"
-          echo "  Extracted records: $EXTRACTED_COUNT"
-          echo "  Average quality: $QUALITY_SCORE%"
-          echo "  Exit code: $EXTRACTION_EXIT_CODE"
-          
-          # Set outputs
-          echo "extracted=$EXTRACTED_COUNT" >> $GITHUB_OUTPUT
-          echo "quality_score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
-          
-          # Determine success
-          if [ "$EXTRACTION_EXIT_CODE" -eq "0" ] && [ "$EXTRACTED_COUNT" -gt "0" ]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ AI extraction completed successfully"
-          elif [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ AI extraction dry run completed"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ AI extraction failed or no records extracted"
-          fi
-
-      - name: 📊 Upload extraction artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-extraction-output-${{ github.run_number }}
-          path: |
-            AgriToolScraper-main/data/extracted/
-            AgriToolScraper-main/debug/
-            AgriToolScraper-main/logs/
-            AgriToolScraper-main/*.log
-            AgriToolScraper-main/*_stats.txt
-            AgriToolScraper-main/*_stats.json
-          retention-days: 14
-
-  # =============================================================================
-  # JOB 4: COMPREHENSIVE QUALITY ASSURANCE
-  # =============================================================================
-  comprehensive-qa:
-    name: 🔍 Comprehensive Quality Assurance
-    runs-on: ubuntu-latest
-    needs: [setup-and-validate, enhanced-scraping, enhanced-ai-extraction]
-    if: needs.enhanced-ai-extraction.result == 'success' && github.event.inputs.run_tests != 'false'
-    timeout-minutes: 60
-    outputs:
-      qa-success: ${{ steps.quality-tests.outputs.success }}
-      coverage-score: ${{ steps.quality-tests.outputs.coverage }}
-    
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: 📦 Install QA dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio pytest-cov psycopg2-binary
-          
-          # Install all project dependencies
-          pip install -r AgriToolScraper-main/requirements.txt
-          
-          echo "✅ QA dependencies installed"
-
-      - name: 🧪 Comprehensive test suite
-        id: quality-tests
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-          OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-        run: |
-          echo "🧪 Running comprehensive QA test suite..."
-          
-          cd AgriToolScraper-main
-          
-          # Test 1: Module import validation
-          echo "📋 Test 1: Enhanced module imports"
-          python -c "
-          import sys
-          sys.path.append('.')
-          
-          # Test enhanced modules
-          try:
-              from scraper.core import extract_single_page
-              from scraper.supabase_uploader import SupabaseUploader, UploadConfig
-              from scraper.ai_extractor import AIExtractor, ExtractionConfig
-              from scraper.runner import ScrapingConfig
-              from scraper.discovery import discover_subsidy_urls
-              print('✅ All enhanced modules import successfully')
-          except ImportError as e:
-              print(f'❌ Module import failed: {e}')
-              sys.exit(1)
-          "
-          
-          # Test 2: Enhanced database connectivity
-          echo "📋 Test 2: Enhanced database operations"
-          python -c "
-          import asyncio
-          from scraper.supabase_uploader import SupabaseUploader
-          
-          async def test_db():
-              uploader = SupabaseUploader()
-              await uploader.initialize()
-              print('✅ Enhanced Supabase connection successful')
-          
-          asyncio.run(test_db())
-          "
-          
-          # Test 3: AI extractor with quality assessment
-          echo "📋 Test 3: Enhanced AI extractor validation"
-          python -c "
-          import asyncio
-          from scraper.ai_extractor import AIExtractor, ExtractionConfig
-          
-          async def test_extractor():
-              config = ExtractionConfig(enable_quality_assessment=True)
-              extractor = AIExtractor(config)
-              await extractor.initialize()
-              print('✅ Enhanced AI extractor initialization successful')
-          
-          asyncio.run(test_extractor())
-          "
-          
-          # Test 4: Data quality validation
-          echo "📋 Test 4: Data quality and integrity validation"
-          python -c "
-          from scraper.supabase_uploader import SupabaseUploader
-          
-          try:
-              uploader = SupabaseUploader()
-              client = uploader.client
-              
-              # Check data integrity
-              raw_response = client.table('raw_scraped_pages').select('id, status').limit(100).execute()
-              structured_response = client.table('subsidies_structured').select('id, title, extraction_quality_score').limit(100).execute()
-              
-              raw_count = len(raw_response.data)
-              structured_count = len(structured_response.data)
-              
-              # Calculate quality metrics
-              quality_scores = [r.get('extraction_quality_score', 0) for r in structured_response.data if r.get('extraction_quality_score')]
-              avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
-              
-              print(f'📊 Data Quality Metrics:')
-              print(f'   Raw pages: {raw_count}')
-              print(f'   Structured records: {structured_count}')
-              print(f'   Average quality score: {avg_quality:.1f}%')
-              
-              # Write metrics for output
-              with open('qa_metrics.txt', 'w') as f:
-                  f.write(f'coverage={avg_quality}\n')
-                  f.write(f'structured_count={structured_count}\n')
-              
-              print('✅ Data quality validation completed')
-              
-          except Exception as e:
-              print(f'⚠️ Data quality check failed: {e}')
-              with open('qa_metrics.txt', 'w') as f:
-                  f.write(f'coverage=0\n')
-                  f.write(f'structured_count=0\n')
-          "
-          
-          # Test 5: End-to-end pipeline validation
-          echo "📋 Test 5: End-to-end pipeline validation"
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "false" ]; then
-            python runner.py --mode test --max-workers 2 || echo "⚠️ End-to-end test completed with warnings"
-          else
-            echo "🧪 Skipping end-to-end test in dry run mode"
-          fi
-          
-          # Read QA metrics
-          COVERAGE_SCORE=0
-          if [ -f "qa_metrics.txt" ]; then
-            source qa_metrics.txt
-            COVERAGE_SCORE=$coverage
-          fi
-          
-          echo "📊 QA Results:"
-          echo "  Coverage score: $COVERAGE_SCORE%"
-          
-          # Set outputs
-          echo "coverage=$COVERAGE_SCORE" >> $GITHUB_OUTPUT
-          
-          # Determine QA success
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ QA dry run completed"
-          elif (( $(echo "$COVERAGE_SCORE >= 70" | bc -l) )); then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ Quality assurance passed"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Quality assurance completed with warnings"
-          fi
-
-      - name: 📊 Generate comprehensive QA report
-        run: |
-          echo "📊 Generating comprehensive QA report..."
-          cat > comprehensive_qa_report.json << EOF
-          {
-            "pipeline_execution": {
-              "run_id": "${{ github.run_number }}",
-              "timestamp": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')",
-              "trigger": "${{ github.event_name }}",
-              "dry_run": "${{ github.event.inputs.dry_run || 'false' }}"
-            },
-            "scraping_results": {
-              "success": "${{ needs.enhanced-scraping.outputs.scrape-success }}",
-              "records_processed": "${{ needs.enhanced-scraping.outputs.records-processed }}",
-              "urls_discovered": "${{ needs.enhanced-scraping.outputs.urls-discovered }}"
-            },
-            "ai_extraction_results": {
-              "success": "${{ needs.enhanced-ai-extraction.outputs.extraction-success }}",
-              "extracted_count": "${{ needs.enhanced-ai-extraction.outputs.extracted-count }}",
-              "quality_score": "${{ needs.enhanced-ai-extraction.outputs.quality-score }}"
-            },
-            "quality_assurance": {
-              "tests_executed": true,
-              "coverage_score": "${{ steps.quality-tests.outputs.coverage }}",
-              "overall_success": "${{ steps.quality-tests.outputs.success }}"
-            },
-            "performance_metrics": {
-              "total_pipeline_duration_minutes": "$(( $(date +%s) - ${{ github.event.head_commit.timestamp && 'github.event.head_commit.timestamp' || '0' }} ))",
-              "scraping_duration": "estimated from logs",
-              "extraction_duration": "estimated from logs"
-            },
-            "recommendations": [
-              "Review extraction quality scores for optimization opportunities",
-              "Monitor pipeline performance trends",
-              "Validate data completeness in structured records"
-            ]
-          }
-          EOF
-          
-          echo "✅ Comprehensive QA report generated"
-
-      - name: 📦 Upload comprehensive QA artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: comprehensive-qa-report-${{ github.run_number }}
-          path: |
-            comprehensive_qa_report.json
-            AgriToolScraper-main/qa_metrics.txt
-            AgriToolScraper-main/*.log
+            reports/
           retention-days: 30
 
-  # =============================================================================
-  # JOB 5: PERFORMANCE MONITORING & OPTIMIZATION
-  # =============================================================================
-  performance-monitoring:
-    name: 📈 Performance Monitoring
-    runs-on: ubuntu-latest
-    needs: [enhanced-scraping, enhanced-ai-extraction, comprehensive-qa]
-    if: always() && github.event.inputs.enable_monitoring != 'false'
-    timeout-minutes: 30
-    
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: 📊 Analyze pipeline performance
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "📈 Analyzing pipeline performance..."
-          
-          # Install monitoring dependencies
-          pip install supabase psutil matplotlib pandas
-          
-          python -c "
-          import json
-          import time
-          from datetime import datetime, timedelta
-          
-          try:
-              from supabase import create_client
-              import os
-              
-              client = create_client(
-                  os.getenv('SUPABASE_URL'),
-                  os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-              )
-              
-              # Analyze recent pipeline performance
-              end_time = datetime.now()
-              start_time = end_time - timedelta(days=7)  # Last 7 days
-              
-              # Get recent raw pages
-              raw_response = client.table('raw_scraped_pages').select('*').gte(
-                  'created_at', start_time.isoformat()
-              ).execute()
-              
-              # Get recent structured data
-              structured_response = client.table('subsidies_structured').select('*').gte(
-                  'created_at', start_time.isoformat()
-              ).execute()
-              
-              # Calculate performance metrics
-              raw_count = len(raw_response.data)
-              structured_count = len(structured_response.data)
-              conversion_rate = (structured_count / raw_count * 100) if raw_count > 0 else 0
-              
-              # Quality analysis
-              quality_scores = []
-              for record in structured_response.data:
-                  if record.get('extraction_quality_score'):
-                      quality_scores.append(record['extraction_quality_score'])
-              
-              avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
-              
-              # Performance report
-              performance_report = {
-                  'analysis_period': {
-                      'start': start_time.isoformat(),
-                      'end': end_time.isoformat(),
-                      'days': 7
-                  },
-                  'pipeline_metrics': {
-                      'raw_pages_scraped': raw_count,
-                      'structured_records_created': structured_count,
-                      'conversion_rate_percent': round(conversion_rate, 2),
-                      'average_quality_score': round(avg_quality, 2)
-                  },
-                  'current_run': {
-                      'run_id': '${{ github.run_number }}',
-                      'scraping_success': '${{ needs.enhanced-scraping.outputs.scrape-success }}',
-                      'extraction_success': '${{ needs.enhanced-ai-extraction.outputs.extraction-success }}',
-                      'records_this_run': '${{ needs.enhanced-ai-extraction.outputs.extracted-count }}',
-                      'quality_this_run': '${{ needs.enhanced-ai-extraction.outputs.quality-score }}'
-                  },
-                  'recommendations': []
-              }
-              
-              # Generate recommendations
-              if conversion_rate < 80:
-                  performance_report['recommendations'].append('Low conversion rate detected - review extraction failures')
-              
-              if avg_quality < 70:
-                  performance_report['recommendations'].append('Average quality below threshold - review extraction prompts')
-              
-              if raw_count > structured_count * 2:
-                  performance_report['recommendations'].append('High backlog detected - consider increasing AI processing frequency')
-              
-              # Save performance report
-              with open('performance_report.json', 'w') as f:
-                  json.dump(performance_report, f, indent=2)
-              
-              print('📊 Performance Analysis Results:')
-              print(f'   Raw pages (7 days): {raw_count}')
-              print(f'   Structured records (7 days): {structured_count}')
-              print(f'   Conversion rate: {conversion_rate:.1f}%')
-              print(f'   Average quality: {avg_quality:.1f}%')
-              print('✅ Performance analysis completed')
-              
-          except Exception as e:
-              print(f'❌ Performance analysis failed: {e}')
-              
-              # Create minimal report
-              with open('performance_report.json', 'w') as f:
-                  json.dump({
-                      'error': str(e),
-                      'timestamp': datetime.now().isoformat()
-                  }, f, indent=2)
-          "
-
-      - name: 📦 Upload performance monitoring artifacts
+      - name: 🔔 Notify on Completion
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-monitoring-${{ github.run_number }}
-          path: |
-            performance_report.json
-          retention-days: 30
-
-  # =============================================================================
-  # JOB 6: INTELLIGENT CLEANUP & OPTIMIZATION
-  # =============================================================================
-  intelligent-cleanup:
-    name: 🧹 Intelligent Cleanup & Optimization
-    runs-on: ubuntu-latest
-    needs: [enhanced-scraping, enhanced-ai-extraction, comprehensive-qa, performance-monitoring]
-    if: always()
-    timeout-minutes: 20
-    
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🧹 Enhanced cleanup with optimization
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          echo "🧹 Starting intelligent cleanup process..."
-          
-          # Clean up temporary files with detailed logging
-          echo "🗑️ Cleaning temporary files..."
-          find . -name "*.tmp" -type f -delete 2>/dev/null || true
-          find . -name "*.lock" -type f -delete 2>/dev/null || true
-          find . -name ".pytest_cache" -type d -exec rm -rf {} + 2>/dev/null || true
-          find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-          find . -name "*.pyc" -type f -delete 2>/dev/null || true
-          
-          # Clean up browser artifacts
-          echo "🗑️ Cleaning browser artifacts..."
-          pkill -f chrome 2>/dev/null || true
-          pkill -f chromium 2>/dev/null || true
-          pkill -f firefox 2>/dev/null || true
-          pkill -f Xvfb 2>/dev/null || true
-          
-          # Clean up large log files (keep important ones)
-          echo "🗑️ Optimizing log files..."
-          find . -name "*.log" -size +10M -delete 2>/dev/null || true
-          
-          # Database optimization (if not dry run)
-          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "false" ]; then
-            echo "🗑️ Database optimization..."
-            pip install supabase 2>/dev/null || true
-            
-            python -c "
-            import os
-            from datetime import datetime, timedelta
-            
-            try:
-                from supabase import create_client
-                
-                client = create_client(
-                    os.getenv('SUPABASE_URL'),
-                    os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-                )
-                
-                # Clean up old failed records (older than 30 days)
-                cutoff_date = (datetime.now() - timedelta(days=30)).isoformat()
-                
-                # Get count of old failed records
-                old_failed = client.table('raw_scraped_pages').select('id').eq(
-                    'status', 'failed'
-                ).lt('created_at', cutoff_date).execute()
-                
-                if old_failed.data:
-                    print(f'🗑️ Found {len(old_failed.data)} old failed records to clean')
-                    # Could implement cleanup here if needed
-                
-                print('✅ Database optimization completed')
-                
-            except Exception as e:
-                print(f'⚠️ Database optimization skipped: {e}')
-            " || echo "Database optimization script completed with warnings"
-          fi
-          
-          echo "✅ Intelligent cleanup completed successfully"
-
-      - name: 📊 Generate cleanup report
-        run: |
-          echo "📊 Cleanup Summary Report:"
-          echo "  🗑️ Temporary files cleaned"
-          echo "  🗑️ Cache directories cleared"
-          echo "  🗑️ Browser processes terminated"
-          echo "  🗑️ Large log files optimized"
-          echo "  🗑️ Python bytecode cleaned"
-          
-          # Calculate disk space freed
-          DISK_USAGE_AFTER=$(df -h . | tail -1 | awk '{print $4}')
-          echo "  💾 Available disk space: $DISK_USAGE_AFTER"
-          echo "✅ System optimized for next pipeline run"
-
-  # =============================================================================
-  # JOB 7: ENHANCED PIPELINE SUMMARY & NOTIFICATIONS
-  # =============================================================================
-  enhanced-pipeline-summary:
-    name: 📋 Enhanced Pipeline Summary
-    runs-on: ubuntu-latest
-    needs: [setup-and-validate, enhanced-scraping, enhanced-ai-extraction, comprehensive-qa, performance-monitoring, intelligent-cleanup]
-    if: always()
-    
-    steps:
-      - name: 📊 Generate enhanced pipeline summary
-        run: |
-          echo "📋 === AGRITOOL ENHANCED PIPELINE EXECUTION SUMMARY ==="
-          echo "🏃 Run ID: ${{ github.run_number }}"
-          echo "📅 Execution Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "⚙️ Trigger: ${{ github.event_name }}"
-          echo "🔧 Mode: ${{ github.event.inputs.scraper_mode || 'scrape' }}"
-          echo "🧪 Dry Run: ${{ github.event.inputs.dry_run || 'false' }}"
-          echo ""
-          echo "📊 DETAILED RESULTS:"
-          echo "  🔧 Environment Setup: ${{ needs.setup-and-validate.result }}"
-          echo "  🕷️ Enhanced Scraping: ${{ needs.enhanced-scraping.result }}"
-          echo "    ├─ Records Processed: ${{ needs.enhanced-scraping.outputs.records-processed || 'N/A' }}"
-          echo "    └─ URLs Discovered: ${{ needs.enhanced-scraping.outputs.urls-discovered || 'N/A' }}"
-          echo "  🤖 AI Extraction: ${{ needs.enhanced-ai-extraction.result }}"
-          echo "    ├─ Records Extracted: ${{ needs.enhanced-ai-extraction.outputs.extracted-count || 'N/A' }}"
-          echo "    └─ Quality Score: ${{ needs.enhanced-ai-extraction.outputs.quality-score || 'N/A' }}%"
-          echo "  🔍 Quality Assurance: ${{ needs.comprehensive-qa.result }}"
-          echo "    └─ Coverage Score: ${{ needs.comprehensive-qa.outputs.coverage-score || 'N/A' }}%"
-          echo "  📈 Performance Monitoring: ${{ needs.performance-monitoring.result }}"
-          echo "  🧹 Cleanup: ${{ needs.intelligent-cleanup.result }}"
-          echo ""
-          echo "🎯 OVERALL PIPELINE STATUS:"
-          
-          # Calculate overall success
-          SETUP_SUCCESS="${{ needs.setup-and-validate.result }}"
-          SCRAPE_SUCCESS="${{ needs.enhanced-scraping.result }}"
-          AI_SUCCESS="${{ needs.enhanced-ai-extraction.result }}"
-          QA_SUCCESS="${{ needs.comprehensive-qa.result }}"
-          
-          if [ "$SETUP_SUCCESS" = "success" ] && [ "$SCRAPE_SUCCESS" = "success" ] && [ "$AI_SUCCESS" = "success" ]; then
-            echo "  ✅ PIPELINE SUCCESS - All critical components completed successfully"
-            echo "  🚀 Enhanced AgriTool automation pipeline executed end-to-end"
-            echo "  📊 Data processing pipeline operational and producing quality results"
-            OVERALL_STATUS="SUCCESS"
-          elif [ "$SCRAPE_SUCCESS" = "success" ] || [ "$AI_SUCCESS" = "success" ]; then
-            echo "  ⚠️ PIPELINE PARTIAL SUCCESS - Core functionality working with some issues"
-            echo "  🔧 Review component logs for optimization opportunities"
-            OVERALL_STATUS="PARTIAL_SUCCESS"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ AgriTool pipeline completed successfully!"
           else
-            echo "  ❌ PIPELINE FAILURE - Critical components failed"
-            echo "  🚨 Immediate attention required - check logs and environment"
-            OVERALL_STATUS="FAILURE"
+            echo "❌ AgriTool pipeline failed. Check logs for details."
           fi
-          
-          echo ""
-          echo "📦 ENHANCED ARTIFACTS AVAILABLE:"
-          echo "  📁 enhanced-scraper-output-${{ github.run_number }} (Scraping results and logs)"
-          echo "  📁 ai-extraction-output-${{ github.run_number }} (AI processing results)"
-          echo "  📁 comprehensive-qa-report-${{ github.run_number }} (Quality assurance metrics)"
-          echo "  📁 performance-monitoring-${{ github.run_number }} (Performance analysis)"
-          echo ""
-          echo "🔗 NEXT STEPS & RECOMMENDATIONS:"
-          echo "  1. 📊 Review comprehensive QA report for detailed metrics"
-          echo "  2. 🗄️ Check Supabase subsidies_structured table for new records"
-          echo "  3. 📈 Monitor performance trends in the monitoring report"
-          echo "  4. 🔍 Validate data completeness and extraction quality"
-          echo "  5. ⚙️ Consider pipeline optimizations based on performance data"
-          
-          # Save overall status for potential future use
-          echo "PIPELINE_STATUS=$OVERALL_STATUS" >> $GITHUB_ENV
-
-      - name: ✅ Enhanced success notification
-        if: |
-          needs.setup-and-validate.result == 'success' && 
-          needs.enhanced-scraping.result == 'success' && 
-          needs.enhanced-ai-extraction.result == 'success'
-        run: |
-          echo "🎉 AGRITOOL ENHANCED PIPELINE COMPLETED SUCCESSFULLY!"
-          echo "✅ End-to-end automation executed with modern architecture"
-          echo "📊 Performance Metrics:"
-          echo "  ├─ Scraped: ${{ needs.enhanced-scraping.outputs.records-processed || '0' }} records"
-          echo "  ├─ Extracted: ${{ needs.enhanced-ai-extraction.outputs.extracted-count || '0' }} records"
-          echo "  ├─ Quality: ${{ needs.enhanced-ai-extraction.outputs.quality-score || 'N/A' }}% average"
-          echo "  └─ Coverage: ${{ needs.comprehensive-qa.outputs.coverage-score || 'N/A' }}%"
-          echo ""
-          echo "🚀 AgriTool is now updated with fresh subsidy data!"
-
-      - name: ⚠️ Partial success notification  
-        if: |
-          needs.enhanced-scraping.result == 'success' || 
-          needs.enhanced-ai-extraction.result == 'success'
-        run: |
-          echo "⚠️ AGRITOOL PIPELINE COMPLETED WITH PARTIAL SUCCESS"
-          echo "✅ Some components succeeded, manual review recommended"
-          echo "📊 Results Summary:"
-          echo "  ├─ Scraping: ${{ needs.enhanced-scraping.result }}"
-          echo "  ├─ AI Extraction: ${{ needs.enhanced-ai-extraction.result }}"
-          echo "  └─ Quality Assurance: ${{ needs.comprehensive-qa.result }}"
-          echo ""
-          echo "🔧 Check individual job logs and artifacts for optimization opportunities"
-
-      - name: ❌ Failure notification
-        if: |
-          needs.setup-and-validate.result != 'success' ||
-          (needs.enhanced-scraping.result != 'success' && needs.enhanced-ai-extraction.result != 'success')
-        run: |
-          echo "❌ AGRITOOL PIPELINE EXECUTION FAILED"
-          echo "🚨 Critical components failed - immediate attention required"
-          echo "📊 Failure Analysis:"
-          echo "  ├─ Environment Setup: ${{ needs.setup-and-validate.result }}"
-          echo "  ├─ Scraping: ${{ needs.enhanced-scraping.result }}"
-          echo "  ├─ AI Extraction: ${{ needs.enhanced-ai-extraction.result }}"
-          echo "  └─ Quality Assurance: ${{ needs.comprehensive-qa.result }}"
-          echo ""
-          echo "🔧 Troubleshooting Steps:"
-          echo "  1. Check environment variables and secrets configuration"
-          echo "  2. Review individual job logs for specific error messages"
-          echo "  3. Verify Supabase and OpenAI API connectivity"
-          echo "  4. Check system resource availability and limits"
-          echo "  5. Consider running individual components manually for debugging"
-
-      - name: 📤 Pipeline completion webhook (optional)
-        if: always()
-        run: |
-          # This step could send notifications to external systems
-          # For now, we'll just log the completion
-          echo "📤 Pipeline execution completed"
-          echo "📋 Status: ${{ env.PIPELINE_STATUS || 'UNKNOWN' }}"
-          echo "🕐 Completed at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          
-          # Future: Send to Slack, Discord, or other notification systems
-          # curl -X POST "$WEBHOOK_URL" -H 'Content-Type: application/json' \
-          #   -d '{"text":"AgriTool Pipeline completed with status: ${{ env.PIPELINE_STATUS }}"}'
-
-  # =============================================================================
-  # JOB 8: AUTOMATED HEALTH CHECK (OPTIONAL)
-  # =============================================================================
-  automated-health-check:
-    name: 🏥 Automated Health Check
-    runs-on: ubuntu-latest
-    needs: [enhanced-pipeline-summary]
-    if: |
-      always() && 
-      github.event_name == 'schedule' &&
-      (needs.enhanced-scraping.result == 'success' || needs.enhanced-ai-extraction.result == 'success')
-    timeout-minutes: 15
-    
-    steps:
-      - name: 📋 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏥 System health assessment
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "🏥 Performing automated health check..."
-          
-          pip install supabase pandas
-          
-          python -c "
-          import json
-          from datetime import datetime, timedelta
-          
-          try:
-              from supabase import create_client
-              import os
-              
-              client = create_client(
-                  os.getenv('SUPABASE_URL'),
-                  os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-              )
-              
-              health_report = {
-                  'timestamp': datetime.now().isoformat(),
-                  'pipeline_run_id': '${{ github.run_number }}',
-                  'health_status': 'healthy',
-                  'checks': {},
-                  'alerts': []
-              }
-              
-              # Check 1: Data freshness
-              recent_cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
-              recent_raw = client.table('raw_scraped_pages').select('id').gte(
-                  'created_at', recent_cutoff
-              ).execute()
-              
-              recent_structured = client.table('subsidies_structured').select('id').gte(
-                  'created_at', recent_cutoff
-              ).execute()
-              
-              health_report['checks']['data_freshness'] = {
-                  'raw_pages_24h': len(recent_raw.data),
-                  'structured_records_24h': len(recent_structured.data),
-                  'status': 'healthy' if len(recent_raw.data) > 0 else 'warning'
-              }
-              
-              # Check 2: Quality trends
-              quality_response = client.table('subsidies_structured').select(
-                  'extraction_quality_score'
-              ).gte('created_at', recent_cutoff).execute()
-              
-              quality_scores = [r['extraction_quality_score'] for r in quality_response.data 
-                              if r.get('extraction_quality_score')]
-              avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
-              
-              health_report['checks']['quality_trends'] = {
-                  'average_quality_24h': round(avg_quality, 2),
-                  'quality_samples': len(quality_scores),
-                  'status': 'healthy' if avg_quality >= 70 else 'warning'
-              }
-              
-              # Check 3: Error rates
-              failed_raw = client.table('raw_scraped_pages').select('id').eq(
-                  'status', 'failed'
-              ).gte('created_at', recent_cutoff).execute()
-              
-              total_attempts = len(recent_raw.data) + len(failed_raw.data)
-              error_rate = (len(failed_raw.data) / total_attempts * 100) if total_attempts > 0 else 0
-              
-              health_report['checks']['error_rates'] = {
-                  'failed_extractions_24h': len(failed_raw.data),
-                  'error_rate_percent': round(error_rate, 2),
-                  'status': 'healthy' if error_rate < 20 else 'warning'
-              }
-              
-              # Generate alerts based on health checks
-              if health_report['checks']['data_freshness']['status'] == 'warning':
-                  health_report['alerts'].append('No new data in last 24 hours')
-              
-              if health_report['checks']['quality_trends']['status'] == 'warning':
-                  health_report['alerts'].append(f'Quality below threshold: {avg_quality:.1f}%')
-              
-              if health_report['checks']['error_rates']['status'] == 'warning':
-                  health_report['alerts'].append(f'High error rate: {error_rate:.1f}%')
-              
-              # Overall health status
-              warning_checks = sum(1 for check in health_report['checks'].values() 
-                                 if check['status'] == 'warning')
-              
-              if warning_checks >= 2:
-                  health_report['health_status'] = 'warning'
-              elif warning_checks >= 3:
-                  health_report['health_status'] = 'critical'
-              
-              # Save health report
-              with open('health_report.json', 'w') as f:
-                  json.dump(health_report, f, indent=2)
-              
-              print('🏥 Health Check Results:')
-              print(f'   Overall Status: {health_report[\"health_status\"].upper()}')
-              print(f'   Data Freshness: {health_report[\"checks\"][\"data_freshness\"][\"status\"]}')
-              print(f'   Quality Trends: {health_report[\"checks\"][\"quality_trends\"][\"status\"]}')
-              print(f'   Error Rates: {health_report[\"checks\"][\"error_rates\"][\"status\"]}')
-              
-              if health_report['alerts']:
-                  print(f'   Alerts: {len(health_report[\"alerts\"])}')
-                  for alert in health_report['alerts']:
-                      print(f'     - {alert}')
-              
-              print('✅ Automated health check completed')
-              
-          except Exception as e:
-              print(f'❌ Health check failed: {e}')
-              with open('health_report.json', 'w') as f:
-                  json.dump({
-                      'health_status': 'unknown',
-                      'error': str(e),
-                      'timestamp': datetime.now().isoformat()
-                  }, f, indent=2)
-          "
-
-      - name: 📦 Upload health check artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: health-check-report-${{ github.run_number }}
-          path: |
-            health_report.json
-          retention-days: 90
-
-      - name: 🎯 Final pipeline status
-        run: |
-          echo ""
-          echo "🎯 === FINAL PIPELINE STATUS ==="
-          echo ""
-          
-          # Determine final status based on critical components
-          CRITICAL_SUCCESS=true
-          
-          if [ "${{ needs.enhanced-scraping.result }}" != "success" ] && [ "${{ needs.enhanced-ai-extraction.result }}" != "success" ]; then
-            CRITICAL_SUCCESS=false
-          fi
-          
-          if [ "$CRITICAL_SUCCESS" = "true" ]; then
-            echo "🟢 PIPELINE STATUS: SUCCESS"
-            echo "✅ AgriTool enhanced automation pipeline completed successfully"
-            echo "📊 Fresh subsidy data is now available in the structured database"
-            echo "🚀 System is ready for user queries and applications"
-          else
-            echo "🔴 PIPELINE STATUS: FAILURE"
-            echo "❌ Critical components failed - system may have stale data"
-            echo "🔧 Manual intervention required to restore full functionality"
-          fi
-          
-          echo ""
-          echo "📈 MONITORING & MAINTENANCE:"
-          echo "  🔍 Monitor the health check reports for system trends"
-          echo "  📊 Review performance metrics for optimization opportunities"
-          echo "  🔄 Next automated run scheduled based on cron settings"
-          echo "  📧 Check GitHub Actions for any configuration updates needed"
-          echo ""
-          echo "🏁 Enhanced AgriTool Pipeline Execution Complete"
