@@ -20,6 +20,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useTempDocumentUpload } from '@/hooks/useTempDocumentUpload';
 import FullExtractionReview from '@/components/review/FullExtractionReview';
+import { validate as uuidValidate } from 'uuid';
 
 interface DocumentUploadSectionProps {
   onExtractedDataChange: (allExtractedData: any[]) => void;
@@ -72,6 +73,11 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       // Show immediate uploading status
       setTimeout(() => {
         logger.debug(`⚡ Starting processing for document ${documentId}`);
+        // Only attempt extraction if document has a valid UUID
+        if (!uuidValidate(documentId)) {
+          logger.warn(`Skipping processing for invalid document id ${documentId}`);
+          return;
+        }
         // Process each document immediately after state update
         processDocument(documentId);
       }, 100);
@@ -113,6 +119,18 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       title: 'Data Applied Successfully',
       description: `Applied extracted data from ${getCompletedDocuments().length} documents to the form.`,
     });
+  };
+
+  const handleProcessDocument = (documentId: string) => {
+    if (!uuidValidate(documentId)) {
+      toast({
+        title: 'Document upload not complete',
+        description: 'Please wait and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    processDocument(documentId);
   };
 
   const getFileIcon = (fileName: string) => {
@@ -240,13 +258,13 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                         Review Data
                       </Button>
                     )}
-                    {(document.extraction_status === 'failed' || 
+                    {(document.extraction_status === 'failed' ||
                       (document.upload_progress === 100 && document.extraction_status === 'pending')) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => processDocument(document.id)}
-                        disabled={isProcessing}
+                        onClick={() => handleProcessDocument(document.id)}
+                        disabled={isProcessing || !uuidValidate(document.id)}
                       >
                         <Sparkles className="h-3 w-3 mr-1" />
                         {document.extraction_status === 'failed' ? 'Retry' : 'Start'} Extraction
