@@ -109,9 +109,19 @@ serve(async (req) => {
       originalParams: requestBody
     });
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!documentId || !uuidRegex.test(documentId)) {
+      const error = 'Extraction requires a valid UUID for document_id';
+      addDebugLog('DOCUMENT_ID_VALIDATION_FAILED', { documentId, error });
+      return new Response(JSON.stringify({ error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Validate required parameters
-    if (!documentId || !fileUrl || !fileName) {
-      const error = `Missing required parameters: documentId=${documentId}, fileUrl=${fileUrl}, fileName=${fileName}`;
+    if (!fileUrl || !fileName) {
+      const error = `Missing required parameters: fileUrl=${fileUrl}, fileName=${fileName}`;
       addDebugLog('VALIDATION_FAILED', { error });
       throw new Error(error);
     }
