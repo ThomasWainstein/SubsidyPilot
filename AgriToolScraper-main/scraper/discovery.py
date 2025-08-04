@@ -14,6 +14,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
 
+from markdownify import markdownify as md
+
 from .core import init_driver, detect_language, guess_canonical_field_fr, log_unmapped_label
 
 
@@ -90,15 +92,21 @@ def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
     """
     extracted = {
         'title': None,
+        'title_markdown': None,
         'description': None,
+        'description_markdown': None,
         'eligibility': None,
+        'eligibility_markdown': None,
         'amount_min': None,
         'amount_max': None,
         'deadline': None,
+        'deadline_markdown': None,
         'agency': None,
+        'agency_markdown': None,
         'categories': [],
         'region': [],
         'documents': [],
+        'documents_markdown': None,
         'raw_content': {}
     }
     
@@ -107,29 +115,36 @@ def extract_structured_content(soup: BeautifulSoup, url: str) -> Dict[str, Any]:
     
     # Then supplement with generic extraction (only for missing fields)
     extracted = extract_generic_content(soup, extracted, url)
-    
+
+    # Add basic metadata
+    extracted['source_url'] = url
+    extracted['domain'] = urlparse(url).netloc
+
     return extracted
 
 
 def extract_dsfr_tabs(soup: BeautifulSoup, extracted: Dict[str, Any]) -> Dict[str, Any]:
     """Extract content from DSFR tab panels, only setting non-empty values."""
-    
+
     # Map DSFR tab labels to our field names
     dsfr_field_mapping = {
         'description': ['description', 'présentation', 'objectifs'],
         'eligibility': ['éligibilité', 'conditions', 'bénéficiaires'],
-        'deadline': ['délais', 'calendrier', 'dates'],
+        'deadline': ['délais', 'calendrier', 'dates', 'échéances'],
         'documents': ['documents', 'pièces jointes', 'formulaires'],
-        'agency': ['organisme', 'contact', 'administration']
+        'agency': ['organisme', 'contact', 'administration'],
+        'amount': ['montant', 'budget', 'financement']
     }
-    
+
     # Look for DSFR tab panels
     tab_panels = soup.select('.fr-tabs__panel, [role="tabpanel"]')
-    
+
     for panel in tab_panels:
-        # Get panel text content
+        # Get panel HTML and text content
+        panel_html = panel.decode_contents()
+        panel_markdown = md(panel_html)
         panel_text = clean_text(panel.get_text())
-        
+
         # Skip empty panels
         if not panel_text.strip():
             continue
@@ -155,11 +170,21 @@ def extract_dsfr_tabs(soup: BeautifulSoup, extracted: Dict[str, Any]) -> Dict[st
                                     'url': href,
                                     'text': link_text
                                 })
-                        if doc_links:
-                            extracted[field_name] = doc_links
+                        extracted[field_name] = doc_links if doc_links else panel_text
+                        extracted['documents_markdown'] = panel_markdown
                     else:
-                        # Set text content
+                        # Set text and markdown content
                         extracted[field_name] = panel_text
+                        extracted[f"{field_name}_markdown"] = panel_markdown
+
+                    # Store raw content for analysis
+                    raw = extracted.setdefault('raw_content', {})
+                    if field_name not in raw:
+                        raw[field_name] = []
+                    raw[field_name].append({
+                        'text': panel_text,
+                        'markdown': panel_markdown
+                    })
                 break
     
     return extracted
@@ -175,6 +200,7 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
             enhanced_title = extract_enhanced_title(soup=soup, url=url)
             if enhanced_title:
                 extracted['title'] = enhanced_title
+                extracted['title_markdown'] = enhanced_title
             else:
                 # Fallback to original logic
                 title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
@@ -184,6 +210,7 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
                         title_text = clean_text(title_elem.get_text())
                         if title_text and title_text.lower() != "subsidy page":
                             extracted['title'] = title_text
+                            extracted['title_markdown'] = md(str(title_elem))
                             break
         except ImportError:
             # Fallback if enhanced extractor not available
@@ -194,6 +221,7 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
                     title_text = clean_text(title_elem.get_text())
                     if title_text and title_text.lower() != "subsidy page":
                         extracted['title'] = title_text
+                        extracted['title_markdown'] = md(str(title_elem))
                         break
     
     # Extract main content
@@ -217,24 +245,31 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
     for elem in main_content.find_all(['p', 'div', 'section', 'li']):
         text = clean_text(elem.get_text())
         if len(text) > 20:  # Only meaningful text blocks
-            text_blocks.append(text)
-    
+            text_blocks.append({'text': text, 'markdown': md(str(elem))})
+
     # Combine all text for analysis
-    full_text = ' '.join(text_blocks)
-    
+    full_text = ' '.join(block['text'] for block in text_blocks)
+
     # Extract description (only if not already set)
     if not extracted.get('description'):
-        description_candidates = [block for block in text_blocks if len(block) > 100]
+        description_candidates = [block for block in text_blocks if len(block['text']) > 100]
         if description_candidates:
-            extracted['description'] = description_candidates[0]
-    
+            extracted['description'] = description_candidates[0]['text']
+            extracted['description_markdown'] = description_candidates[0]['markdown']
+
     # Use field mapping to categorize content
-    for text_block in text_blocks:
+    for block in text_blocks:
+        text_block = block['text']
         field = guess_canonical_field_fr(text_block)
         if field:
             if field not in extracted['raw_content']:
                 extracted['raw_content'][field] = []
-            extracted['raw_content'][field].append(text_block)
+            extracted['raw_content'][field].append(block)
+            if not extracted.get(field):
+                extracted[field] = text_block
+                extracted[f"{field}_markdown"] = block['markdown']
+            elif extracted.get(field) and not extracted.get(f"{field}_markdown"):
+                extracted[f"{field}_markdown"] = block['markdown']
         else:
             # Log unmapped content for analysis
             if len(text_block) > 50:  # Only log substantial unmapped text
@@ -267,6 +302,7 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
     # Extract document links (only if not already set)
     if not extracted.get('documents'):
         doc_links = []
+        doc_html_segments = []
         for link in main_content.find_all('a', href=True):
             href = link['href']
             link_text = clean_text(link.get_text())
@@ -275,9 +311,19 @@ def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url:
                     'url': urljoin(url, href),
                     'text': link_text
                 })
-        
+                doc_html_segments.append(str(link))
+
         if doc_links:
             extracted['documents'] = doc_links
+            doc_markdown = md(''.join(doc_html_segments))
+            if not extracted.get('documents_markdown'):
+                extracted['documents_markdown'] = doc_markdown
+            if 'documents' not in extracted['raw_content']:
+                extracted['raw_content']['documents'] = []
+            extracted['raw_content']['documents'].append({
+                'text': ' '.join(link['text'] for link in doc_links),
+                'markdown': doc_markdown
+            })
     
     # Extract categories/tags from classes, breadcrumbs, or metadata (only if not already set)
     if not extracted.get('categories'):
