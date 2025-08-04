@@ -30,6 +30,7 @@ import {
 import { DocumentContent } from '@/utils/documentParser';
 import { formatFundingDisplay, getDeadlineInfo, cleanContent } from '@/utils/contentFormatting';
 import { TranslatedField } from './TranslatedField';
+import { ModernDocumentTable } from './ModernDocumentTable';
 import { Language } from '@/contexts/language/types';
 
 interface ComprehensiveSubsidyDisplayProps {
@@ -109,58 +110,21 @@ export const ComprehensiveSubsidyDisplay = ({
     );
   };
 
-  const renderDocumentSection = (
+  const renderModernDocumentSection = (
     title: string, 
-    documents: Array<{name: string; type: string; size?: string; url?: string; mandatory?: boolean; description?: string}> = [],
-    icon?: React.ReactNode
+    documents: any[] = [],
+    showTitle: boolean = true
   ) => {
     if (!documents || documents.length === 0) return null;
 
     return (
       <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            {icon}
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {documents.map((doc, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium text-sm">{doc.name}</div>
-                    {doc.description && (
-                      <div className="text-xs text-muted-foreground mt-1">{doc.description}</div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {doc.type.toUpperCase()}
-                      </Badge>
-                      {doc.size && (
-                        <span className="text-xs text-muted-foreground">{doc.size}</span>
-                      )}
-                      {doc.mandatory && (
-                        <Badge variant="destructive" className="text-xs">
-                          Required
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {doc.url && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                      <Download className="w-4 h-4 mr-1" />
-                      Download
-                    </a>
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
+        <CardContent className="pt-6">
+          <ModernDocumentTable 
+            documents={documents} 
+            title={title}
+            showTitle={showTitle}
+          />
         </CardContent>
       </Card>
     );
@@ -456,17 +420,15 @@ export const ComprehensiveSubsidyDisplay = ({
 
       {/* Required Documents */}
       <div id="documents">
-        {renderDocumentSection(
+        {renderModernDocumentSection(
           "Required Documents", 
-          extractedData?.documents?.required || [],
-          <FileText className="w-5 h-5 text-red-600" />
+          extractedData?.documents?.required || []
         )}
 
         {/* Associated Documents */}
-        {renderDocumentSection(
+        {renderModernDocumentSection(
           "Associated Documents & Resources", 
-          extractedData?.documents?.associated || [],
-          <Download className="w-5 h-5" />
+          extractedData?.documents?.associated || []
         )}
       </div>
 
