@@ -97,7 +97,7 @@ env:
   PYTHONPATH: '.'
 
 jobs:
-# =============================================================================
+  # =============================================================================
   # JOB 1: ENVIRONMENT SETUP & VALIDATION
   # =============================================================================
   setup-and-validate:
@@ -1401,6 +1401,7 @@ except Exception as e:
                   'created_at', recent_cutoff
               ).execute()
               
+              # Get recent structured data
               recent_structured = client.table('subsidies_structured').select('id').gte(
                   'created_at', recent_cutoff
               ).execute()
