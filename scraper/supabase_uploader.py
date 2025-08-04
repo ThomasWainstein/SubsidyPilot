@@ -164,9 +164,10 @@ class SupabaseUploader:
                 'source_site': self._extract_site_name(url),
                 'raw_html': data.get('html', ''),
                 'raw_text': data.get('text', ''),
+                'raw_markdown': data.get('text_markdown', ''),
                 'attachment_paths': json.dumps(data.get('attachments', [])),
                 'attachment_count': len(data.get('attachments', [])),
-                'scrape_date': time.strftime('%Y-%m-%d %H:%M:%S', 
+                'scrape_date': time.strftime('%Y-%m-%d %H:%M:%S',
                                            time.gmtime(data.get('extraction_timestamp', time.time()))),
                 'status': 'raw',
                 'error_message': data.get('error')

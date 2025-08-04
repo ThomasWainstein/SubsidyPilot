@@ -24,6 +24,7 @@ asyncio
 # Text processing
 python-dateutil>=2.8.0
 langdetect>=1.0.9
+markdownify>=0.11.6
 
 # Environment and configuration
 python-dotenv>=1.0.0
@@ -37,3 +38,4 @@ flake8>=6.0.0
 
 # System utilities
 psutil>=5.9.0
+

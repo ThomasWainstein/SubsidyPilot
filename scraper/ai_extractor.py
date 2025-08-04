@@ -160,15 +160,21 @@ class AIExtractor:
         log_id = log_record['id']
         url = log_record.get('source_url', '')
         raw_text = log_record.get('raw_text', '')
-        
+        raw_markdown = log_record.get('raw_markdown', '')
+
         self.logger.info(f"🔍 Processing: {url}")
-        
-        if not raw_text:
-            self.logger.warning(f"⚠️ No raw text found for {url}")
+
+        if not raw_text and not raw_markdown:
+            self.logger.warning(f"⚠️ No raw content found for {url}")
             return
-        
+
+        content = raw_markdown or raw_text
+
+        if raw_markdown:
+            self.logger.info("📝 Markdown content detected; preserving formatting in extraction")
+
         # Extract structured data using GPT-4
-        extracted_data = self._extract_with_gpt4(raw_text, url)
+        extracted_data = self._extract_with_gpt4(content, url, bool(raw_markdown))
         
         if extracted_data:
             # Save to subsidies_structured table
@@ -183,20 +189,21 @@ class AIExtractor:
             self._update_log_status(log_id, 'failed')
             self.stats['failed_extractions'] += 1
     
-    def _extract_with_gpt4(self, raw_text: str, url: str) -> Optional[Dict[str, Any]]:
+    def _extract_with_gpt4(self, raw_content: str, url: str, is_markdown: bool = False) -> Optional[Dict[str, Any]]:
         """Extract structured data using GPT-4"""
-        
+
         # Prepare extraction prompt
         system_prompt = self._get_extraction_prompt()
+        content_label = "Content (markdown):" if is_markdown else "Content:"
         user_prompt = f"""
 Extract subsidy information from this French agricultural funding page:
 
 URL: {url}
 
-Content:
-{raw_text[:15000]}  # Limit content to avoid token limits
+{content_label}
+{raw_content[:15000]}  # Limit content to avoid token limits
 
-Please extract all available information and return as valid JSON.
+Please extract all available information and return as valid JSON. Preserve markdown formatting in your output.
 """
         
         try:
@@ -265,6 +272,7 @@ Please extract all available information and return as valid JSON.
         return """You are an expert at extracting comprehensive structured information from French agricultural subsidy and funding pages.
 
 CRITICAL: NEVER SIMPLIFY OR FLATTEN COMPLEX INFORMATION. Extract ALL details completely.
+If the source uses markdown formatting (headings, lists), preserve this structure in the output fields.
 
 Extract the following information and return it as valid JSON:
 
@@ -310,7 +318,8 @@ CRITICAL RULES:
 6. Extract ALL eligibility criteria including exclusions
 7. Return ONLY valid JSON, no explanations
 8. Use arrays for multi-value fields
-9. Preserve French language exactly as written"""
+9. Preserve markdown formatting for lists, bullets, and headings when present
+10. Preserve French language exactly as written"""
     
     def _validate_extracted_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and clean extracted data"""
