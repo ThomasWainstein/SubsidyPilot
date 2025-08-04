@@ -147,76 +147,83 @@ async function extractStructuredContent(html: string, sourceUrl: string): Promis
   }
 
   const extractionPrompt = `
-Extract and preserve COMPLETE hierarchical structure using structured markdown format. Every heading, subheading, bullet point, numbered list, table, and indentation level must be maintained exactly as it appears in the source.
+You are an advanced extraction agent for AgriTool. Extract ALL sections and downloadable files from this FranceAgriMer subsidy page.
 
-CRITICAL REQUIREMENTS:
+CRITICAL: Output a structured JSON that preserves every section, document, deadline, and application step for perfect UI rendering.
 
-### Hierarchical Structure as Markdown
-- Convert ALL content to structured markdown with preserved hierarchy
-- Use proper markdown syntax: # for headings, - for bullets, 1. for numbered lists
-- Preserve exact nesting with proper indentation (2 spaces per level)
-- Tables must use markdown table format | Column | Column |
-- Code blocks for technical content using backticks
-
-### Structure Types to Preserve
-- Headings: #, ##, ### etc. for h1, h2, h3
-- Lists: - for bullets with proper indentation
-- Numbered: 1., 2. etc. with sub-numbering 1.1, 1.2
-- Tables: Markdown table format with proper alignment
-
-### Content Extraction Rules
-- Extract content AS MARKDOWN preserving all visual hierarchy
-- If you cannot parse structure, include raw HTML in code blocks
-- NEVER flatten lists or remove indentation
-- Preserve bold, italic, and other formatting using markdown syntax
-
-HTML Content:
-${html}
-
-Return a JSON object with this EXACT structure:
+### Required JSON Structure:
 {
-  "url": "${sourceUrl}",
   "title": "Exact page title",
-  "content_markdown": "# Complete structured markdown content with preserved hierarchy\\n\\n## Section 1\\n- Bullet point 1\\n  - Sub-bullet 1\\n  - Sub-bullet 2\\n- Bullet point 2\\n\\n### Subsection\\n1. Numbered item 1\\n   1. Sub-numbered item\\n2. Numbered item 2",
-  "structured_sections": {
-    "eligibility": "## Eligibility Criteria\\n\\n- French farmers with valid SIRET\\n  - Individual farmers\\n  - Agricultural cooperatives\\n- Project location requirements\\n  - Must be in rural designated areas",
-    "application_steps": "## Application Process\\n\\n1. **Preparation Phase**\\n   1. Gather required documents\\n   2. Complete eligibility self-assessment\\n2. **Submission Phase**\\n   1. Online application portal\\n   2. Document upload",
-    "evaluation_criteria": "## Evaluation Criteria\\n\\n### Technical Merit (40 points)\\n- Innovation level\\n- Technical feasibility\\n\\n### Economic Impact (35 points)\\n- Job creation potential\\n- Revenue projections",
-    "deadlines": "## Important Dates\\n\\n- **Application Opens**: Date\\n- **Application Deadline**: Date\\n- **Decision Notification**: Date",
-    "amounts": "## Funding Details\\n\\n### Grant Amounts\\n- **Minimum**: Amount\\n- **Maximum**: Amount\\n- **Co-financing Rate**: Percentage"
-  },
-  "documents": [
+  "url": "${sourceUrl}",
+  "sections": [
     {
-      "name": "Document name",
-      "type": "pdf|doc|xls|other",
-      "size": "File size",
-      "url": "Full document URL",
-      "markdown_link": "[Document Name](full-url) (PDF, 2MB)"
+      "name": "Présentation",
+      "content_html": "Rich HTML with bullets, links, formatting preserved"
+    },
+    {
+      "name": "Pour qui ?",
+      "content_html": "Eligibility criteria with full details and formatting"
+    },
+    {
+      "name": "Quand ?",
+      "content_html": "All timing information with formatting",
+      "deadlines": [
+        { "label": "Application deadline", "date": "YYYY-MM-DD", "notes": "Additional timing info" }
+      ]
+    },
+    {
+      "name": "Comment ?",
+      "content_html": "Application process details",
+      "application_steps": [
+        { "step_number": 1, "title": "Step title", "instructions_html": "Detailed instructions" }
+      ]
+    },
+    {
+      "name": "Documents",
+      "documents": [
+        {
+          "label": "Document name",
+          "url": "Full download URL",
+          "type": "pdf|docx|xlsx|etc",
+          "size": "File size if available",
+          "required": true/false,
+          "notes": "Purpose or description"
+        }
+      ]
+    },
+    {
+      "name": "Contact",
+      "emails": ["email@domain.fr"],
+      "phones": ["phone numbers"],
+      "links": ["https://portal-links.fr"]
+    },
+    {
+      "name": "FAQ",
+      "content_html": "FAQ content if present"
     }
   ],
-  "extraction_warnings": [
-    "List any hierarchical preservation issues"
-  ],
-  "completeness": {
-    "hasStructuredContent": true/false,
-    "hasDocuments": true/false,
-    "hasEligibility": true/false,
-    "hasApplicationSteps": true/false,
-    "missingFields": ["field1", "field2"],
-    "warnings": ["warning1", "warning2"],
-    "markdown_quality_score": 0-100,
-    "structure_integrity": 0-100
-  }
+  "region": ["France", "specific regions"],
+  "sector": ["Agriculture", "Marine", etc],
+  "legal_entity_type": ["Farmers", "Cooperatives", etc],
+  "amount": ["funding amounts"],
+  "co_financing_rate": null,
+  "agency": "FranceAgriMer",
+  "program": "Program name",
+  "extraction_date": "${new Date().toISOString().split('T')[0]}"
 }
 
-EXTRACTION RULES:
-- Keep ALL original text, spacing, and structure in markdown format
-- For lists: preserve nesting levels exactly with proper markdown indentation
-- For documents: create proper markdown links with metadata
-- For sections: extract as clean markdown with hierarchy preserved
-- Flag unmappable content in warnings, never omit it
-- Ensure markdown will render identically to source visual structure
-`;
+### Extraction Rules:
+1. **Extract ALL downloadable documents** - find every PDF, DOCX, XLSX link with labels and sizes
+2. **Preserve formatting** - keep bullets, bold, italics, line breaks in content_html
+3. **Extract deadlines** - parse all dates, convert to YYYY-MM-DD format
+4. **Capture application steps** - number and detail each step
+5. **Find contact info** - emails, phones, portal links
+6. **Never flatten** - keep each logical section separate
+
+### HTML Content to Extract:
+${html}
+
+Return ONLY the JSON object, no additional text.`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -258,31 +265,44 @@ EXTRACTION RULES:
   }
 }
 
-async function storeStructuredExtraction(supabase: any, extraction: DeepExtractionResult): Promise<string> {
-  console.log('Storing structured extraction...');
+async function storeStructuredExtraction(supabase: any, extraction: any): Promise<string> {
+  console.log('Storing comprehensive structured extraction...');
 
+  // Extract description from first section
+  const description = extraction.sections?.[0]?.content_html
+    ?.replace(/<[^>]*>/g, '') // Strip HTML tags
+    ?.substring(0, 500) || 'No description available';
+
+  // Extract legacy fields for compatibility
+  const eligibilitySection = extraction.sections?.find((s: any) => s.name === 'Pour qui ?');
+  const applicationSection = extraction.sections?.find((s: any) => s.name === 'Comment ?');
+  
   const { data, error } = await supabase
     .from('subsidies_structured')
     .upsert({
       url: extraction.url,
       title: extraction.title,
-      description: extraction.content_markdown?.split('\n').slice(0, 3).join(' ').substring(0, 500) || 'No description available',
-      eligibility: extraction.structured_sections?.eligibility || '',
-      application_method: extraction.structured_sections?.application_steps || '',
-      evaluation_criteria: extraction.structured_sections?.evaluation_criteria || '',
-      documents: extraction.documents || [],
+      description: description,
+      eligibility: eligibilitySection?.content_html || '',
+      application_method: applicationSection?.content_html || '',
+      evaluation_criteria: '',
+      documents: extraction.sections?.find((s: any) => s.name === 'Documents')?.documents || [],
+      region: extraction.region || [],
+      amount: extraction.amount || [],
+      co_financing_rate: extraction.co_financing_rate,
+      agency: extraction.agency || 'FranceAgriMer',
+      sector: extraction.sector || [],
+      legal_entity_type: extraction.legal_entity_type || [],
       audit: {
-        content_markdown: extraction.content_markdown,
-        structured_sections: extraction.structured_sections,
-        completeness: extraction.completeness,
+        comprehensive_sections: extraction.sections,
         extraction_timestamp: new Date().toISOString(),
-        extraction_method: 'deep_structural_markdown',
-        markdown_quality: extraction.completeness?.markdown_quality_score || 0,
-        structure_integrity: extraction.completeness?.structure_integrity || 0
+        extraction_method: 'comprehensive_franceagrimer_v2',
+        extraction_date: extraction.extraction_date,
+        program: extraction.program
       },
       requirements_extraction_status: 'deep_complete',
-      missing_fields: extraction.completeness?.missingFields || [],
-      audit_notes: extraction.completeness?.warnings?.join('; ') || '',
+      missing_fields: [],
+      audit_notes: `Comprehensive extraction with ${extraction.sections?.length || 0} sections`,
       updated_at: new Date().toISOString()
     })
     .select('id')

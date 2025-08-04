@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { HierarchicalSubsidyDisplay } from '@/components/subsidy/HierarchicalSubsidyDisplay';
+import { ComprehensiveSubsidyDisplay } from '@/components/subsidy/ComprehensiveSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
 import { toast } from 'sonner';
@@ -180,13 +181,20 @@ const SubsidyDetailPage = () => {
             </Button>
           </div>
 
-          {/* Hierarchical Subsidy Display */}
+          {/* Comprehensive or Hierarchical Subsidy Display */}
           <div className="space-y-6">
-            <HierarchicalSubsidyDisplay 
-              subsidy={subsidy} 
-              extractedData={extractedData}
-              currentLanguage={language}
-            />
+            {(subsidy.audit as any)?.comprehensive_sections && (subsidy.audit as any).comprehensive_sections.length > 0 ? (
+              <ComprehensiveSubsidyDisplay 
+                subsidy={subsidy} 
+                currentLanguage={language}
+              />
+            ) : (
+              <HierarchicalSubsidyDisplay 
+                subsidy={subsidy} 
+                extractedData={extractedData}
+                currentLanguage={language}
+              />
+            )}
             
             {/* Application Form Section */}
             <ExtractedFormApplication
