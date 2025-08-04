@@ -233,8 +233,10 @@ export const useTempDocumentUpload = () => {
   );
   // ---- END UPLOAD CONTROLLER ----
 
-  // Enhanced upload with real progress and cancellation
-  const uploadFile = async (documentId: string, file: File) => {
+  // Enhanced upload with real progress and cancellation. Returns the public URL
+  // of the uploaded file so the caller can continue processing (e.g. create a
+  // database record).
+  const uploadFile = async (documentId: string, file: File): Promise<string | undefined> => {
     logger.debug('Starting enhanced upload', { fileName: file.name });
     
     // Validate file first
@@ -300,14 +302,14 @@ export const useTempDocumentUpload = () => {
         file_url: publicUrl,
         upload_progress: 100,
         upload_status: 'completed',
-        classification_status: 'processing',
+        classification_status: 'pending',
+        extraction_status: 'pending',
         last_updated: new Date().toISOString()
       });
 
       logger.debug('Upload completed', { filePath });
 
-      // Start classification immediately
-      await startClassification(documentId, publicUrl, file.name);
+      return publicUrl;
 
     } catch (error) {
       console.error('💥 Upload failed:', error);
@@ -341,17 +343,125 @@ export const useTempDocumentUpload = () => {
     }
   };
 
-  // ... (rest of your hook code, unchanged from previous version) ...
-  // Classification, Extraction, Mutations, updateDocument, addDocument, processDocument,
-  // retryDocument, cancelUpload, removeDocument, getExtractedData, getCompletedDocuments,
-  // reset, polling, stats, and the final return block.
+  // ---- STATE MANAGEMENT HELPERS ----
+  const updateDocument = useCallback((id: string, updates: Partial<TempDocument>) => {
+    setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, ...updates } : doc));
+  }, []);
 
-  // (For brevity and safety, I've not included the unchanged sections,
-  // but the above resolves the conflict and gives you a ready-to-use controller.)
+  const addDocument = (file: File): string => {
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const newDoc: TempDocument = {
+      id: tempId,
+      file,
+      file_name: file.name,
+      file_size: file.size,
+      file_type: file.type,
+      upload_progress: 0,
+      upload_status: 'idle',
+      classification_status: 'pending',
+      extraction_status: 'pending',
+      created_at: new Date().toISOString(),
+      last_updated: new Date().toISOString()
+    };
+    setDocuments(prev => [...prev, newDoc]);
+    return tempId;
+  };
 
-  // You can copy-paste the entire function, or just replace the
-  // "createUploadController" part in your file with the above.
+  // Create document record after upload and trigger extraction
+  const processDocument = async (documentId: string) => {
+    const doc = documents.find(d => d.id === documentId);
+    if (!doc) return;
 
-  // If you want the *full file including all unchanged logic*, let me know!
+    try {
+      // Upload file if not already uploaded
+      let fileUrl = doc.file_url;
+      if (!fileUrl) {
+        fileUrl = await uploadFile(documentId, doc.file);
+      }
+      if (!fileUrl) throw new Error('Failed to upload file');
+
+      // Create a record in Supabase to obtain a persistent UUID
+      const { data, error } = await supabase
+        .from('farm_documents')
+        .insert({
+          file_name: doc.file_name,
+          file_type: doc.file_type,
+          file_size: doc.file_size,
+          file_url: fileUrl,
+        })
+        .select('id')
+        .single();
+
+      if (error || !data?.id) {
+        throw new Error(error?.message || 'Failed to create document record');
+      }
+
+      const newId = data.id as string;
+
+      // Replace temp ID with actual UUID
+      setDocuments(prev => prev.map(d => d.id === documentId ? { ...d, id: newId } : d));
+
+      // Validate UUID before invoking extraction
+      if (newId.startsWith('temp-')) {
+        throw new Error('Invalid document UUID');
+      }
+
+      updateDocument(newId, {
+        extraction_status: 'processing',
+        last_updated: new Date().toISOString()
+      });
+
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-document-data', {
+        body: {
+          documentId: newId,
+          fileUrl,
+          fileName: doc.file_name
+        }
+      });
+
+      if (extractionError) {
+        throw new Error(extractionError.message);
+      }
+
+      updateDocument(newId, {
+        extraction_status: 'completed',
+        extraction_data: extractionData,
+        last_updated: new Date().toISOString()
+      });
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Processing failed';
+      updateDocument(documentId, {
+        extraction_status: 'failed',
+        error_message: message,
+        last_updated: new Date().toISOString()
+      });
+    }
+  };
+
+  const removeDocument = (id: string) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  const getExtractedData = () =>
+    documents.filter(d => d.extraction_status === 'completed' && d.extraction_data).map(d => d.extraction_data);
+
+  const getCompletedDocuments = () =>
+    documents.filter(d => d.extraction_status === 'completed');
+
+  const isProcessing = documents.some(
+    d => d.upload_status === 'uploading' || d.classification_status === 'processing' || d.extraction_status === 'processing'
+  );
+
+  return {
+    documents,
+    addDocument,
+    processDocument,
+    removeDocument,
+    getExtractedData,
+    getCompletedDocuments,
+    isProcessing
+  };
 };
+
 

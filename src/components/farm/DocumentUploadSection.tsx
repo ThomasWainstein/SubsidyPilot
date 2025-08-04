@@ -123,6 +123,8 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     return <FileText className="h-4 w-4" />;
   };
 
+  const isTempId = (id: string) => id?.startsWith('temp-');
+
   const getStatusBadge = (document: any) => {
     if (document.extraction_status === 'completed') {
       return <Badge variant="default" className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Ready</Badge>;
@@ -134,9 +136,12 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
+      if (isTempId(document.id)) {
+        return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Waiting for upload</Badge>;
+      }
       return <Badge variant="outline"><Sparkles className="h-3 w-3 mr-1" />Ready to Extract</Badge>;
     }
-    return <Badge variant="outline">Uploading...</Badge>;
+    return <Badge variant="outline">{isTempId(document.id) ? 'Waiting...' : 'Uploading...'}</Badge>;
   };
 
   const getStatusMessage = (document: any) => {
@@ -150,6 +155,9 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       return <span className="text-xs text-red-600">Extraction failed, click retry</span>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
+      if (isTempId(document.id)) {
+        return <span className="text-xs text-muted-foreground">Waiting for upload confirmation...</span>;
+      }
       return <span className="text-xs text-blue-600">Click to start extraction</span>;
     }
     if (document.upload_progress < 100) {
@@ -240,13 +248,13 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                         Review Data
                       </Button>
                     )}
-                    {(document.extraction_status === 'failed' || 
+                    {(document.extraction_status === 'failed' ||
                       (document.upload_progress === 100 && document.extraction_status === 'pending')) && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => processDocument(document.id)}
-                        disabled={isProcessing}
+                        disabled={isProcessing || isTempId(document.id)}
                       >
                         <Sparkles className="h-3 w-3 mr-1" />
                         {document.extraction_status === 'failed' ? 'Retry' : 'Start'} Extraction
