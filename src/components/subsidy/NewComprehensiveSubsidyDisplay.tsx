@@ -18,6 +18,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ModernDocumentTable } from './ModernDocumentTable';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { SimpleSubsidyDisplay } from './SimpleSubsidyDisplay';
 
 interface NewComprehensiveSubsidyDisplayProps {
   subsidy: any;
@@ -61,7 +63,7 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
   
   // Fallback to existing structure if comprehensive sections not available
   if (comprehensiveSections.length === 0) {
-    return <div className="text-muted-foreground">Comprehensive display not available. Using legacy format.</div>;
+    return <SimpleSubsidyDisplay subsidy={subsidy} />;
   }
 
   const formatAmount = (amount: any) => {
@@ -277,9 +279,25 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
             )}
           </div>
           
-          {subsidy.description && (
+          {/* Render markdown description if available, fallback to plain text */}
+          {(subsidy.description_markdown || subsidy.description) && (
             <div className="text-sm text-muted-foreground">
-              {subsidy.description}
+              {subsidy.description_markdown ? (
+                <MarkdownRenderer content={subsidy.description_markdown} />
+              ) : (
+                subsidy.description
+              )}
+            </div>
+          )}
+          
+          {/* Display documents if available */}
+          {subsidy.documents && subsidy.documents.length > 0 && (
+            <div className="mt-4">
+              <ModernDocumentTable 
+                documents={subsidy.documents} 
+                title="Related Documents"
+                showTitle={true}
+              />
             </div>
           )}
         </CardContent>
@@ -309,13 +327,15 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">{section.name}</h3>
                   
-                  {/* Main content */}
-                  {section.content_html && (
+                  {/* Main content - check for markdown fields first */}
+                  {subsidy[`${section.name.toLowerCase()}_markdown`] ? (
+                    <MarkdownRenderer content={subsidy[`${section.name.toLowerCase()}_markdown`]} />
+                  ) : section.content_html ? (
                     <div 
                       className="prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ __html: section.content_html }}
                     />
-                  )}
+                  ) : null}
                   
                   {/* Special sections */}
                   {section.deadlines && renderDeadlines(section.deadlines)}

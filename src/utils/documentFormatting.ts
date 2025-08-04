@@ -90,12 +90,27 @@ export const getFilenameFromUrl = (url: string): string => {
  * Extract document info from various formats
  */
 export const extractDocumentInfo = (doc: any) => {
+  // Handle different document formats from FranceAgriMer
+  if (typeof doc === 'string') {
+    // Simple URL string
+    return {
+      displayName: formatDocumentName(getFilenameFromUrl(doc)),
+      originalName: getFilenameFromUrl(doc),
+      url: doc,
+      type: getFileExtension(doc),
+      size: '-',
+      required: false,
+      notes: ''
+    };
+  }
+
+  // Handle object with filename/url structure
   const label = doc.label || doc.name || doc.filename || '';
   const url = doc.url || '';
-  const type = doc.type || getFileExtension(label || url);
+  const type = doc.type || doc.extension?.replace('.', '') || getFileExtension(label || url);
   const size = doc.size || '';
   const required = doc.required || doc.mandatory || false;
-  const notes = doc.notes || doc.description || '';
+  const notes = doc.notes || doc.description || doc.text || '';
   
   // Get the best display name
   let displayName = label;
@@ -103,9 +118,18 @@ export const extractDocumentInfo = (doc: any) => {
     displayName = getFilenameFromUrl(url);
   }
   
+  // If we have text but no filename, extract from text
+  if (!displayName && doc.text) {
+    const textParts = doc.text.split(' ');
+    const filenameMatch = textParts.find(part => part.includes('.'));
+    if (filenameMatch) {
+      displayName = filenameMatch;
+    }
+  }
+  
   return {
-    displayName: formatDocumentName(displayName),
-    originalName: label || getFilenameFromUrl(url),
+    displayName: formatDocumentName(displayName || 'Document'),
+    originalName: label || getFilenameFromUrl(url) || displayName || 'Document',
     url,
     type: type.toLowerCase(),
     size: formatFileSize(size),
