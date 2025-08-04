@@ -334,12 +334,12 @@ const InlineFieldEditor: React.FC<InlineFieldEditorProps> = ({
                 </div>
               )}
             </div>
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setIsEditing(true)}
               disabled={disabled}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity"
               aria-label={`Edit ${field.label} field`}
             >
               <Edit3 className="w-4 h-4" aria-hidden="true" />
@@ -395,7 +395,7 @@ const ArrayEditor: React.FC<ArrayEditorProps> = ({
               type="button"
               onClick={() => removeItem(index)}
               disabled={disabled}
-              className="ml-1 hover:bg-red-100 rounded-full p-0.5"
+              className="ml-1 hover:bg-red-100 rounded-full p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Remove ${item} from list`}
             >
               <Trash2 className="w-3 h-3" aria-hidden="true" />

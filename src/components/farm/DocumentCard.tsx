@@ -93,7 +93,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
   };
 
   const handlePrefillClick = () => {
-    if (extraction) {
+    if (extraction?.status === 'completed') {
       navigate(`/farm/${farmId}/edit?prefill=true&extractionId=${extraction.id}`);
     }
   };
@@ -118,9 +118,9 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
                   <Tag className="h-3 w-3 mr-1" />
                   {document.category}
                 </Badge>
-                {extraction && (
-                  <Badge 
-                    variant="secondary" 
+                {extraction?.status === 'completed' && (
+                  <Badge
+                    variant="secondary"
                     className={`${getConfidenceColor(extraction.confidence_score)} text-xs`}
                   >
                     <Sparkles className="h-3 w-3 mr-1" />
@@ -139,7 +139,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
           </div>
           
           <div className="flex items-center space-x-1 ml-2">
-            {extraction && (
+            {extraction?.status === 'completed' && (
               <Button
                 variant="default"
                 size="sm"
@@ -157,7 +157,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
               fileName={document.file_name}
               fileUrl={document.file_url}
               category={document.category}
-              hasExistingExtraction={!!extraction}
+              hasExistingExtraction={extraction?.status === 'completed'}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 h-auto"
             />
             <Button

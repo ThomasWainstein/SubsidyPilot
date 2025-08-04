@@ -6,6 +6,7 @@ import useHybridExtraction from '@/hooks/useHybridExtraction';
 import ExtractionMethodToggle from '@/components/review/ExtractionMethodToggle';
 import SourceBadge from '@/components/review/SourceBadge';
 import ConfidenceBadge from '@/components/review/ConfidenceBadge';
+import { logger } from '@/lib/logger';
 
 const HybridExtractionDemo: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -24,7 +25,7 @@ const HybridExtractionDemo: React.FC = () => {
     confidence
   } = useHybridExtraction({
     onSuccess: (result) => {
-      console.log('Extraction completed:', result);
+      logger.debug('Extraction completed:', result);
     },
     onError: (error) => {
       console.error('Extraction failed:', error);

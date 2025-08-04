@@ -9,6 +9,8 @@ export const FEATURES = {
   ADMIN_PANEL: true,
   SEEDING: IS_DEVELOPMENT, // Only allow seeding in development
   DEBUG_LOGGING: IS_DEVELOPMENT,
+  ALLOW_MOCK_DATA: IS_DEVELOPMENT, // Prevent mock data in production
+  TESTING_MODE: IS_DEVELOPMENT && typeof window !== 'undefined' && (window as any).__TESTING__,
 } as const;
 
 // Admin configuration

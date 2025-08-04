@@ -202,9 +202,12 @@ def find_executable_driver(driver_dir, driver_name):
                 analysis_size = 0
             log_step(f"🚨 AGGRESSIVE: 📄 ANALYSIS File: {analysis_file} | File: {analysis_is_file} | Executable: {analysis_is_executable} | Permissions: {analysis_permissions} | Size: {analysis_size}")
             
-            # AGGRESSIVE CRASH: If THIRD_PARTY_NOTICES is present, warn loudly
-            if "THIRD_PARTY_NOTICES" in analysis_file:
-                log_error(f"🚨 AGGRESSIVE: ❌ WARNING: THIRD_PARTY_NOTICES file detected in directory: {analysis_file}")
+            # NOTE: THIRD_PARTY_NOTICES files are normal documentation files in ChromeDriver directories
+            # Only warn if they would actually be selected as the driver binary
+            if "THIRD_PARTY_NOTICES" in analysis_file and analysis_file == driver_name:
+                log_error(f"🚨 CRITICAL: THIRD_PARTY_NOTICES file would be selected as driver: {analysis_file}")
+            elif "THIRD_PARTY_NOTICES" in analysis_file:
+                log_step(f"📄 INFO: Found documentation file (normal): {analysis_file}")
                 
     except Exception as e:
         log_error(f"🚨 AGGRESSIVE: ❌ Could not list driver directory: {e}")
@@ -586,9 +589,80 @@ def collect_links(driver, link_selector):
     """
     Collect all 'href' URLs matching a given CSS selector.
     Returns a list of unique href URLs.
+    
+    Enhanced with diagnostics and fallback selectors (2025-08-01):
+    - Tests multiple selectors in priority order
+    - Logs which selectors match/fail
+    - Saves debug HTML when no results found
+    - Warns if unexpectedly low URL count
     """
-    links = driver.find_elements(By.CSS_SELECTOR, link_selector)
-    return list({l.get_attribute("href") for l in links if l.get_attribute("href")})
+    import os
+    import time
+    from datetime import datetime
+    
+    # Split multi-selector config (comma-separated)
+    selectors = [s.strip() for s in link_selector.split(',')]
+    
+    collected_urls = []
+    matching_selector = None
+    
+    # Try each selector in order until one works
+    for selector in selectors:
+        try:
+            links = driver.find_elements(By.CSS_SELECTOR, selector)
+            if links:
+                collected_urls = list({l.get_attribute("href") for l in links if l.get_attribute("href")})
+                matching_selector = selector
+                print(f"[INFO] Selector '{selector}' matched {len(links)} elements, collected {len(collected_urls)} URLs")
+                break
+            else:
+                print(f"[WARN] Selector '{selector}' found no elements")
+        except Exception as e:
+            print(f"[ERROR] Selector '{selector}' failed: {e}")
+    
+    # If no selectors worked, save diagnostics
+    if not collected_urls:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Ensure logs directory exists
+        os.makedirs("logs", exist_ok=True)
+        
+        # Save HTML for debugging
+        html_file = f"logs/failed_page_{timestamp}.html"
+        try:
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            print(f"[DEBUG] Saved page HTML to {html_file}")
+        except Exception as e:
+            print(f"[ERROR] Failed to save HTML: {e}")
+        
+        # Save screenshot for visual debugging
+        screenshot_file = f"logs/url_collection_error_{timestamp}.png"
+        try:
+            driver.save_screenshot(screenshot_file)
+            print(f"[DEBUG] Saved screenshot to {screenshot_file}")
+        except Exception as e:
+            print(f"[ERROR] Failed to save screenshot: {e}")
+        
+        # Log comprehensive failure info
+        print(f"[CRITICAL] No URLs collected with any selector from: {selectors}")
+        print(f"[DEBUG] Current page URL: {driver.current_url}")
+        print(f"[DEBUG] Page title: {driver.title}")
+        
+        # Check if page loaded correctly
+        body_elements = driver.find_elements(By.TAG_NAME, "body")
+        if not body_elements:
+            print("[ERROR] Page body not found - possible loading failure")
+        
+        raise RuntimeError(f"Could not find subsidy URLs with any selector: {selectors}")
+    
+    # Warn if unexpectedly low count (typical FranceAgriMer pages have 6+ subsidies)
+    if len(collected_urls) < 3:
+        print(f"[WARN] Only {len(collected_urls)} URLs collected - expected 6+ per page")
+        print(f"[WARN] Check if site structure changed or if pagination is working correctly")
+    
+    print(f"[SUCCESS] Collected {len(collected_urls)} URLs using selector: {matching_selector}")
+    return collected_urls
 
 def wait_for_selector(driver, selector, timeout=10):
     """

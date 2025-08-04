@@ -83,6 +83,8 @@ This project uses two sets of Supabase credentials:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+Both values are **required**. The application will throw an error during startup if either variable is missing.
+
 ### Backend / Scraper
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON`
@@ -98,6 +100,11 @@ See `.env.example` for a full template. Configure your Supabase project secrets 
 supabase secrets set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
                     NEXT_PUBLIC_SUPABASE_ANON=your-anon-key
 ```
+
+## Documentation
+
+- [Project Documentation](docs/README.md)
+- [Human Review Interface Guide](docs/features/human-review.md)
 
 ## Classification and Simulation Overview
 

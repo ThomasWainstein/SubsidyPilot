@@ -19,6 +19,7 @@ import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
 import AdminPage from '@/pages/AdminPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AdminPanel from '@/components/admin/AdminPanel';
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
 import ConsultantDashboardPage from '@/pages/ConsultantDashboardPage';
 import OrganizationDashboardPage from '@/pages/OrganizationDashboardPage';
@@ -183,22 +184,30 @@ function App() {
                     } 
                   />
                     {/* Regulations route removed per business requirements */}
-                  <Route 
-                    path="/admin" 
-                    element={
-                      <ProtectedRoute>
-                        <AdminPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/settings" 
-                    element={
-                      <ProtectedRoute>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    } 
-                  />
+                   <Route 
+                     path="/admin" 
+                     element={
+                       <ProtectedRoute>
+                         <AdminPage />
+                       </ProtectedRoute>
+                     } 
+                   />
+                   <Route 
+                     path="/admin-panel" 
+                     element={
+                       <ProtectedRoute>
+                         <AdminPanel />
+                       </ProtectedRoute>
+                     } 
+                   />
+                   <Route 
+                     path="/settings" 
+                     element={
+                       <ProtectedRoute>
+                         <SettingsPage />
+                       </ProtectedRoute>
+                     } 
+                   />
                   <Route 
                     path="/employee-dashboard" 
                     element={

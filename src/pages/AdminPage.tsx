@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import SubsidyManagement from '@/components/admin/SubsidyManagement';
 import ImportManagement from '@/components/admin/ImportManagement';
 import SubsidyTitleImprover from '@/components/admin/SubsidyTitleImprover';
+import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getIsAdmin, FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -76,13 +77,17 @@ const AdminPage = () => {
             )}
           </div>
           <Tabs defaultValue="subsidies" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="subsidies">Subsidy Management</TabsTrigger>
+              <TabsTrigger value="validation">Canonical Validation</TabsTrigger>
               <TabsTrigger value="improve">Data Quality</TabsTrigger>
               <TabsTrigger value="import">Data Import</TabsTrigger>
             </TabsList>
             <TabsContent value="subsidies">
               <SubsidyManagement />
+            </TabsContent>
+            <TabsContent value="validation">
+              <CanonicalValidationDashboard />
             </TabsContent>
             <TabsContent value="improve">
               <div className="space-y-6">

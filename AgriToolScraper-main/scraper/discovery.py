@@ -168,14 +168,33 @@ def extract_dsfr_tabs(soup: BeautifulSoup, extracted: Dict[str, Any]) -> Dict[st
 def extract_generic_content(soup: BeautifulSoup, extracted: Dict[str, Any], url: str) -> Dict[str, Any]:
     """Extract content using generic selectors, only filling missing fields."""
     
-    # Extract title (only if not already set)
+    # Extract title (only if not already set) using enhanced extractor
     if not extracted.get('title'):
-        title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
-        for selector in title_selectors:
-            title_elem = soup.select_one(selector)
-            if title_elem and title_elem.get_text(strip=True):
-                extracted['title'] = clean_text(title_elem.get_text())
-                break
+        try:
+            from enhanced_title_extractor import extract_enhanced_title
+            enhanced_title = extract_enhanced_title(soup=soup, url=url)
+            if enhanced_title:
+                extracted['title'] = enhanced_title
+            else:
+                # Fallback to original logic
+                title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
+                for selector in title_selectors:
+                    title_elem = soup.select_one(selector)
+                    if title_elem and title_elem.get_text(strip=True):
+                        title_text = clean_text(title_elem.get_text())
+                        if title_text and title_text.lower() != "subsidy page":
+                            extracted['title'] = title_text
+                            break
+        except ImportError:
+            # Fallback if enhanced extractor not available
+            title_selectors = ['h1', '.entry-title', '.post-title', 'h1.title']
+            for selector in title_selectors:
+                title_elem = soup.select_one(selector)
+                if title_elem and title_elem.get_text(strip=True):
+                    title_text = clean_text(title_elem.get_text())
+                    if title_text and title_text.lower() != "subsidy page":
+                        extracted['title'] = title_text
+                        break
     
     # Extract main content
     content_selectors = [

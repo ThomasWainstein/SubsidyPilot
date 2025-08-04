@@ -104,8 +104,15 @@ describe('FullExtractionReview', () => {
 
   it('should render view document button', () => {
     render(<FullExtractionReview {...mockProps} />);
-    
+
     const viewButton = screen.getByRole('button', { name: /view document/i });
     expect(viewButton).toBeDefined();
+  });
+
+  it('has accessible edit controls for fields', () => {
+    render(<FullExtractionReview {...mockProps} />);
+
+    const editButton = screen.getByLabelText(/edit farm name field/i);
+    expect(editButton).toBeDefined();
   });
 });

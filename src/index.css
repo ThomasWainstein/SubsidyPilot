@@ -97,3 +97,8 @@
 .animate-slide-up {
   animation: slide-up 0.3s ease-out forwards;
 }
+
+/* Style for numbered lists in application steps */
+.step-number {
+  @apply flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium;
+}

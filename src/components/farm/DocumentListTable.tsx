@@ -3,23 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  FileText, 
-  Eye, 
-  Calendar, 
+import {
+  FileText,
+  Eye,
+  Calendar,
   HardDrive,
   Tag,
   AlertCircle,
   CheckCircle,
   Clock,
   Sparkles,
-  Trash2
+  Trash2,
+  Bug,
+  Download
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DocumentListTableProps {
   farmId: string;
@@ -62,9 +66,9 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   };
 
   const ExtractionStatus = ({ document }: { document: any }) => {
-    const { data: extraction } = useLatestDocumentExtraction(document.id);
-    
-    if (!extraction) {
+    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id);
+
+    if (extractionStatus.status === 'not_extracted') {
       return (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
@@ -76,11 +80,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     }
 
     const getStatusIcon = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return <CheckCircle className="h-3 w-3 text-green-600" />;
         case 'failed':
           return <AlertCircle className="h-3 w-3 text-red-600" />;
+        case 'processing':
         case 'pending':
           return <Clock className="h-3 w-3 text-blue-600" />;
         default:
@@ -89,11 +94,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     };
 
     const getStatusColor = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return 'bg-green-100 text-green-800';
         case 'failed':
           return 'bg-red-100 text-red-800';
+        case 'processing':
         case 'pending':
           return 'bg-blue-100 text-blue-800';
         default:
@@ -106,17 +112,78 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
         <Badge variant="secondary" className={`text-xs ${getStatusColor()}`}>
           {getStatusIcon()}
           <span className="ml-1">
-            {extraction.status === 'completed' && `Extracted (${extraction.confidence_score || 0}%)`}
-            {extraction.status === 'failed' && 'Failed'}
-            {extraction.status === 'pending' && 'Processing...'}
+            {extractionStatus.status === 'completed' && `Extracted (${extractionStatus.fieldCount || 0} fields)`}
+            {extractionStatus.status === 'failed' && 'Failed'}
+            {extractionStatus.status === 'processing' && 'Processing...'}
           </span>
         </Badge>
-        {extraction.error_message && (
-          <span className="text-xs text-red-600" title={extraction.error_message}>
-            {extraction.error_message.substring(0, 30)}...
+        {extractionStatus.error && (
+          <span className="text-xs text-red-600" title={extractionStatus.error}>
+            {extractionStatus.error.substring(0, 30)}...
           </span>
         )}
       </div>
+    );
+  };
+
+  const ExtractionLogsButton = ({ documentId }: { documentId: string }) => {
+    const { data: extraction } = useLatestDocumentExtraction(documentId);
+
+    if (!extraction) return null;
+
+    const debugInfo = extraction.debug_info;
+    const errorMessage = extraction.error_message;
+
+    const handleExport = () => {
+      if (!debugInfo) return;
+      const dataStr = JSON.stringify(debugInfo, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `extraction-${documentId}-debug.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    return (
+      <Dialog>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <Bug className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Logs</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Extraction Logs</DialogTitle>
+          </DialogHeader>
+          {errorMessage && (
+            <div className="mb-2 text-sm text-red-600 break-words">{errorMessage}</div>
+          )}
+          {debugInfo && (
+            <pre className="bg-gray-100 p-2 rounded text-xs max-h-64 overflow-auto">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          )}
+          {!debugInfo && !errorMessage && (
+            <div className="text-sm text-gray-500">No logs available.</div>
+          )}
+          {debugInfo && (
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" /> Export JSON
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -200,6 +267,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
                       category={document.category}
                       className="text-xs h-7 px-2"
                     />
+                    <ExtractionLogsButton documentId={document.id} />
                     <Button
                       variant="ghost"
                       size="sm"

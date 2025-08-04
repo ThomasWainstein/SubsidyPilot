@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { logger } from '@/lib/logger';
 import { 
   Upload, 
   FileText, 
@@ -53,7 +54,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (disabled) return;
 
-    console.log('🎯 Files dropped:', {
+    logger.debug('🎯 Files dropped', {
       fileCount: acceptedFiles.length,
       files: acceptedFiles.map(f => ({
         name: f.name,
@@ -64,13 +65,13 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     });
 
     for (const file of acceptedFiles) {
-      console.log(`🔄 Processing file: ${file.name}`);
+      logger.debug(`🔄 Processing file: ${file.name}`);
       const documentId = addDocument(file);
       
-      console.log(`📤 Scheduling processing for document ${documentId}`);
+      logger.debug(`📤 Scheduling processing for document ${documentId}`);
       // Show immediate uploading status
       setTimeout(() => {
-        console.log(`⚡ Starting processing for document ${documentId}`);
+        logger.debug(`⚡ Starting processing for document ${documentId}`);
         // Process each document immediately after state update
         processDocument(documentId);
       }, 100);

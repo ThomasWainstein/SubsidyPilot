@@ -8,6 +8,7 @@ import { Subsidy } from '@/types/subsidy';
 import MatchConfidenceBadge from '@/components/MatchConfidenceBadge';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalizedContent } from '@/utils/language';
+import { getSubsidyTitle } from '@/utils/subsidyFormatting';
 
 interface SimulationResultsProps {
   subsidies: Subsidy[];
@@ -49,7 +50,7 @@ const SimulationResults = ({ subsidies, onReset, onClose }: SimulationResultsPro
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">
-                  {subsidy.title || 'Untitled'}
+                  {getSubsidyTitle(subsidy)}
                 </CardTitle>
                 <MatchConfidenceBadge confidence={subsidy.matchConfidence} />
               </div>
