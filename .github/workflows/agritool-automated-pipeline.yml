@@ -37,6 +37,47 @@ on:
         options:
           - 'true'
           - 'false'
+      scraper_mode:
+        description: 'Scraper operation mode'
+        required: false
+        default: 'scrape'
+        type: choice
+        options:
+          - 'discover'
+          - 'scrape'
+          - 'test'
+      max_workers:
+        description: 'Maximum concurrent workers'
+        required: false
+        default: '5'
+        type: string
+      ai_batch_size:
+        description: 'AI extraction batch size'
+        required: false
+        default: '10'
+        type: string
+      ai_model:
+        description: 'AI model for extraction'
+        required: false
+        default: 'gpt-4-turbo-preview'
+        type: choice
+        options:
+          - 'gpt-4-turbo-preview'
+          - 'gpt-4'
+          - 'gpt-4o'
+      quality_threshold:
+        description: 'Minimum quality threshold'
+        required: false
+        default: '70'
+        type: string
+      enable_monitoring:
+        description: 'Enable monitoring'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
   schedule:
     # Run daily at 2 AM UTC for full automation
@@ -68,9 +109,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+      OPENAI_API_KEY: ${{ secrets.SCRAPER_RAW_GPT_API }}
 
     outputs:
       setup-success: ${{ steps.setup.outputs.success }}
@@ -397,9 +437,8 @@ except Exception as e:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+      OPENAI_API_KEY: ${{ secrets.SCRAPER_RAW_GPT_API }}
       DISPLAY: ':99'
       
     steps:
@@ -579,9 +618,8 @@ except Exception as e:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+      OPENAI_API_KEY: ${{ secrets.SCRAPER_RAW_GPT_API }}
 
     steps:
       - name: 📋 Checkout repository
@@ -770,9 +808,8 @@ except Exception as e:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
-      OPENAI_API_KEY: ${{ secrets.SCRAPPER_RAW_GPT_API }}
+      SCRAPER_RAW_GPT_API: ${{ secrets.SCRAPER_RAW_GPT_API }}
+      OPENAI_API_KEY: ${{ secrets.SCRAPER_RAW_GPT_API }}
     
     steps:
       - name: 📋 Checkout repository
