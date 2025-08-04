@@ -291,6 +291,72 @@ export type Database = {
           },
         ]
       }
+      extraction_qa_results: {
+        Row: {
+          admin_notes: string | null
+          admin_required: boolean
+          admin_status: string | null
+          completeness_score: number | null
+          created_at: string
+          documents_loss: string[] | null
+          errors: string[] | null
+          id: string
+          missing_fields: string[] | null
+          qa_pass: boolean
+          qa_timestamp: string
+          review_data: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_url: string
+          structural_integrity_score: number | null
+          structure_loss: string[] | null
+          updated_at: string
+          warnings: string[] | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          admin_required?: boolean
+          admin_status?: string | null
+          completeness_score?: number | null
+          created_at?: string
+          documents_loss?: string[] | null
+          errors?: string[] | null
+          id?: string
+          missing_fields?: string[] | null
+          qa_pass?: boolean
+          qa_timestamp?: string
+          review_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url: string
+          structural_integrity_score?: number | null
+          structure_loss?: string[] | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Update: {
+          admin_notes?: string | null
+          admin_required?: boolean
+          admin_status?: string | null
+          completeness_score?: number | null
+          created_at?: string
+          documents_loss?: string[] | null
+          errors?: string[] | null
+          id?: string
+          missing_fields?: string[] | null
+          qa_pass?: boolean
+          qa_timestamp?: string
+          review_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string
+          structural_integrity_score?: number | null
+          structure_loss?: string[] | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Relationships: []
+      }
       farm_documents: {
         Row: {
           category: Database["public"]["Enums"]["document_category"]
@@ -723,13 +789,17 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
+          extraction_batch_id: string | null
           funding_type: string | null
           id: string
+          import_job_id: string | null
           language: string[] | null
           legal_entities: string[] | null
           matching_tags: string[] | null
           raw_content: Json | null
+          record_status: string | null
           region: string[] | null
+          scrape_date: string | null
           source_url: string | null
           status: string | null
           tags: string[] | null
@@ -750,13 +820,17 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
+          import_job_id?: string | null
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          record_status?: string | null
           region?: string[] | null
+          scrape_date?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
@@ -777,13 +851,17 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
+          import_job_id?: string | null
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          record_status?: string | null
           region?: string[] | null
+          scrape_date?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
@@ -814,11 +892,13 @@ export type Database = {
           eligibility: string | null
           eligible_actions: string[] | null
           evaluation_criteria: string | null
+          extraction_batch_id: string | null
           funding_source: string | null
           funding_tranches: Json | null
           funding_type: string | null
           geographic_scope: Json | null
           id: string
+          import_job_id: string | null
           ineligible_actions: string[] | null
           investment_types: string[] | null
           language: string | null
@@ -834,12 +914,15 @@ export type Database = {
           project_duration: string | null
           questionnaire_steps: Json | null
           raw_log_id: string | null
+          record_status: string | null
           region: string[] | null
           rejection_conditions: string[] | null
           reporting_requirements: string | null
           requirements_extraction_status: string | null
           scoring_criteria: Json | null
+          scrape_date: string | null
           sector: string[] | null
+          source_url_verified: string | null
           submission_conditions: string | null
           technical_support: string | null
           title: string | null
@@ -867,11 +950,13 @@ export type Database = {
           eligibility?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extraction_batch_id?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
           geographic_scope?: Json | null
           id?: string
+          import_job_id?: string | null
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
@@ -887,12 +972,15 @@ export type Database = {
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
+          record_status?: string | null
           region?: string[] | null
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           scoring_criteria?: Json | null
+          scrape_date?: string | null
           sector?: string[] | null
+          source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
@@ -920,11 +1008,13 @@ export type Database = {
           eligibility?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extraction_batch_id?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
           geographic_scope?: Json | null
           id?: string
+          import_job_id?: string | null
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
@@ -940,12 +1030,15 @@ export type Database = {
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
+          record_status?: string | null
           region?: string[] | null
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           scoring_criteria?: Json | null
+          scrape_date?: string | null
           sector?: string[] | null
+          source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
@@ -1006,6 +1099,47 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "subsidy_form_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_form_schema_errors: {
+        Row: {
+          created_at: string
+          document_filename: string | null
+          document_url: string
+          extraction_attempt: number | null
+          id: string
+          parse_error: string | null
+          raw_ai_output: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_filename?: string | null
+          document_url: string
+          extraction_attempt?: number | null
+          id?: string
+          parse_error?: string | null
+          raw_ai_output?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_filename?: string | null
+          document_url?: string
+          extraction_attempt?: number | null
+          id?: string
+          parse_error?: string | null
+          raw_ai_output?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidy_form_schema_errors_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
             referencedColumns: ["id"]
           },
         ]
@@ -1173,6 +1307,17 @@ export type Database = {
           subsidy_regions: string[]
         }
         Returns: number
+      }
+      complete_data_purge: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      get_data_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          count: number
+        }[]
       }
       release_processing_lock: {
         Args: { log_id: string }
