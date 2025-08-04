@@ -3,23 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  FileText, 
-  Eye, 
-  Calendar, 
+import {
+  FileText,
+  Eye,
+  Calendar,
   HardDrive,
   Tag,
   AlertCircle,
   CheckCircle,
   Clock,
   Sparkles,
-  Trash2
+  Trash2,
+  Bug,
+  Download
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
 import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DocumentListTableProps {
   farmId: string;
@@ -120,6 +124,67 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     );
   };
 
+  const ExtractionLogsButton = ({ documentId }: { documentId: string }) => {
+    const { data: extraction } = useLatestDocumentExtraction(documentId);
+
+    if (!extraction) return null;
+
+    const debugInfo = extraction.debug_info;
+    const errorMessage = extraction.error_message;
+
+    const handleExport = () => {
+      if (!debugInfo) return;
+      const dataStr = JSON.stringify(debugInfo, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `extraction-${documentId}-debug.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    return (
+      <Dialog>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <Bug className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Logs</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Extraction Logs</DialogTitle>
+          </DialogHeader>
+          {errorMessage && (
+            <div className="mb-2 text-sm text-red-600 break-words">{errorMessage}</div>
+          )}
+          {debugInfo && (
+            <pre className="bg-gray-100 p-2 rounded text-xs max-h-64 overflow-auto">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          )}
+          {!debugInfo && !errorMessage && (
+            <div className="text-sm text-gray-500">No logs available.</div>
+          )}
+          {debugInfo && (
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" /> Export JSON
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   if (documents.length === 0) {
     return (
       <Card>
@@ -200,6 +265,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
                       category={document.category}
                       className="text-xs h-7 px-2"
                     />
+                    <ExtractionLogsButton documentId={document.id} />
                     <Button
                       variant="ghost"
                       size="sm"
