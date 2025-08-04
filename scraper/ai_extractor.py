@@ -248,8 +248,13 @@ Please extract all available information and return as valid JSON. Preserve mark
             self._ensure_text_variants(extracted_data, is_markdown)
 
             # Enhanced quality validation
-            quality_score = self._assess_extraction_quality(extracted_data, raw_content)
-            extracted_data['extraction_quality_score'] = quality_score
+            try:
+                quality_score = self._assess_extraction_quality(extracted_data, raw_content)
+                extracted_data['extraction_quality_score'] = quality_score
+            except Exception as e:
+                self.logger.error(f"Quality assessment failed: {e}")
+                extracted_data['extraction_quality_score'] = 0.0
+
 
             return extracted_data
 
