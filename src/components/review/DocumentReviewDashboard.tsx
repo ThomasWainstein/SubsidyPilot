@@ -20,6 +20,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useDocumentsForReview, useReviewStatistics } from '@/hooks/useDocumentReview';
+import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import DocumentPreviewModal from './DocumentPreviewModal';
@@ -63,19 +64,30 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
     }
   };
 
-  const getStatusIcon = (extraction: any) => {
-    if (!extraction) return <Clock className="h-4 w-4 text-gray-500" />;
-    
-    switch (extraction.status) {
+  const getStatusIcon = (status: string, confidence?: number) => {
+    switch (status) {
       case 'completed':
-        return extraction.confidence_score < 70 
+        return confidence && confidence < 70
           ? <AlertTriangle className="h-4 w-4 text-yellow-500" />
           : <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'failed':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      default:
+      case 'processing':
+      case 'pending':
         return <Clock className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
     }
+  };
+
+  const StatusCell = ({ document }: { document: any }) => {
+    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id);
+    return (
+      <div className="flex items-center gap-2">
+        {getStatusIcon(extractionStatus.status, document.extraction?.confidence_score)}
+        <span className="text-sm">{extractionStatus.status}</span>
+      </div>
+    );
   };
 
   const handleReviewDocument = (documentId: string) => {
@@ -272,12 +284,7 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
                     </TableCell>
                     
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(document.extraction)}
-                        <span className="text-sm">
-                          {document.extraction?.status || 'pending'}
-                        </span>
-                      </div>
+                      <StatusCell document={document} />
                     </TableCell>
                     
                     <TableCell>

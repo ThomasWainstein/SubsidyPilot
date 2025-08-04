@@ -1,35 +1,57 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { Tables } from '@/integrations/supabase/types';
 
-// Poll every 2 seconds for status updates
-const POLLING_INTERVAL = 2000;
+const POLLING_INTERVAL = 2000; // Poll every 2 seconds
 
-type DocumentStatus = Pick<
-  Tables<'document_extractions'>,
-  'status' | 'confidence_score' | 'error_message' | 'created_at' | 'updated_at'
->;
+export interface DocumentStatus {
+  status: 'completed' | 'failed' | 'processing' | 'pending' | 'not_extracted';
+  confidence_score: number | null;
+  error_message: string | null;
+  field_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
-/**
- * Polls the document_extractions table for the latest status of a document.
- * Returns null if no extraction has been recorded yet.
- */
 export const useFarmDocumentStatus = (documentId: string) => {
-  return useQuery<DocumentStatus | null>({
+  return useQuery<DocumentStatus>({
     queryKey: ['farm-document-status', documentId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('document_extractions')
-        .select('status, confidence_score, error_message, created_at, updated_at')
+        .select('status, confidence_score, error_message, extracted_data, created_at, updated_at')
         .eq('document_id', documentId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
-      return data as DocumentStatus | null;
+
+      if (!data) {
+        return {
+          status: 'not_extracted',
+          confidence_score: null,
+          error_message: null,
+          field_count: 0,
+          created_at: null,
+          updated_at: null,
+        };
+      }
+
+      const extracted = (data.extracted_data ?? {}) as Record<string, unknown>;
+      const fieldCount = Object.keys(extracted).length;
+
+      return {
+        status: data.status as DocumentStatus['status'],
+        confidence_score: data.confidence_score,
+        error_message: data.error_message,
+        field_count: fieldCount,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
     },
     enabled: !!documentId,
     refetchInterval: POLLING_INTERVAL,
   });
 };
+
+export default useFarmDocumentStatus;
