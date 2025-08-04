@@ -18,7 +18,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
 
 interface DocumentListTableProps {
@@ -62,7 +62,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   };
 
   const ExtractionStatus = ({ document }: { document: any }) => {
-    const { data: extraction } = useLatestDocumentExtraction(document.id);
+    const { data: extraction } = useFarmDocumentStatus(document.id);
     
     if (!extraction) {
       return (
@@ -82,6 +82,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
         case 'failed':
           return <AlertCircle className="h-3 w-3 text-red-600" />;
         case 'pending':
+        case 'processing':
           return <Clock className="h-3 w-3 text-blue-600" />;
         default:
           return <Sparkles className="h-3 w-3 text-gray-600" />;
@@ -95,6 +96,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
         case 'failed':
           return 'bg-red-100 text-red-800';
         case 'pending':
+        case 'processing':
           return 'bg-blue-100 text-blue-800';
         default:
           return 'bg-gray-100 text-gray-800';
@@ -108,7 +110,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
           <span className="ml-1">
             {extraction.status === 'completed' && `Extracted (${extraction.confidence_score || 0}%)`}
             {extraction.status === 'failed' && 'Failed'}
-            {extraction.status === 'pending' && 'Processing...'}
+            {(extraction.status === 'pending' || extraction.status === 'processing') && 'Processing...'}
           </span>
         </Badge>
         {extraction.error_message && (
