@@ -25,6 +25,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from bs4 import BeautifulSoup
 import requests
+from markdownify import markdownify as md
 
 # NEW: Python document extraction (replaces Tika)
 try:
@@ -162,10 +163,12 @@ class RobustWebDriver:
             'title': '',
             'html': '',
             'text': '',
+            'text_markdown': '',
             'links': [],
             'attachments': [],
             'document_extractions': {},
             'combined_content': '',
+            'combined_content_markdown': '',
             'metadata': {},
             'extraction_timestamp': time.time(),
             'success': False
@@ -178,7 +181,9 @@ class RobustWebDriver:
             # Extract basic page information
             result['title'] = self._extract_title()
             result['html'] = self.driver.page_source
-            result['text'] = self._extract_clean_text()
+            plain_text, markdown_text = self._extract_clean_text()
+            result['text'] = plain_text
+            result['text_markdown'] = markdown_text
             result['links'] = self._extract_links()
             result['attachments'] = self._extract_attachments(url)
             result['metadata'] = self._extract_metadata()
@@ -195,21 +200,47 @@ class RobustWebDriver:
                 
                 if downloaded_files:
                     self.logger.info(f"📚 Extracting text from {len(downloaded_files)} documents...")
-                    result['document_extractions'] = self.document_extractor.extract_multiple_attachments(downloaded_files)
-                    
-                    # Create combined content (page + documents)
+                    raw_extractions = self.document_extractor.extract_multiple_attachments(downloaded_files)
+
+                    doc_extractions = {}
+                    for path, data in raw_extractions.items():
+                        text = data.get('text', '') if isinstance(data, dict) else str(data)
+                        try:
+                            markdown = md(text)
+                        except Exception as e:
+                            self.logger.warning(f"⚠️ Markdown conversion error for {path}: {e}")
+                            markdown = text
+                        if isinstance(data, dict):
+                            doc_extractions[path] = {**data, 'markdown': markdown}
+                        else:
+                            doc_extractions[path] = {'text': text, 'markdown': markdown}
+
+                    result['document_extractions'] = doc_extractions
+
+                    # Create combined content (page + documents) for plain text
                     merged_data = self.document_extractor.merge_page_and_attachment_content(
                         {'url': url, 'title': result['title'], 'text': result['text']},
-                        result['document_extractions']
+                        {k: v.get('text', '') for k, v in doc_extractions.items()}
                     )
                     result['combined_content'] = merged_data['combined_text']
                     result['extraction_summary'] = merged_data['extraction_summary']
-                    
-                    self.logger.info(f"✅ Document extraction complete: {merged_data['extraction_summary']['successful_extractions']} successful")
+
+                    # Build markdown combined content
+                    combined_md_parts = [f"# {result['title']}", result['text_markdown']]
+                    for path, data in doc_extractions.items():
+                        doc_title = Path(path).name
+                        combined_md_parts.append(f"## Attachment: {doc_title}\n{data.get('markdown', '')}")
+                    result['combined_content_markdown'] = "\n\n".join(combined_md_parts)
+
+                    self.logger.info(
+                        f"✅ Document extraction complete: {merged_data['extraction_summary']['successful_extractions']} successful"
+                    )
                 else:
                     result['combined_content'] = f"=== PAGE TITLE ===\n{result['title']}\n\n=== PAGE CONTENT ===\n{result['text']}"
+                    result['combined_content_markdown'] = f"# {result['title']}\n\n{result['text_markdown']}"
             else:
                 result['combined_content'] = f"=== PAGE TITLE ===\n{result['title']}\n\n=== PAGE CONTENT ===\n{result['text']}"
+                result['combined_content_markdown'] = f"# {result['title']}\n\n{result['text_markdown']}"
             
             result['success'] = True
             self.logger.info(f"✅ Successfully extracted content from: {url}")
@@ -253,24 +284,33 @@ class RobustWebDriver:
         
         return title_candidates[0] if title_candidates else "Unknown Title"
 
-    def _extract_clean_text(self) -> str:
-        """Extract clean text content from page"""
+    def _extract_clean_text(self) -> Tuple[str, str]:
+        """Extract clean text and markdown content from page"""
         try:
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            
+
             # Remove script and style elements
             for script in soup(["script", "style", "nav", "footer", "header"]):
                 script.decompose()
-            
-            # Get text and clean it
-            text = soup.get_text()
+
+            # Get plain text
+            text = soup.get_text(separator="\n")
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            return '\n'.join(chunk for chunk in chunks if chunk)
-            
+            plain_text = '\n'.join(chunk for chunk in chunks if chunk)
+
+            # Convert to markdown, fallback to plain text on error
+            try:
+                markdown_text = md(str(soup))
+            except Exception as e:
+                self.logger.warning(f"⚠️ Markdown conversion error: {e}")
+                markdown_text = plain_text
+
+            return plain_text, markdown_text
+
         except Exception as e:
             self.logger.warning(f"⚠️ Text extraction error: {e}")
-            return ""
+            return "", ""
 
     def _extract_links(self) -> List[Dict[str, str]]:
         """Extract all relevant links from page"""
@@ -482,7 +522,9 @@ if __name__ == "__main__":
     if result['success']:
         print(f"✅ Successfully extracted content")
         print(f"📋 Title: {result['title']}")
-        print(f"📝 Text length: {len(result['text'])} characters")
+        print(
+            f"📝 Text length: {len(result['text'])} characters, Markdown length: {len(result.get('text_markdown', ''))}"
+        )
         print(f"🔗 Links found: {len(result['links'])}")
         print(f"📎 Attachments: {len(result['attachments'])}")
     else:
