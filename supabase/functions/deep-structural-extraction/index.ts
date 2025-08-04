@@ -182,12 +182,13 @@ CRITICAL: Output a structured JSON that preserves every section, document, deadl
       "name": "Documents",
       "documents": [
         {
-          "label": "Document name",
+          "label": "EXACT original document name/title from page",
+          "filename": "actual-filename.pdf",
           "url": "Full download URL",
           "type": "pdf|docx|xlsx|etc",
-          "size": "File size if available",
+          "size": "File size if available (e.g. 792.18 KB)",
           "required": true/false,
-          "notes": "Purpose or description"
+          "notes": "Purpose or description if available"
         }
       ]
     },
@@ -213,12 +214,26 @@ CRITICAL: Output a structured JSON that preserves every section, document, deadl
 }
 
 ### Extraction Rules:
-1. **Extract ALL downloadable documents** - find every PDF, DOCX, XLSX link with labels and sizes
+1. **CRITICAL - Extract ALL downloadable documents with EXACT names**:
+   - Find every PDF, DOCX, XLSX, DOC link on the page
+   - Use the EXACT link text or title as shown on the page for "label"
+   - Extract the actual filename from the URL for "filename"
+   - Capture file size if displayed (e.g. "792.18 KB", "1.5 MB")
+   - Determine if document is required or optional based on context
+   - NEVER use generic names like "Document" - always use the specific label from the page
+
 2. **Preserve formatting** - keep bullets, bold, italics, line breaks in content_html
 3. **Extract deadlines** - parse all dates, convert to YYYY-MM-DD format
 4. **Capture application steps** - number and detail each step
 5. **Find contact info** - emails, phones, portal links
 6. **Never flatten** - keep each logical section separate
+
+### DOCUMENT EXTRACTION EXAMPLES:
+If page shows: "Télécharger PJ AAP OS4.1 TA 1 (PDF - 792 KB)"
+Extract as: {"label": "PJ AAP OS4.1 TA 1", "filename": "PJ_AAP_OS41_TA1_2022-11-25.pdf", "type": "pdf", "size": "792 KB"}
+
+If page shows: "Annexes financières DS OS 4.1"
+Extract as: {"label": "Annexes financières DS OS 4.1", "filename": "Annexes_financieres_DS_OS41_2022-11-25.pdf", "type": "pdf"}
 
 ### HTML Content to Extract:
 ${html}

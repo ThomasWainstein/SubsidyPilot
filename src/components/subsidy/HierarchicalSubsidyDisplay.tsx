@@ -171,7 +171,11 @@ export const HierarchicalSubsidyDisplay: React.FC<HierarchicalSubsidyDisplayProp
                         <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{doc.name || doc.markdown_link?.match(/\[([^\]]+)\]/)?.[1] || 'Document'}</span>
+                            <span className="font-medium">
+                              {doc.label || doc.name || doc.filename || 
+                               doc.markdown_link?.match(/\[([^\]]+)\]/)?.[1] || 
+                               `Document ${index + 1}`}
+                            </span>
                             {doc.type && (
                               <Badge variant="outline" className="text-xs">
                                 {doc.type.toUpperCase()}
