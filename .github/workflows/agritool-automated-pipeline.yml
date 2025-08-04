@@ -11,18 +11,18 @@
 # 7. Performance optimization and resource management
 # =============================================================================
 
-name: AgriTool Enhanced Automated Pipeline
+name: 🌾 AgriTool Pipeline
 
 on:
   workflow_dispatch:
     inputs:
       max_pages:
-        description: 'Maximum pages to scrape (0 = unlimited)'
+        description: 'Maximum pages to scrape'
         required: false
-        default: '50'
+        default: '10'
         type: string
       dry_run:
-        description: 'Dry run mode (no database writes)'
+        description: 'Dry run mode'
         required: false
         default: 'false'
         type: choice
@@ -30,48 +30,7 @@ on:
           - 'false'
           - 'true'
       run_tests:
-        description: 'Run comprehensive test suite'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      scraper_mode:
-        description: 'Scraper operation mode'
-        required: false
-        default: 'scrape'
-        type: choice
-        options:
-          - 'discover'
-          - 'scrape'
-          - 'test'
-      max_workers:
-        description: 'Maximum concurrent workers for scraping'
-        required: false
-        default: '5'
-        type: string
-      ai_batch_size:
-        description: 'AI extraction batch size'
-        required: false
-        default: '10'
-        type: string
-      ai_model:
-        description: 'AI model to use for extraction'
-        required: false
-        default: 'gpt-4-turbo-preview'
-        type: choice
-        options:
-          - 'gpt-4-turbo-preview'
-          - 'gpt-4'
-          - 'gpt-4o'
-      quality_threshold:
-        description: 'Minimum quality threshold for extractions'
-        required: false
-        default: '70'
-        type: string
-      enable_monitoring:
-        description: 'Enable real-time monitoring'
+        description: 'Run tests'
         required: false
         default: 'true'
         type: choice
@@ -102,7 +61,7 @@ jobs:
   # =============================================================================
   setup-and-validate:
     name: 🔧 Setup & Environment Validation
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     
     env:
       SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
