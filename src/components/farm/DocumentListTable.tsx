@@ -20,7 +20,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -66,9 +66,9 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   };
 
   const ExtractionStatus = ({ document }: { document: any }) => {
-    const { data: extraction } = useLatestDocumentExtraction(document.id);
-    
-    if (!extraction) {
+    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id);
+
+    if (extractionStatus.status === 'not_extracted') {
       return (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
@@ -80,11 +80,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     }
 
     const getStatusIcon = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return <CheckCircle className="h-3 w-3 text-green-600" />;
         case 'failed':
           return <AlertCircle className="h-3 w-3 text-red-600" />;
+        case 'processing':
         case 'pending':
           return <Clock className="h-3 w-3 text-blue-600" />;
         default:
@@ -93,11 +94,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     };
 
     const getStatusColor = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return 'bg-green-100 text-green-800';
         case 'failed':
           return 'bg-red-100 text-red-800';
+        case 'processing':
         case 'pending':
           return 'bg-blue-100 text-blue-800';
         default:
@@ -110,14 +112,14 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
         <Badge variant="secondary" className={`text-xs ${getStatusColor()}`}>
           {getStatusIcon()}
           <span className="ml-1">
-            {extraction.status === 'completed' && `Extracted (${extraction.confidence_score || 0}%)`}
-            {extraction.status === 'failed' && 'Failed'}
-            {extraction.status === 'pending' && 'Processing...'}
+            {extractionStatus.status === 'completed' && `Extracted (${extractionStatus.fieldCount || 0} fields)`}
+            {extractionStatus.status === 'failed' && 'Failed'}
+            {extractionStatus.status === 'processing' && 'Processing...'}
           </span>
         </Badge>
-        {extraction.error_message && (
-          <span className="text-xs text-red-600" title={extraction.error_message}>
-            {extraction.error_message.substring(0, 30)}...
+        {extractionStatus.error && (
+          <span className="text-xs text-red-600" title={extractionStatus.error}>
+            {extractionStatus.error.substring(0, 30)}...
           </span>
         )}
       </div>
