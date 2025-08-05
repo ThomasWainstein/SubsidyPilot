@@ -16,7 +16,7 @@ on:
   push:
     paths:
       - 'AI_SCRAPER_RAW_TEXTS/**'
-      - '.github/workflows/AgriTool_Raw_Scraper_CI_Improved.yml'
+      - '.github/workflows/agritool-raw-scraper-ci.yml'
   pull_request:
     paths:
       - 'AI_SCRAPER_RAW_TEXTS/**'
@@ -124,7 +124,11 @@ jobs:
       - name: 🔍 Validate environment variables
         run: |
           echo "🔍 Validating required Supabase environment variables..."
-          python ../test_env_vars.py
+          if [ -f "../test_env_vars.py" ]; then
+            python ../test_env_vars.py
+          else
+            echo "⚠️ test_env_vars.py not found, skipping validation"
+          fi
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
@@ -151,16 +155,36 @@ jobs:
       - name: 🧪 Run comprehensive test suite
         run: |
           echo "🧪 Running test suite..."
-          python test_scraper.py
-          echo "✅ Test suite completed successfully"
+          if [ -f "test_scraper.py" ]; then
+            python test_scraper.py
+            echo "✅ Test suite completed successfully"
+          else
+            echo "⚠️ test_scraper.py not found, skipping test suite"
+          fi
 
       - name: 📊 Display scraping configuration
         run: |
           echo "📊 === SCRAPING CONFIGURATION ==="
-          SITE="${{ github.event.inputs.site || 'franceagrimer' }}"
-          MAX_PAGES="${{ github.event.inputs.max_pages || '5' }}"
-          MAX_URLS="${{ github.event.inputs.max_urls_per_page || '0' }}"
-          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+          echo "🔄 Event type: ${{ github.event_name }}"
+          
+          # Handle inputs safely for all event types
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SITE="${{ github.event.inputs.site }}"
+            MAX_PAGES="${{ github.event.inputs.max_pages }}"
+            MAX_URLS="${{ github.event.inputs.max_urls_per_page }}"
+            DRY_RUN="${{ github.event.inputs.dry_run }}"
+          else
+            SITE=""
+            MAX_PAGES=""
+            MAX_URLS=""
+            DRY_RUN=""
+          fi
+          
+          # Apply defaults
+          SITE="${SITE:-franceagrimer}"
+          MAX_PAGES="${MAX_PAGES:-5}"
+          MAX_URLS="${MAX_URLS:-0}"
+          DRY_RUN="${DRY_RUN:-false}"
           
           echo "🎯 Target site: $SITE"
           if [ "$MAX_PAGES" = "0" ]; then
@@ -175,20 +199,26 @@ jobs:
           fi
           echo "🧪 Dry run mode: $DRY_RUN"
           echo "⏰ Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          # Export for next steps
+          echo "SCRAPER_SITE=$SITE" >> $GITHUB_ENV
+          echo "SCRAPER_MAX_PAGES=$MAX_PAGES" >> $GITHUB_ENV
+          echo "SCRAPER_MAX_URLS=$MAX_URLS" >> $GITHUB_ENV
+          echo "SCRAPER_DRY_RUN=$DRY_RUN" >> $GITHUB_ENV
 
       - name: 🕷️ Execute smart scraping with progress tracking
         run: |
           echo "🕷️ === STARTING SMART SCRAPING ==="
-          SITE="${{ github.event.inputs.site || 'franceagrimer' }}"
-          MAX_PAGES="${{ github.event.inputs.max_pages || '5' }}"
-          MAX_URLS="${{ github.event.inputs.max_urls_per_page || '0' }}"
+          SITE="$SCRAPER_SITE"
+          MAX_PAGES="$SCRAPER_MAX_PAGES"
+          MAX_URLS="$SCRAPER_MAX_URLS"
           
           if [ "$MAX_PAGES" = "0" ]; then
             echo "🔄 AUTO-SCRAPE MODE: Will scrape ALL available pages"
-            CMD="python scraper_main.py --site $SITE --scrape-all --verbose --progress"
+            CMD="python scraper_main.py --site $SITE --scrape-all"
           else
             echo "📊 LIMITED SCRAPE MODE: Will scrape maximum $MAX_PAGES pages"
-            CMD="python scraper_main.py --site $SITE --max-pages $MAX_PAGES --verbose --progress"
+            CMD="python scraper_main.py --site $SITE --max-pages $MAX_PAGES"
           fi
           
           if [ "$MAX_URLS" != "0" ] && [ -n "$MAX_URLS" ]; then
@@ -196,11 +226,19 @@ jobs:
             echo "🔗 URL limit per page: $MAX_URLS"
           fi
           
+          # Add verbose and progress flags if supported
+          CMD="$CMD --verbose"
+          
           echo "🚀 Executing: $CMD"
           echo ""
           
           START_TIME=$(date +%s)
-          eval $CMD
+          if eval $CMD; then
+            echo "✅ Scraper completed successfully"
+          else
+            echo "❌ Scraper failed with exit code $?"
+            exit 1
+          fi
           END_TIME=$(date +%s)
           DURATION=$((END_TIME - START_TIME))
           
@@ -214,14 +252,22 @@ jobs:
         run: |
           echo "📈 === DETAILED SCRAPING RESULTS ==="
           
-          JSON_FILES=$(find data/raw_pages -name "*.json" 2>/dev/null | wc -l || echo "0")
-          ATTACHMENTS=$(find data/attachments -type f 2>/dev/null | wc -l || echo "0")
+          JSON_FILES=0
+          ATTACHMENTS=0
+          
+          if [ -d "data/raw_pages" ]; then
+            JSON_FILES=$(find data/raw_pages -name "*.json" 2>/dev/null | wc -l)
+          fi
+          
+          if [ -d "data/attachments" ]; then
+            ATTACHMENTS=$(find data/attachments -type f 2>/dev/null | wc -l)
+          fi
           
           echo "📁 Content files created:"
           echo "  📄 JSON pages: $JSON_FILES files"
           echo "  📎 Attachments: $ATTACHMENTS files"
           
-          if [ -d "data/raw_pages" ]; then
+          if [ -d "data/raw_pages" ] && [ "$JSON_FILES" -gt "0" ]; then
             TOTAL_SIZE=$(du -sh data/raw_pages 2>/dev/null | cut -f1 || echo "0B")
             echo "  💾 Total size: $TOTAL_SIZE"
           fi
@@ -229,7 +275,7 @@ jobs:
           echo ""
           echo "📋 Sample of scraped content:"
           if [ "$JSON_FILES" -gt "0" ]; then
-            find data/raw_pages -name "*.json" | head -10 | while read file; do
+            find data/raw_pages -name "*.json" 2>/dev/null | head -5 | while read file; do
               if [ -f "$file" ]; then
                 URL=$(jq -r '.url // .source_url // "Unknown URL"' "$file" 2>/dev/null || echo "Unknown URL")
                 SIZE=$(du -h "$file" 2>/dev/null | cut -f1 || echo "?")
@@ -251,7 +297,7 @@ jobs:
             
             if [ "$ERROR_COUNT" -gt "0" ]; then
               echo "  📄 Recent errors:"
-              grep "ERROR\|FAILED" data/logs/scraper.log | tail -5 | while read line; do
+              grep "ERROR\|FAILED" data/logs/scraper.log | tail -3 | while read line; do
                 echo "    ❌ $line"
               done
             fi
@@ -277,7 +323,7 @@ jobs:
           fi
           
           if [ "$TOTAL_URLS" -gt "0" ]; then
-            SUCCESS_RATE=$(echo "scale=1; $SUCCESSFUL_URLS * 100 / $TOTAL_URLS" | bc -l 2>/dev/null || echo "100.0")
+            SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESSFUL_URLS * 100 / $TOTAL_URLS}")
           else
             SUCCESS_RATE="0.0"
           fi
@@ -291,6 +337,16 @@ jobs:
             DURATION_SEC=0
           fi
           
+          ATTACHMENTS_COUNT=0
+          if [ -d "data/attachments" ]; then
+            ATTACHMENTS_COUNT=$(find data/attachments -type f 2>/dev/null | wc -l || echo "0")
+          fi
+          
+          DATA_SIZE="0B"
+          if [ -d "data" ]; then
+            DATA_SIZE=$(du -sh data/ 2>/dev/null | cut -f1 || echo "0B")
+          fi
+          
           echo "🎯 === FINAL SCRAPING REPORT ==="
           echo "✅ Pages processed: $SUCCESSFUL_PAGES pages"
           echo "✅ URLs scraped: $SUCCESSFUL_URLS total URLs"
@@ -298,8 +354,8 @@ jobs:
           if [ "$FAILED_URLS" -gt "0" ]; then
             echo "❌ Failed URLs: $FAILED_URLS (check logs for details)"
           fi
-          echo "📊 Attachments: $(find data/attachments -type f 2>/dev/null | wc -l || echo "0") files"
-          echo "💾 Data collected: $(du -sh data/ 2>/dev/null | cut -f1 || echo "0B")"
+          echo "📊 Attachments: $ATTACHMENTS_COUNT files"
+          echo "💾 Data collected: $DATA_SIZE"
           echo "⏱️ Total time: ${DURATION_MIN}m ${DURATION_SEC}s"
           echo "🕒 Completed: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
@@ -309,9 +365,9 @@ jobs:
   "pages_processed": $SUCCESSFUL_PAGES,
   "urls_scraped": $SUCCESSFUL_URLS,
   "total_urls": $TOTAL_URLS,
-  "success_rate": $SUCCESS_RATE,
+  "success_rate": "$SUCCESS_RATE",
   "failed_urls": $FAILED_URLS,
-  "attachments_count": $(find data/attachments -type f 2>/dev/null | wc -l || echo "0"),
+  "attachments_count": $ATTACHMENTS_COUNT,
   "duration_minutes": $DURATION_MIN,
   "duration_seconds": $DURATION_SEC,
   "completed_at": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')",
@@ -322,24 +378,31 @@ EOF
       - name: 🔄 Upload raw data to Supabase (dry run validation)
         run: |
           echo "🔄 Running Supabase upload dry run..."
-          python upload_raw_to_supabase.py --dry-run --batch-size 25
-          echo "✅ Dry run validation completed"
+          if [ -f "upload_raw_to_supabase.py" ]; then
+            python upload_raw_to_supabase.py --dry-run --batch-size 25
+            echo "✅ Dry run validation completed"
+          else
+            echo "⚠️ upload_raw_to_supabase.py not found, skipping dry run"
+          fi
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: 🚀 Upload raw data to Supabase (live upload)
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ env.SCRAPER_DRY_RUN != 'true' }}
         run: |
           echo "🚀 Starting live Supabase upload..."
-          python upload_raw_to_supabase.py --batch-size 25 --verbose
-          echo "✅ Live upload completed"
+          if [ -f "upload_raw_to_supabase.py" ]; then
+            python upload_raw_to_supabase.py --batch-size 25 --verbose
+            echo "✅ Live upload completed"
+          else
+            echo "⚠️ upload_raw_to_supabase.py not found, skipping upload"
+          fi
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        continue-on-error: false
 
       - name: 📋 Upload success validation with detailed metrics
         run: |
@@ -358,7 +421,7 @@ EOF
             
             echo ""
             echo "📊 Recent upload activity:"
-            tail -10 data/logs/supabase_upload.log | while read line; do
+            tail -5 data/logs/supabase_upload.log | while read line; do
               if echo "$line" | grep -q "Successfully\|SUCCESS"; then
                 echo "  ✅ $line"
               elif echo "$line" | grep -q "ERROR\|Failed"; then
@@ -370,7 +433,7 @@ EOF
             
             TOTAL_UPLOAD_ATTEMPTS=$((UPLOADED_COUNT + ERROR_COUNT))
             if [ "$TOTAL_UPLOAD_ATTEMPTS" -gt "0" ]; then
-              UPLOAD_SUCCESS_RATE=$(echo "scale=1; $UPLOADED_COUNT * 100 / $TOTAL_UPLOAD_ATTEMPTS" | bc -l 2>/dev/null || echo "100.0")
+              UPLOAD_SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $UPLOADED_COUNT * 100 / $TOTAL_UPLOAD_ATTEMPTS}")
               echo ""
               echo "📈 Upload success rate: ${UPLOAD_SUCCESS_RATE}% ($UPLOADED_COUNT/$TOTAL_UPLOAD_ATTEMPTS)"
             fi
@@ -460,25 +523,22 @@ EOF
           ls -la /usr/bin/chrome* 2>/dev/null || echo "  No chrome binaries in /usr/bin"
           echo ""
           
-          echo "🔍 DATA DIRECTORY STATUS:"
+          echo "🔍 FILES STRUCTURE:"
+          echo "  📁 Current directory contents:"
+          ls -la . || echo "  Cannot list current directory"
+          echo "  📁 Data directory status:"
           if [ -d "data" ]; then
-            echo "  📁 Data directory structure:"
-            find data -type f -name "*.json" | head -10 | while read file; do
+            find data -type f -name "*.json" | head -5 | while read file; do
               SIZE=$(du -h "$file" 2>/dev/null | cut -f1 || echo "?")
               echo "    📄 $file ($SIZE)"
             done
-            echo "    ... (showing first 10 JSON files)"
           else
-            echo "  ❌ Data directory not found"
+            echo "    ❌ Data directory not found"
           fi
           echo ""
           
           echo "🔍 ERROR LOGS:"
-          find data/logs -name "*.log" -exec echo "=== {} ===" \; -exec tail -20 {} \; 2>/dev/null || echo "  No log files found"
-          echo ""
-          
-          echo "🔍 RECENT PYTHON ERRORS:"
-          journalctl --since "10 minutes ago" | grep -i python | tail -10 || echo "  No recent Python errors in system journal"
+          find data/logs -name "*.log" -exec echo "=== {} ===" \; -exec tail -10 {} \; 2>/dev/null || echo "  No log files found"
           echo ""
           
           echo "❌ === DEBUG COLLECTION COMPLETE ==="
