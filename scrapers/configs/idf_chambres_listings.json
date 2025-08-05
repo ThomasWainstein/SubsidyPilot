@@ -3,5 +3,5 @@
   "list_page": "https://idf.chambres-agriculture.fr/etre-accompagne/je-suis-agriculteur/aides-a-lagriculture/",
   "link_selector": "#content > div:nth-child(2) > div.container > div > div > div.part-right > h2 > a",
   "next_page_selector": "#content > div:nth-child(2) > div.container > nav > ul > li.next > a",
-  "base_url": "https://idf.chambres-agriculture.fr"
+  "detail_selectors": {}
 }
