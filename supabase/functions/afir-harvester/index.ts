@@ -25,9 +25,9 @@ serve(async (req) => {
 
   try {
     const config = {
-      supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
+      supabase_url: Deno.env.get('SUPABASE_URL'),
       supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-      openai_api_key: Deno.env.get('SCRAPER_RAW_GPT_API'),
+      openai_api_key: Deno.env.get('SCRAPPER_RAW_GPT_API'),
       backup_api_key: Deno.env.get('OPENAI_API_KEY')
     };
 
@@ -159,7 +159,24 @@ async function discoverRomanianPages(sources: string[], maxPages: number, supaba
             .single();
           
           if (error) {
-            console.error('❌ Failed to store Romanian page:', error);
+            if (error.code === '23505') {
+              // URL already exists, skip with warning
+              console.warn(`⚠️ Romanian URL already exists, skipping: ${url}`);
+              
+              // Get existing page for AI processing
+              const { data: existingPage } = await supabase
+                .from('raw_scraped_pages')
+                .select('*')
+                .eq('source_url', url)
+                .single();
+              
+              if (existingPage) {
+                scrapedPages.push(existingPage);
+                console.log(`✅ Using existing Romanian page: ${url}`);
+              }
+            } else {
+              console.error('❌ Failed to store Romanian page:', error);
+            }
           } else {
             scrapedPages.push(insertedPage);
             console.log(`✅ Scraped and stored Romanian page: ${url}`);

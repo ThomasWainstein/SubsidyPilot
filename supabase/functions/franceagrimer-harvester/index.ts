@@ -224,7 +224,24 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
             .single();
           
           if (error) {
-            console.error('❌ Failed to store page:', error);
+            if (error.code === '23505') {
+              // URL already exists, skip with warning
+              console.warn(`⚠️ URL already exists, skipping: ${url}`);
+              
+              // Get existing page for AI processing
+              const { data: existingPage } = await supabase
+                .from('raw_scraped_pages')
+                .select('*')
+                .eq('source_url', url)
+                .single();
+              
+              if (existingPage) {
+                scrapedPages.push(existingPage);
+                console.log(`✅ Using existing page: ${url}`);
+              }
+            } else {
+              console.error('❌ Failed to store page:', error);
+            }
           } else {
             scrapedPages.push(insertedPage);
             console.log(`✅ Scraped and stored: ${url}`);

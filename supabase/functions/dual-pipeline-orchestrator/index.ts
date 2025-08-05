@@ -35,11 +35,20 @@ serve(async (req) => {
 
   try {
     const config = {
-      supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
+      supabase_url: Deno.env.get('SUPABASE_URL'),
       supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
     };
 
-    const supabase = createClient(config.supabase_url!, config.supabase_service_key!);
+    console.log('🔧 Dual Pipeline Environment Check:', {
+      has_supabase_url: !!config.supabase_url,
+      has_service_key: !!config.supabase_service_key
+    });
+
+    if (!config.supabase_url || !config.supabase_service_key) {
+      throw new Error('Missing required Supabase configuration');
+    }
+
+    const supabase = createClient(config.supabase_url, config.supabase_service_key);
     
     const { action, execution_config, pipeline_id } = await req.json();
 
