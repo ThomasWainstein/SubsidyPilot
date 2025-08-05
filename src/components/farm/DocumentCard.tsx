@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,10 +97,10 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
   const renderExtractionBadge = () => {
     if (!extractionStatus || extractionStatus.status === 'not_extracted') {
       return (
-          <Badge variant="outline" className="text-xs">
-            <Sparkles className="h-3 w-3 mr-1" />
-            Ready to Extract
-          </Badge>
+        <Badge variant="outline" className="text-xs">
+          <Sparkles className="h-3 w-3 mr-1" />
+          {t('common.readyToExtract')}
+        </Badge>
       );
     }
 
@@ -135,7 +134,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
         return (
           <Badge variant="outline" className="text-xs">
             <Sparkles className="h-3 w-3 mr-1" />
-            Ready to Extract
+            {t('common.readyToExtract')}
           </Badge>
         );
     }
