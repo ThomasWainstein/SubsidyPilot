@@ -19,6 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useDocumentReviewDetail, useSubmitReviewCorrection } from '@/hooks/useDocumentReview';
+import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import ReExtractButton from './ReExtractButton';
@@ -32,6 +33,7 @@ interface DocumentReviewDetailProps {
 const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps) => {
   const navigate = useNavigate();
   const { data: documentDetail, isLoading } = useDocumentReviewDetail(documentId);
+  const { extractionStatus } = useFarmDocumentExtractionStatus(documentId);
   const submitCorrection = useSubmitReviewCorrection();
 
   const [extractedFields, setExtractedFields] = useState<Record<string, any>>({});
@@ -125,17 +127,17 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   };
 
   const getStatusIcon = () => {
-    if (!extraction) return <Clock className="h-5 w-5 text-gray-500" />;
-    
-    switch (extraction.status) {
+    switch (extractionStatus.status) {
       case 'completed':
-        return extraction.confidence_score < 70 
+        return extraction?.confidence_score && extraction.confidence_score < 70
           ? <AlertTriangle className="h-5 w-5 text-yellow-500" />
           : <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'failed':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
-      default:
+      case 'processing':
         return <Clock className="h-5 w-5 text-blue-500" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-500" />;
     }
   };
 
@@ -265,29 +267,43 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
                   <label className="text-sm font-medium text-muted-foreground">Extraction Status</label>
                   <div className="flex items-center gap-2 mt-1">
                     {getStatusIcon()}
-                    <span className="text-sm capitalize">{extraction.status}</span>
+                    <span className="text-sm capitalize">{extractionStatus.status}</span>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Confidence Score</label>
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className={`mt-1 block w-fit ${getConfidenceColor(extraction.confidence_score || 0)}`}
                   >
                     {extraction.confidence_score || 0}%
                   </Badge>
                 </div>
 
+                {extractionStatus.fieldCount !== undefined && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Fields Extracted</label>
+                    <p className="text-sm mt-1">{extractionStatus.fieldCount}</p>
+                  </div>
+                )}
+
+                {extractionStatus.lastUpdated && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Last Updated</label>
+                    <p className="text-sm mt-1">{new Date(extractionStatus.lastUpdated).toLocaleString()}</p>
+                  </div>
+                )}
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Extraction Type</label>
                   <p className="text-sm mt-1">{extraction.extraction_type}</p>
                 </div>
 
-                {extraction.error_message && (
+                {extractionStatus.error && (
                   <div>
                     <label className="text-sm font-medium text-red-600">Error Message</label>
-                    <p className="text-sm mt-1 text-red-600">{extraction.error_message}</p>
+                    <p className="text-sm mt-1 text-red-600">{extractionStatus.error}</p>
                   </div>
                 )}
               </>

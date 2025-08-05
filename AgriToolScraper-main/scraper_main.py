@@ -174,7 +174,21 @@ class AgriToolScraper:
             total_results_selector = config.get('total_results_selector', 'h2')
             # Split selector and try each one
             selectors = [s.strip() for s in total_results_selector.split(',')]
-            wait_for_selector(driver, selectors[0], timeout=15)
+            
+            # Try each selector until one works
+            results_found = False
+            for selector in selectors:
+                try:
+                    wait_for_selector(driver, selector, timeout=5)
+                    results_found = True
+                    log_step(f"Found results using selector: {selector}")
+                    break
+                except Exception as e:
+                    log_step(f"Selector {selector} failed: {e}")
+                    continue
+            
+            if not results_found:
+                raise RuntimeError(f"Could not find results with any selector: {selectors}")
             
             # Parse total results from the results counter with config-driven selectors
             try:

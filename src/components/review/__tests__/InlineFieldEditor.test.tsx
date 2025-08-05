@@ -50,8 +50,15 @@ describe('InlineFieldEditor', () => {
 
   it('shows confidence badge', () => {
     render(<InlineFieldEditor {...defaultProps} />);
-    
+
     expectElementToExist(screen.getByText('95%'));
+  });
+
+  it('has accessible label on edit button', () => {
+    render(<InlineFieldEditor {...defaultProps} />);
+
+    const editButton = screen.getByLabelText(/edit farm name field/i);
+    expectElementToExist(editButton);
   });
 
   it('toggles accept state when checkbox is clicked', async () => {
@@ -198,5 +205,17 @@ describe('InlineFieldEditor', () => {
     await user.click(saveButton);
     
     expect(mockOnChange).toHaveBeenCalledWith('crops', ['corn', 'soybeans', 'wheat', 'tomatoes']);
+  });
+
+  it('provides aria-labels for array item removal buttons', async () => {
+    const user = userEvent.setup();
+    const arrayField = mockFieldData.find(f => f.type === 'array')!;
+    render(<InlineFieldEditor {...defaultProps} field={arrayField} value={arrayField.value} />);
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    await user.click(editButton);
+
+    const removeButton = screen.getByLabelText(/remove corn from list/i);
+    expectElementToExist(removeButton);
   });
 });

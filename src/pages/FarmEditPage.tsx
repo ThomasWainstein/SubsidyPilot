@@ -36,9 +36,9 @@ const FarmEditPage: React.FC = () => {
     isExtracting,
     pendingExtractions,
     saveFarmProfile
-  } = useFarmProfileUpdate({ 
+  } = useFarmProfileUpdate({
     farmId,
-    enableAutoExtraction: false,
+    enableAutoExtraction: true,
     mergeStrategy: 'merge'
   });
 

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
@@ -164,6 +164,48 @@ export type Database = {
           },
         ]
       }
+      document_extraction_status: {
+        Row: {
+          coverage_percentage: number | null
+          created_at: string
+          document_type: string
+          document_url: string
+          extracted_schema: Json | null
+          extraction_errors: Json | null
+          extraction_status: string
+          field_count: number | null
+          id: string
+          subsidy_id: string
+          updated_at: string
+        }
+        Insert: {
+          coverage_percentage?: number | null
+          created_at?: string
+          document_type: string
+          document_url: string
+          extracted_schema?: Json | null
+          extraction_errors?: Json | null
+          extraction_status?: string
+          field_count?: number | null
+          id?: string
+          subsidy_id: string
+          updated_at?: string
+        }
+        Update: {
+          coverage_percentage?: number | null
+          created_at?: string
+          document_type?: string
+          document_url?: string
+          extracted_schema?: Json | null
+          extraction_errors?: Json | null
+          extraction_status?: string
+          field_count?: number | null
+          id?: string
+          subsidy_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_extractions: {
         Row: {
           confidence_score: number | null
@@ -246,6 +288,104 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "raw_logs"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraction_qa_results: {
+        Row: {
+          admin_notes: string | null
+          admin_required: boolean
+          admin_status: string | null
+          completeness_score: number | null
+          created_at: string
+          documents_loss: string[] | null
+          errors: string[] | null
+          id: string
+          missing_fields: string[] | null
+          qa_pass: boolean
+          qa_timestamp: string
+          review_data: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_url: string
+          structural_integrity_score: number | null
+          structure_loss: string[] | null
+          updated_at: string
+          warnings: string[] | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          admin_required?: boolean
+          admin_status?: string | null
+          completeness_score?: number | null
+          created_at?: string
+          documents_loss?: string[] | null
+          errors?: string[] | null
+          id?: string
+          missing_fields?: string[] | null
+          qa_pass?: boolean
+          qa_timestamp?: string
+          review_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url: string
+          structural_integrity_score?: number | null
+          structure_loss?: string[] | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Update: {
+          admin_notes?: string | null
+          admin_required?: boolean
+          admin_status?: string | null
+          completeness_score?: number | null
+          created_at?: string
+          documents_loss?: string[] | null
+          errors?: string[] | null
+          id?: string
+          missing_fields?: string[] | null
+          qa_pass?: boolean
+          qa_timestamp?: string
+          review_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string
+          structural_integrity_score?: number | null
+          structure_loss?: string[] | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Relationships: []
+      }
+      farm_document_extraction_status: {
+        Row: {
+          document_id: string
+          status: string
+          field_count: number | null
+          last_updated: string
+          error: string | null
+        }
+        Insert: {
+          document_id: string
+          status?: string
+          field_count?: number | null
+          last_updated?: string
+          error?: string | null
+        }
+        Update: {
+          document_id?: string
+          status?: string
+          field_count?: number | null
+          last_updated?: string
+          error?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_farm_document_extraction_status_document_id",
+            columns: ["document_id"],
+            isOneToOne: true,
+            referencedRelation: "farm_documents",
+            referencedColumns: ["id"],
           },
         ]
       }
@@ -671,6 +811,8 @@ export type Database = {
           agency: string | null
           amount_max: number | null
           amount_min: number | null
+          application_docs: Json | null
+          application_schema: Json | null
           categories: string[] | null
           code: string
           created_at: string | null
@@ -679,13 +821,17 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
+          extraction_batch_id: string | null
           funding_type: string | null
           id: string
+          import_job_id: string | null
           language: string[] | null
           legal_entities: string[] | null
           matching_tags: string[] | null
           raw_content: Json | null
+          record_status: string | null
           region: string[] | null
+          scrape_date: string | null
           source_url: string | null
           status: string | null
           tags: string[] | null
@@ -696,6 +842,8 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          application_docs?: Json | null
+          application_schema?: Json | null
           categories?: string[] | null
           code: string
           created_at?: string | null
@@ -704,13 +852,17 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
+          import_job_id?: string | null
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          record_status?: string | null
           region?: string[] | null
+          scrape_date?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
@@ -721,6 +873,8 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          application_docs?: Json | null
+          application_schema?: Json | null
           categories?: string[] | null
           code?: string
           created_at?: string | null
@@ -729,13 +883,17 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
+          import_job_id?: string | null
           language?: string[] | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          record_status?: string | null
           region?: string[] | null
+          scrape_date?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
@@ -766,11 +924,13 @@ export type Database = {
           eligibility: string | null
           eligible_actions: string[] | null
           evaluation_criteria: string | null
+          extraction_batch_id: string | null
           funding_source: string | null
           funding_tranches: Json | null
           funding_type: string | null
           geographic_scope: Json | null
           id: string
+          import_job_id: string | null
           ineligible_actions: string[] | null
           investment_types: string[] | null
           language: string | null
@@ -786,12 +946,15 @@ export type Database = {
           project_duration: string | null
           questionnaire_steps: Json | null
           raw_log_id: string | null
+          record_status: string | null
           region: string[] | null
           rejection_conditions: string[] | null
           reporting_requirements: string | null
           requirements_extraction_status: string | null
           scoring_criteria: Json | null
+          scrape_date: string | null
           sector: string[] | null
+          source_url_verified: string | null
           submission_conditions: string | null
           technical_support: string | null
           title: string | null
@@ -819,11 +982,13 @@ export type Database = {
           eligibility?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extraction_batch_id?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
           geographic_scope?: Json | null
           id?: string
+          import_job_id?: string | null
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
@@ -839,12 +1004,15 @@ export type Database = {
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
+          record_status?: string | null
           region?: string[] | null
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           scoring_criteria?: Json | null
+          scrape_date?: string | null
           sector?: string[] | null
+          source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
@@ -872,11 +1040,13 @@ export type Database = {
           eligibility?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extraction_batch_id?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
           geographic_scope?: Json | null
           id?: string
+          import_job_id?: string | null
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
@@ -892,12 +1062,15 @@ export type Database = {
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
+          record_status?: string | null
           region?: string[] | null
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           scoring_criteria?: Json | null
+          scrape_date?: string | null
           sector?: string[] | null
+          source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
           title?: string | null
@@ -910,6 +1083,130 @@ export type Database = {
             columns: ["raw_log_id"]
             isOneToOne: false
             referencedRelation: "raw_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_applications: {
+        Row: {
+          created_at: string
+          farm_id: string | null
+          form_data: Json
+          form_id: string
+          id: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farm_id?: string | null
+          form_data?: Json
+          form_id: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farm_id?: string | null
+          form_data?: Json
+          form_id?: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subsidy_applications_farm"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_subsidy_applications_form"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "subsidy_form_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_form_schema_errors: {
+        Row: {
+          created_at: string
+          document_filename: string | null
+          document_url: string
+          extraction_attempt: number | null
+          id: string
+          parse_error: string | null
+          raw_ai_output: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_filename?: string | null
+          document_url: string
+          extraction_attempt?: number | null
+          id?: string
+          parse_error?: string | null
+          raw_ai_output?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_filename?: string | null
+          document_url?: string
+          extraction_attempt?: number | null
+          id?: string
+          parse_error?: string | null
+          raw_ai_output?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidy_form_schema_errors_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_form_schemas: {
+        Row: {
+          created_at: string
+          id: string
+          schema: Json
+          subsidy_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          schema?: Json
+          subsidy_id: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          schema?: Json
+          subsidy_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subsidy_form_schemas_subsidy"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
         ]
@@ -1042,6 +1339,17 @@ export type Database = {
           subsidy_regions: string[]
         }
         Returns: number
+      }
+      complete_data_purge: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      get_data_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+          count: number
+        }[]
       }
       release_processing_lock: {
         Args: { log_id: string }

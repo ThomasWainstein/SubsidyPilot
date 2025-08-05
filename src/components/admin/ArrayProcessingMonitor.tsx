@@ -25,6 +25,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface ArrayProcessingStats {
   totalRecords: number;
@@ -165,7 +166,7 @@ const ArrayProcessingMonitor: React.FC = () => {
     });
     
     // This would trigger reprocessing of failed array conversions
-    console.log('Triggering reprocessing of array failures...');
+    logger.debug('Triggering reprocessing of array failures...');
   };
 
   if (isLoading || !stats) {

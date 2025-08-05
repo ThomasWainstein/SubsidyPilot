@@ -33,7 +33,11 @@ try:
     from supabase import create_client, Client
     from openai import OpenAI
     import requests
-    from tika import parser as tika_parser
+    import sys
+    import os
+    # Import Python document extractor instead of Tika
+    sys.path.append(os.path.dirname(__file__))
+    from python_document_extractor import PythonDocumentExtractor
     import pytesseract
     from PIL import Image
     import io
@@ -72,7 +76,7 @@ class Config:
     
     def __init__(self):
         # Required environment variables
-        self.SUPABASE_URL = self._get_required_env("NEXT_PUBLIC_SUPABASE_URL")
+        self.SUPABASE_URL = self._get_required_env("SUPABASE_URL")
         self.SUPABASE_SERVICE_KEY = self._get_required_env("SUPABASE_SERVICE_ROLE_KEY")
         self.OPENAI_API_KEY = self._get_required_env("SCRAPER_RAW_GPT_API")
         
@@ -155,8 +159,15 @@ class RawLogInterpreterAgent:
             return []
     
     def extract_file_content(self, file_refs: List[str]) -> str:
-        """Extract text content from attached files"""
+        """Extract text content from attached files using Python document extraction"""
         content = ""
+        
+        # Initialize Python document extractor
+        extractor = PythonDocumentExtractor(
+            enable_ocr=True,
+            ocr_language='eng+fra+ron',  # Multi-language OCR support
+            max_file_size_mb=10.0
+        )
         
         for file_ref in file_refs:
             try:
@@ -168,22 +179,75 @@ class RawLogInterpreterAgent:
                     # Skip non-URL references for now
                     continue
                 
-                # Extract text based on file type
-                if file_ref.lower().endswith('.pdf'):
-                    parsed = tika_parser.from_buffer(file_content)
-                    if parsed.get('content'):
+                # Use Python document extractor for all document types
+                temp_file_path = None
+                try:
+                    # Determine file extension and handle supported document types
+                    if file_ref.lower().endswith(('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.odt')):
+                        file_ext = os.path.splitext(file_ref)[1].lower()
+                        
+                        # Save to temp file for document extraction
+                        import tempfile
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
+                            temp_file.write(file_content)
+                            temp_file_path = temp_file.name
+                        
+                        self.logger.info(f"📄 Attempting Python document extraction for: {file_ref}")
+                        
+                        # Extract using Python document extractor
+                        extraction_result = extractor.extract_document_text(temp_file_path)
+                        
+                        if extraction_result['success'] and extraction_result.get('text_content'):
+                            content += f"\n\n--- Content from {file_ref} ---\n"
+                            content += extraction_result['text_content']
+                            
+                            # Add extraction metadata
+                            metadata = extraction_result.get('metadata', {})
+                            if metadata:
+                                content += f"\n--- Extracted using: {metadata.get('method', 'unknown')}"
+                                if metadata.get('page_count'):
+                                    content += f", {metadata['page_count']} pages"
+                                if metadata.get('ocr_applied'):
+                                    content += f", OCR applied"
+                                content += " ---"
+                            
+                            self.logger.info(f"✅ Python document extraction successful for: {file_ref}")
+                        else:
+                            error_msg = extraction_result.get('error', 'Unknown extraction error')
+                            self.logger.warning(f"❌ Document extraction failed for {file_ref}: {error_msg}")
+                            content += f"\n\n--- Failed to extract content from {file_ref}: {error_msg} ---\n"
+                            
+                    elif file_ref.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+                        # OCR for images
+                        try:
+                            image = Image.open(io.BytesIO(file_content))
+                            ocr_text = pytesseract.image_to_string(image)
+                            if ocr_text.strip():
+                                content += f"\n\n--- OCR Content from {file_ref} ---\n"
+                                content += ocr_text
+                                self.logger.info(f"✅ OCR extraction successful for: {file_ref}")
+                            else:
+                                self.logger.warning(f"⚠️ OCR returned no text for: {file_ref}")
+                        except Exception as ocr_error:
+                            self.logger.error(f"❌ OCR failed for {file_ref}: {ocr_error}")
+                            content += f"\n\n--- OCR failed for {file_ref}: {str(ocr_error)} ---\n"
+                    
+                    elif file_ref.lower().endswith(('.txt', '.text')):
                         content += f"\n\n--- Content from {file_ref} ---\n"
-                        content += parsed['content']
+                        content += file_content.decode('utf-8', errors='ignore')
+                        
+                except Exception as extraction_error:
+                    self.logger.error(f"❌ File extraction failed for {file_ref}: {extraction_error}")
+                    content += f"\n\n--- Failed to extract content from {file_ref}: {str(extraction_error)} ---\n"
                 
-                elif file_ref.lower().endswith(('.docx', '.doc')):
-                    parsed = tika_parser.from_buffer(file_content)
-                    if parsed.get('content'):
-                        content += f"\n\n--- Content from {file_ref} ---\n"
-                        content += parsed['content']
-                
-                elif file_ref.lower().endswith(('.txt', '.text')):
-                    content += f"\n\n--- Content from {file_ref} ---\n"
-                    content += file_content.decode('utf-8', errors='ignore')
+                finally:
+                    # Always cleanup temp files
+                    if temp_file_path and os.path.exists(temp_file_path):
+                        try:
+                            os.unlink(temp_file_path)
+                            self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
+                        except Exception as cleanup_error:
+                            self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
                 
             except Exception as e:
                 self.logger.warning(f"Failed to extract content from {file_ref}: {e}")

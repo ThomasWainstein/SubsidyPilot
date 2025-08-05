@@ -27,9 +27,8 @@ export const useLatestDocumentExtraction = (documentId: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('document_extractions')
-        .select('*')
+        .select('*, debug_info, error_message')
         .eq('document_id', documentId)
-        .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { subsidyCreationSchema, type SubsidyCreationData, standardSubsidyCategories, standardRegions } from '@/schemas/subsidyValidation';
 import { Badge } from '@/components/ui/badge';
+import { getSubsidyTitle } from '@/utils/subsidyFormatting';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const SubsidyManagement = () => {
@@ -212,7 +213,7 @@ const SubsidyManagement = () => {
 
       <div className="grid gap-4">
         {subsidies?.map((subsidy) => {
-          const title = subsidy.title || 'Untitled';
+          const title = getSubsidyTitle(subsidy);
 
           return (
             <Card key={subsidy.id}>

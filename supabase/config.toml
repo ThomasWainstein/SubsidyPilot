@@ -67,3 +67,12 @@ verify_jwt = false
 
 [functions.hybrid-extraction]
 verify_jwt = true
+
+[functions.environment-diagnostic]
+verify_jwt = false
+
+[functions.enhance-subsidy-extraction]
+verify_jwt = false
+
+[functions.improve-subsidy-titles]
+verify_jwt = false

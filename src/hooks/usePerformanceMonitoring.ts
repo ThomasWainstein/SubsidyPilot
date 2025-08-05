@@ -1,5 +1,6 @@
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface PerformanceMetrics {
   pageName: string;
@@ -14,7 +15,7 @@ export const usePerformanceMonitoring = (pageName: string) => {
     // Measure page load time
     const measurePageLoad = () => {
       const loadTime = performance.now() - startTime;
-      console.log(`Page Load: ${pageName} - ${loadTime.toFixed(2)}ms`);
+      logger.debug(`Page Load: ${pageName} - ${loadTime.toFixed(2)}ms`);
       
       // In production, this would send to analytics service
       if (loadTime > 2000) {
@@ -32,7 +33,7 @@ export const usePerformanceMonitoring = (pageName: string) => {
   }, [pageName]);
 
   const trackUserAction = (action: string, metadata?: Record<string, any>) => {
-    console.log(`User Action: ${action}`, metadata);
+    logger.debug(`User Action: ${action}`, metadata);
     // In production, this would send to analytics service
   };
 

@@ -5,9 +5,33 @@ import { useExtractionOrchestrator } from '../useExtractionOrchestrator';
 // Mock Supabase
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    storage: {
+      from: vi.fn(() => ({
+        upload: vi.fn(() => Promise.resolve({ data: { path: 'test-path' }, error: null })),
+        getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'http://test-url.com' } }))
+      }))
+    },
     functions: {
       invoke: vi.fn()
-    }
+    },
+    from: vi.fn(() => ({
+      insert: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ 
+            data: { id: 'test-doc-id', file_url: 'http://test-url.com' }, 
+            error: null 
+          }))
+        }))
+      })),
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ 
+            data: { file_url: 'http://test-url.com' }, 
+            error: null 
+          }))
+        }))
+      }))
+    }))
   }
 }));
 
@@ -16,186 +40,292 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn()
 }));
 
+// Mock logger
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    success: vi.fn()
+  }
+}));
+
+// Mock utilities
+vi.mock('@/utils/extractionMapping', () => ({
+  mapExtractedFields: vi.fn((data) => data),
+  validateMappedData: vi.fn(() => ({ isValid: true, missingFields: [], score: 0.8 })),
+  calculateExtractionConfidence: vi.fn(() => 0.85),
+  mergeExtractionResults: vi.fn((results) => ({ 
+    mergedData: { farm_name: 'Test Farm' }, 
+    fieldSources: { farm_name: 'extraction_ai-based' } 
+  }))
+}));
+
+vi.mock('@/utils/productionGuards', () => ({
+  validateExtractionDataIntegrity: vi.fn(),
+  safeProductionError: vi.fn((error) => error instanceof Error ? error : new Error(String(error)))
+}));
+
 describe('useExtractionOrchestrator', () => {
   const mockOptions = {
+    farmId: 'test-farm-id',
+    onExtractionComplete: vi.fn(),
     onStateChange: vi.fn(),
-    onComplete: vi.fn(),
-    onError: vi.fn()
+    autoSync: true
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should initialize with empty state', () => {
-    const { result } = renderHook(() => useExtractionOrchestrator());
-    
-    expect(result.current.isProcessing).toBe(false);
-    expect(result.current.globalError).toBe(null);
-    expect(result.current.states).toEqual([]);
-    expect(result.current.hasErrors).toBe(false);
-    expect(result.current.hasCompletedExtractions).toBe(false);
-  });
-
-  it('should handle successful extraction', async () => {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    const mockExtractionData = {
-      extractedFields: { farmName: 'Test Farm', address: 'Test Address' },
-      confidence: 0.85,
-      source: 'merged',
-      timestamp: '2023-01-01T00:00:00Z'
-    };
-
-    (supabase.functions.invoke as any).mockResolvedValueOnce({
-      data: mockExtractionData,
-      error: null
-    });
-
+  it('should initialize with idle state', () => {
     const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
 
-    await act(async () => {
-      await result.current.processDocument('doc1', 'https://example.com/doc.pdf');
-    });
-
+    expect(result.current.state.status).toBe('idle');
+    expect(result.current.state.progress).toBe(0);
+    expect(result.current.extractionResults).toEqual([]);
+    expect(result.current.formData).toEqual({});
     expect(result.current.isProcessing).toBe(false);
-    expect(result.current.hasCompletedExtractions).toBe(true);
-    expect(mockOptions.onComplete).toHaveBeenCalledWith(mockExtractionData.extractedFields);
-    
-    const docState = result.current.getDocumentState('doc1');
-    expect(docState?.status).toBe('completed');
-    expect(docState?.confidence).toBe(0.85);
-    expect(docState?.source).toBe('merged');
+    expect(result.current.hasResults).toBe(false);
   });
 
-  it('should handle extraction failure', async () => {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    (supabase.functions.invoke as any).mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Extraction failed' }
-    });
-
+  it('should process document upload successfully', async () => {
     const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
-
-    await act(async () => {
-      await result.current.processDocument('doc1', 'https://example.com/doc.pdf');
-    });
-
-    expect(result.current.isProcessing).toBe(false);
-    expect(result.current.hasErrors).toBe(true);
-    expect(mockOptions.onError).toHaveBeenCalled();
     
-    const docState = result.current.getDocumentState('doc1');
-    expect(docState?.status).toBe('failed');
-    expect(docState?.errors).toContain('Extraction failed: Extraction failed');
-  });
-
-  it('should handle AI fallback retry', async () => {
-    const { supabase } = await import('@/integrations/supabase/client');
+    const mockFile = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
     
     const mockExtractionData = {
-      extractedFields: { farmName: 'AI Farm' },
-      confidence: 0.75,
+      extractedFields: { farm_name: 'Test Farm', owner_name: 'John Doe' },
       source: 'ai-based',
-      timestamp: '2023-01-01T00:00:00Z'
+      confidence: 0.85,
+      fieldsCount: 2
     };
-
+    
+    const { supabase } = await import('@/integrations/supabase/client');
     (supabase.functions.invoke as any).mockResolvedValueOnce({
       data: mockExtractionData,
       error: null
     });
 
-    const { result } = renderHook(() => useExtractionOrchestrator());
+    await act(async () => {
+      await result.current.processDocumentUpload([mockFile], 'general');
+    });
+
+    expect(result.current.state.status).toBe('reviewing');
+    expect(result.current.hasResults).toBe(true);
+    expect(mockOptions.onExtractionComplete).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fileName: 'test.pdf',
+          extractedData: { farm_name: 'Test Farm', owner_name: 'John Doe' }
+        })
+      ])
+    );
+  });
+
+  it('should handle extraction retry with AI', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    // First, add an extraction result
+    const mockExtractionData = {
+      extractedFields: { farm_name: 'Original Farm' },
+      source: 'rule-based',
+      confidence: 0.6,
+      fieldsCount: 1
+    };
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
+      data: mockExtractionData,
+      error: null
+    });
+
+    const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+    
+    await act(async () => {
+      await result.current.processDocumentUpload([mockFile], 'general');
+    });
+
+    // Now retry with AI
+    const aiExtractionData = {
+      extractedFields: { farm_name: 'AI Extracted Farm' },
+      source: 'ai-based',
+      confidence: 0.9,
+      fieldsCount: 1
+    };
+    
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
+      data: aiExtractionData,
+      error: null
+    });
+
+    const documentId = result.current.extractionResults[0]?.documentId;
+    
+    await act(async () => {
+      await result.current.retryExtraction(documentId, true);
+    });
+
+    expect(result.current.extractionResults[0].extractedData.farm_name).toBe('AI Extracted Farm');
+    expect(result.current.extractionResults[0].source).toBe('ai-based');
+  });
+
+  it('should apply review edits and sync to form', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    // Add some extraction results first
+    const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+    const mockExtractionData = {
+      extractedFields: { farm_name: 'Original Farm' },
+      source: 'ai-based',
+      confidence: 0.8,
+      fieldsCount: 1
+    };
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
+      data: mockExtractionData,
+      error: null
+    });
 
     await act(async () => {
-      await result.current.retryExtraction('doc1', 'https://example.com/doc.pdf');
+      await result.current.processDocumentUpload([mockFile], 'general');
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith('hybrid-extraction', {
-      body: {
-        documentUrl: 'https://example.com/doc.pdf',
-        documentId: 'doc1',
-        forceAI: true
-      }
+    const documentId = result.current.extractionResults[0]?.documentId;
+
+    // Apply a review edit
+    await act(async () => {
+      result.current.applyReviewEdit(documentId, 'farm_name', 'Edited Farm Name');
+    });
+
+    expect(result.current.reviewEdits[documentId]).toEqual(
+      expect.objectContaining({
+        farm_name: 'Edited Farm Name'
+      })
+    );
+    expect(result.current.hasPendingEdits).toBe(true);
+
+    // Wait for bi-directional sync
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    });
+
+    expect(result.current.formData.farm_name).toBe('Edited Farm Name');
+  });
+
+  it('should accept extraction and apply to form', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    // Add extraction result
+    const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+    const mockExtractionData = {
+      extractedFields: { farm_name: 'Test Farm', owner_name: 'John Doe' },
+      source: 'ai-based',
+      confidence: 0.8,
+      fieldsCount: 2
+    };
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
+      data: mockExtractionData,
+      error: null
+    });
+
+    await act(async () => {
+      await result.current.processDocumentUpload([mockFile], 'general');
+    });
+
+    const documentId = result.current.extractionResults[0]?.documentId;
+
+    // Accept the extraction
+    await act(async () => {
+      result.current.acceptExtraction(documentId);
+    });
+
+    expect(result.current.reviewEdits[documentId]).toEqual(
+      expect.objectContaining({
+        farm_name: 'Test Farm',
+        owner_name: 'John Doe'
+      })
+    );
+  });
+
+  it('should reject extraction and remove it', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    // Add extraction result
+    const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+    const mockExtractionData = {
+      extractedFields: { farm_name: 'Test Farm' },
+      source: 'ai-based',
+      confidence: 0.8,
+      fieldsCount: 1
+    };
+    
+    const { supabase } = await import('@/integrations/supabase/client');
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
+      data: mockExtractionData,
+      error: null
+    });
+
+    await act(async () => {
+      await result.current.processDocumentUpload([mockFile], 'general');
+    });
+
+    expect(result.current.extractionResults).toHaveLength(1);
+    
+    const documentId = result.current.extractionResults[0]?.documentId;
+
+    // Reject the extraction
+    await act(async () => {
+      result.current.rejectExtraction(documentId);
+    });
+
+    expect(result.current.extractionResults).toHaveLength(0);
+    expect(result.current.reviewEdits[documentId]).toBeUndefined();
+  });
+
+  it('should reset all state', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    // Add some state
+    await act(async () => {
+      result.current.updateFormField('test_field', 'test_value');
+    });
+
+    expect(result.current.formData.test_field).toBe('test_value');
+
+    // Reset
+    await act(async () => {
+      result.current.reset();
+    });
+
+    expect(result.current.state.status).toBe('idle');
+    expect(result.current.extractionResults).toEqual([]);
+    expect(result.current.formData).toEqual({});
+    expect(result.current.reviewEdits).toEqual({});
+  });
+
+  it('should provide sync status', () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    const syncStatus = result.current.getSyncStatus();
+    
+    expect(syncStatus).toEqual({
+      inProgress: false,
+      lastSync: 0,
+      hasConflicts: false
     });
   });
 
-  it('should cancel processing correctly', async () => {
-    const { result } = renderHook(() => useExtractionOrchestrator());
-
-    act(() => {
-      result.current.cancelProcessing();
+  it('should update form fields manually', async () => {
+    const { result } = renderHook(() => useExtractionOrchestrator(mockOptions));
+    
+    await act(async () => {
+      result.current.updateFormField('manual_field', 'manual_value', 'user_input');
     });
 
-    // Should handle gracefully even if no processing is active
-    expect(result.current.isProcessing).toBe(false);
-  });
-
-  it('should provide accurate statistics', () => {
-    const { result } = renderHook(() => useExtractionOrchestrator());
-
-    act(() => {
-      result.current.updateDocumentState('doc1', {
-        status: 'completed',
-        confidence: 0.8
-      });
-      result.current.updateDocumentState('doc2', {
-        status: 'failed',
-        confidence: 0.3
-      });
-      result.current.updateDocumentState('doc3', {
-        status: 'extracting',
-        confidence: 0.0
-      });
-    });
-
-    const stats = result.current.getStatistics();
-    expect(stats.total).toBe(3);
-    expect(stats.completed).toBe(1);
-    expect(stats.failed).toBe(1);
-    expect(stats.processing).toBe(1);
-    expect(stats.averageConfidence).toBeCloseTo(0.37, 1);
-  });
-
-  it('should validate state transitions', () => {
-    const { result } = renderHook(() => useExtractionOrchestrator());
-
-    act(() => {
-      result.current.updateDocumentState('doc1', {
-        status: 'completed',
-        confidence: 0.9
-      });
-    });
-
-    // Attempt invalid transition from completed to extracting
-    act(() => {
-      result.current.updateDocumentState('doc1', {
-        status: 'extracting'
-      });
-    });
-
-    // Should remain in completed state
-    const docState = result.current.getDocumentState('doc1');
-    expect(docState?.status).toBe('completed');
-  });
-
-  it('should clear document state', () => {
-    const { result } = renderHook(() => useExtractionOrchestrator());
-
-    act(() => {
-      result.current.updateDocumentState('doc1', {
-        status: 'completed',
-        confidence: 0.8
-      });
-    });
-
-    expect(result.current.getDocumentState('doc1')).toBeTruthy();
-
-    act(() => {
-      result.current.clearDocumentState('doc1');
-    });
-
-    expect(result.current.getDocumentState('doc1')).toBe(null);
+    expect(result.current.formData.manual_field).toBe('manual_value');
+    expect(result.current.formData.manual_field_source).toBe('user_input');
+    expect(result.current.fieldCount).toBe(1);
   });
 });

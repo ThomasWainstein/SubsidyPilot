@@ -35,10 +35,10 @@ const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
     getExtractionData,
     clearPendingExtraction,
     reprocessAllDocuments
-  } = useFarmProfileUpdate({ 
-    farmId, 
-    enableAutoExtraction: false, // Manual control for existing farms
-    mergeStrategy: 'merge' 
+  } = useFarmProfileUpdate({
+    farmId,
+    enableAutoExtraction: true, // Automatically extract data on upload
+    mergeStrategy: 'merge'
   });
 
   /**

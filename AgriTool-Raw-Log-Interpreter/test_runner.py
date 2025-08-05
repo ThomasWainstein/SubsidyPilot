@@ -27,11 +27,11 @@ def test_dependencies():
         missing_deps.append("openai")
         
     try:
-        from tika import parser as tika_parser
-        print("✅ tika")
+        from python_document_extractor import PythonDocumentExtractor
+        print("✅ python_document_extractor")
     except ImportError:
-        missing_deps.append("tika")
-        print("❌ tika - Run: pip install tika")
+        missing_deps.append("python_document_extractor")
+        print("❌ python_document_extractor - Check module installation")
         
     try:
         import pytesseract
