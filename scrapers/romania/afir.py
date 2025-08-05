@@ -22,3 +22,5 @@ class AFIRScraper:
                 "country": "romania",
             }
         ]
+
+__all__ = ["AFIRScraper"]

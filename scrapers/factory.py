@@ -1,4 +1,4 @@
-"""Factory for retrieving scraper classes based on country and agency."""
+"""Dynamic, config-driven scraper factory."""
 from importlib import import_module
 from typing import Type
 
