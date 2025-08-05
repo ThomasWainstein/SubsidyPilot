@@ -76,3 +76,6 @@ verify_jwt = false
 
 [functions.improve-subsidy-titles]
 verify_jwt = false
+
+[functions.franceagrimer-scraper]
+verify_jwt = false

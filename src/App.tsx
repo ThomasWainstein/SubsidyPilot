@@ -33,6 +33,7 @@ import ExtractionAnalyticsPage from '@/pages/ExtractionAnalyticsPage';
 import SupportedFileTypesPage from '@/pages/SupportedFileTypesPage';
 import ReviewWorkflowDocsPage from '@/pages/ReviewWorkflowDocsPage';
 import TrainingPipelinePage from '@/pages/TrainingPipelinePage';
+import FrenchSubsidiesPage from '@/pages/FrenchSubsidiesPage';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
 
@@ -150,6 +151,10 @@ function App() {
                         <SubsidySearchPage />
                       </ProtectedRoute>
                     } 
+                  />
+                  <Route 
+                    path="/french-subsidies" 
+                    element={<FrenchSubsidiesPage />} 
                   />
                   <Route 
                     path="/subsidy/:subsidyId" 
