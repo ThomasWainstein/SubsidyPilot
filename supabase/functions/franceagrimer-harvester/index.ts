@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 };
 
 interface ScrapingSession {
@@ -31,11 +32,13 @@ const FRENCH_SELECTORS = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Environment configuration with debugging
     const config = {
       supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
       supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
@@ -43,13 +46,41 @@ serve(async (req) => {
       backup_api_key: Deno.env.get('OPENAI_API_KEY')
     };
 
+    console.log('🔧 Environment check:', {
+      has_supabase_url: !!config.supabase_url,
+      has_service_key: !!config.supabase_service_key,
+      has_openai_key: !!config.openai_api_key,
+      has_backup_key: !!config.backup_api_key,
+      url_length: config.supabase_url?.length || 0
+    });
+
     if (!config.supabase_url || !config.supabase_service_key) {
-      throw new Error('Missing required Supabase configuration');
+      const missingVars = [];
+      if (!config.supabase_url) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
+      if (!config.supabase_service_key) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
+      throw new Error(`Missing required Supabase configuration: ${missingVars.join(', ')}`);
     }
 
     const supabase = createClient(config.supabase_url, config.supabase_service_key);
+    console.log('✅ Supabase client created successfully');
+
+    // Parse request body with error handling
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid JSON in request body',
+        details: parseError.message
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
-    const { action = 'scrape', target_urls, max_pages = 10 } = await req.json();
+    const { action = 'scrape', target_urls, max_pages = 10 } = requestBody;
 
     console.log('🇫🇷 FranceAgriMer Harvester starting:', { action, max_pages });
 
@@ -70,13 +101,19 @@ serve(async (req) => {
         processing_status: 'discovering'
       };
 
-      // Log session start
-      await supabase.from('scraper_logs').insert({
-        session_id,
-        status: 'started',
-        message: 'FranceAgriMer harvesting session initiated',
-        details: { session, target_urls: session.target_sources }
-      });
+      // Log session start with error handling
+      try {
+        await supabase.from('scraper_logs').insert({
+          session_id,
+          status: 'started',
+          message: 'FranceAgriMer harvesting session initiated',
+          details: { session, target_urls: session.target_sources }
+        });
+        console.log('✅ Session logged successfully');
+      } catch (logError) {
+        console.warn('⚠️ Failed to log session start:', logError);
+        // Continue execution even if logging fails
+      }
 
       // Discover and scrape subsidy pages
       const scrapedPages = await discoverAndScrapePages(session, supabase);
@@ -134,28 +171,36 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
     try {
       console.log(`🔍 Discovering pages from: ${baseUrl}`);
       
-      // Scrape the main page
+      // Enhanced fetch with better headers and error handling
       const response = await fetch(baseUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        method: 'GET'
       });
       
       if (!response.ok) {
-        console.warn(`⚠️ Failed to fetch ${baseUrl}: ${response.status}`);
+        console.warn(`⚠️ Failed to fetch ${baseUrl}: ${response.status} ${response.statusText}`);
         continue;
       }
       
       const html = await response.text();
-      const subsidyUrls = extractSubsidyUrls(html, baseUrl);
+      console.log(`📄 Retrieved ${html.length} characters from ${baseUrl}`);
       
-      console.log(`📄 Found ${subsidyUrls.length} subsidy URLs`);
+      const subsidyUrls = extractSubsidyUrls(html, baseUrl);
+      console.log(`🔗 Found ${subsidyUrls.length} subsidy URLs`);
       
       // Scrape individual subsidy pages (limited by max_pages)
       const urlsToScrape = subsidyUrls.slice(0, session.extraction_config.max_pages_per_source);
       
       for (const url of urlsToScrape) {
         try {
+          console.log(`🔍 Scraping: ${url}`);
           const pageContent = await scrapeSubsidyPage(url);
           
           const pageData = {
@@ -185,11 +230,11 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
             console.log(`✅ Scraped and stored: ${url}`);
           }
           
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Rate limiting to be respectful
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
         } catch (pageError) {
-          console.warn(`⚠️ Failed to scrape ${url}:`, pageError);
+          console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
         }
       }
       
@@ -240,39 +285,53 @@ function extractSubsidyUrls(html: string, baseUrl: string): string[] {
   return urls.filter(url => url.includes('franceagrimer.fr'));
 }
 
-async function scrapeSubsidyPage(url: string): Promise<any> {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+async function scrapeSubsidyPage(url: string): Promise<{html: string, text: string, markdown: string, documents: string[]}> {
+  try {
+    console.log(`📄 Fetching content from: ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache'
+      },
+      method: 'GET'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    
+    const html = await response.text();
+    console.log(`📦 Retrieved ${html.length} characters`);
+    
+    // Extract clean text content
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Convert to markdown-like format for better AI processing
+    const markdown = convertHtmlToMarkdown(html);
+    
+    // Extract document links
+    const documents = extractDocumentLinks(html, url);
+    console.log(`📎 Found ${documents.length} document links`);
+    
+    return {
+      html,
+      text: textContent,
+      markdown,
+      documents
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error scraping ${url}:`, error);
+    throw error;
   }
-  
-  const html = await response.text();
-  
-  // Extract text content
-  const textContent = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  // Convert to markdown-like format
-  const markdown = convertHtmlToMarkdown(html);
-  
-  // Extract document links
-  const documents = extractDocumentLinks(html, url);
-  
-  return {
-    html,
-    text: textContent,
-    markdown,
-    documents
-  };
 }
 
 function convertHtmlToMarkdown(html: string): string {
