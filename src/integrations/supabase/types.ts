@@ -212,6 +212,7 @@ export type Database = {
           created_at: string
           debug_info: Json | null
           document_id: string
+          document_markdown: string | null
           error_message: string | null
           extracted_data: Json
           extraction_type: string
@@ -224,6 +225,7 @@ export type Database = {
           created_at?: string
           debug_info?: Json | null
           document_id: string
+          document_markdown?: string | null
           error_message?: string | null
           extracted_data: Json
           extraction_type?: string
@@ -236,6 +238,7 @@ export type Database = {
           created_at?: string
           debug_info?: Json | null
           document_id?: string
+          document_markdown?: string | null
           error_message?: string | null
           extracted_data?: Json
           extraction_type?: string
@@ -356,38 +359,6 @@ export type Database = {
           warnings?: string[] | null
         }
         Relationships: []
-      }
-      farm_document_extraction_status: {
-        Row: {
-          document_id: string
-          status: string
-          field_count: number | null
-          last_updated: string
-          error: string | null
-        }
-        Insert: {
-          document_id: string
-          status?: string
-          field_count?: number | null
-          last_updated?: string
-          error?: string | null
-        }
-        Update: {
-          document_id?: string
-          status?: string
-          field_count?: number | null
-          last_updated?: string
-          error?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_farm_document_extraction_status_document_id",
-            columns: ["document_id"],
-            isOneToOne: true,
-            referencedRelation: "farm_documents",
-            referencedColumns: ["id"],
-          },
-        ]
       }
       farm_documents: {
         Row: {
@@ -700,30 +671,39 @@ export type Database = {
       }
       raw_logs: {
         Row: {
+          combined_content_markdown: string | null
           created_at: string
           file_refs: string[] | null
           id: string
           payload: string
           processed: boolean | null
           processed_at: string | null
+          raw_markdown: string | null
+          text_markdown: string | null
           updated_at: string
         }
         Insert: {
+          combined_content_markdown?: string | null
           created_at?: string
           file_refs?: string[] | null
           id?: string
           payload: string
           processed?: boolean | null
           processed_at?: string | null
+          raw_markdown?: string | null
+          text_markdown?: string | null
           updated_at?: string
         }
         Update: {
+          combined_content_markdown?: string | null
           created_at?: string
           file_refs?: string[] | null
           id?: string
           payload?: string
           processed?: boolean | null
           processed_at?: string | null
+          raw_markdown?: string | null
+          text_markdown?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -732,43 +712,52 @@ export type Database = {
         Row: {
           attachment_count: number | null
           attachment_paths: Json | null
+          combined_content_markdown: string | null
           created_at: string | null
           error_message: string | null
           id: string
           raw_html: string | null
+          raw_markdown: string | null
           raw_text: string | null
           scrape_date: string | null
           source_site: string | null
           source_url: string
           status: string | null
+          text_markdown: string | null
           updated_at: string | null
         }
         Insert: {
           attachment_count?: number | null
           attachment_paths?: Json | null
+          combined_content_markdown?: string | null
           created_at?: string | null
           error_message?: string | null
           id?: string
           raw_html?: string | null
+          raw_markdown?: string | null
           raw_text?: string | null
           scrape_date?: string | null
           source_site?: string | null
           source_url: string
           status?: string | null
+          text_markdown?: string | null
           updated_at?: string | null
         }
         Update: {
           attachment_count?: number | null
           attachment_paths?: Json | null
+          combined_content_markdown?: string | null
           created_at?: string | null
           error_message?: string | null
           id?: string
           raw_html?: string | null
+          raw_markdown?: string | null
           raw_text?: string | null
           scrape_date?: string | null
           source_site?: string | null
           source_url?: string
           status?: string | null
+          text_markdown?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -907,6 +896,7 @@ export type Database = {
           agency: string | null
           amount: number[] | null
           application_method: string | null
+          application_method_markdown: string | null
           application_requirements: Json | null
           application_window_end: string | null
           application_window_start: string | null
@@ -919,12 +909,17 @@ export type Database = {
           conditional_eligibility: Json | null
           created_at: string
           deadline: string | null
+          deadlines_markdown: string | null
           description: string | null
+          description_markdown: string | null
           documents: Json | null
+          documents_markdown: string | null
           eligibility: string | null
+          eligibility_markdown: string | null
           eligible_actions: string[] | null
           evaluation_criteria: string | null
           extraction_batch_id: string | null
+          funding_markdown: string | null
           funding_source: string | null
           funding_tranches: Json | null
           funding_type: string | null
@@ -943,6 +938,7 @@ export type Database = {
           previous_acceptance_rate: number | null
           priority_groups: Json | null
           program: string | null
+          program_markdown: string | null
           project_duration: string | null
           questionnaire_steps: Json | null
           raw_log_id: string | null
@@ -951,6 +947,7 @@ export type Database = {
           rejection_conditions: string[] | null
           reporting_requirements: string | null
           requirements_extraction_status: string | null
+          requirements_markdown: string | null
           scoring_criteria: Json | null
           scrape_date: string | null
           sector: string[] | null
@@ -965,6 +962,7 @@ export type Database = {
           agency?: string | null
           amount?: number[] | null
           application_method?: string | null
+          application_method_markdown?: string | null
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
@@ -977,12 +975,17 @@ export type Database = {
           conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
+          deadlines_markdown?: string | null
           description?: string | null
+          description_markdown?: string | null
           documents?: Json | null
+          documents_markdown?: string | null
           eligibility?: string | null
+          eligibility_markdown?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
           extraction_batch_id?: string | null
+          funding_markdown?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
@@ -1001,6 +1004,7 @@ export type Database = {
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
+          program_markdown?: string | null
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
@@ -1009,6 +1013,7 @@ export type Database = {
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
+          requirements_markdown?: string | null
           scoring_criteria?: Json | null
           scrape_date?: string | null
           sector?: string[] | null
@@ -1023,6 +1028,7 @@ export type Database = {
           agency?: string | null
           amount?: number[] | null
           application_method?: string | null
+          application_method_markdown?: string | null
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
@@ -1035,12 +1041,17 @@ export type Database = {
           conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
+          deadlines_markdown?: string | null
           description?: string | null
+          description_markdown?: string | null
           documents?: Json | null
+          documents_markdown?: string | null
           eligibility?: string | null
+          eligibility_markdown?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
           extraction_batch_id?: string | null
+          funding_markdown?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
           funding_type?: string | null
@@ -1059,6 +1070,7 @@ export type Database = {
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
+          program_markdown?: string | null
           project_duration?: string | null
           questionnaire_steps?: Json | null
           raw_log_id?: string | null
@@ -1067,6 +1079,7 @@ export type Database = {
           rejection_conditions?: string[] | null
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
+          requirements_markdown?: string | null
           scoring_criteria?: Json | null
           scrape_date?: string | null
           sector?: string[] | null
@@ -1321,38 +1334,6 @@ export type Database = {
           user_type?: Database["public"]["Enums"]["user_type"]
         }
         Relationships: []
-      }
-      user_alerts: {
-        Row: {
-          id: string
-          user_id: string
-          alert_id: string
-          dismissed: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          alert_id: string
-          dismissed?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          alert_id?: string
-          dismissed?: boolean | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_alerts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          }
-        ]
       }
     }
     Views: {
