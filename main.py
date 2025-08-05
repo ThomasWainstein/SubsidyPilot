@@ -32,6 +32,11 @@ def main():
     )
     parser.add_argument("--model-name", default="gpt-4", help="Model name for AI processing")
     parser.add_argument("--language", default="fr", help="Language for prompt selection")
+    parser.add_argument(
+        "--qa-report",
+        action="store_true",
+        help="Generate qa_report.json during AI processing",
+    )
     args = parser.parse_args()
 
     if args.mode == "scraping":
@@ -47,6 +52,7 @@ def main():
             model=args.model_name,
             language=args.language,
             dry_run=args.dry_run,
+            qa_report=args.qa_report,
         )
     elif args.mode == "demo":
         run_demo()
