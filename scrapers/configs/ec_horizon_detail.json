@@ -1,5 +1,8 @@
 {
   "site_name": "ec_horizon_detail",
+  "list_page": "",
+  "link_selector": "",
+  "next_page_selector": "",
   "detail_selectors": {
     "title": "eui-card-header-title",
     "general_info": "div.topic-info",

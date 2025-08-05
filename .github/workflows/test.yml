@@ -13,6 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Ensure small, tested PR
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }})
+          LINE_COUNT=$(git diff --shortstat origin/${{ github.base_ref }} | awk '{added=$4; deleted=$6} END {print added+deleted}')
+          echo "Lines changed: $LINE_COUNT"
+          if [ "$LINE_COUNT" -gt 500 ]; then
+            echo "PR too large: $LINE_COUNT lines changed (limit 500)."
+            exit 1
+          fi
+          if echo "$CHANGED_FILES" | grep -qvE '^(docs/|\.github/|README.md|CONTRIBUTING.md|LICENSE)'; then
+            if ! echo "$CHANGED_FILES" | grep -qE '(tests?/|^test_)'; then
+              echo "PR must include test changes."
+              exit 1
+            fi
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -28,4 +46,6 @@ jobs:
         run: pre-commit run --all-files
 
       - name: "🧪 Run pytest"
-        run: pytest tests/test_validate_pipeline.py
+        env:
+          PYTHONPATH: .
+        run: pytest

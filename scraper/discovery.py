@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup, Tag
 from markdownify import markdownify as md
 
 from .core import init_driver, detect_language, guess_canonical_field_fr, log_unmapped_label
+from .ro_utils import parse_romanian_date, validate_county_list
 
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,8 @@ class ContentExtractor:
         r'plafond\s*(?:de\s*)?(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)',  # plafond de 100000
         r'entre\s*(\d{1,3}(?:\s?\d{3})*)\s*et\s*(\d{1,3}(?:\s?\d{3})*)',  # entre 5000 et 50000
         r'de\s*(\d{1,3}(?:\s?\d{3})*)\s*à\s*(\d{1,3}(?:\s?\d{3})*)',  # de 5000 à 50000
+        r'(\d{1,3}(?:[\.\s]\d{3})*(?:,\d{2})?)\s*(?:lei|ron)',  # 10.000,50 lei
+        r'(?:lei|ron)\s*(\d{1,3}(?:[\.\s]\d{3})*(?:,\d{2})?)',  # lei 10.000,50
     ]
     
     DATE_PATTERNS = [
@@ -247,10 +250,12 @@ class ContentExtractor:
         if not amount_str:
             return None
         
-        # Clean the amount string
-        clean_amount = re.sub(r'[\s,]', '', amount_str)
-        clean_amount = clean_amount.replace('.', '')  # Remove thousands separators
-        
+        # Clean the amount string for both EUR and RON formats
+        clean_amount = amount_str.strip()
+        clean_amount = re.sub(r'(?i)(eur|euro|lei|ron)', '', clean_amount)
+        clean_amount = re.sub(r'\s', '', clean_amount)
+        clean_amount = clean_amount.replace('.', '').replace(',', '.')
+
         try:
             return float(clean_amount)
         except ValueError:
@@ -290,6 +295,11 @@ class ContentExtractor:
             'mai': '05', 'juin': '06', 'juillet': '07', 'août': '08',
             'septembre': '09', 'octobre': '10', 'novembre': '11', 'décembre': '12'
         }
+
+        # Attempt Romanian date parsing
+        ro_date = parse_romanian_date(date_str)
+        if ro_date:
+            return ro_date
         
         date_str = date_str.strip()
         
@@ -846,8 +856,8 @@ class ContentExtractor:
                     region = self.clean_text(match.group(1))
                     if len(region) > 2:
                         regions.add(region)
-            
-            content.region = list(regions)
+
+            content.region = validate_county_list(list(regions))
         
         return content
     

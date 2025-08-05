@@ -1,10 +1,8 @@
 {
-  "_comment": "FranceAgriMer selectors verified on 2025-08-01 - Updated after live page inspection. Structure: h2 results counter in .fr-container, .fr-card.fr-aide cards with h3.fr-card__title a links",
+  "site_name": "franceagrimer",
   "list_page": "https://www.franceagrimer.fr/rechercher-une-aide?page={page}",
   "link_selector": "h3.fr-card__title a[href*='/aides/'], .fr-card h3 a[href*='/aides/'], .fr-card a[href*='/aides/']",
-  "pagination_mode": "by_index", 
-  "results_per_page": 6,
-  "total_results_selector": ".fr-container h2:contains('résultat'), h2:contains('résultat'), .fr-container h2",
+  "next_page_selector": "",
   "detail_selectors": {
     "title": "h1.page-title, .page-header h1, h1, .fr-h2",
     "description": ".fr-card__desc, .content-main p, .page-content p, .content-wrapper p",
