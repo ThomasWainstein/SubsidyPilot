@@ -1,4 +1,4 @@
-import { IS_DEVELOPMENT } from '@/config/environment';
+import { IS_DEVELOPMENT, FEATURES } from '@/config/environment';
 
 export interface LogContext {
   [key: string]: any;
@@ -15,7 +15,7 @@ export class Logger {
   }
 
   private shouldLog(): boolean {
-    return IS_DEVELOPMENT;
+    return IS_DEVELOPMENT || FEATURES.DEBUG_LOGGING;
   }
 
   info(message: string, context?: LogContext): void {

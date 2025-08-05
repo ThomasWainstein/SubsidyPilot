@@ -49,6 +49,8 @@ TRAINING_SIMULATION_MODE=true
 EXTRACTION_CONFIDENCE_THRESHOLD=0.7
 ```
 
+Both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` must be set. The application will fail to start if either one is missing.
+
 ### Get Supabase Credentials
 
 1. Visit [supabase.com](https://supabase.com)

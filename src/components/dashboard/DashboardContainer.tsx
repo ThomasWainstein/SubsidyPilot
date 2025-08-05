@@ -12,6 +12,7 @@ import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import EnhancedAlertsActions from '@/components/dashboard/EnhancedAlertsActions';
 import { toast } from '@/hooks/use-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { logger } from '@/lib/logger';
 
 interface Farm {
   id: string;
@@ -27,7 +28,7 @@ interface Farm {
 }
 
 const DashboardContainer = () => {
-  console.log('DashboardContainer: Rendering');
+  logger.debug('DashboardContainer: Rendering');
   
   // Wrap language context usage in try-catch
   let t: any;
@@ -54,12 +55,12 @@ const DashboardContainer = () => {
   useEffect(() => {
     const fetchFarms = async () => {
       if (!user) {
-        console.log('DashboardContainer: No user, skipping farm fetch');
+        logger.debug('DashboardContainer: No user, skipping farm fetch');
         setLoading(false);
         return;
       }
 
-      console.log('DashboardContainer: Fetching farms for user:', user.id);
+      logger.debug(`DashboardContainer: Fetching farms for user: ${user.id}`);
 
       try {
         const { data, error } = await supabase
@@ -67,7 +68,7 @@ const DashboardContainer = () => {
           .select('*')
           .eq('user_id', user.id);
 
-        console.log('DashboardContainer: Farms query result:', { data, error });
+        logger.debug('DashboardContainer: Farms query result', { data, error });
 
         if (error) throw error;
 
@@ -79,7 +80,7 @@ const DashboardContainer = () => {
           tags: farm.land_use_types || []
         }));
 
-        console.log('DashboardContainer: Transformed farms:', transformedFarms);
+        logger.debug('DashboardContainer: Transformed farms', transformedFarms);
         setFarms(transformedFarms);
         setError(null);
       } catch (error: any) {
@@ -156,7 +157,7 @@ const DashboardContainer = () => {
   });
 
   if (loading) {
-    console.log('DashboardContainer: Showing loading state');
+    logger.debug('DashboardContainer: Showing loading state');
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -175,7 +176,7 @@ const DashboardContainer = () => {
   }
 
   if (error) {
-    console.log('DashboardContainer: Showing error state:', error);
+    logger.debug('DashboardContainer: Showing error state', { error });
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -199,7 +200,7 @@ const DashboardContainer = () => {
     );
   }
 
-  console.log('DashboardContainer: Rendering main content with', farms.length, 'farms');
+  logger.debug('DashboardContainer: Rendering main content', { farmCount: farms.length });
 
   return (
     <div className="min-h-screen flex flex-col">

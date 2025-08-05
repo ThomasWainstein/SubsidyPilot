@@ -1,0 +1,7 @@
+# Sample PDF files directory
+# 
+# Place sample subsidy PDF documents here for testing the extraction pipeline.
+# Supported formats: PDF files of any size
+# 
+# The GitHub Actions workflow will automatically process all PDF files
+# in this directory and its subdirectories.

@@ -1,10 +1,10 @@
 {
-  "_comment": "FranceAgriMer selectors verified on 2025-01-25 - Updated to match actual DSFR card structure with h3.fr-card__title links and h2 results counter. Fixed :contains() selectors for Selenium compatibility.",
+  "_comment": "FranceAgriMer selectors verified on 2025-08-01 - Updated after live page inspection. Structure: h2 results counter in .fr-container, .fr-card.fr-aide cards with h3.fr-card__title a links",
   "list_page": "https://www.franceagrimer.fr/rechercher-une-aide?page={page}",
-  "link_selector": "h3.fr-card__title a, .fr-card h3 a",
-  "pagination_mode": "by_index",
+  "link_selector": "h3.fr-card__title a[href*='/aides/'], .fr-card h3 a[href*='/aides/'], .fr-card a[href*='/aides/']",
+  "pagination_mode": "by_index", 
   "results_per_page": 6,
-  "total_results_selector": ".fr-container h2, h2",
+  "total_results_selector": ".fr-container h2:contains('résultat'), h2:contains('résultat'), .fr-container h2",
   "detail_selectors": {
     "title": "h1.page-title, .page-header h1, h1, .fr-h2",
     "description": ".fr-card__desc, .content-main p, .page-content p, .content-wrapper p",

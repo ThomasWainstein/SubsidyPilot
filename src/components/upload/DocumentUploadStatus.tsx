@@ -20,6 +20,7 @@ import {
 import { TempDocument } from '@/hooks/useTempDocumentUpload';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { validate as uuidValidate } from 'uuid';
 
 interface DocumentUploadStatusProps {
   document: TempDocument;
@@ -37,6 +38,17 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
   className
 }) => {
   const { toast } = useToast();
+  const handleRetry = (id: string) => {
+    if (!uuidValidate(id)) {
+      toast({
+        title: 'Document upload not complete',
+        description: 'Please wait and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    onRetry(id);
+  };
   const getStatusIcon = () => {
     if (document.validation_errors?.length) {
       return <FileX className="h-4 w-4 text-orange-500" />;
@@ -195,10 +207,10 @@ const DocumentUploadStatus: React.FC<DocumentUploadStatusProps> = ({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onRetry(document.id)}
+                onClick={() => handleRetry(document.id)}
                 className="h-6 w-6 p-0"
                 title={`Retry processing (${document.retry_count || 0}/3)`}
-                disabled={isProcessing}
+                disabled={isProcessing || !uuidValidate(document.id)}
               >
                 <RotateCcw className="h-3 w-3" />
               </Button>

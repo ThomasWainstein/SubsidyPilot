@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface ExtractionResult {
   extractedFields: Record<string, any>;
@@ -26,7 +27,7 @@ export const useHybridExtraction = (options: UseHybridExtractionOptions = {}) =>
     setError(null);
     
     try {
-      console.log('Starting hybrid extraction:', { documentId, forceAI });
+      logger.debug('Starting hybrid extraction', { documentId, forceAI });
       
       const { data, error: functionError } = await supabase.functions.invoke('hybrid-extraction', {
         body: {
@@ -58,7 +59,7 @@ export const useHybridExtraction = (options: UseHybridExtractionOptions = {}) =>
         };
       }
 
-      console.log('Extraction completed:', {
+      logger.debug('Extraction completed', {
         source: result.source,
         fieldsCount: result.fieldsCount,
         confidence: result.confidence

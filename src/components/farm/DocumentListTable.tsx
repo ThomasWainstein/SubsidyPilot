@@ -3,23 +3,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  FileText, 
-  Eye, 
-  Calendar, 
+import {
+  FileText,
+  Eye,
+  Calendar,
   HardDrive,
   Tag,
   AlertCircle,
   CheckCircle,
   Clock,
   Sparkles,
-  Trash2
+  Trash2,
+  Bug,
+  FileSearch,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 import ManualExtractionButton from './ManualExtractionButton';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useFarmDocuments, useDeleteDocument } from '@/hooks/useFarmDocuments';
+import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import ExtractionDebugModal from './ExtractionDebugModal';
+import { useNavigate } from 'react-router-dom';
 
 interface DocumentListTableProps {
   farmId: string;
@@ -29,6 +34,7 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   const { t } = useLanguage();
   const { data: documents = [], isLoading } = useFarmDocuments(farmId);
   const deleteDocumentMutation = useDeleteDocument();
+  const navigate = useNavigate();
 
   const handleView = (document: any) => {
     window.open(document.file_url, '_blank');
@@ -38,6 +44,10 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     if (confirm(`Are you sure you want to delete "${document.file_name}"?`)) {
       await deleteDocumentMutation.mutateAsync({ documentId: document.id, farmId });
     }
+  };
+
+  const handleViewExtraction = (document: any) => {
+    navigate(`/farm/${farmId}/document-review/${document.id}`);
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -62,9 +72,9 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
   };
 
   const ExtractionStatus = ({ document }: { document: any }) => {
-    const { data: extraction } = useLatestDocumentExtraction(document.id);
-    
-    if (!extraction) {
+    const { data: extractionStatus } = useFarmDocumentStatus(document.id);
+
+    if (!extractionStatus || extractionStatus.status === 'not_extracted') {
       return (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
@@ -76,11 +86,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     }
 
     const getStatusIcon = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return <CheckCircle className="h-3 w-3 text-green-600" />;
         case 'failed':
           return <AlertCircle className="h-3 w-3 text-red-600" />;
+        case 'processing':
         case 'pending':
           return <Clock className="h-3 w-3 text-blue-600" />;
         default:
@@ -89,11 +100,12 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
     };
 
     const getStatusColor = () => {
-      switch (extraction.status) {
+      switch (extractionStatus.status) {
         case 'completed':
           return 'bg-green-100 text-green-800';
         case 'failed':
           return 'bg-red-100 text-red-800';
+        case 'processing':
         case 'pending':
           return 'bg-blue-100 text-blue-800';
         default:
@@ -106,17 +118,43 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
         <Badge variant="secondary" className={`text-xs ${getStatusColor()}`}>
           {getStatusIcon()}
           <span className="ml-1">
-            {extraction.status === 'completed' && `Extracted (${extraction.confidence_score || 0}%)`}
-            {extraction.status === 'failed' && 'Failed'}
-            {extraction.status === 'pending' && 'Processing...'}
+            {extractionStatus.status === 'completed' && `Extracted (${Math.round(extractionStatus.confidence_score ?? 0)}%)`}
+            {extractionStatus.status === 'failed' && 'Failed'}
+            {(extractionStatus.status === 'pending' || extractionStatus.status === 'processing') && 'Processing...'}
           </span>
         </Badge>
-        {extraction.error_message && (
-          <span className="text-xs text-red-600" title={extraction.error_message}>
-            {extraction.error_message.substring(0, 30)}...
+        {extractionStatus.error_message && (
+          <span className="text-xs text-red-600" title={extractionStatus.error_message}>
+            {extractionStatus.error_message.substring(0, 30)}...
           </span>
         )}
       </div>
+    );
+  };
+
+  const ExtractionLogsButton = ({ document }: { document: any }) => {
+    const { data: extraction } = useLatestDocumentExtraction(document.id);
+    const [isOpen, setIsOpen] = React.useState(false);
+
+    if (!extraction) return null;
+
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsOpen(true)}
+          className="h-7 w-7 p-0"
+        >
+          <Bug className="h-3 w-3" />
+        </Button>
+        <ExtractionDebugModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          extraction={extraction}
+          documentName={document.file_name}
+        />
+      </>
     );
   };
 
@@ -200,6 +238,15 @@ const DocumentListTable = ({ farmId }: DocumentListTableProps) => {
                       category={document.category}
                       className="text-xs h-7 px-2"
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewExtraction(document)}
+                      className="h-7 w-7 p-0"
+                    >
+                      <FileSearch className="h-3 w-3" />
+                    </Button>
+                    <ExtractionLogsButton document={document} />
                     <Button
                       variant="ghost"
                       size="sm"

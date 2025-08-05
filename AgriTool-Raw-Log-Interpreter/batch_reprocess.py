@@ -47,7 +47,7 @@ class BatchReprocessor:
     def _init_supabase(self) -> Client:
         """Initialize Supabase client"""
         try:
-            url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+            url = os.getenv("SUPABASE_URL")
             key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
             
             if not url or not key:

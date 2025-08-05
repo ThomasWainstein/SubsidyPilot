@@ -4,6 +4,7 @@ import { useLanguage } from '@/contexts/language';
 import FilterSection from '../FilterSection';
 import FilterCheckbox from '../FilterCheckbox';
 import FilterTagButton from '../FilterTagButton';
+import { formatFilterLabel } from '@/utils/subsidyFormatting';
 
 interface FundingTypeFilterProps {
   fundingSources: string[];
@@ -34,7 +35,7 @@ const FundingTypeFilter: React.FC<FundingTypeFilterProps> = ({
               value={fundingType}
               checked={fundingSources.includes(fundingType)}
               onChange={() => onFundingSourceToggle(fundingType)}
-              translationKey={`search.filters.fundingSource.${fundingType}`}
+              translationKey={formatFilterLabel(fundingType, t)}
             />
           ))}
           {availableFundingTypes.length === 0 && (

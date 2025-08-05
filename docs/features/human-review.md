@@ -4,6 +4,14 @@
 
 The Human Review Interface enables users to visually inspect, validate, and edit all data fields extracted from uploaded farm documents, aided by AI confidence scoring and validation feedback.
 
+## How to Use
+
+1. Navigate to the **Review Queue** from the main dashboard.
+2. Select a document to open the review dialog.
+3. Inspect each field using the color-coded confidence badges.
+4. Edit values directly inline or accept/reject suggested values.
+5. Save changes to update the farm profile.
+
 ## Features
 
 ### Confidence Scoring
@@ -40,7 +48,7 @@ The Human Review Interface enables users to visually inspect, validate, and edit
 - **Focus management** with proper visual indicators
 - **High contrast mode** compatibility
 
-## User Flow
+## Review Workflow
 
 1. **Upload Document:** User uploads a farm document for extraction
 2. **Extraction Processing:** System extracts fields and calculates confidence scores

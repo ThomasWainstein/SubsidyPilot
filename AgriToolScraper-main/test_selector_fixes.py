@@ -20,14 +20,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
 def test_franceagrimer_selector_fixes():
-    """Test that the new selectors work with the live FranceAgriMer site."""
-    print("🔧 Testing FranceAgriMer selector fixes...")
+    """Test that the CRITICAL 2025-08-01 selector fixes work with the live FranceAgriMer site."""
+    print("🔧 Testing FranceAgriMer CRITICAL selector fixes (2025-08-01)...")
     
     target_url = "https://www.franceagrimer.fr/rechercher-une-aide"
     session_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     # Test config loading
-    print("\n1. Testing config loading...")
+    print("\n1. Testing critical config loading...")
     try:
         config_manager = SecureConfigManager(target_url, session_id)
         config = config_manager.get_config()
@@ -37,9 +37,17 @@ def test_franceagrimer_selector_fixes():
         print(f"   - Total results selector: {config.get('total_results_selector')}")
         print(f"   - List page: {config.get('list_page')}")
         
-        # Verify updated selectors
-        assert 'fr-card__title' in config['link_selector'], "Link selector should contain fr-card__title"
-        assert 'h2' in config['total_results_selector'], "Results selector should contain h2"
+        # Verify CRITICAL 2025-08-01 updates
+        link_selector = config['link_selector']
+        results_selector = config['total_results_selector']
+        
+        # Critical checks for the live page inspection fixes
+        assert 'fr-card__title' in link_selector, "Link selector should contain fr-card__title"
+        assert '/aides/' in link_selector, "Link selector should filter for /aides/ hrefs"
+        assert 'résultat' in results_selector, "Results selector should contain :contains filter"
+        assert 'h2' in results_selector, "Results selector should contain h2"
+        
+        print("✅ All critical 2025-08-01 selectors validated")
         
     except Exception as e:
         print(f"❌ Config loading failed: {e}")

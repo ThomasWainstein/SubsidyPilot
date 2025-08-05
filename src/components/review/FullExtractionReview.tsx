@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Edit3, 
-  Save, 
-  X, 
-  Eye, 
-  AlertTriangle, 
+import { logger } from '@/lib/logger';
+import {
+  Edit3,
+  Save,
+  X,
+  Eye,
+  AlertTriangle,
   CheckCircle,
   Clock,
   Plus,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { mapFormToExtraction } from '@/lib/extraction/dataMapper';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import AIFieldClassifier from './AIFieldClassifier';
 import { mapExtractionToForm, validateMappedData } from '@/lib/extraction/centralized-mapper';
@@ -42,6 +44,8 @@ interface FullExtractionReviewProps {
   farmId: string;
   onSave: (correctedData: any) => void;
   onApplyToForm: (mappedData: any) => void;
+  currentFormData?: any; // For bidirectional sync
+  onFormDataChange?: (data: any) => void; // For bidirectional sync
 }
 
 const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
@@ -49,7 +53,9 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
   extraction,
   farmId,
   onSave,
-  onApplyToForm
+  onApplyToForm,
+  currentFormData,
+  onFormDataChange
 }) => {
   const [fields, setFields] = useState<ExtractedField[]>([]);
   const [unmappedData, setUnmappedData] = useState<any>({});
@@ -59,15 +65,85 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
   const document = extraction?.farm_documents;
 
+  const mapFieldsToFormData = useCallback((fieldsList: ExtractedField[]) => {
+    const mapping: Record<string, string> = {
+      farmName: 'name',
+      ownerName: 'ownerName',
+      address: 'address',
+      totalHectares: 'total_hectares',
+      legalStatus: 'legal_status',
+      registrationNumber: 'cnp_or_cui',
+      revenue: 'revenue',
+      country: 'country',
+      email: 'email',
+      phone: 'phone',
+      certifications: 'certifications',
+      activities: 'land_use_types',
+      description: 'description',
+      department: 'department',
+      locality: 'locality'
+    };
+
+    return fieldsList.reduce((acc, field) => {
+      const formField = mapping[field.fieldName] || field.fieldName;
+      let value = field.value;
+
+      if (field.fieldName === 'totalHectares') {
+        if (typeof value === 'string') {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue > 0) {
+            value = numValue;
+          } else {
+            return acc;
+          }
+        }
+      }
+
+      if (['certifications', 'activities'].includes(field.fieldName) && typeof value === 'string') {
+        value = value.split(/[,•\n]/).map(s => s.trim()).filter(Boolean);
+      }
+
+      if (field.fieldName === 'email' && typeof value === 'string') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return acc;
+        }
+      }
+
+      acc[formField] = value;
+      return acc;
+    }, {} as any);
+  }, []);
+
   useEffect(() => {
     if (extraction?.extracted_data) {
       initializeFields(extraction.extracted_data);
     }
   }, [extraction]);
 
+  useEffect(() => {
+    if (onFormDataChange) {
+      onFormDataChange(mapFieldsToFormData(fields));
+    }
+  }, [fields, onFormDataChange, mapFieldsToFormData]);
+
+  useEffect(() => {
+    if (currentFormData) {
+      const formExtraction = mapFormToExtraction(currentFormData, true, false);
+      setFields(prev =>
+        prev.map(field => {
+          const newVal = formExtraction[field.fieldName];
+          if (newVal !== undefined && newVal !== field.value) {
+            return { ...field, value: newVal, source: 'user_corrected' };
+          }
+          return field;
+        })
+      );
+    }
+  }, [currentFormData]);
+
   const initializeFields = (extractedData: any) => {
     const knownFields = [
-      'farmName', 'ownerName', 'address', 'totalHectares', 'legalStatus', 
+      'farmName', 'ownerName', 'address', 'totalHectares', 'legalStatus',
       'registrationNumber', 'revenue', 'country', 'email', 'phone',
       'certifications', 'activities', 'description'
     ];
@@ -90,8 +166,10 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
     // Process unmapped fields
     Object.keys(extractedData).forEach(key => {
-      if (!knownFields.includes(key) && 
-          !['confidence', 'error', 'debugInfo', 'rawResponse'].includes(key)) {
+      if (
+        !knownFields.includes(key) &&
+        !['confidence', 'error', 'debugInfo', 'rawResponse'].includes(key)
+      ) {
         unmapped[key] = extractedData[key];
       }
     });
@@ -116,7 +194,12 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
       activities: 'Main Activities',
       description: 'Description'
     };
-    return displayNames[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+    return (
+      displayNames[fieldName] ||
+      fieldName
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+    );
   };
 
   const getConfidenceColor = (confidence: number): string => {
@@ -127,53 +210,62 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
   const getSourceIcon = (source: ExtractedField['source']) => {
     switch (source) {
-      case 'extracted': return <Bot className="h-3 w-3" />;
-      case 'ai_classified': return <Sparkles className="h-3 w-3" />;
-      case 'user_corrected': return <User className="h-3 w-3" />;
+      case 'extracted':
+        return <Bot className="h-3 w-3" />;
+      case 'ai_classified':
+        return <Sparkles className="h-3 w-3" />;
+      case 'user_corrected':
+        return <User className="h-3 w-3" />;
     }
   };
 
   const toggleEdit = (index: number) => {
-    setFields(prev => prev.map((field, i) => {
-      if (i === index) {
-        if (field.isEditing) {
-          // Save changes
-          return { ...field, isEditing: false };
-        } else {
-          // Start editing
-          return { ...field, isEditing: true, originalValue: field.value };
+    setFields(prev =>
+      prev.map((field, i) => {
+        if (i === index) {
+          if (field.isEditing) {
+            // Save changes
+            return { ...field, isEditing: false };
+          } else {
+            // Start editing
+            return { ...field, isEditing: true, originalValue: field.value };
+          }
         }
-      }
-      return field;
-    }));
+        return field;
+      })
+    );
   };
 
   const updateFieldValue = (index: number, newValue: any) => {
-    setFields(prev => prev.map((field, i) => {
-      if (i === index) {
-        setHasChanges(true);
-        return { 
-          ...field, 
-          value: newValue,
-          source: 'user_corrected'
-        };
-      }
-      return field;
-    }));
+    setFields(prev =>
+      prev.map((field, i) => {
+        if (i === index) {
+          setHasChanges(true);
+          return {
+            ...field,
+            value: newValue,
+            source: 'user_corrected'
+          };
+        }
+        return field;
+      })
+    );
   };
 
   const cancelEdit = (index: number) => {
-    setFields(prev => prev.map((field, i) => {
-      if (i === index && field.originalValue !== undefined) {
-        return { 
-          ...field, 
-          isEditing: false, 
-          value: field.originalValue,
-          originalValue: undefined
-        };
-      }
-      return field;
-    }));
+    setFields(prev =>
+      prev.map((field, i) => {
+        if (i === index && field.originalValue !== undefined) {
+          return {
+            ...field,
+            isEditing: false,
+            value: field.originalValue,
+            originalValue: undefined
+          };
+        }
+        return field;
+      })
+    );
   };
 
   const addCustomField = () => {
@@ -203,20 +295,20 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
         source: 'ai_classified' as const,
         isEditing: false
       }));
-      
+
       setFields(prev => [...prev, ...newFields]);
       setHasChanges(true);
-      
+
       toast({
         title: 'AI Classification Complete',
-        description: `Added ${aiFields.length} new fields`,
+        description: `Added ${aiFields.length} new fields`
       });
     } catch (error) {
       console.error('AI classification error:', error);
       toast({
         title: 'AI Classification Failed',
         description: 'Could not classify unmapped fields',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsProcessingAI(false);
@@ -231,13 +323,13 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
 
     // Log corrections for audit trail
     await logFieldCorrections();
-    
+
     onSave(correctedData);
     setHasChanges(false);
-    
+
     toast({
       title: 'Changes Saved',
-      description: 'All field corrections have been saved.',
+      description: 'All field corrections have been saved.'
     });
   };
 
@@ -273,66 +365,76 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
   const applyToForm = useCallback(() => {
     try {
       // Only include non-empty fields
-      const validFields = fields.filter(field =>
-        field.value !== null && field.value !== undefined && field.value !== '' &&
-        !(Array.isArray(field.value) && field.value.length === 0)
+      const validFields = fields.filter(
+        field =>
+          field.value !== null &&
+          field.value !== undefined &&
+          field.value !== '' &&
+          !(Array.isArray(field.value) && field.value.length === 0)
       );
-      
+
       if (validFields.length === 0) {
         toast({
           title: 'No Data to Apply',
           description: 'Please add some field values before applying to form.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
         return;
       }
 
+      // Convert fields to extraction format
       const extractionData = validFields.reduce((acc, field) => {
         acc[field.fieldName] = field.value;
         return acc;
       }, {} as Record<string, any>);
 
-      const { mappedData, unmappedFields } = mapExtractionToForm(extractionData);
-      const validationErrors = validateMappedData(mappedData);
+      // Use centralized mapper for consistent field mapping
+      const mappingResult = mapExtractionToForm(extractionData);
+      const validationErrors = validateMappedData(mappingResult.mappedData);
 
-      if (Object.keys(mappedData).length === 0) {
+      if (mappingResult.errors && mappingResult.errors.length > 0) {
+        logger.warn('Mapping errors detected', { errors: mappingResult.errors });
+      }
+
+      if (Object.keys(mappingResult.mappedData).length === 0) {
         toast({
           title: 'No Valid Data',
           description: 'No valid field values found to apply to form.',
-          variant: 'destructive',
+          variant: 'destructive'
         });
         return;
       }
 
-      if (validationErrors.length > 0) {
+      if (validationErrors && validationErrors.length > 0) {
         console.warn('Validation issues detected:', validationErrors);
       }
 
-      if (unmappedFields.length > 0) {
-        console.debug('Unmapped fields from extraction:', unmappedFields);
+      if (mappingResult.unmappedFields && mappingResult.unmappedFields.length > 0) {
+        console.debug('Unmapped fields from extraction:', mappingResult.unmappedFields);
       }
 
       // Apply with error boundary
-      onApplyToForm(mappedData);
-      
+      onApplyToForm(mappingResult.mappedData);
+
       toast({
         title: 'Applied to Form',
-        description: `Applied ${Object.keys(mappedData).length} fields to the farm form.`,
+        description: `Applied ${Object.keys(mappingResult.mappedData).length} fields to the farm form.`
       });
 
       // Log application for debugging
-      console.log('Applied extraction data to form:', {
-        appliedFields: Object.keys(mappedData),
+      logger.debug('Applied extraction data to form', {
+        appliedFields: Object.keys(mappingResult.mappedData),
         totalFields: validFields.length,
+        mappingStats: mappingResult.mappingStats,
+        unmappedFields: mappingResult.unmappedFields,
         documentId
       });
-      
     } catch (error) {
-      console.error('Error applying data to form:', error);
+      logger.error('Error applying data to form', error as Error, { documentId });
       toast({
         title: 'Application Failed',
         description: 'Failed to apply data to form. Please try again.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   }, [fields, onApplyToForm, documentId]);
@@ -354,7 +456,9 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
       exportedAt: new Date().toISOString()
     };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json'
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -371,16 +475,21 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
         return (
           <Textarea
             value={Array.isArray(field.value) ? field.value.join('\n') : field.value}
-            onChange={(e) => updateFieldValue(index, e.target.value.split('\n').filter(Boolean))}
+            onChange={e =>
+              updateFieldValue(index, e.target.value.split('\n').filter(Boolean))
+            }
             className="min-h-[60px]"
             placeholder="Enter values (one per line)"
           />
         );
-      } else if (field.fieldName === 'description' || (typeof field.value === 'string' && field.value.length > 50)) {
+      } else if (
+        field.fieldName === 'description' ||
+        (typeof field.value === 'string' && field.value.length > 50)
+      ) {
         return (
           <Textarea
             value={field.value}
-            onChange={(e) => updateFieldValue(index, e.target.value)}
+            onChange={e => updateFieldValue(index, e.target.value)}
             className="min-h-[60px]"
           />
         );
@@ -388,7 +497,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
         return (
           <Input
             value={field.value}
-            onChange={(e) => updateFieldValue(index, e.target.value)}
+            onChange={e => updateFieldValue(index, e.target.value)}
           />
         );
       }
@@ -407,9 +516,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
       );
     }
 
-    return (
-      <span className="text-sm">{field.value}</span>
-    );
+    return <span className="text-sm">{field.value}</span>;
   };
 
   return (
@@ -423,19 +530,11 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPreview(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
             <Eye className="h-4 w-4 mr-1" />
             View Document
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportData}
-          >
+          <Button variant="outline" size="sm" onClick={exportData}>
             <Download className="h-4 w-4 mr-1" />
             Export
           </Button>
@@ -453,19 +552,12 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
           Apply to Form
         </Button>
         {hasChanges && (
-          <Button
-            onClick={saveChanges}
-            variant="outline"
-          >
+          <Button onClick={saveChanges} variant="outline">
             <Save className="h-4 w-4 mr-1" />
             Save Changes
           </Button>
         )}
-        <Button
-          onClick={addCustomField}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={addCustomField} variant="outline" size="sm">
           <Plus className="h-4 w-4 mr-1" />
           Add Field
         </Button>
@@ -491,8 +583,10 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                     {getSourceIcon(field.source)}
                     <span className="ml-1">{field.source.replace('_', ' ')}</span>
                   </Badge>
-                  <div 
-                    className={`w-2 h-2 rounded-full ${getConfidenceColor(field.confidence)}`}
+                  <div
+                    className={`w-2 h-2 rounded-full ${getConfidenceColor(
+                      field.confidence
+                    )}`}
                     title={`Confidence: ${Math.round(field.confidence * 100)}%`}
                   />
                 </div>
@@ -503,6 +597,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                         size="sm"
                         variant="ghost"
                         onClick={() => toggleEdit(index)}
+                        aria-label={`Save ${getFieldDisplayName(field.fieldName)} field`}
                       >
                         <Save className="h-3 w-3" />
                       </Button>
@@ -510,6 +605,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                         size="sm"
                         variant="ghost"
                         onClick={() => cancelEdit(index)}
+                        aria-label={`Cancel editing ${getFieldDisplayName(field.fieldName)} field`}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -519,6 +615,7 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => toggleEdit(index)}
+                      aria-label={`Edit ${getFieldDisplayName(field.fieldName)} field`}
                     >
                       <Edit3 className="h-3 w-3" />
                     </Button>
@@ -528,35 +625,38 @@ const FullExtractionReview: React.FC<FullExtractionReviewProps> = ({
                     variant="ghost"
                     onClick={() => removeField(index)}
                     className="text-red-500 hover:text-red-700"
+                    aria-label={`Remove ${getFieldDisplayName(field.fieldName)} field`}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 {renderFieldValue(field, index)}
                 {field.source === 'user_corrected' && (
                   <Textarea
                     placeholder="Add notes about this correction..."
                     value={field.notes || ''}
-                    onChange={(e) => {
-                      setFields(prev => prev.map((f, i) => 
-                        i === index ? { ...f, notes: e.target.value } : f
-                      ));
+                    onChange={e => {
+                      setFields(prev =>
+                        prev.map((f, i) =>
+                          i === index ? { ...f, notes: e.target.value } : f
+                        )
+                      );
                     }}
                     className="text-xs"
                     rows={2}
                   />
                 )}
               </div>
-              
+
               <div className="text-xs text-muted-foreground">
                 Confidence: {Math.round(field.confidence * 100)}%
               </div>
             </div>
           ))}
-          
+
           {fields.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />

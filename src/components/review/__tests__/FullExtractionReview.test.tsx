@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import FullExtractionReview from '../FullExtractionReview';
 
 // Mock dependencies
@@ -104,8 +104,16 @@ describe('FullExtractionReview', () => {
 
   it('should render view document button', () => {
     render(<FullExtractionReview {...mockProps} />);
-    
+
     const viewButton = screen.getByRole('button', { name: /view document/i });
     expect(viewButton).toBeDefined();
+  });
+
+  // RESOLVED: prefer to test accessible edit controls for fields
+  it('has accessible edit controls for fields', () => {
+    render(<FullExtractionReview {...mockProps} />);
+
+    const editButton = screen.getByLabelText(/edit farm name field/i);
+    expect(editButton).toBeDefined();
   });
 });

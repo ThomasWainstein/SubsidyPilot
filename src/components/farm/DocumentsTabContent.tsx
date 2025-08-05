@@ -10,6 +10,7 @@ import { useLocalExtraction } from '@/hooks/useLocalExtraction';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, History } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
+import { logger } from '@/lib/logger';
 
 type DocumentExtraction = Tables<'document_extractions'>;
 
@@ -35,7 +36,7 @@ const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
 
   const handleUploadSuccess = (files: Array<{ documentId: string; fileName: string; fileUrl: string; category: string }>) => {
     // Document list will automatically refresh via React Query invalidation
-    console.log('Document upload successful - showing extraction prompt');
+    logger.debug('Document upload successful - showing extraction prompt');
     setUploadedFiles(files);
   };
 
@@ -44,7 +45,7 @@ const DocumentsTabContent = ({ farmId }: DocumentsTabContentProps) => {
   };
 
   const handleProfileUpdated = () => {
-    console.log('Farm profile updated from document extraction');
+    logger.debug('Farm profile updated from document extraction');
     // Could trigger additional UI updates here
   };
 

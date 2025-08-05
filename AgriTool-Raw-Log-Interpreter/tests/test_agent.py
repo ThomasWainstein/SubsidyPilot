@@ -256,14 +256,19 @@ The extraction is complete.'''
     
     def test_extract_file_content_pdf(self, mock_agent):
         """Test PDF file content extraction"""
-        with patch('agent.tika_parser') as mock_tika, \
+        with patch('agent.PythonDocumentExtractor') as mock_extractor_class, \
              patch('agent.requests') as mock_requests:
             
             # Mock file download
             mock_requests.get.return_value.content = b'fake pdf content'
             
-            # Mock Tika parsing
-            mock_tika.from_buffer.return_value = {'content': 'Extracted PDF text'}
+            # Mock Python document extractor
+            mock_extractor = mock_extractor_class.return_value
+            mock_extractor.extract_document_text.return_value = {
+                'success': True,
+                'text_content': 'Extracted PDF text',
+                'metadata': {'method': 'pdfplumber', 'page_count': 1}
+            }
             
             content = mock_agent.extract_file_content(['https://example.com/test.pdf'])
             

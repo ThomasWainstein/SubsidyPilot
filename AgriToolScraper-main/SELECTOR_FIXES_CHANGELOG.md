@@ -1,20 +1,74 @@
-# FranceAgriMer Selector Fixes - 2025-01-25
+# FranceAgriMer Selector Fixes - 2025-08-01 CRITICAL UPDATE
 
-## Problem Identified
-The FranceAgriMer scraper was failing to collect URLs because it was waiting for selectors that don't exist on the current page structure:
-- **Old selector**: `.fr-search__results .fr-h6, .fr-mb-2v.fr-h6` (doesn't exist)
-- **Old link selector**: `h3 a[href*='/aides/'], a.fr-card__link` (partially incorrect)
+## CRITICAL PROBLEM IDENTIFIED - 2025-08-01
+The FranceAgriMer scraper was failing to collect URLs due to outdated CSS selectors that no longer match the current site structure:
+- **Failed Results Counter**: `.fr-container h2, h2` was too broad and unreliable
+- **Failed Link Selector**: `h3.fr-card__title a, .fr-card h3 a` was missing href filters
+- **No Diagnostics**: Zero error reporting when selectors failed - silent failures
 
-## Live Page Analysis Results
-After fetching and analyzing `https://www.franceagrimer.fr/rechercher-une-aide`:
+## CRITICAL IMPACT
+- **Zero URLs collected** from FranceAgriMer pages
+- **Silent failures** with no debugging information
+- **Broken pipeline** - no subsidy data processed
 
-### Actual HTML Structure Found:
-- **Results counter**: `<h2>154 résultat(s)</h2>` (line 231)
+## LIVE PAGE ANALYSIS - 2025-08-01
+Fresh analysis of `https://www.franceagrimer.fr/rechercher-une-aide`:
+
+### Current HTML Structure (verified 2025-08-01):
+- **Results counter**: `<h2>154 résultat(s)</h2>` inside `.fr-container` (line 231)
 - **Card containers**: `<div class="fr-card fr-aide fr-enlarge-link fr-card--no-icon">`
 - **Card titles**: `<h3 class="fr-card__title fr-mt-1w">`
-- **Card links**: `<h3 class="fr-card__title"><a href="...">`
+- **Card links**: `<h3 class="fr-card__title"><a href="/aides/..." rel="bookmark">`
 
-## Changes Made
+### Key Discovery:
+- Links are INSIDE `h3.fr-card__title` elements
+- All subsidy links contain `/aides/` in href
+- Results counter is a standalone `h2` in `.fr-container`
+
+## CRITICAL FIXES IMPLEMENTED - 2025-08-01
+
+### 1. UPDATED CONFIG: `AgriToolScraper-main/configs/franceagrimer.json`
+
+**BEFORE (BROKEN):**
+```json
+{
+  "link_selector": "h3.fr-card__title a, .fr-card h3 a",
+  "total_results_selector": ".fr-container h2, h2"
+}
+```
+
+**AFTER (FIXED):**
+```json
+{
+  "_comment": "FranceAgriMer selectors verified on 2025-08-01 - Updated after live page inspection",
+  "link_selector": "h3.fr-card__title a[href*='/aides/'], .fr-card h3 a[href*='/aides/'], .fr-card a[href*='/aides/']",
+  "total_results_selector": ".fr-container h2:contains('résultat'), h2:contains('résultat'), .fr-container h2"
+}
+```
+
+### 2. ENHANCED DIAGNOSTICS: `AgriToolScraper-main/scraper/core.py`
+
+**NEW `collect_links()` function features:**
+- **Multi-selector fallback**: Tests each selector in priority order
+- **Detailed logging**: Shows which selectors match/fail with element counts
+- **Debug artifacts**: Saves HTML dump + screenshot when no URLs found
+- **Failure detection**: Warns when unexpectedly low URL count (< 3)
+- **Error context**: Logs page URL, title, loading status on failures
+
+**Example diagnostic output:**
+```
+[INFO] Selector 'h3.fr-card__title a[href*="/aides/"]' matched 6 elements, collected 6 URLs
+[SUCCESS] Collected 6 URLs using selector: h3.fr-card__title a[href*="/aides/"]
+```
+
+**On failure:**
+```
+[CRITICAL] No URLs collected with any selector
+[DEBUG] Saved page HTML to logs/failed_page_20250801_143022.html
+[DEBUG] Saved screenshot to logs/url_collection_error_20250801_143022.png
+```
+
+## PREVIOUS CHANGES (Historical)
 
 ### 1. Updated `AgriToolScraper-main/configs/franceagrimer.json`
 

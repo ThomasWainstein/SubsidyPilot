@@ -168,10 +168,11 @@ describe('Unified Extraction Pipeline', () => {
 
       const { mapExtractionToForm } = await import('@/lib/extraction/centralized-mapper');
       const newFarmResult = mapExtractionToForm(mockExtractionData);
+      const mappedData = newFarmResult.mappedData as any;
 
-      expect(newFarmResult.mappedData.name).toBe('Test Farm');
-      expect(newFarmResult.mappedData.total_hectares).toBe(50.5);
-      expect(newFarmResult.mappedData.livestock_present).toBe(true);
+      expect(mappedData.name).toBe('Test Farm');
+      expect(mappedData.total_hectares).toBe(50.5);
+      expect(mappedData.livestock_present).toBe(true);
     });
   });
 

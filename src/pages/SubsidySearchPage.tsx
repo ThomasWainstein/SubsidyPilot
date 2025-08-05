@@ -16,6 +16,7 @@ import { handleApiError } from '@/utils/errorHandling';
 import { Search, AlertCircle, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import AdminPanelLink from '@/components/admin/AdminPanelLink';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -121,7 +122,12 @@ const SubsidySearchPage = () => {
 
         <main className="flex-grow py-4 md:py-6 px-4">
           <div className="container mx-auto">
-            <SearchHeader />
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex-1">
+                <SearchHeader />
+              </div>
+              <AdminPanelLink />
+            </div>
 
             {error ? (
               <EmptyState

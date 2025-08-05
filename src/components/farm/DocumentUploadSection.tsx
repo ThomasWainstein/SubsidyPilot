@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { logger } from '@/lib/logger';
 import { 
   Upload, 
   FileText, 
@@ -19,6 +20,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useTempDocumentUpload } from '@/hooks/useTempDocumentUpload';
 import FullExtractionReview from '@/components/review/FullExtractionReview';
+import { validate as uuidValidate } from 'uuid';
 
 interface DocumentUploadSectionProps {
   onExtractedDataChange: (allExtractedData: any[]) => void;
@@ -53,7 +55,7 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (disabled) return;
 
-    console.log('🎯 Files dropped:', {
+    logger.debug('🎯 Files dropped', {
       fileCount: acceptedFiles.length,
       files: acceptedFiles.map(f => ({
         name: f.name,
@@ -64,14 +66,14 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     });
 
     for (const file of acceptedFiles) {
-      console.log(`🔄 Processing file: ${file.name}`);
+      logger.debug(`🔄 Processing file: ${file.name}`);
       const documentId = addDocument(file);
       
-      console.log(`📤 Scheduling processing for document ${documentId}`);
+      logger.debug(`📤 Scheduling processing for document ${documentId}`);
       // Show immediate uploading status
       setTimeout(() => {
-        console.log(`⚡ Starting processing for document ${documentId}`);
-        // Process each document immediately after state update
+        logger.debug(`⚡ Starting processing for document ${documentId}`);
+      // Always process document, even with temp ID
         processDocument(documentId);
       }, 100);
     }
@@ -114,6 +116,11 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     });
   };
 
+  const handleProcessDocument = (documentId: string) => {
+    // Allow processing for all documents, including temp IDs
+    processDocument(documentId);
+  };
+
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
@@ -121,6 +128,8 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
     }
     return <FileText className="h-4 w-4" />;
   };
+
+  const isTempId = (id: string) => id?.startsWith('temp-');
 
   const getStatusBadge = (document: any) => {
     if (document.extraction_status === 'completed') {
@@ -133,28 +142,39 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
-      return <Badge variant="outline"><Sparkles className="h-3 w-3 mr-1" />Ready to Extract</Badge>;
+      return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>;
     }
-    return <Badge variant="outline">Uploading...</Badge>;
+    if (document.upload_status === 'uploading' || document.upload_progress < 100) {
+      return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Uploading</Badge>;
+    }
+    return <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Waiting</Badge>;
   };
 
   const getStatusMessage = (document: any) => {
     if (document.extraction_status === 'processing') {
-      return <span className="text-xs text-muted-foreground">Extracting data, please wait...</span>;
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-pulse">⚡</span> Extracting data, please wait...
+      </span>;
     }
     if (document.extraction_status === 'completed') {
-      return <span className="text-xs text-green-600">Data extracted successfully</span>;
+      return <span className="text-xs text-green-600">✓ Data extracted successfully</span>;
     }
     if (document.extraction_status === 'failed') {
-      return <span className="text-xs text-red-600">Extraction failed, click retry</span>;
+      return <span className="text-xs text-red-600">✗ Extraction failed, click retry</span>;
+    }
+    if (document.upload_status === 'uploading' || document.upload_progress < 100) {
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-pulse">⬆️</span> Uploading file...
+      </span>;
     }
     if (document.upload_progress === 100 && document.extraction_status === 'pending') {
-      return <span className="text-xs text-blue-600">Click to start extraction</span>;
+      return <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="animate-bounce">⏳</span> Processing document...
+      </span>;
     }
-    if (document.upload_progress < 100) {
-      return <span className="text-xs text-muted-foreground">Uploading file...</span>;
-    }
-    return null;
+    return <span className="text-xs text-muted-foreground flex items-center gap-1">
+      <span className="animate-pulse">⏳</span> Preparing...
+    </span>;
   };
 
   const completedExtractions = getCompletedDocuments();
@@ -239,12 +259,12 @@ const DocumentUploadSection: React.FC<DocumentUploadSectionProps> = ({
                         Review Data
                       </Button>
                     )}
-                    {(document.extraction_status === 'failed' || 
+                    {(document.extraction_status === 'failed' ||
                       (document.upload_progress === 100 && document.extraction_status === 'pending')) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => processDocument(document.id)}
+                        onClick={() => handleProcessDocument(document.id)}
                         disabled={isProcessing}
                       >
                         <Sparkles className="h-3 w-3 mr-1" />
