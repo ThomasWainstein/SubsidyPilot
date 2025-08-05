@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: python-compile
+        name: Python syntax check
+        entry: python -m py_compile
+        language: system
+        files: \.py$
+      - id: selenium-compliance
+        name: Validate Selenium compliance
+        entry: python validate_selenium_compliance.py
+        language: system
+        pass_filenames: false
