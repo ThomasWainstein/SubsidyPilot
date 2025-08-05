@@ -7,22 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface CanonicalSubsidy {
-  title: Record<string, string>;
-  description: Record<string, string>;
-  amount_min: number | null;
-  amount_max: number | null;
-  deadline: string | null;
-  region: string[];
-  categories: string[];
-  legal_entities: string[];
-  tags: string[];
-  eligibility_criteria: Record<string, any>;
-  application_docs: Record<string, any>[];
-  status: string;
-  agency: string;
-  source_url: string;
-  language: string[];
+interface ProcessingRequest {
+  source?: string;
+  session_id?: string;
+  page_ids?: string[];
+  quality_threshold?: number;
 }
 
 serve(async (req) => {
@@ -31,137 +20,149 @@ serve(async (req) => {
   }
 
   try {
+    // Environment configuration
     const config = {
-      supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
+      supabase_url: Deno.env.get('SUPABASE_URL'),
       supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-      openai_api_key: Deno.env.get('SCRAPER_RAW_GPT_API') || Deno.env.get('OPENAI_API_KEY'),
+      openai_api_key: Deno.env.get('SCRAPPER_RAW_GPT_API'), // Note: using existing secret with typo
+      backup_api_key: Deno.env.get('OPENAI_API_KEY')
     };
 
-    if (!config.supabase_url || !config.supabase_service_key || !config.openai_api_key) {
-      throw new Error('Missing required configuration');
+    console.log('🤖 AI Content Processor Environment Check:', {
+      has_supabase_url: !!config.supabase_url,
+      has_service_key: !!config.supabase_service_key,
+      has_openai_key: !!config.openai_api_key,
+      has_backup_key: !!config.backup_api_key
+    });
+
+    if (!config.supabase_url || !config.supabase_service_key) {
+      throw new Error('Missing required Supabase configuration');
+    }
+
+    if (!config.openai_api_key && !config.backup_api_key) {
+      throw new Error('Missing OpenAI API key configuration');
     }
 
     const supabase = createClient(config.supabase_url, config.supabase_service_key);
-    
-    const { source, session_id, page_ids, single_page_id } = await req.json();
+    const openai_key = config.openai_api_key || config.backup_api_key;
 
-    console.log('🤖 AI Content Processor starting:', { source, session_id, page_ids: page_ids?.length });
+    const requestBody: ProcessingRequest = await req.json();
+    const { source, session_id, page_ids, quality_threshold = 0.7 } = requestBody;
 
-    let pagesToProcess = [];
+    console.log('🤖 AI Content Processor starting:', { source, session_id, page_count: page_ids?.length });
 
-    if (single_page_id) {
-      // Process single page
-      const { data: page, error } = await supabase
-        .from('raw_scraped_pages')
-        .select('*')
-        .eq('id', single_page_id)
-        .single();
-      
-      if (error || !page) {
-        throw new Error(`Page not found: ${single_page_id}`);
-      }
-      
-      pagesToProcess = [page];
-    } else if (page_ids) {
+    // Get pages to process
+    let pagesToProcess;
+    if (page_ids && page_ids.length > 0) {
       // Process specific pages
       const { data: pages, error } = await supabase
         .from('raw_scraped_pages')
         .select('*')
-        .in('id', page_ids);
+        .in('id', page_ids)
+        .eq('status', 'scraped');
       
-      if (error) {
-        throw new Error(`Failed to fetch pages: ${error.message}`);
-      }
-      
+      if (error) throw error;
       pagesToProcess = pages || [];
     } else {
-      // Process unprocessed pages from source
-      const { data: pages, error } = await supabase
+      // Process all unprocessed pages from source
+      const query = supabase
         .from('raw_scraped_pages')
         .select('*')
-        .eq('source_site', source)
-        .eq('status', 'scraped')
-        .limit(10);
+        .eq('status', 'scraped');
       
-      if (error) {
-        throw new Error(`Failed to fetch pages: ${error.message}`);
+      if (source && source !== 'all') {
+        query.eq('source_site', source);
       }
       
+      const { data: pages, error } = await query.limit(50); // Process max 50 at a time
+      if (error) throw error;
       pagesToProcess = pages || [];
     }
 
-    console.log(`📄 Processing ${pagesToProcess.length} pages`);
+    console.log(`📊 Processing ${pagesToProcess.length} pages`);
 
-    const results = [];
+    const processedSubsidies: any[] = [];
+    const failedPages: any[] = [];
 
     for (const page of pagesToProcess) {
       try {
         console.log(`🔍 Processing page: ${page.source_url}`);
-
-        // Extract structured data using OpenAI
-        const extractedData = await extractWithOpenAI(page, config.openai_api_key, source);
         
-        if (extractedData) {
-          // Store in subsidies table
-          const subsidyData = mapToSubsidySchema(extractedData, page);
-          
-          const { data: storedSubsidy, error: subsidyError } = await supabase
-            .from('subsidies')
-            .insert(subsidyData)
+        // Extract structured data using OpenAI
+        const extractedData = await extractSubsidyData(page, openai_key, source);
+        
+        if (extractedData && extractedData.confidence >= quality_threshold) {
+          // Store in subsidies_structured table
+          const { data: insertedSubsidy, error: insertError } = await supabase
+            .from('subsidies_structured')
+            .insert({
+              raw_log_id: page.id,
+              url: page.source_url,
+              title: extractedData.title,
+              description: extractedData.description,
+              amount: extractedData.amount,
+              deadline: extractedData.deadline,
+              eligibility: extractedData.eligibility,
+              program: extractedData.program,
+              agency: extractedData.agency,
+              region: extractedData.regions || [],
+              sector: extractedData.sectors || [],
+              language: extractedData.language || [getLanguageFromSource(source)],
+              scrape_date: page.scrape_date,
+              source_url_verified: page.source_url
+            })
             .select()
             .single();
           
-          if (subsidyError) {
-            console.error('❌ Failed to store subsidy:', subsidyError);
+          if (insertError) {
+            console.error('❌ Failed to insert structured subsidy:', insertError);
+            failedPages.push({ page_id: page.id, error: insertError.message });
           } else {
-            console.log(`✅ Stored subsidy: ${storedSubsidy.id}`);
+            processedSubsidies.push(insertedSubsidy);
+            console.log(`✅ Processed and stored: ${extractedData.title}`);
             
             // Update page status
             await supabase
               .from('raw_scraped_pages')
               .update({ status: 'processed' })
               .eq('id', page.id);
-            
-            results.push({
-              page_id: page.id,
-              subsidy_id: storedSubsidy.id,
-              url: page.source_url,
-              success: true
-            });
           }
         } else {
-          console.warn(`⚠️ No data extracted from: ${page.source_url}`);
-          results.push({
-            page_id: page.id,
-            url: page.source_url,
-            success: false,
-            error: 'No data extracted'
-          });
+          console.warn(`⚠️ Low quality extraction for ${page.source_url}, confidence: ${extractedData?.confidence || 0}`);
+          failedPages.push({ page_id: page.id, error: 'Low quality extraction' });
         }
-
-        // Rate limiting for OpenAI API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-      } catch (pageError) {
-        console.error(`❌ Error processing page ${page.id}:`, pageError);
-        results.push({
-          page_id: page.id,
-          url: page.source_url,
-          success: false,
-          error: pageError.message
-        });
+        
+      } catch (error) {
+        console.error(`❌ Failed to process page ${page.id}:`, error);
+        failedPages.push({ page_id: page.id, error: error.message });
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
-    console.log(`📊 Processing complete: ${successCount}/${results.length} successful`);
+    // Log processing completion
+    if (session_id) {
+      await supabase.from('scraper_logs').insert({
+        session_id,
+        status: 'ai_processed',
+        message: `AI processing completed: ${processedSubsidies.length} subsidies created`,
+        details: {
+          successful: processedSubsidies.length,
+          failed: failedPages.length,
+          source: source
+        }
+      });
+    }
 
     return new Response(JSON.stringify({
       success: true,
-      processed: results.length,
-      successful: successCount,
-      failed: results.length - successCount,
-      results
+      processed_pages: pagesToProcess.length,
+      successful: processedSubsidies.length,
+      failed: failedPages.length,
+      subsidies: processedSubsidies.map(s => ({
+        id: s.id,
+        title: s.title,
+        url: s.url
+      })),
+      failed_pages: failedPages
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -178,162 +179,86 @@ serve(async (req) => {
   }
 });
 
-async function extractWithOpenAI(page: any, apiKey: string, source: string): Promise<any> {
-  const systemPrompt = source === 'franceagrimer' ? 
-    createFrenchExtractionPrompt() : 
-    createRomanianExtractionPrompt();
+async function extractSubsidyData(page: any, openaiKey: string, source?: string): Promise<any> {
+  const language = getLanguageFromSource(source);
+  
+  const systemPrompt = `You are an expert at extracting structured subsidy information from government websites.
+Extract the following information from the provided text and return it as JSON:
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Extract agricultural subsidy information from this content:\n\nURL: ${page.source_url}\n\nContent:\n${page.combined_content_markdown || page.raw_text}` }
-      ],
-      temperature: 0.1,
-      max_tokens: 2000
-    }),
-  });
+{
+  "title": "Exact title of the subsidy/grant",
+  "description": "Clear, concise description of what the subsidy supports",
+  "amount": [array of numbers representing funding amounts],
+  "deadline": "Application deadline if mentioned (YYYY-MM-DD format)",
+  "eligibility": "Who can apply and requirements",
+  "program": "Program or scheme name",
+  "agency": "Government agency providing the funding", 
+  "regions": ["array", "of", "eligible", "regions"],
+  "sectors": ["array", "of", "eligible", "sectors"],
+  "language": ["${language}"],
+  "confidence": 0.9
+}
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-  }
+Focus on accuracy. If information is not clearly stated, use null for that field.
+Set confidence between 0.0-1.0 based on how clear and complete the extraction is.`;
 
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content;
+  const userPrompt = `Extract subsidy information from this ${source || 'government'} website content:
 
-  if (!content) {
-    return null;
-  }
+URL: ${page.source_url}
+
+Content:
+${page.raw_text?.substring(0, 8000) || page.combined_content_markdown?.substring(0, 8000)}`;
 
   try {
-    // Extract JSON from the response
-    const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/```\n([\s\S]*?)\n```/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1]);
-    } else {
-      // Try parsing the entire response as JSON
-      return JSON.parse(content);
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 2000
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
-  } catch (parseError) {
-    console.warn('⚠️ Failed to parse OpenAI response as JSON:', parseError);
-    return null;
+
+    const data = await response.json();
+    const extractedText = data.choices[0].message.content;
+    
+    // Parse JSON response
+    const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('No valid JSON found in response');
+    }
+    
+  } catch (error) {
+    console.error('❌ OpenAI extraction failed:', error);
+    return {
+      title: page.source_url.split('/').pop()?.replace(/-/g, ' ') || 'Unknown Subsidy',
+      description: page.raw_text?.substring(0, 500) || 'No description available',
+      confidence: 0.2
+    };
   }
 }
 
-function createFrenchExtractionPrompt(): string {
-  return `You are an expert at extracting agricultural subsidy information from French government websites, particularly FranceAgriMer content.
-
-Extract structured data from the provided content and return it as valid JSON with the following schema:
-
-{
-  "title": "Subsidy title in French",
-  "description": "Detailed description in French",
-  "amount_min": 1000, // Minimum amount in EUR, null if not specified
-  "amount_max": 50000, // Maximum amount in EUR, null if not specified
-  "deadline": "2024-12-31", // ISO date format, null if not specified
-  "regions": ["Île-de-France", "Nouvelle-Aquitaine"], // French regions
-  "categories": ["agriculture", "élevage"], // Sector categories
-  "legal_entities": ["EARL", "SCEA", "GFA"], // Eligible legal entity types
-  "eligibility_criteria": {
-    "min_farm_size": 5, // hectares
-    "max_farm_size": 500,
-    "organic_certified": false,
-    "young_farmer": false,
-    "requirements": ["Description of specific requirements"]
-  },
-  "application_docs": [
-    {
-      "document_name": "Formulaire de demande",
-      "document_url": "https://...",
-      "required": true
-    }
-  ],
-  "agency": "FranceAgriMer",
-  "funding_type": "grant", // or "loan", "guarantee"
-  "sectors": ["viticulture", "céréales"], // Agricultural sectors
-  "payment_terms": "Description of payment schedule",
-  "co_financing_rate": 50 // Percentage if co-financing required
-}
-
-Rules:
-- Return only valid JSON
-- Convert all amounts to EUR (€)
-- Use French region names exactly as they appear
-- Include only information that is explicitly stated
-- Use null for missing numerical values
-- Use empty arrays for missing array values
-- Preserve French language in text fields
-- Extract document URLs if available`;
-}
-
-function createRomanianExtractionPrompt(): string {
-  return `You are an expert at extracting agricultural subsidy information from Romanian government websites, particularly AFIR and PNDR content.
-
-Extract structured data and return it as valid JSON with the same schema as French content but adapted for Romanian context:
-
-{
-  "title": "Subsidy title in Romanian",
-  "description": "Detailed description in Romanian", 
-  "amount_min": 1000, // Minimum amount in EUR/RON
-  "amount_max": 50000,
-  "deadline": "2024-12-31",
-  "regions": ["București", "Cluj"], // Romanian counties/regions
-  "categories": ["agricultură", "zootehnie"],
-  "legal_entities": ["PFA", "SRL", "SA"],
-  "eligibility_criteria": {
-    "min_farm_size": 1,
-    "requirements": ["Romanian specific requirements"]
-  },
-  "agency": "AFIR",
-  "funding_type": "grant",
-  "sectors": ["cereale", "legume"],
-  "co_financing_rate": 90 // PNDR typically has high co-financing
-}
-
-Convert RON to EUR using approximate rate (5 RON = 1 EUR).
-Preserve Romanian language in text fields.`;
-}
-
-function mapToSubsidySchema(extractedData: any, page: any): any {
-  const currentDate = new Date().toISOString();
-  
-  return {
-    code: `AUTO-${Date.now()}`, // Generate unique code
-    title: { 
-      [extractedData.agency === 'FranceAgriMer' ? 'fr' : 'ro']: extractedData.title 
-    },
-    description: { 
-      [extractedData.agency === 'FranceAgriMer' ? 'fr' : 'ro']: extractedData.description 
-    },
-    amount_min: extractedData.amount_min,
-    amount_max: extractedData.amount_max,
-    deadline: extractedData.deadline,
-    region: extractedData.regions || [],
-    categories: extractedData.categories || [],
-    legal_entities: extractedData.legal_entities || [],
-    tags: extractedData.sectors || [],
-    matching_tags: [...(extractedData.categories || []), ...(extractedData.sectors || [])],
-    eligibility_criteria: extractedData.eligibility_criteria || {},
-    application_docs: extractedData.application_docs || [],
-    status: 'open',
-    agency: extractedData.agency,
-    funding_type: extractedData.funding_type,
-    source_url: page.source_url,
-    language: [extractedData.agency === 'FranceAgriMer' ? 'fr' : 'ro'],
-    raw_content: {
-      scraped_at: currentDate,
-      source_page_id: page.id,
-      extraction_method: 'openai_gpt4o'
-    },
-    domain: extractedData.agency === 'FranceAgriMer' ? 'franceagrimer.fr' : 'afir.info',
-    scrape_date: currentDate,
-    created_at: currentDate,
-    updated_at: currentDate
-  };
+function getLanguageFromSource(source?: string): string {
+  switch (source) {
+    case 'franceagrimer':
+      return 'fr';
+    case 'afir':
+      return 'ro';
+    default:
+      return 'en';
+  }
 }
