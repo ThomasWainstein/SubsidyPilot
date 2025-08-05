@@ -58,9 +58,7 @@ import aiofiles
 import aiohttp
 from supabase import create_client, Client
 
-from extractors.pdf_extractor import PDFExtractor
-from extractors.docx_extractor import DOCXExtractor
-from extractors.xlsx_extractor import XLSXExtractor
+from document_processing import PythonDocumentExtractor
 from utils.download_manager import DownloadManager
 from utils.logger import setup_structured_logger
 from utils.schema_consolidator import SchemaConsolidator
@@ -69,9 +67,27 @@ from utils.schema_consolidator import SchemaConsolidator
 class ExtractionStatus:
     """Enumeration of extraction status levels"""
     SUCCESS = "success"
-    PARTIAL = "partial" 
+    PARTIAL = "partial"
     WARNING = "warning"
     FAILURE = "failure"
+
+
+class SharedDocumentExtractor:
+    """Async wrapper around the shared PythonDocumentExtractor."""
+
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
+        self.extractor = PythonDocumentExtractor()
+
+    async def extract_schema(self, file_path: str) -> Dict[str, Any]:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, self.extractor.extract_document, file_path)
+        # For schema purposes we simply return the raw text
+        return {
+            "fields": [],
+            "raw_unclassified": [result.text_content],
+            "metadata": {"extraction_method": result.extraction_method},
+        }
 
 
 class DocumentSchemaExtractor:
@@ -79,39 +95,37 @@ class DocumentSchemaExtractor:
     Production-ready document schema extractor with enhanced error handling,
     structured logging, and modular architecture.
     """
-    
+
     def __init__(self):
         """Initialize the extractor with configuration from environment variables."""
         self._validate_environment()
-        
+
         self.supabase_url = os.getenv('SUPABASE_URL')
         self.supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
         self.max_concurrent = int(os.getenv('MAX_CONCURRENT_DOCS', '5'))
-        
+
         # Initialize Supabase client
         self.supabase: Client = create_client(self.supabase_url, self.supabase_key)
-        
+
         # Initialize structured logger
         self.logger = setup_structured_logger()
-        
+
         # Initialize download manager with retry logic
         self.download_manager = DownloadManager(
             timeout=int(os.getenv('DOWNLOAD_TIMEOUT', '30')),
             max_retries=int(os.getenv('DOWNLOAD_RETRIES', '3')),
             logger=self.logger
         )
-        
-        # Initialize extractors
-        self.pdf_extractor = PDFExtractor(logger=self.logger)
-        self.docx_extractor = DOCXExtractor(logger=self.logger)
-        self.xlsx_extractor = XLSXExtractor(logger=self.logger)
-        
+
+        # Initialize shared extractor
+        self.shared_extractor = SharedDocumentExtractor(logger=self.logger)
+
         # Initialize schema consolidator
         self.schema_consolidator = SchemaConsolidator(logger=self.logger)
-        
+
         # Concurrency control
         self.semaphore = asyncio.Semaphore(self.max_concurrent)
-        
+
         # Statistics tracking
         self.stats = {
             "total_subsidies": 0,
@@ -125,7 +139,7 @@ class DocumentSchemaExtractor:
             "extraction_start_time": None,
             "extraction_end_time": None
         }
-        
+
         self.logger.info("DocumentSchemaExtractor initialized", extra={
             "max_concurrent": self.max_concurrent,
             "download_timeout": os.getenv('DOWNLOAD_TIMEOUT', '30'),
@@ -136,69 +150,69 @@ class DocumentSchemaExtractor:
         """Validate required environment variables."""
         required_vars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
         missing_vars = [var for var in required_vars if not os.getenv(var)]
-        
+
         if missing_vars:
             print(f"ERROR: Missing required environment variables: {', '.join(missing_vars)}")
             sys.exit(1)
 
     async def process_subsidies(
-        self, 
-        subsidy_ids: Optional[List[str]] = None, 
+        self,
+        subsidy_ids: Optional[List[str]] = None,
         batch_size: int = 10,
         dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Process multiple subsidies for document extraction.
-        
+
         Args:
             subsidy_ids: List of subsidy IDs to process. If None, process all.
             batch_size: Number of subsidies to process in each batch.
             dry_run: If True, only parse and log, don't write to DB.
-            
+
         Returns:
             Comprehensive extraction statistics.
         """
         self.stats["extraction_start_time"] = datetime.utcnow().isoformat()
-        
+
         self.logger.info("Starting document extraction batch", extra={
             "subsidy_ids": subsidy_ids or "ALL",
             "batch_size": batch_size,
             "dry_run": dry_run
         })
-        
+
         # Fetch subsidies to process
         subsidies = await self._fetch_subsidies(subsidy_ids)
         if not subsidies:
             self.logger.warning("No subsidies found to process")
             return self._generate_final_stats()
-        
+
         self.stats["total_subsidies"] = len(subsidies)
         self.logger.info(f"Found {len(subsidies)} subsidies to process")
-        
+
         # Process subsidies in batches
         for i in range(0, len(subsidies), batch_size):
             batch = subsidies[i:i + batch_size]
             batch_num = i // batch_size + 1
-            
+
             self.logger.info("Processing batch", extra={
                 "batch_number": batch_num,
                 "batch_size": len(batch),
                 "subsidies_remaining": len(subsidies) - i
             })
-            
+
             # Process batch concurrently
             tasks = [self.process_single_subsidy(subsidy, dry_run) for subsidy in batch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Update statistics from batch results
             self._update_stats_from_batch(results)
-        
+
         self.stats["extraction_end_time"] = datetime.utcnow().isoformat()
         final_stats = self._generate_final_stats()
-        
+
         # Save audit log
         await self._save_audit_log(final_stats)
-        
+
         self.logger.info("Extraction batch completed", extra=final_stats)
         return final_stats
 
@@ -216,9 +230,9 @@ class DocumentSchemaExtractor:
             else:
                 result = self.supabase.table('subsidies').select('*').execute()
                 subsidies = result.data
-            
+
             return subsidies
-            
+
         except Exception as e:
             self.logger.error("Failed to fetch subsidies from database", extra={
                 "error": str(e),
@@ -229,22 +243,22 @@ class DocumentSchemaExtractor:
     async def process_single_subsidy(self, subsidy: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
         """
         Process a single subsidy for document extraction.
-        
+
         Args:
             subsidy: Subsidy record from database.
             dry_run: If True, only parse and log, don't write to DB.
-            
+
         Returns:
             Processing result with detailed status and metrics.
         """
         subsidy_id = subsidy['id']
         subsidy_title = subsidy.get('title', 'Unknown')
-        
+
         self.logger.info("Processing subsidy", extra={
             "subsidy_id": subsidy_id,
             "subsidy_title": subsidy_title
         })
-        
+
         try:
             # Get document URLs from application_docs field
             application_docs = subsidy.get('application_docs', [])
@@ -252,19 +266,19 @@ class DocumentSchemaExtractor:
                 self.logger.warning("No application documents found", extra={
                     "subsidy_id": subsidy_id
                 })
-                return self._create_subsidy_result(subsidy_id, ExtractionStatus.WARNING, 
+                return self._create_subsidy_result(subsidy_id, ExtractionStatus.WARNING,
                                                  "No application documents found", [])
-            
+
             # Process each document with concurrency control
             async with self.semaphore:
                 extraction_results = []
-                
+
                 for doc_info in application_docs:
                     try:
                         result = await self.process_document(subsidy_id, doc_info, dry_run)
                         extraction_results.append(result)
                         self.stats["total_documents"] += 1
-                        
+
                         # Update document stats based on result
                         if result["status"] == ExtractionStatus.SUCCESS:
                             self.stats["successful_documents"] += 1
@@ -272,7 +286,7 @@ class DocumentSchemaExtractor:
                             self.stats["partial_documents"] += 1
                         else:
                             self.stats["failed_documents"] += 1
-                            
+
                     except Exception as e:
                         self.logger.error("Document processing failed", extra={
                             "subsidy_id": subsidy_id,
@@ -280,7 +294,7 @@ class DocumentSchemaExtractor:
                             "error": str(e),
                             "error_type": type(e).__name__
                         })
-                        
+
                         # Record failed extraction
                         if not dry_run:
                             await self._record_extraction_status(
@@ -290,26 +304,26 @@ class DocumentSchemaExtractor:
                                 status=ExtractionStatus.FAILURE,
                                 error_message=str(e)
                             )
-                        
+
                         self.stats["failed_documents"] += 1
-            
+
             # Determine overall subsidy status
             subsidy_status = self._determine_subsidy_status(extraction_results)
-            
+
             # Generate consolidated schema from all documents
             if extraction_results:
                 consolidated_schema = self.schema_consolidator.consolidate_schemas(extraction_results)
-                
+
                 # Update subsidy with consolidated schema
                 if not dry_run:
                     await self._update_subsidy_schema(subsidy_id, consolidated_schema)
             else:
                 consolidated_schema = None
-            
-            return self._create_subsidy_result(subsidy_id, subsidy_status, 
-                                             f"Processed {len(extraction_results)} documents", 
+
+            return self._create_subsidy_result(subsidy_id, subsidy_status,
+                                             f"Processed {len(extraction_results)} documents",
                                              extraction_results, consolidated_schema)
-            
+
         except Exception as e:
             self.logger.error("Subsidy processing failed", extra={
                 "subsidy_id": subsidy_id,
@@ -319,43 +333,43 @@ class DocumentSchemaExtractor:
             return self._create_subsidy_result(subsidy_id, ExtractionStatus.FAILURE, str(e), [])
 
     async def process_document(
-        self, 
-        subsidy_id: str, 
-        doc_info: Dict[str, Any], 
+        self,
+        subsidy_id: str,
+        doc_info: Dict[str, Any],
         dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Process a single document for schema extraction.
-        
+
         Args:
             subsidy_id: The subsidy ID this document belongs to.
             doc_info: Document information containing URL and type.
             dry_run: If True, only parse and log, don't write to DB.
-            
+
         Returns:
             Extraction result with schema and detailed metadata.
         """
         doc_url = doc_info.get('url', '')
         doc_type = doc_info.get('type', '')
-        
+
         self.logger.info("Processing document", extra={
             "subsidy_id": subsidy_id,
             "document_url": doc_url,
             "document_type": doc_type
         })
-        
+
         try:
             # Download document with retry logic
             file_path = await self.download_manager.download_document(doc_url)
-            
+
             # Extract schema based on document type
             extractor = self._get_extractor(doc_type, doc_url)
             extracted_data = await extractor.extract_schema(file_path)
-            
+
             # Calculate coverage and determine status
             coverage_percentage = self._calculate_coverage(extracted_data)
             status = self._determine_document_status(extracted_data, coverage_percentage)
-            
+
             # Record extraction status
             if not dry_run:
                 await self._record_extraction_status(
@@ -367,11 +381,11 @@ class DocumentSchemaExtractor:
                     coverage_percentage=coverage_percentage,
                     extracted_schema=extracted_data
                 )
-            
+
             # Clean up downloaded file
             if os.path.exists(file_path):
                 os.unlink(file_path)
-            
+
             self.logger.info("Document processing completed", extra={
                 "subsidy_id": subsidy_id,
                 "document_url": doc_url,
@@ -379,7 +393,7 @@ class DocumentSchemaExtractor:
                 "field_count": len(extracted_data.get('fields', [])),
                 "coverage_percentage": coverage_percentage
             })
-            
+
             return {
                 "document_url": doc_url,
                 "document_type": doc_type,
@@ -393,7 +407,7 @@ class DocumentSchemaExtractor:
                     "extraction_method": extracted_data.get('metadata', {}).get('method', 'unknown')
                 }
             }
-            
+
         except Exception as e:
             self.logger.error("Document extraction failed", extra={
                 "subsidy_id": subsidy_id,
@@ -401,7 +415,7 @@ class DocumentSchemaExtractor:
                 "error": str(e),
                 "error_type": type(e).__name__
             })
-            
+
             if not dry_run:
                 await self._record_extraction_status(
                     subsidy_id=subsidy_id,
@@ -410,31 +424,21 @@ class DocumentSchemaExtractor:
                     status=ExtractionStatus.FAILURE,
                     error_message=str(e)
                 )
-            
+
             raise
 
     def _get_extractor(self, doc_type: str, doc_url: str):
-        """Get appropriate extractor based on document type."""
-        doc_type_lower = doc_type.lower()
-        doc_url_lower = doc_url.lower()
-        
-        if doc_type_lower == 'pdf' or doc_url_lower.endswith('.pdf'):
-            return self.pdf_extractor
-        elif doc_type_lower in ['docx', 'doc'] or doc_url_lower.endswith(('.docx', '.doc')):
-            return self.docx_extractor
-        elif doc_type_lower in ['xlsx', 'xls'] or doc_url_lower.endswith(('.xlsx', '.xls')):
-            return self.xlsx_extractor
-        else:
-            raise ValueError(f"Unsupported document type: {doc_type}")
+        """Return the shared extractor for all document types."""
+        return self.shared_extractor
 
     def _calculate_coverage(self, extracted_data: Dict[str, Any]) -> float:
         """Calculate extraction coverage percentage."""
         fields_count = len(extracted_data.get('fields', []))
         unclassified_count = len(extracted_data.get('raw_unclassified', []))
-        
+
         if fields_count + unclassified_count == 0:
             return 0.0
-        
+
         return (fields_count / (fields_count + unclassified_count)) * 100
 
     def _determine_document_status(self, extracted_data: Dict[str, Any], coverage: float) -> str:
@@ -452,11 +456,11 @@ class DocumentSchemaExtractor:
         """Determine overall subsidy status based on document results."""
         if not extraction_results:
             return ExtractionStatus.FAILURE
-        
+
         success_count = sum(1 for r in extraction_results if r.get("status") == ExtractionStatus.SUCCESS)
         partial_count = sum(1 for r in extraction_results if r.get("status") == ExtractionStatus.PARTIAL)
         total_count = len(extraction_results)
-        
+
         if success_count == total_count:
             return ExtractionStatus.SUCCESS
         elif success_count + partial_count >= total_count * 0.5:
@@ -467,17 +471,17 @@ class DocumentSchemaExtractor:
             return ExtractionStatus.FAILURE
 
     def _create_subsidy_result(
-        self, 
-        subsidy_id: str, 
-        status: str, 
-        message: str, 
+        self,
+        subsidy_id: str,
+        status: str,
+        message: str,
         extraction_results: List[Dict[str, Any]],
         schema: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Create standardized subsidy processing result."""
         total_fields = sum(r.get('field_count', 0) for r in extraction_results)
         avg_coverage = sum(r.get('coverage_percentage', 0) for r in extraction_results) / len(extraction_results) if extraction_results else 0
-        
+
         return {
             "success": status in [ExtractionStatus.SUCCESS, ExtractionStatus.PARTIAL],
             "subsidy_id": subsidy_id,
@@ -496,15 +500,15 @@ class DocumentSchemaExtractor:
             result = self.supabase.table('subsidies').update({
                 'application_schema': schema
             }).eq('id', subsidy_id).execute()
-            
+
             if not result.data:
                 raise Exception(f"No rows updated for subsidy {subsidy_id}")
-            
+
             self.logger.info("Subsidy schema updated", extra={
                 "subsidy_id": subsidy_id,
                 "total_fields": len(schema.get('fields', []))
             })
-                
+
         except Exception as e:
             self.logger.error("Failed to update subsidy schema", extra={
                 "subsidy_id": subsidy_id,
@@ -529,18 +533,18 @@ class DocumentSchemaExtractor:
             extraction_errors = []
             if error_message:
                 extraction_errors.append({
-                    "error": error_message, 
+                    "error": error_message,
                     "timestamp": datetime.utcnow().isoformat()
                 })
-            
+
             # Normalize URL to ensure idempotency
             normalized_url = document_url.strip()
-            
+
             # Check if record already exists (strict idempotency)
             existing = self.supabase.table('document_extraction_status').select('id').eq(
                 'subsidy_id', subsidy_id
             ).eq('document_url', normalized_url).execute()
-            
+
             data = {
                 'subsidy_id': subsidy_id,
                 'document_url': normalized_url,
@@ -552,7 +556,7 @@ class DocumentSchemaExtractor:
                 'extracted_schema': extracted_schema,
                 'updated_at': datetime.utcnow().isoformat()
             }
-            
+
             if existing.data:
                 # Update existing record
                 result = self.supabase.table('document_extraction_status').update(data).eq(
@@ -563,17 +567,17 @@ class DocumentSchemaExtractor:
                 # Insert new record
                 result = self.supabase.table('document_extraction_status').insert(data).execute()
                 operation = "inserted"
-            
+
             if not result.data:
                 raise Exception(f"Failed to {operation} extraction status record")
-            
+
             self.logger.info(f"Extraction status {operation}", extra={
                 "subsidy_id": subsidy_id,
                 "document_url": normalized_url,
                 "status": status,
                 "operation": operation
             })
-            
+
         except Exception as e:
             self.logger.error("Failed to record extraction status", extra={
                 "subsidy_id": subsidy_id,
@@ -603,13 +607,13 @@ class DocumentSchemaExtractor:
     def _generate_final_stats(self) -> Dict[str, Any]:
         """Generate final extraction statistics."""
         total_processed = self.stats["successful_subsidies"] + self.stats["partial_subsidies"] + self.stats["failed_subsidies"]
-        
+
         duration = None
         if self.stats["extraction_start_time"] and self.stats["extraction_end_time"]:
             start = datetime.fromisoformat(self.stats["extraction_start_time"])
             end = datetime.fromisoformat(self.stats["extraction_end_time"])
             duration = (end - start).total_seconds()
-        
+
         return {
             "extraction_summary": {
                 "total_subsidies": self.stats["total_subsidies"],
@@ -645,14 +649,14 @@ class DocumentSchemaExtractor:
                     "download_retries": os.getenv('DOWNLOAD_RETRIES', '3')
                 }
             }
-            
+
             audit_file = Path("extraction_audit.jsonl")
-            
+
             async with aiofiles.open(audit_file, 'a') as f:
                 await f.write(json.dumps(audit_data) + "\n")
-                
+
             self.logger.info("Audit log saved", extra={"audit_file": str(audit_file)})
-            
+
         except Exception as e:
             self.logger.error("Failed to save audit log", extra={
                 "error": str(e),
@@ -693,51 +697,51 @@ async def main():
         action='store_true',
         help='Only parse and log, do not write to database'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Validate mutually exclusive arguments
     if args.subsidy_ids and args.all_subsidies:
         parser.error('Cannot specify both --subsidy-ids and --all-subsidies')
-    
+
     if not args.subsidy_ids and not args.all_subsidies:
         parser.error('Must specify either --subsidy-ids or --all-subsidies')
-    
+
     # Override environment variable if specified
     if args.max_concurrent:
         os.environ['MAX_CONCURRENT_DOCS'] = str(args.max_concurrent)
-    
+
     try:
         extractor = DocumentSchemaExtractor()
-        
+
         subsidy_ids = args.subsidy_ids if args.subsidy_ids else None
         stats = await extractor.process_subsidies(subsidy_ids, args.batch_size, args.dry_run)
-        
+
         # Print final summary
         print("\n" + "="*60)
         print("EXTRACTION SUMMARY")
         print("="*60)
-        
+
         extraction_summary = stats['extraction_summary']
         document_summary = stats['document_summary']
-        
+
         print(f"Subsidies processed: {extraction_summary['processed_subsidies']}/{extraction_summary['total_subsidies']}")
         print(f"  ✓ Successful: {extraction_summary['successful_subsidies']}")
         print(f"  ⚠ Partial: {extraction_summary['partial_subsidies']}")
         print(f"  ✗ Failed: {extraction_summary['failed_subsidies']}")
         print(f"  Success rate: {extraction_summary['success_rate']:.1f}%")
-        
+
         print(f"\nDocuments processed: {document_summary['total_documents']}")
         print(f"  ✓ Successful: {document_summary['successful_documents']}")
         print(f"  ⚠ Partial: {document_summary['partial_documents']}")
         print(f"  ✗ Failed: {document_summary['failed_documents']}")
         print(f"  Success rate: {document_summary['document_success_rate']:.1f}%")
-        
+
         if stats['timing']['duration_seconds']:
             print(f"\nProcessing time: {stats['timing']['duration_seconds']:.1f} seconds")
-        
+
         print("="*60)
-        
+
         # Determine exit code
         if extraction_summary['failed_subsidies'] == 0:
             return 0  # Complete success
@@ -745,7 +749,7 @@ async def main():
             return 2  # Partial success
         else:
             return 1  # Complete failure
-        
+
     except KeyboardInterrupt:
         print("\nExtraction interrupted by user")
         return 1

@@ -1,6 +1,10 @@
-"""Backward compatibility wrapper for the unified document processing library."""
+"""Shared document processing utilities.
 
-from document_processing.python_document_extractor import (
+This package exposes unified document extraction tools used across
+AgriTool pipelines.
+"""
+
+from .python_document_extractor import (
     PythonDocumentExtractor,
     DocumentExtractionResult,
     extract_document_text,
