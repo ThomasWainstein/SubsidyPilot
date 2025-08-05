@@ -49,6 +49,25 @@ export default function DualPipelineManager() {
     }
   };
 
+  const triggerAIProcessing = async () => {
+    try {
+      toast.info('Starting AI processing of scraped pages...');
+      
+      const { data, error } = await supabase.functions.invoke('ai-content-processor', {
+        body: {
+          source: 'all',
+          session_id: `manual-trigger-${Date.now()}`,
+          quality_threshold: 0.6
+        }
+      });
+
+      if (error) throw error;
+      toast.success(`AI processing completed: ${data.successful} subsidies processed`);
+    } catch (error: any) {
+      toast.error(`AI processing failed: ${error.message}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -76,6 +95,16 @@ export default function DualPipelineManager() {
             <Button variant="outline" onClick={() => triggerHarvesting('romania')}>
               🇷🇴 Harvest Romanian Subsidies
             </Button>
+          </div>
+
+          <div className="border-t pt-4">
+            <h4 className="font-semibold mb-2">🤖 AI Processing</h4>
+            <Button variant="outline" onClick={triggerAIProcessing} className="w-full">
+              Process Scraped Pages with AI
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">
+              Converts raw scraped content into structured subsidy data using OpenAI
+            </p>
           </div>
 
           {lastExecution && (

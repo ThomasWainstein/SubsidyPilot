@@ -45,7 +45,7 @@ const CanonicalValidationDashboard = () => {
         .from('subsidies_structured')
         .select('id, title, missing_fields, audit_notes, created_at, raw_log_id')
         .not('missing_fields', 'is', null)
-        .neq('missing_fields', [])
+        .gt('missing_fields', '{}')
         .order('created_at', { ascending: false })
         .limit(100);
 
