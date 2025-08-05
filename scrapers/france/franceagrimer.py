@@ -125,6 +125,13 @@ def run_franceagrimer_scraper(
     return results
 
 
+class FranceAgriMerScraper:
+    """Thin class wrapper around :func:`run_franceagrimer_scraper`."""
+
+    def run(self) -> List[Dict[str, str]]:
+        return run_franceagrimer_scraper(dry_run=True)
+
+
 if __name__ == "__main__":  # pragma: no cover
     run_franceagrimer_scraper()
 
