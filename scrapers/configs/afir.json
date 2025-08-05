@@ -6,5 +6,7 @@
   "detail_selectors": {
     "title": "h1",
     "description": "div#content"
-  }
+  },
+  "currency": "RON",
+  "counties": ["Alba", "Arad", "Argeș", "București", "Cluj"]
 }

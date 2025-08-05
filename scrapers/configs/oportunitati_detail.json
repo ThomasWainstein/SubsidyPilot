@@ -1,4 +1,8 @@
 {
+  "site_name": "oportunitati_detail",
+  "list_page": "",
+  "link_selector": "",
+  "next_page_selector": "",
   "detail_selectors": {
     "call_name": "#informatii-generale > div > div.col-12 > p:nth-of-type(2)",
     "call_type": "#informatii-generale > div > div.col-6.col-md-6 > p:nth-of-type(2)",

@@ -12,7 +12,7 @@ from qa_report import generate_qa_report
 
 def run_demo():
     """Run a demo pipeline using placeholder logic."""
-    run_scraper("franceagrimer", 1, True)
+    run_scraper("france", "franceagrimer", 1, True)
     run_ai_pipeline()
 
 
@@ -23,7 +23,8 @@ def main():
         choices=["scraping", "ai-processing", "document-analysis", "demo"],
         required=True,
     )
-    parser.add_argument("--site", default="franceagrimer", help="Target site to scrape")
+    parser.add_argument("--country", default="france", help="Country code for scraper")
+    parser.add_argument("--agency", default="franceagrimer", help="Agency name for scraper")
     parser.add_argument(
         "--max-pages", type=int, default=5, help="Maximum number of pages to scrape"
     )
@@ -57,7 +58,7 @@ def main():
     args = parser.parse_args()
 
     if args.mode == "scraping":
-        results = run_scraper(args.site, args.max_pages, args.dry_run)
+        results = run_scraper(args.country, args.agency, args.max_pages, args.dry_run)
         if args.save_db:
             from datastore import save_subsidy
 

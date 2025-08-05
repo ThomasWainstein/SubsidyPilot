@@ -1,19 +1,10 @@
-"""Shared document processing utilities.
+"""Centralized document processing utilities.
 
-This package exposes unified document extraction tools used across
-AgriTool pipelines.
+This module consolidates all document extraction helpers.  Existing
+code should import from here instead of directly referencing legacy
+modules.
 """
 
-from .python_document_extractor import (
-    PythonDocumentExtractor,
-    DocumentExtractionResult,
-    extract_document_text,
-    ScraperDocumentExtractor,
-)
+from document_parser import extract_text_from_pdf, save_text_to_file
 
-__all__ = [
-    "PythonDocumentExtractor",
-    "DocumentExtractionResult",
-    "extract_document_text",
-    "ScraperDocumentExtractor",
-]
+__all__ = ["extract_text_from_pdf", "save_text_to_file"]

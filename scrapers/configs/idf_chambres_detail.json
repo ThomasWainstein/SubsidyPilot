@@ -1,5 +1,8 @@
 {
   "site_name": "idf_chambres_detail",
+  "list_page": "",
+  "link_selector": "",
+  "next_page_selector": "",
   "detail_selectors": {
     "title": "#content .container-detail-content > h2",
     "description": "#content .container-detail-content > p:nth-child(3)",
