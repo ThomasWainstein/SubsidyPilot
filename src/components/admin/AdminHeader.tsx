@@ -6,12 +6,18 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { cn } from '@/lib/utils';
 
+interface BreadcrumbItem {
+  label: string;
+  path?: string;
+  icon?: React.ReactNode;
+}
+
 interface AdminHeaderProps {
   title?: string;
   subtitle?: string;
   showBackButton?: boolean;
   backPath?: string;
-  customBreadcrumbs?: Array<{ label: string; path?: string }>;
+  customBreadcrumbs?: BreadcrumbItem[];
   className?: string;
 }
 
@@ -26,9 +32,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getDefaultBreadcrumbs = () => {
+  const getDefaultBreadcrumbs = (): BreadcrumbItem[] => {
     const path = location.pathname;
-    const breadcrumbs = [
+    const breadcrumbs: BreadcrumbItem[] = [
       { label: 'Admin', path: '/admin' }
     ];
 

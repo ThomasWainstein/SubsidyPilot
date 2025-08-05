@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface BreadcrumbItem {
   label: string;
-  path?: string;
+  path?: string;  // Made optional - current/final items don't need paths
   icon?: React.ReactNode;
 }
 
