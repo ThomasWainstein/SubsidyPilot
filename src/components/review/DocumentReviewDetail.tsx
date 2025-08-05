@@ -135,7 +135,6 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
       case 'failed':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
       case 'processing':
-      case 'pending':
         return <Clock className="h-5 w-5 text-blue-500" />;
       default:
         return <Clock className="h-5 w-5 text-gray-500" />;

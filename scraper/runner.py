@@ -28,6 +28,7 @@ from .core import (
 )
 from .discovery import extract_text_from_urls
 from selenium.webdriver.common.by import By
+from markdownify import markdownify as md
 
 
 CANONICAL_FIELDS = [
@@ -133,61 +134,57 @@ def load_config(site_name):
 
 def map_site_fields_to_canonical(raw_record, site_name):
     """Map site-specific fields to canonical field names."""
+    # Helper to rename fields and their markdown counterparts
+    def _rename_with_markdown(record, old, new):
+        if old in record:
+            record[new] = record.pop(old)
+        old_md = f"{old}_markdown"
+        if old_md in record:
+            record[f"{new}_markdown"] = record.pop(old_md)
+
     # Keep existing mappings for backward compatibility
     if site_name == "afir":
         pass
 
     if site_name == "apia_procurements":
-        if "attachments" in raw_record:
-            raw_record["documents"] = raw_record.pop("attachments")
+        _rename_with_markdown(raw_record, "attachments", "documents")
 
     if site_name == "franceagrimer":
         pass
 
     if site_name == "oportunitati_ue":
-        if "date" in raw_record:
-            raw_record["deadline"] = raw_record.pop("date")
+        _rename_with_markdown(raw_record, "date", "deadline")
 
     if site_name == "oportunitati_detail":
-        if "call_name" in raw_record:
-            raw_record["title"] = raw_record.pop("call_name")
-        if "call_type" in raw_record:
-            raw_record["funding_type"] = raw_record.pop("call_type")
-        if "budget" in raw_record:
-            raw_record["amount"] = raw_record.pop("budget")
-        if "release_date" in raw_record:
-            raw_record["deadline"] = raw_record.pop("release_date")
-        if "opening_date" in raw_record:
-            raw_record["application_method"] = raw_record.pop("opening_date")
-        if "closing_date" in raw_record:
-            raw_record["deadline"] = raw_record.pop("closing_date")
-        if "eligible_beneficiaries" in raw_record:
-            raw_record["eligibility"] = raw_record.pop("eligible_beneficiaries")
-        if "programs_for_which_the_call_applies" in raw_record:
-            raw_record["program"] = raw_record.pop("programs_for_which_the_call_applies")
-        if "funding_domain" in raw_record:
-            raw_record["sector"] = raw_record.pop("funding_domain")
-        if "areas" in raw_record:
-            raw_record["region"] = raw_record.pop("areas")
+        _rename_with_markdown(raw_record, "call_name", "title")
+        _rename_with_markdown(raw_record, "call_type", "funding_type")
+        _rename_with_markdown(raw_record, "budget", "amount")
+        _rename_with_markdown(raw_record, "release_date", "deadline")
+        _rename_with_markdown(raw_record, "opening_date", "application_method")
+        _rename_with_markdown(raw_record, "closing_date", "deadline")
+        _rename_with_markdown(raw_record, "eligible_beneficiaries", "eligibility")
+        _rename_with_markdown(raw_record, "programs_for_which_the_call_applies", "program")
+        _rename_with_markdown(raw_record, "funding_domain", "sector")
+        _rename_with_markdown(raw_record, "areas", "region")
 
     if site_name == "ec_horizon_detail":
-        if "general_info" in raw_record:
-            raw_record["description"] = raw_record.pop("general_info")
+        _rename_with_markdown(raw_record, "general_info", "description")
         if "topic_description" in raw_record:
             if "description" in raw_record:
                 raw_record["description"] += "\n" + raw_record.pop("topic_description")
             else:
                 raw_record["description"] = raw_record.pop("topic_description")
-        if "topic_updates" in raw_record:
-            raw_record["reporting_requirements"] = raw_record.pop("topic_updates")
-        if "conditions_documents" in raw_record:
-            raw_record["documents"] = raw_record.pop("conditions_documents")
-        if "budget_overview" in raw_record:
-            raw_record["amount"] = raw_record.pop("budget_overview")
-        if "partner_search" in raw_record:
-            raw_record["technical_support"] = raw_record.pop("partner_search")
-        if "submission_link" in raw_record:
-            raw_record["application_method"] = raw_record.pop("submission_link")
+            td_md = raw_record.pop("topic_description_markdown", None)
+            if td_md:
+                if "description_markdown" in raw_record:
+                    raw_record["description_markdown"] += "\n" + td_md
+                else:
+                    raw_record["description_markdown"] = td_md
+        _rename_with_markdown(raw_record, "topic_updates", "reporting_requirements")
+        _rename_with_markdown(raw_record, "conditions_documents", "documents")
+        _rename_with_markdown(raw_record, "budget_overview", "amount")
+        _rename_with_markdown(raw_record, "partner_search", "technical_support")
+        _rename_with_markdown(raw_record, "submission_link", "application_method")
 
     if site_name == "idf_chambres_detail":
         # Add any specific mappings for IDF chambres
@@ -329,7 +326,9 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
                     title_el = els[0]
                     break
             if title_el:
+                inner_html = title_el.get_attribute("innerHTML")
                 raw_record["title"] = title_el.text.strip()
+                raw_record["title_markdown"] = md(inner_html).strip()
         except Exception as e:
             print(f"[WARN] Could not extract title: {e}")
 
@@ -344,7 +343,9 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
                         desc_el = p
                         break
                 if desc_el:
+                    inner_html = desc_el.get_attribute("innerHTML")
                     raw_record["description"] = desc_el.text.strip()
+                    raw_record["description_markdown"] = md(inner_html).strip()
         except Exception as e:
             print(f"[WARN] Could not extract description: {e}")
 
@@ -381,8 +382,11 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
                     raw_record[field] = ";".join(sorted(doc_paths)) if doc_paths else "N/A"
                 else:
                     try:
-                        value = driver.find_element(By.CSS_SELECTOR, selector).text.strip()
+                        el = driver.find_element(By.CSS_SELECTOR, selector)
+                        html = el.get_attribute("innerHTML")
+                        value = el.text.strip()
                         raw_record[field] = value if value else "N/A"
+                        raw_record[f"{field}_markdown"] = md(html).strip() if html else ""
                     except:
                         raw_record[field] = "N/A"
             except Exception as e:
@@ -391,7 +395,9 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
 
         # Map and normalize
         mapped_record = map_site_fields_to_canonical(raw_record.copy(), config_name)
+        markdown_fields = {k: v for k, v in mapped_record.items() if k.endswith("_markdown")}
         normalized_record = normalize_record(mapped_record)
+        normalized_record.update(markdown_fields)
         
         # Detect language
         all_text = " ".join([
@@ -405,10 +411,12 @@ def run_fetch_and_extract_smart(feeder_file, browser=None, output_file=None):
         print(f"✅ Extracted [{idx}]: {normalized_record.get('title', '')} [{normalized_record['language']}]")
 
     driver.quit()
-    
+
     # Save results
+    markdown_fieldnames = sorted({k for record in extracted for k in record.keys() if k.endswith('_markdown')})
+    fieldnames = CANONICAL_FIELDS + markdown_fieldnames
     with open(output_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CANONICAL_FIELDS, extrasaction='ignore')
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
         writer.writerows(extracted)
     print(f"🔥 Consultant-grade dataset saved to {output_file}")

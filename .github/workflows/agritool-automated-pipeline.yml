@@ -110,7 +110,6 @@ jobs:
             pandoc
           
           echo "✅ System dependencies installed - NO JAVA/TIKA REQUIRED"
-
       - name: 🖥️ Setup virtual display
         run: |
           Xvfb :99 -screen 0 1920x1080x24 -ac &
@@ -123,13 +122,11 @@ jobs:
         run: |
           mkdir -p data/scraped
           mkdir -p logs
-
       - name: 📦 Install dependencies - Scraper
         working-directory: ./AgriToolScraper-main  
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: ✅ Verify environment variables
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -148,7 +145,6 @@ jobs:
               sys.exit(1)
           "
           echo "✅ All required environment variables are properly set"
-
       - name: 🕷️ Run AgriTool scraper with enhanced extraction
         working-directory: ./AgriToolScraper-main
         env:
@@ -179,7 +175,6 @@ jobs:
           eval $SCRAPE_CMD
           
           echo "✅ Scraping completed - data automatically saved to Supabase during extraction"
-
       - name: 📊 Validate scraping results
         id: validation
         working-directory: ./AgriToolScraper-main
@@ -213,7 +208,6 @@ jobs:
             echo "success=false" >> $GITHUB_OUTPUT
             echo "❌ Scraping validation failed - no files found"
           fi
-
       - name: 📦 Upload scraper artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -243,7 +237,6 @@ jobs:
         run: |
           echo "Scrape success: '${{ needs.scrape-and-upload.outputs.scrape-success }}'"
           echo "Records uploaded: '${{ needs.scrape-and-upload.outputs.records-uploaded }}'"
-
       - name: 📋 Checkout repository
         uses: actions/checkout@v4
 
@@ -257,7 +250,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: ✅ Verify AI agent environment variables
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -276,7 +268,6 @@ jobs:
               sys.exit(1)
           "
           echo "✅ All required environment variables are properly set"
-
       - name: 🤖 Run AI Log Interpreter Agent
         id: agent-run
         working-directory: ./AgriTool-Raw-Log-Interpreter
@@ -314,7 +305,6 @@ jobs:
             echo "success=false" >> $GITHUB_OUTPUT
             echo "❌ AI processing failed - no agent logs found"
           fi
-
       - name: 📦 Upload agent artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -349,7 +339,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest psycopg2-binary
-
       - name: 🧪 Run comprehensive test suite
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -389,7 +378,6 @@ jobs:
           # Test 4: End-to-end pipeline test (dry run)
           echo "📋 Test 4: End-to-end pipeline test"
           python main.py single --url https://www.franceagrimer.fr/aides/vitilience-2025 || echo "⚠️ Single URL test completed with warnings"
-
       - name: 🔍 Data quality validation
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -423,7 +411,6 @@ jobs:
           except Exception as e:
               print(f'⚠️ Data quality check failed: {e}')
           "
-
       - name: 📊 Generate QA report
         run: |
           echo "📊 Generating comprehensive QA report..."
@@ -439,7 +426,6 @@ jobs:
           EOF
           
           echo "✅ QA report generated"
-
       - name: 📦 Upload QA artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -502,7 +488,6 @@ jobs:
           pkill -f Xvfb || true
           
           echo "✅ Cleanup completed successfully"
-
       - name: 📊 Report cleanup results
         run: |
           echo "📊 Cleanup Summary:"
@@ -512,7 +497,6 @@ jobs:
           echo "  🗑️ Lock files removed"
           echo "  🧹 Browser processes terminated"
           echo "✅ System ready for next pipeline run"
-
   # =============================================================================
   # JOB 5: PIPELINE SUMMARY & NOTIFICATIONS
   # =============================================================================
@@ -558,14 +542,12 @@ jobs:
           echo "  2. Check Supabase subsidies_structured table for new records"
           echo "  3. Validate extraction completeness and accuracy"
           echo "  4. Monitor error logs for any issues requiring attention"
-
       - name: ✅ Success notification
         if: needs.scrape-and-upload.result == 'success' && needs.ai-agent-processing.result == 'success'
         run: |
           echo "🎉 AGRITOOL PIPELINE COMPLETED SUCCESSFULLY!"
           echo "✅ End-to-end automation executed without errors"
           echo "📊 Total records: ${{ needs.scrape-and-upload.outputs.records-uploaded || '0' }} scraped, ${{ needs.ai-agent-processing.outputs.processed-count || '0' }} processed"
-
       - name: ⚠️ Partial success notification  
         if: needs.scrape-and-upload.result != 'success' || needs.ai-agent-processing.result != 'success'
         run: |
