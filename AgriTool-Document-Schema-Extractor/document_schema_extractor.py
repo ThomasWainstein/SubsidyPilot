@@ -2,7 +2,6 @@
 
 from document_processing import extract_text_from_pdf
 
-
 def extract_document_schema(path: str, target_lang: str = "en") -> dict:
     """Return normalized text and metadata for *path*.
 
@@ -11,6 +10,5 @@ def extract_document_schema(path: str, target_lang: str = "en") -> dict:
     to :mod:`document_processing`.
     """
     return extract_text_from_pdf(path, target_lang=target_lang)
-
 
 __all__ = ["extract_document_schema"]
