@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      application_form_instances: {
+        Row: {
+          auto_population_config: Json | null
+          created_at: string | null
+          form_schema_id: string | null
+          generated_config: Json
+          generation_metrics: Json | null
+          id: string
+          status: string
+          subsidy_id: string
+          updated_at: string | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          auto_population_config?: Json | null
+          created_at?: string | null
+          form_schema_id?: string | null
+          generated_config?: Json
+          generation_metrics?: Json | null
+          id?: string
+          status?: string
+          subsidy_id: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          auto_population_config?: Json | null
+          created_at?: string | null
+          form_schema_id?: string | null
+          generated_config?: Json
+          generation_metrics?: Json | null
+          id?: string
+          status?: string
+          subsidy_id?: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_form_instances_form_schema_id_fkey"
+            columns: ["form_schema_id"]
+            isOneToOne: false
+            referencedRelation: "subsidy_form_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_sessions: {
+        Row: {
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          current_step: number | null
+          farm_id: string | null
+          form_instance_id: string | null
+          id: string
+          last_activity_at: string | null
+          session_data: Json
+          started_at: string | null
+          status: string
+          subsidy_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          farm_id?: string | null
+          form_instance_id?: string | null
+          id?: string
+          last_activity_at?: string | null
+          session_data?: Json
+          started_at?: string | null
+          status?: string
+          subsidy_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          current_step?: number | null
+          farm_id?: string | null
+          form_instance_id?: string | null
+          id?: string
+          last_activity_at?: string | null
+          session_data?: Json
+          started_at?: string | null
+          status?: string
+          subsidy_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_sessions_form_instance_id_fkey"
+            columns: ["form_instance_id"]
+            isOneToOne: false
+            referencedRelation: "application_form_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           created_at: string | null
@@ -566,6 +672,42 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_audit_log: {
+        Row: {
+          component_from: string
+          component_to: string
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          operation_data: Json | null
+          operation_type: string
+          success: boolean
+          timestamp: string | null
+        }
+        Insert: {
+          component_from: string
+          component_to: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          operation_data?: Json | null
+          operation_type: string
+          success: boolean
+          timestamp?: string | null
+        }
+        Update: {
+          component_from?: string
+          component_to?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          operation_data?: Json | null
+          operation_type?: string
+          success?: boolean
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
       model_deployments: {
         Row: {
           config: Json
@@ -665,6 +807,104 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_executions: {
+        Row: {
+          batch_size: number | null
+          completed_at: string | null
+          config: Json
+          country: string | null
+          created_at: string | null
+          error_details: Json | null
+          execution_type: string
+          failure_count: number | null
+          id: string
+          metrics: Json | null
+          processed_count: number | null
+          started_at: string | null
+          status: string
+          success_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          batch_size?: number | null
+          completed_at?: string | null
+          config?: Json
+          country?: string | null
+          created_at?: string | null
+          error_details?: Json | null
+          execution_type: string
+          failure_count?: number | null
+          id?: string
+          metrics?: Json | null
+          processed_count?: number | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          batch_size?: number | null
+          completed_at?: string | null
+          config?: Json
+          country?: string | null
+          created_at?: string | null
+          error_details?: Json | null
+          execution_type?: string
+          failure_count?: number | null
+          id?: string
+          metrics?: Json | null
+          processed_count?: number | null
+          started_at?: string | null
+          status?: string
+          success_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      quality_metrics: {
+        Row: {
+          benchmark_comparison: Json | null
+          component: string
+          confidence: number | null
+          created_at: string | null
+          details: Json | null
+          execution_id: string | null
+          id: string
+          quality_type: string
+          score: number | null
+        }
+        Insert: {
+          benchmark_comparison?: Json | null
+          component: string
+          confidence?: number | null
+          created_at?: string | null
+          details?: Json | null
+          execution_id?: string | null
+          id?: string
+          quality_type: string
+          score?: number | null
+        }
+        Update: {
+          benchmark_comparison?: Json | null
+          component?: string
+          confidence?: number | null
+          created_at?: string | null
+          details?: Json | null
+          execution_id?: string | null
+          id?: string
+          quality_type?: string
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_metrics_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_executions"
             referencedColumns: ["id"]
           },
         ]
@@ -1271,6 +1511,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_health_metrics: {
+        Row: {
+          created_at: string | null
+          id: string
+          metric_name: string
+          metric_type: string
+          tags: Json | null
+          timestamp: string | null
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metric_name: string
+          metric_type: string
+          tags?: Json | null
+          timestamp?: string | null
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metric_name?: string
+          metric_type?: string
+          tags?: Json | null
+          timestamp?: string | null
+          unit?: string | null
+          value?: number
+        }
+        Relationships: []
       }
       user_alerts: {
         Row: {
