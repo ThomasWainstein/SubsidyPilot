@@ -29,6 +29,14 @@ COUNTRY_CONFIGS = {
     "romania": {
         "agencies": ["afir", "apia_procurements", "oportunitati_ue"],
         "languages": ["ro"],
+        "currency": "RON",
+        "counties": [
+            "Alba",
+            "Arad",
+            "Argeș",
+            "București",
+            "Cluj",
+        ],
         "rate_limits": {"requests_per_minute": 60},
         "document_types": ["pdf", "html"],
         "agency_configs": {
@@ -46,11 +54,5 @@ COUNTRY_CONFIGS = {
         "agency_configs": {
             "ec_horizon_detail": "scrapers/configs/ec_horizon_detail.json",
         },
-    },
-    "romania": {
-        "agencies": ["afir"],
-        "languages": ["ro"],
-        "rate_limits": {"requests_per_minute": 30},
-        "document_types": ["pdf", "html"],
     },
 }
