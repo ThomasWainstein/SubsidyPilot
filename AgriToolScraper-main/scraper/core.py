@@ -731,7 +731,7 @@ class RobustWebDriver:
             return ""
         
         # Remove common site suffixes
-        title = re.sub(r'\s*[-|]\s*FranceAgriMer.*, '', title, flags=re.IGNORECASE)
+        title = re.sub(r'\s*[-|]\s*FranceAgriMer.*', '', title, flags=re.IGNORECASE)
         title = re.sub(r'\s*[-|]\s*Site officiel.*, '', title, flags=re.IGNORECASE)
         
         # Clean whitespace
