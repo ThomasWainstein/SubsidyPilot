@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import FullExtractionReview from '../FullExtractionReview';
 
 // Mock dependencies
@@ -109,6 +109,7 @@ describe('FullExtractionReview', () => {
     expect(viewButton).toBeDefined();
   });
 
+  // RESOLVED: prefer to test accessible edit controls for fields
   it('has accessible edit controls for fields', () => {
     render(<FullExtractionReview {...mockProps} />);
 
