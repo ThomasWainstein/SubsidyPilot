@@ -47,4 +47,10 @@ COUNTRY_CONFIGS = {
             "ec_horizon_detail": "scrapers/configs/ec_horizon_detail.json",
         },
     },
+    "romania": {
+        "agencies": ["afir"],
+        "languages": ["ro"],
+        "rate_limits": {"requests_per_minute": 30},
+        "document_types": ["pdf", "html"],
+    },
 }

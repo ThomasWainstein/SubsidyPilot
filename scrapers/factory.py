@@ -8,6 +8,7 @@ from .country_registry import COUNTRY_CONFIGS
 SCRAPER_CLASS_MAP = {
     ("france", "franceagrimer"): ("scrapers.france.franceagrimer", "FranceAgriMerScraper"),
     ("spain", "mapama"): ("scrapers.spain.mapama", "MapamaScraper"),
+    ("romania", "afir"): ("scrapers.romania.afir", "AFIRScraper"),
 }
 
 
