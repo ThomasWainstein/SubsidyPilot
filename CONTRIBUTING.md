@@ -75,10 +75,10 @@ python AgriToolScraper-main/validate_selenium_compliance.py
    ```bash
    # Frontend tests
    npm run test
-   
+
    # Selenium compliance check (MANDATORY)
    python AgriToolScraper-main/validate_selenium_compliance.py
-   
+
    # Full compliance pipeline
    python AgriToolScraper-main/run_compliance_check.py
    ```
@@ -91,6 +91,16 @@ python AgriToolScraper-main/validate_selenium_compliance.py
    - Clear description of changes
    - Test results
    - Compliance validation output
+
+## Commit Standards
+
+To keep history clean and useful, follow these commit rules:
+
+- Use the present tense and an imperative tone (e.g., `add feature`)
+- Keep the subject line under 72 characters
+- Reference related issues in the message body when applicable
+- Make each commit self‑contained and focused on a single topic
+- Include tests and documentation relevant to the change
 
 ## Code Standards
 
@@ -145,13 +155,15 @@ python AgriToolScraper-main/scraper_main.py --test-mode
 2. **Tests**: All existing tests must pass
 3. **Documentation**: Update docs for any API or behavior changes
 4. **No Breaking Changes**: Unless explicitly approved by maintainers
+5. **Small & Focused**: Limit PRs to a single topic and roughly 500 lines of diff with accompanying tests
 
 ### Review Process
 
 1. **Automated Checks**: CI/CD pipeline validates compliance and runs tests
-2. **Code Review**: Maintainer review for functionality and style
-3. **Compliance Verification**: Zero tolerance for legacy Selenium patterns
-4. **Merge**: Only after all checks pass and approval received
+2. **Code Review**: Branch protection requires at least one maintainer approval
+3. **Status Checks**: All required workflows (including `Tests`) must pass
+4. **Compliance Verification**: Zero tolerance for legacy Selenium patterns
+5. **Merge**: Only after all checks pass and approval received
 
 ## Onboarding for New Contributors
 
