@@ -93,5 +93,13 @@ export const common = {
   'common.confidence': 'Încredere',
   'common.prefillApplied': 'Formularul completat cu datele extrase',
   'common.extractionProcessing': 'Procesarea documentului...',
-  'common.extractionFailed': 'Analiza documentului a eșuat'
+  'common.extractionFailed': 'Analiza documentului a eșuat',
+  'common.extracted': 'Extras',
+  'common.readyToExtract': 'Gata pentru extragere',
+  'common.documentsUploaded': 'Documente încărcate cu succes',
+  'common.extractAndPrefill': 'Extrage și Completează',
+  'common.reExtract': 'Re-extrage',
+  'common.extracting': 'Extragere...',
+  'common.extractionSuccess': 'Date extrase cu succes din {fileName}',
+  'common.extractionError': 'Eșec la extragerea datelor din document'
 } as const;

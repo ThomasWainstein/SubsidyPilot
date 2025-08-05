@@ -93,5 +93,13 @@ export const common = {
   'common.confidence': 'Pewność',
   'common.prefillApplied': 'Formularz wypełniony wyciągniętymi danymi',
   'common.extractionProcessing': 'Przetwarzanie dokumentu...',
-  'common.extractionFailed': 'Analiza dokumentu nie powiodła się'
+  'common.extractionFailed': 'Analiza dokumentu nie powiodła się',
+  'common.extracted': 'Wyciągnięte',
+  'common.readyToExtract': 'Gotowe do wyciągnięcia',
+  'common.documentsUploaded': 'Dokumenty przesłane pomyślnie',
+  'common.extractAndPrefill': 'Wyciągnij i Wypełnij',
+  'common.reExtract': 'Ponownie wyciągnij',
+  'common.extracting': 'Wyciąganie...',
+  'common.extractionSuccess': 'Pomyślnie wyciągnięto dane z {fileName}',
+  'common.extractionError': 'Nie udało się wyciągnąć danych z dokumentu'
 } as const;

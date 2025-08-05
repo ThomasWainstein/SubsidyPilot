@@ -92,4 +92,12 @@ export type CommonTranslationKey =
   | 'common.confidence'
   | 'common.prefillApplied'
   | 'common.extractionProcessing'
-  | 'common.extractionFailed';
+  | 'common.extractionFailed'
+  | 'common.extracted'
+  | 'common.readyToExtract'
+  | 'common.documentsUploaded'
+  | 'common.extractAndPrefill'
+  | 'common.reExtract'
+  | 'common.extracting'
+  | 'common.extractionSuccess'
+  | 'common.extractionError';
