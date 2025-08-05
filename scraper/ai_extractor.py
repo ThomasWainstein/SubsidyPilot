@@ -19,6 +19,8 @@ from datetime import datetime
 import traceback
 import argparse
 
+# Local utilities
+from .ro_utils import parse_romanian_date, validate_county_list
 # Third-party imports with fallbacks
 try:
     import openai
@@ -745,7 +747,7 @@ QUALITY REQUIREMENTS:
         
         # Enhanced amount validation with French number parsing
         if 'amount' in data and data['amount']:
-            data['amount'] = self._parse_french_amounts(data['amount'])
+            data['amount'] = self._parse_amounts(data['amount'])
         
         # Clean and validate text fields
         text_fields = ['title', 'description', 'eligibility', 'funding_calculation', 'agency']
@@ -772,6 +774,9 @@ QUALITY REQUIREMENTS:
             for bonus in data['co_financing_bonuses']:
                 if isinstance(bonus, dict) and 'bonus' in bonus:
                     bonus['bonus'] = self._normalize_percentage(bonus['bonus'])
+
+        if 'region' in data and data['region']:
+            data['region'] = validate_county_list(data['region'])
         
         # Set defaults
         data.setdefault('language', 'fr')
@@ -779,8 +784,8 @@ QUALITY REQUIREMENTS:
         
         return data
     
-    def _parse_french_amounts(self, amounts: Union[List, Any]) -> Optional[List[float]]:
-        """Parse French-formatted numbers with enhanced detection"""
+    def _parse_amounts(self, amounts: Union[List, Any]) -> Optional[List[float]]:
+        """Parse European-formatted numbers including RON currency"""
         
         if not amounts:
             return None
@@ -804,23 +809,19 @@ QUALITY REQUIREMENTS:
                 
                 # Remove currency symbols and extra text
                 amount_str = re.sub(r'[€$£]', '', amount_str)
-                amount_str = re.sub(r'(?i)(euros?|dollars?|maximum|minimum|jusqu.?à|entre)', '', amount_str)
+                amount_str = re.sub(r'(?i)(euros?|dollars?|ron|lei|leu|maximum|minimum|jusqu.?à|entre)', '', amount_str)
                 amount_str = amount_str.strip()
-                
+
                 # Handle French number formatting
-                # Pattern: "1 234 567,89" or "1234567,89" or "1,234,567.89"
+                # Pattern: "1 234 567,89" or "1234567,89" or "1.234.567,89"
                 if ',' in amount_str:
-                    # Check if comma is likely decimal separator (2 digits after)
                     comma_parts = amount_str.split(',')
                     if len(comma_parts) == 2 and len(comma_parts[1].strip()) <= 2:
-                        # Comma is decimal separator
-                        amount_str = amount_str.replace(' ', '').replace(',', '.')
+                        amount_str = amount_str.replace(' ', '').replace('.', '').replace(',', '.')
                     else:
-                        # Comma might be thousands separator
-                        amount_str = amount_str.replace(',', '').replace(' ', '')
+                        amount_str = amount_str.replace(',', '').replace(' ', '').replace('.', '')
                 else:
-                    # No comma, just remove spaces
-                    amount_str = amount_str.replace(' ', '')
+                    amount_str = amount_str.replace(' ', '').replace('.', '')
                 
                 # Extract numeric value using regex
                 numeric_match = re.search(r'(\d+(?:\.\d+)?)', amount_str)
@@ -863,13 +864,17 @@ QUALITY REQUIREMENTS:
             return None
         
         date_str = date_str.strip()
-        
+
         # French month names mapping
         french_months = {
             'janvier': '01', 'février': '02', 'mars': '03', 'avril': '04',
             'mai': '05', 'juin': '06', 'juillet': '07', 'août': '08',
             'septembre': '09', 'octobre': '10', 'novembre': '11', 'décembre': '12'
         }
+
+        ro_date = parse_romanian_date(date_str)
+        if ro_date:
+            return ro_date
         
         # Date patterns (more comprehensive)
         patterns = [
