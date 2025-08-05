@@ -6,7 +6,10 @@ import json
 import os
 from typing import Dict, List
 
-import openai
+try:  # optional dependency, tests use heuristic branch
+    import openai  # type: ignore
+except Exception:  # pragma: no cover - import failure path
+    openai = None  # type: ignore
 
 
 def _heuristic_classification(text: str) -> Dict[str, object]:
@@ -47,6 +50,8 @@ def _heuristic_classification(text: str) -> Dict[str, object]:
         "region": region,
         "legal_entity": legal_entity,
         "keywords": keywords,
+        "confidence": 0.5,
+        "token_usage": 0,
     }
 
 
@@ -59,7 +64,7 @@ def classify_project_text(text: str) -> Dict[str, object]:
     instead to provide deterministic behaviour suitable for tests.
     """
     api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
+    if api_key and openai is not None:
         try:  # pragma: no cover - network calls are not tested
             openai.api_key = api_key
             prompt = (
@@ -74,6 +79,9 @@ def classify_project_text(text: str) -> Dict[str, object]:
             content = response["choices"][0]["message"]["content"].strip()
             data = json.loads(content)
             data.setdefault("keywords", [])
+            usage = response.get("usage", {}).get("total_tokens", 0)
+            data.setdefault("token_usage", usage)
+            data.setdefault("confidence", 0.9)
             return data
         except Exception:
             pass
