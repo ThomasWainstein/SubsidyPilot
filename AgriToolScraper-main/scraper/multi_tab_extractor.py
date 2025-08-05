@@ -276,8 +276,9 @@ class TabContent:
         text = re.sub(r'\n\s*\n', '\n\n', text)  # Normalize paragraph breaks
         
         # Remove common web artifacts
-        text = re.sub(r'^\s*[\d\s\-\|]+\s*_post_init__(self):
-        self.content_length = len(self.text)
+        text = re.sub(r'^\s*[\d\s\-\|]+\s*', '', text)
+        
+        return text
 
 
 @dataclass
