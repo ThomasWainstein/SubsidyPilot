@@ -1,3 +1,8 @@
 [
-  {"id": 1, "text": "Example subsidy description"}
+  {
+    "title": "Subvention d'exemple",
+    "link": "https://www.franceagrimer.fr/exemple",
+    "agency": "FranceAgriMer",
+    "description": "Programme fictif de soutien à l'agriculture."
+  }
 ]
