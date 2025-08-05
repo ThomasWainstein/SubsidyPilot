@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 import Navbar from '@/components/Navbar';
 import SubsidyManagement from '@/components/admin/SubsidyManagement';
 import ImportManagement from '@/components/admin/ImportManagement';
@@ -9,11 +10,12 @@ import CanonicalValidationDashboard from '@/components/admin/CanonicalValidation
 import DualPipelineManager from '@/components/admin/DualPipelineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getIsAdmin, FEATURES, IS_PRODUCTION } from '@/config/environment';
+import { FEATURES, IS_PRODUCTION } from '@/config/environment';
 
 const AdminPage = () => {
   const { user } = useAuth();
-  const isAdmin = getIsAdmin(user);
+  const { currentRole } = useRole();
+  const isAdmin = currentRole === 'admin';
 
   if (!user) {
     return (
@@ -45,13 +47,11 @@ const AdminPage = () => {
             <CardContent>
               <p>You don't have permission to access the admin panel.</p>
               <p className="text-sm text-gray-500 mt-2">
-                Only administrators can access this section.
+                Switch to Admin role using the "Switch Role" button in the top navigation.
               </p>
-              {!IS_PRODUCTION && (
-                <p className="text-xs text-blue-500 mt-2">
-                  Development mode: Admin access is restricted to configured emails.
-                </p>
-              )}
+              <p className="text-xs text-blue-500 mt-2">
+                Current role: {currentRole}. Required role: admin.
+              </p>
             </CardContent>
           </Card>
         </main>
