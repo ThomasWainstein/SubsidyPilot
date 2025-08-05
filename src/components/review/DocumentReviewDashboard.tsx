@@ -20,7 +20,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useDocumentsForReview, useReviewStatistics } from '@/hooks/useDocumentReview';
-import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
+
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import DocumentPreviewModal from './DocumentPreviewModal';
@@ -81,11 +81,11 @@ const DocumentReviewDashboard = ({ farmId }: DocumentReviewDashboardProps) => {
   };
 
   const StatusCell = ({ document }: { document: any }) => {
-    const { extractionStatus } = useFarmDocumentExtractionStatus(document.id, 2000);
+    const status = document.extraction?.status || 'not_extracted';
     return (
       <div className="flex items-center gap-2">
-        {getStatusIcon(extractionStatus.status, document.extraction?.confidence_score)}
-        <span className="text-sm">{extractionStatus.status}</span>
+        {getStatusIcon(status, document.extraction?.confidence_score)}
+        <span className="text-sm">{status}</span>
       </div>
     );
   };

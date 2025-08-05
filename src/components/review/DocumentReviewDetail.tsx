@@ -19,7 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useDocumentReviewDetail, useSubmitReviewCorrection } from '@/hooks/useDocumentReview';
-import { useFarmDocumentExtractionStatus } from '@/hooks/useFarmDocumentExtractionStatus';
+
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import ReExtractButton from './ReExtractButton';
@@ -33,7 +33,6 @@ interface DocumentReviewDetailProps {
 const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps) => {
   const navigate = useNavigate();
   const { data: documentDetail, isLoading } = useDocumentReviewDetail(documentId);
-  const { extractionStatus } = useFarmDocumentExtractionStatus(documentId);
   const submitCorrection = useSubmitReviewCorrection();
 
   const [extractedFields, setExtractedFields] = useState<Record<string, any>>({});
@@ -43,6 +42,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   const [showFullReview, setShowFullReview] = useState(false);
 
   const extraction = documentDetail?.document_extractions?.[0];
+  const extractionStatus = { status: extraction?.status || 'not_extracted' };
 
   useEffect(() => {
     if (extraction?.extracted_data && typeof extraction.extracted_data === 'object') {
@@ -281,31 +281,12 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
                   </Badge>
                 </div>
 
-                {extractionStatus.fieldCount !== undefined && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Fields Extracted</label>
-                    <p className="text-sm mt-1">{extractionStatus.fieldCount}</p>
-                  </div>
-                )}
-
-                {extractionStatus.lastUpdated && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Last Updated</label>
-                    <p className="text-sm mt-1">{new Date(extractionStatus.lastUpdated).toLocaleString()}</p>
-                  </div>
-                )}
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Extraction Type</label>
                   <p className="text-sm mt-1">{extraction.extraction_type}</p>
                 </div>
 
-                {extractionStatus.error && (
-                  <div>
-                    <label className="text-sm font-medium text-red-600">Error Message</label>
-                    <p className="text-sm mt-1 text-red-600">{extractionStatus.error}</p>
-                  </div>
-                )}
               </>
             )}
           </CardContent>
