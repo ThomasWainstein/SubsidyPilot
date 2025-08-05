@@ -34,7 +34,7 @@ jobs:
       - name: Configure Supabase secrets
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SCRAPPER_RAW_GPT_API: ${{ secrets.SCRAPPER_RAW_GPT_API }}
@@ -42,7 +42,7 @@ jobs:
         run: |
           supabase secrets set \
             SUPABASE_URL="$SUPABASE_URL" \
-            SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
             OPENAI_API_KEY="$OPENAI_API_KEY" \
             SCRAPER_RAW_GPT_API="$SCRAPER_RAW_GPT_API"

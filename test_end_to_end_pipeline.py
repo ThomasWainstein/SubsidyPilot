@@ -41,7 +41,7 @@ class PipelineIntegrationTester:
         """Initialize tester with environment validation."""
         self.supabase_url = os.getenv('NEXT_PUBLIC_SUPABASE_URL')
         self.supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-        self.supabase_anon = os.getenv('NEXT_PUBLIC_SUPABASE_ANON')
+        self.supabase_anon = os.getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
         self.openai_key = os.getenv('SCRAPER_RAW_GPT_API')
         self.supabase_timeout = int(os.getenv('SUPABASE_TIMEOUT', '10'))
 
@@ -49,7 +49,7 @@ class PipelineIntegrationTester:
             missing = [name for name, val in [
                 ('NEXT_PUBLIC_SUPABASE_URL', self.supabase_url),
                 ('SUPABASE_SERVICE_ROLE_KEY', self.supabase_key),
-                ('NEXT_PUBLIC_SUPABASE_ANON', self.supabase_anon),
+                ('NEXT_PUBLIC_SUPABASE_ANON_KEY', self.supabase_anon),
             ] if not val]
             raise ValueError(
                 f"Missing required environment variables: {', '.join(missing)}"
