@@ -1,4 +1,4 @@
-name: 🤖 AI Processing Pipeline
+name: 🤖 AI Pipeline
 
 on:
   workflow_dispatch:
