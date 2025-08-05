@@ -600,6 +600,44 @@ class AgriToolScraper:
         print("="*60)
 
 
+def run_ai_processing(batch_size=25, max_records=100):
+    """Run AI processing on scraped data."""
+    print(f"Running AI processing with batch_size={batch_size}, max_records={max_records}")
+    
+    # Import and run the AI processing from fix_poor_quality_subsidies.py
+    try:
+        from fix_poor_quality_subsidies import SubsidyQualityFixer
+        fixer = SubsidyQualityFixer()
+        
+        # Run the quality fixing process with limits
+        results = fixer.run_quality_fix(max_records=max_records)
+        
+        print(f"AI processing completed. Results: {results}")
+        return {'success': True, 'results': results}
+        
+    except Exception as e:
+        print(f"AI processing failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def run_demo(max_pages=1, dry_run=True):
+    """Run a demonstration scraping with limited scope."""
+    print(f"Running demo mode with max_pages={max_pages}, dry_run={dry_run}")
+    
+    try:
+        # Use the franceagrimer URL for demo
+        target_url = 'https://www.franceagrimer.fr/rechercher-une-aide'
+        scraper = AgriToolScraper(target_url, dry_run)
+        results = scraper.run_full_pipeline(max_pages)
+        
+        print(f"Demo completed successfully: {results.get('success', False)}")
+        return results
+        
+    except Exception as e:
+        print(f"Demo failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+
 def main():
     """Main entry point with CLI argument parsing."""
     # Auto-load .env for local development
@@ -609,21 +647,19 @@ def main():
     except ImportError:
         pass
     
-    # Early validation of required environment variables
-    required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
-    missing_vars = [var for var in required_vars if not os.environ.get(var)]
-    if missing_vars:
-        print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
-        print("Please set the following environment variables:")
-        for var in missing_vars:
-            print(f"  export {var}=your_value_here")
-        sys.exit(1)
-    
     print("ARGS:", sys.argv)
     logging.info("Starting AgriTool scraper main function")
     parser = argparse.ArgumentParser(description='AgriTool Scraper with Supabase Integration')
+    
+    # Add mode parameter for different operations
+    parser.add_argument('--mode', choices=['scraping', 'ai-processing', 'demo'], default='scraping',
+                       help='Operation mode: scraping, ai-processing, or demo')
+    
+    # Scraping mode arguments
     parser.add_argument('--url', default='https://www.franceagrimer.fr/rechercher-une-aide', 
                        help='Target URL to scrape (default: FranceAgriMer)')
+    parser.add_argument('--site', choices=['franceagrimer', 'all'], default='franceagrimer',
+                       help='Target site to scrape')
     parser.add_argument('--max-pages', type=int, default=0,
                        help='Maximum pages to scrape (0 = unlimited)')
     parser.add_argument('--dry-run', action='store_true',
@@ -631,23 +667,52 @@ def main():
     parser.add_argument('--retry-failed', action='store_true',
                        help='Retry previously failed URLs')
     
+    # AI processing mode arguments
+    parser.add_argument('--batch-size', type=int, default=25,
+                       help='AI batch size (number of records per batch)')
+    parser.add_argument('--max-records', type=int, default=100,
+                       help='Maximum records to process in AI mode')
+    
     args = parser.parse_args()
     
-    # Load environment variables from GitHub Actions or local .env
-    target_url = os.environ.get('TARGET_URL', args.url)
-    max_pages = int(os.environ.get('MAX_PAGES', args.max_pages))
-    dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true' or args.dry_run
+    # Early validation of required environment variables for modes that need them
+    if args.mode in ['scraping', 'ai-processing']:
+        required_vars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+        if args.mode == 'ai-processing':
+            required_vars.append('SCRAPER_RAW_GPT_API')
+        
+        missing_vars = [var for var in required_vars if not os.environ.get(var)]
+        if missing_vars:
+            print(f"ERROR: Required env vars {', '.join(missing_vars)} are missing. Exiting.")
+            print("Please set the following environment variables:")
+            for var in missing_vars:
+                print(f"  export {var}=your_value_here")
+            sys.exit(1)
     
-    # Initialize and run scraper
+    # Route to appropriate handler based on mode
     try:
-        scraper = AgriToolScraper(target_url, dry_run)
-        results = scraper.run_full_pipeline(max_pages)
+        if args.mode == 'ai-processing':
+            results = run_ai_processing(args.batch_size, args.max_records)
+        elif args.mode == 'demo':
+            results = run_demo(args.max_pages, args.dry_run)
+        else:  # scraping mode (default)
+            # Load environment variables from GitHub Actions or local .env
+            target_url = os.environ.get('TARGET_URL', args.url)
+            if args.site == 'franceagrimer':
+                target_url = 'https://www.franceagrimer.fr/rechercher-une-aide'
+            
+            max_pages = int(os.environ.get('MAX_PAGES', args.max_pages))
+            dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true' or args.dry_run
+            
+            # Initialize and run scraper
+            scraper = AgriToolScraper(target_url, dry_run)
+            results = scraper.run_full_pipeline(max_pages)
         
         # Exit with appropriate code
         sys.exit(0 if results.get('success', False) else 1)
         
     except Exception as e:
-        print(f"[FATAL] Scraper initialization failed: {e}")
+        print(f"[FATAL] Operation failed: {e}")
         sys.exit(1)
 
 

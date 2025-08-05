@@ -220,9 +220,13 @@ class SubsidyQualityFixer:
             logger.error(f"Failed to update subsidy {subsidy['id']}: {e}")
             return False
     
-    def run_quality_fix(self) -> Dict[str, int]:
-        """Run the complete quality fix process."""
-        logger.info("Starting subsidy quality fix process...")
+    def run_quality_fix(self, max_records: int = 100) -> Dict[str, int]:
+        """Run the complete quality fix process.
+        
+        Args:
+            max_records: Maximum number of records to process (default: 100)
+        """
+        logger.info(f"Starting subsidy quality fix process (max_records={max_records})...")
         
         stats = {
             'poor_quality_found': 0,
@@ -239,8 +243,9 @@ class SubsidyQualityFixer:
             logger.info("No poor quality subsidies found!")
             return stats
         
-        # 2. Process each poor quality subsidy
-        for subsidy in poor_quality_subsidies[:10]:  # Limit to 10 for initial testing
+        # 2. Process each poor quality subsidy (limited by max_records)
+        process_count = min(max_records, len(poor_quality_subsidies))
+        for subsidy in poor_quality_subsidies[:process_count]:
             logger.info(f"Processing subsidy {subsidy['id']}: {subsidy.get('title', 'No title')}")
             stats['processed'] += 1
             

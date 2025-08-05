@@ -1,0 +1,82 @@
+name: 🕷️ AgriTool Scraper Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Target site'
+        required: false
+        default: 'franceagrimer'
+        type: choice
+        options:
+          - franceagrimer
+          - all
+      max_pages:
+        description: 'Max pages to scrape'
+        required: false
+        default: '5'
+      dry_run:
+        description: 'Dry run (no DB writes)'
+        required: false
+        default: 'true'
+        type: boolean
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  DISPLAY: ':99'
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: AgriToolScraper-main
+        
+    steps:
+      - name: 📋 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 🔧 Install Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y chromium-browser xvfb
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🖥️ Setup Display
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 3
+
+      - name: ✅ Validate Environment
+        run: |
+          python validate_selenium_compliance.py
+          chromium-browser --version
+
+      - name: 🚀 Run Scraper
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python main.py \
+            --mode scraping \
+            --site ${{ github.event.inputs.site || 'franceagrimer' }} \
+            --max-pages ${{ github.event.inputs.max_pages || '5' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+      - name: 📊 Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-results-${{ github.run_number }}
+          path: |
+            AgriToolScraper-main/data/
+            AgriToolScraper-main/*.log
