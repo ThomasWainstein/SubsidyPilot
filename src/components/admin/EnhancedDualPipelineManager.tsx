@@ -6,6 +6,7 @@ import { ProgressIndicator } from '@/components/ui/progress-indicator';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PipelineResultsDashboard } from '@/components/admin/PipelineResultsDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -127,7 +128,7 @@ export default function EnhancedDualPipelineManager() {
     setAiProcessing(true);
     
     try {
-      toast.info('Starting AI processing of scraped pages...');
+      toast.info('🤖 Starting AI processing of scraped pages...');
       
       const { data, error } = await supabase.functions.invoke('ai-content-processor', {
         body: {
@@ -138,9 +139,18 @@ export default function EnhancedDualPipelineManager() {
       });
 
       if (error) throw error;
-      toast.success(`AI processing completed: ${data.successful} subsidies processed`);
+      
+      if (data.successful > 0) {
+        toast.success(`✅ AI processing completed: ${data.successful} subsidies processed successfully!`);
+      } else if (data.failed > 0) {
+        toast.warning(`⚠️ AI processing completed with issues: ${data.failed} pages failed to process`);
+      } else {
+        toast.info(`ℹ️ AI processing completed: ${data.message || 'No new pages to process'}`);
+      }
+      
     } catch (error: any) {
-      toast.error(`AI processing failed: ${error.message}`);
+      console.error('AI processing error:', error);
+      toast.error(`❌ AI processing failed: ${error.message}`);
     } finally {
       setAiProcessing(false);
     }
@@ -148,6 +158,9 @@ export default function EnhancedDualPipelineManager() {
 
   return (
     <div className="space-y-6">
+      {/* Pipeline Results Dashboard */}
+      <PipelineResultsDashboard />
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

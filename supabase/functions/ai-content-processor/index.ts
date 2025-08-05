@@ -59,7 +59,7 @@ serve(async (req) => {
         .from('raw_scraped_pages')
         .select('*')
         .in('id', page_ids)
-        .eq('status', 'scraped');
+        .in('status', ['scraped', 'raw']); // Accept both statuses
       
       if (error) throw error;
       pagesToProcess = pages || [];
@@ -68,7 +68,7 @@ serve(async (req) => {
       const query = supabase
         .from('raw_scraped_pages')
         .select('*')
-        .eq('status', 'scraped');
+        .in('status', ['scraped', 'raw']); // Accept both scraped and raw status
       
       if (source && source !== 'all') {
         query.eq('source_site', source);
@@ -207,7 +207,7 @@ Set confidence between 0.0-1.0 based on how clear and complete the extraction is
 URL: ${page.source_url}
 
 Content:
-${page.raw_text?.substring(0, 8000) || page.combined_content_markdown?.substring(0, 8000)}`;
+${page.combined_content_markdown?.substring(0, 8000) || page.text_markdown?.substring(0, 8000) || page.raw_text?.substring(0, 8000) || 'No content available'}`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
