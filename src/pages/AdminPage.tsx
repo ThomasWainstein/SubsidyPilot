@@ -6,6 +6,7 @@ import SubsidyManagement from '@/components/admin/SubsidyManagement';
 import ImportManagement from '@/components/admin/ImportManagement';
 import SubsidyTitleImprover from '@/components/admin/SubsidyTitleImprover';
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
+import DualPipelineManager from '@/components/admin/DualPipelineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getIsAdmin, FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -77,12 +78,16 @@ const AdminPage = () => {
             )}
           </div>
           <Tabs defaultValue="subsidies" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="pipeline">Dual Pipeline</TabsTrigger>
               <TabsTrigger value="subsidies">Subsidy Management</TabsTrigger>
               <TabsTrigger value="validation">Canonical Validation</TabsTrigger>
               <TabsTrigger value="improve">Data Quality</TabsTrigger>
               <TabsTrigger value="import">Data Import</TabsTrigger>
             </TabsList>
+            <TabsContent value="pipeline">
+              <DualPipelineManager />
+            </TabsContent>
             <TabsContent value="subsidies">
               <SubsidyManagement />
             </TabsContent>
