@@ -3,11 +3,13 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import Navbar from '@/components/Navbar';
-import SubsidyManagement from '@/components/admin/SubsidyManagement';
-import ImportManagement from '@/components/admin/ImportManagement';
+import { AdminHeader } from '@/components/admin/AdminHeader';
+import { StatusDashboard } from '@/components/admin/StatusDashboard';
+import EnhancedSubsidyManagement from '@/components/admin/EnhancedSubsidyManagement';
+import EnhancedImportManagement from '@/components/admin/EnhancedImportManagement';
 import SubsidyTitleImprover from '@/components/admin/SubsidyTitleImprover';
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
-import DualPipelineManager from '@/components/admin/DualPipelineManager';
+import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipelineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -60,47 +62,71 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+      <AdminHeader 
+        title="Admin Dashboard"
+        subtitle="Manage subsidies, farms, and system settings with enhanced tools and monitoring"
+      />
       <main className="flex-grow py-6 px-4">
-        <div className="container mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Manage subsidies, farms, and system settings
-            </p>
-            {!IS_PRODUCTION && (
-              <div className="mt-2 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 px-3 py-2 rounded">
-                Development Environment - Additional features enabled
-              </div>
-            )}
-          </div>
-          <Tabs defaultValue="subsidies" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="pipeline">Dual Pipeline</TabsTrigger>
-              <TabsTrigger value="subsidies">Subsidy Management</TabsTrigger>
-              <TabsTrigger value="validation">Canonical Validation</TabsTrigger>
-              <TabsTrigger value="improve">Data Quality</TabsTrigger>
-              <TabsTrigger value="import">Data Import</TabsTrigger>
+        <div className="container mx-auto space-y-6">
+          
+          {/* Development Environment Notice */}
+          {!IS_PRODUCTION && (
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="font-medium">Development Environment</span>
+                  <span className="text-sm">Additional features and debugging tools enabled</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* System Status Dashboard */}
+          <StatusDashboard />
+
+          {/* Main Admin Tabs */}
+          <Tabs defaultValue="pipeline" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 h-12">
+              <TabsTrigger value="pipeline" className="flex items-center gap-2">
+                🔄 Pipeline
+              </TabsTrigger>
+              <TabsTrigger value="subsidies" className="flex items-center gap-2">
+                📋 Subsidies
+              </TabsTrigger>
+              <TabsTrigger value="validation" className="flex items-center gap-2">
+                ✅ Validation
+              </TabsTrigger>
+              <TabsTrigger value="quality" className="flex items-center gap-2">
+                🔧 Quality
+              </TabsTrigger>
+              <TabsTrigger value="import" className="flex items-center gap-2">
+                📤 Import
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="pipeline">
-              <DualPipelineManager />
+            
+            <TabsContent value="pipeline" className="mt-6">
+              <EnhancedDualPipelineManager />
             </TabsContent>
-            <TabsContent value="subsidies">
-              <SubsidyManagement />
+            
+            <TabsContent value="subsidies" className="mt-6">
+              <EnhancedSubsidyManagement />
             </TabsContent>
-            <TabsContent value="validation">
+            
+            <TabsContent value="validation" className="mt-6">
               <CanonicalValidationDashboard />
             </TabsContent>
-            <TabsContent value="improve">
+            
+            <TabsContent value="quality" className="mt-6">
               <div className="space-y-6">
                 <SubsidyTitleImprover />
               </div>
             </TabsContent>
-            <TabsContent value="import">
-              <ImportManagement />
+            
+            <TabsContent value="import" className="mt-6">
+              <EnhancedImportManagement />
             </TabsContent>
           </Tabs>
         </div>
