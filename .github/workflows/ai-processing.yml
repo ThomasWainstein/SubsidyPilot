@@ -1,0 +1,41 @@
+name: 🤖 AI Processing Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch-folder:
+        description: 'Folder with batch JSON files'
+        required: false
+        default: batches
+      model-name:
+        description: 'Model name to use'
+        required: false
+        default: gpt-4
+      language:
+        description: 'Language for prompt selection'
+        required: false
+        default: fr
+
+jobs:
+  ai-processing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run AI Pipeline
+        run: |
+          python main.py --mode ai-processing \
+            --batch-folder "${{ github.event.inputs.batch-folder || 'batches' }}" \
+            --model-name "${{ github.event.inputs['model-name'] || 'gpt-4' }}" \
+            --language "${{ github.event.inputs.language || 'fr' }}"
