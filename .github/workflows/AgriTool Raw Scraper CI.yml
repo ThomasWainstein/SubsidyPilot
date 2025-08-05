@@ -46,7 +46,6 @@ on:
         default: false
         type: boolean
   schedule:
-    # Run daily at 6 AM UTC
     - cron: '0 6 * * *'
 
 env:
@@ -73,7 +72,7 @@ jobs:
         run: |
           echo "🔧 Installing system dependencies..."
           sudo apt-get update -qq
-          sudo apt-get install -y chromium-browser chromium-chromedriver xvfb file wget curl jq
+          sudo apt-get install -y chromium-browser chromium-chromedriver xvfb file wget curl jq bc
           echo "✅ System dependencies installed"
 
       - name: 🖥️ Setup virtual display (Xvfb)
@@ -164,8 +163,16 @@ jobs:
           DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
           
           echo "🎯 Target site: $SITE"
-          echo "📄 Pages to scrape: $MAX_PAGES $([ "$MAX_PAGES" = "0" ] && echo "(ALL available pages)" || echo "pages maximum")"
-          echo "🔗 URLs per page: $MAX_URLS $([ "$MAX_URLS" = "0" ] && echo "(no limit)" || echo "URLs maximum")"
+          if [ "$MAX_PAGES" = "0" ]; then
+            echo "📄 Pages to scrape: ALL available pages"
+          else
+            echo "📄 Pages to scrape: $MAX_PAGES pages maximum"
+          fi
+          if [ "$MAX_URLS" = "0" ]; then
+            echo "🔗 URLs per page: no limit"
+          else
+            echo "🔗 URLs per page: $MAX_URLS URLs maximum"
+          fi
           echo "🧪 Dry run mode: $DRY_RUN"
           echo "⏰ Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
@@ -176,7 +183,6 @@ jobs:
           MAX_PAGES="${{ github.event.inputs.max_pages || '5' }}"
           MAX_URLS="${{ github.event.inputs.max_urls_per_page || '0' }}"
           
-          # Build command based on configuration
           if [ "$MAX_PAGES" = "0" ]; then
             echo "🔄 AUTO-SCRAPE MODE: Will scrape ALL available pages"
             CMD="python scraper_main.py --site $SITE --scrape-all --verbose --progress"
@@ -185,7 +191,6 @@ jobs:
             CMD="python scraper_main.py --site $SITE --max-pages $MAX_PAGES --verbose --progress"
           fi
           
-          # Add max URLs per page if specified
           if [ "$MAX_URLS" != "0" ] && [ -n "$MAX_URLS" ]; then
             CMD="$CMD --max-urls-per-page $MAX_URLS"
             echo "🔗 URL limit per page: $MAX_URLS"
@@ -194,7 +199,6 @@ jobs:
           echo "🚀 Executing: $CMD"
           echo ""
           
-          # Execute with real-time progress
           START_TIME=$(date +%s)
           eval $CMD
           END_TIME=$(date +%s)
@@ -203,7 +207,6 @@ jobs:
           echo ""
           echo "✅ Scraping completed in ${DURATION} seconds"
           
-          # Create basic stats file if scraper doesn't generate one
           mkdir -p data/logs
           echo "{\"scraping_duration_seconds\": $DURATION, \"completed_at\": \"$(date -u '+%Y-%m-%d %H:%M:%S UTC')\"}" > data/logs/basic_stats.json
 
@@ -211,7 +214,6 @@ jobs:
         run: |
           echo "📈 === DETAILED SCRAPING RESULTS ==="
           
-          # Count actual files generated
           JSON_FILES=$(find data/raw_pages -name "*.json" 2>/dev/null | wc -l || echo "0")
           ATTACHMENTS=$(find data/attachments -type f 2>/dev/null | wc -l || echo "0")
           
@@ -219,13 +221,11 @@ jobs:
           echo "  📄 JSON pages: $JSON_FILES files"
           echo "  📎 Attachments: $ATTACHMENTS files"
           
-          # Calculate total data size
           if [ -d "data/raw_pages" ]; then
             TOTAL_SIZE=$(du -sh data/raw_pages 2>/dev/null | cut -f1 || echo "0B")
             echo "  💾 Total size: $TOTAL_SIZE"
           fi
           
-          # Show sample of scraped URLs
           echo ""
           echo "📋 Sample of scraped content:"
           if [ "$JSON_FILES" -gt "0" ]; then
@@ -241,7 +241,6 @@ jobs:
             echo "  ⚠️ No JSON files found"
           fi
           
-          # Check for errors
           echo ""
           echo "🔍 Error analysis:"
           if [ -f "data/logs/scraper.log" ]; then
@@ -264,14 +263,12 @@ jobs:
         run: |
           echo "📊 === COMPREHENSIVE STATISTICS ==="
           
-          # Initialize counters
           TOTAL_PAGES=0
           SUCCESSFUL_PAGES=0
           TOTAL_URLS=0
           SUCCESSFUL_URLS=0
           FAILED_URLS=0
           
-          # Count pages and URLs
           if [ -d "data/raw_pages" ]; then
             TOTAL_PAGES=$(find data/raw_pages -name "page_*.json" 2>/dev/null | wc -l || echo "0")
             SUCCESSFUL_PAGES=$TOTAL_PAGES
@@ -279,14 +276,12 @@ jobs:
             SUCCESSFUL_URLS=$TOTAL_URLS
           fi
           
-          # Calculate success rate
           if [ "$TOTAL_URLS" -gt "0" ]; then
             SUCCESS_RATE=$(echo "scale=1; $SUCCESSFUL_URLS * 100 / $TOTAL_URLS" | bc -l 2>/dev/null || echo "100.0")
           else
             SUCCESS_RATE="0.0"
           fi
           
-          # Get timing info
           if [ -f "data/logs/basic_stats.json" ]; then
             DURATION=$(jq -r '.scraping_duration_seconds // 0' data/logs/basic_stats.json 2>/dev/null || echo "0")
             DURATION_MIN=$((DURATION / 60))
@@ -296,7 +291,6 @@ jobs:
             DURATION_SEC=0
           fi
           
-          # Display final statistics
           echo "🎯 === FINAL SCRAPING REPORT ==="
           echo "✅ Pages processed: $SUCCESSFUL_PAGES pages"
           echo "✅ URLs scraped: $SUCCESSFUL_URLS total URLs"
@@ -309,7 +303,6 @@ jobs:
           echo "⏱️ Total time: ${DURATION_MIN}m ${DURATION_SEC}s"
           echo "🕒 Completed: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
-          # Save comprehensive stats
           mkdir -p data/logs
           cat > data/logs/final_stats.json << EOF
 {
@@ -352,11 +345,9 @@ EOF
         run: |
           echo "📋 === UPLOAD SUCCESS VALIDATION ==="
           
-          # Check upload logs
           if [ -f "data/logs/supabase_upload.log" ]; then
             echo "📄 Upload log found - analyzing results:"
             
-            # Count upload statistics
             UPLOADED_COUNT=$(grep -c "Successfully uploaded\|Upload successful" data/logs/supabase_upload.log 2>/dev/null || echo "0")
             ERROR_COUNT=$(grep -c "Upload failed\|ERROR" data/logs/supabase_upload.log 2>/dev/null || echo "0")
             SKIPPED_COUNT=$(grep -c "Skipped\|Already exists" data/logs/supabase_upload.log 2>/dev/null || echo "0")
@@ -365,7 +356,6 @@ EOF
             echo "  ❌ Upload errors: $ERROR_COUNT records"
             echo "  ⏭️ Skipped (duplicates): $SKIPPED_COUNT records"
             
-            # Show recent upload activity
             echo ""
             echo "📊 Recent upload activity:"
             tail -10 data/logs/supabase_upload.log | while read line; do
@@ -378,7 +368,6 @@ EOF
               fi
             done
             
-            # Calculate upload success rate
             TOTAL_UPLOAD_ATTEMPTS=$((UPLOADED_COUNT + ERROR_COUNT))
             if [ "$TOTAL_UPLOAD_ATTEMPTS" -gt "0" ]; then
               UPLOAD_SUCCESS_RATE=$(echo "scale=1; $UPLOADED_COUNT * 100 / $TOTAL_UPLOAD_ATTEMPTS" | bc -l 2>/dev/null || echo "100.0")
@@ -420,7 +409,6 @@ EOF
           echo "✅ All steps completed successfully!"
           echo ""
           
-          # Load final statistics
           if [ -f "data/logs/final_stats.json" ]; then
             PAGES=$(jq -r '.pages_processed' data/logs/final_stats.json 2>/dev/null || echo "?")
             URLS=$(jq -r '.urls_scraped' data/logs/final_stats.json 2>/dev/null || echo "?")
