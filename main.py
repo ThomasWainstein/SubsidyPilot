@@ -1,6 +1,12 @@
 import argparse
-from core import run_scraper
+import json
+from pathlib import Path
+
 from ai_extractor import run_ai_pipeline
+from core import run_scraper
+from document_parser import extract_text_from_pdf
+from nlp_classifier import classify_project_text
+from project_rewriter import optimize_project_description
 
 
 def run_demo():
@@ -12,7 +18,9 @@ def run_demo():
 def main():
     parser = argparse.ArgumentParser(description="AgriTool CLI entry point")
     parser.add_argument(
-        "--mode", choices=["scraping", "ai-processing", "demo"], required=True
+        "--mode",
+        choices=["scraping", "ai-processing", "document-analysis", "demo"],
+        required=True,
     )
     parser.add_argument("--site", default="franceagrimer", help="Target site to scrape")
     parser.add_argument(
@@ -37,6 +45,12 @@ def main():
         action="store_true",
         help="Generate qa_report.json during AI processing",
     )
+    parser.add_argument("--file", help="Path to project PDF for document-analysis")
+    parser.add_argument(
+        "--rewrite",
+        action="store_true",
+        help="Rewrite project description during document-analysis",
+    )
     args = parser.parse_args()
 
     if args.mode == "scraping":
@@ -54,6 +68,31 @@ def main():
             dry_run=args.dry_run,
             qa_report=args.qa_report,
         )
+    elif args.mode == "document-analysis":
+        if not args.file:
+            parser.error("--file is required for document-analysis mode")
+
+        text = extract_text_from_pdf(args.file)
+        metadata = classify_project_text(text)
+        result = {"text": text, "metadata": metadata}
+        if args.rewrite:
+            result["rewrite"] = optimize_project_description(text)
+
+        output_dir = Path("output")
+        output_dir.mkdir(exist_ok=True)
+        out_file = output_dir / "project_analysis.json"
+        out_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        if args.save_db:  # pragma: no cover - requires network
+            try:
+                from datastore import get_client
+
+                client = get_client()
+                client.table("document_analysis").insert(result).execute()
+            except Exception:
+                pass
+
+        print(f"Analysis written to {out_file}")
     elif args.mode == "demo":
         run_demo()
     else:
