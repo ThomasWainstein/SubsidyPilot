@@ -40,9 +40,9 @@ serve(async (req) => {
   try {
     // Environment configuration with debugging
     const config = {
-      supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
+      supabase_url: Deno.env.get('SUPABASE_URL'),
       supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-      openai_api_key: Deno.env.get('SCRAPER_RAW_GPT_API'),
+      openai_api_key: Deno.env.get('SCRAPPER_RAW_GPT_API'), // Note: existing secret has typo with double P
       backup_api_key: Deno.env.get('OPENAI_API_KEY')
     };
 
@@ -56,7 +56,7 @@ serve(async (req) => {
 
     if (!config.supabase_url || !config.supabase_service_key) {
       const missingVars = [];
-      if (!config.supabase_url) missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
+      if (!config.supabase_url) missingVars.push('SUPABASE_URL');
       if (!config.supabase_service_key) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
       throw new Error(`Missing required Supabase configuration: ${missingVars.join(', ')}`);
     }
