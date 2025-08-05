@@ -46,6 +46,12 @@ jobs:
         run: |
           python validate_selenium_compliance.py
 
+      - name: Validate Pipeline Pre-run
+        run: |
+          python validate_pipeline.py --mode scraping \
+            --site "${{ github.event.inputs.site || 'franceagrimer' }}" \
+            --max-pages "${{ github.event.inputs.max-pages || 5 }}"
+
   scrape:
     name: Scrape ${{ github.event.inputs.site || 'franceagrimer' }}
     runs-on: ubuntu-latest
@@ -69,12 +75,6 @@ jobs:
 
       - name: Make output directory
         run: mkdir -p output
-
-      - name: Validate Pipeline Pre-run
-        run: |
-          python validate_pipeline.py --mode scraping \
-            --site "${{ github.event.inputs.site || 'franceagrimer' }}" \
-            --max-pages "${{ github.event.inputs.max-pages || 5 }}"
 
       - name: Run Scraper
         env:
