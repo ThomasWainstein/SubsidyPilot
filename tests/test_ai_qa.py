@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from ai_extractor import compute_qa_metrics
+from ai_pipeline import compute_qa_metrics
 
 
 def test_compute_qa_metrics_basic():
