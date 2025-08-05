@@ -183,6 +183,55 @@ FIELD_KEYWORDS_FR = {
     ]
 }
 
+# Romanian field keywords for subsidy extraction
+FIELD_KEYWORDS_RO = {
+    "title": [
+        "titlul", "numele", "denumirea", "titlu principal", "nume complet"
+    ],
+    "description": [
+        "descriere", "prezentare", "context", "rezumat", "obiectiv"
+    ],
+    "eligibility": [
+        "eligibilitate", "beneficiar", "condiții de eligibilitate", "cine poate aplica", "criterii"
+    ],
+    "deadline": [
+        "termen limită", "data limită", "data de depunere", "data închiderii", "scadență"
+    ],
+    "amount": [
+        "suma", "buget", "finanțare", "subvenție", "plafon", "minim", "maxim"
+    ],
+    "documents": [
+        "documente", "anexe", "formulare", "acte necesare", "dosar"
+    ],
+    "application_method": [
+        "aplicație", "cum se aplică", "procedura de aplicare", "depune", "modalități de depunere"
+    ],
+    "evaluation_criteria": [
+        "criterii de evaluare", "grilă", "metodă de selecție", "barem"
+    ],
+    "previous_acceptance_rate": [
+        "rata de acceptare", "proiecte finanțate", "statistici de acceptare"
+    ],
+    "priority_groups": [
+        "grupuri prioritare", "public țintă", "categorii prioritare"
+    ],
+    "legal_entity_type": [
+        "statut juridic", "tipul entității", "formă juridică"
+    ],
+    "funding_source": [
+        "sursa de finanțare", "finanțator", "instituție finanțatoare"
+    ],
+    "compliance_requirements": [
+        "cerințe de conformitate", "reglementări aplicabile", "obligații legale"
+    ],
+    "language": [
+        "limba", "limba de depunere"
+    ],
+    "matching_algorithm_score": [
+        "scor de eligibilitate", "nivel de potrivire"
+    ]
+}
+
 
 class ScrapingLogger:
     """Centralized logging system for all scraping operations."""
@@ -1374,7 +1423,8 @@ __all__ = [
     'detect_language',
     'guess_canonical_field_fr',
     'log_unmapped_label',
-    'FIELD_KEYWORDS_FR'
+    'FIELD_KEYWORDS_FR',
+    'FIELD_KEYWORDS_RO'
 ]
 
 
