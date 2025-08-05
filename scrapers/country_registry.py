@@ -19,4 +19,10 @@ COUNTRY_CONFIGS = {
         "rate_limits": {"requests_per_minute": 45},
         "document_types": ["pdf", "html"],
     },
+    "romania": {
+        "agencies": ["afir"],
+        "languages": ["ro"],
+        "rate_limits": {"requests_per_minute": 30},
+        "document_types": ["pdf", "html"],
+    },
 }
