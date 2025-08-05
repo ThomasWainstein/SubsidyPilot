@@ -79,3 +79,18 @@ verify_jwt = false
 
 [functions.franceagrimer-scraper]
 verify_jwt = false
+
+[functions.franceagrimer-harvester]
+verify_jwt = false
+
+[functions.afir-harvester]
+verify_jwt = false
+
+[functions.ai-content-processor]
+verify_jwt = false
+
+[functions.pdf-form-detector]
+verify_jwt = false
+
+[functions.dual-pipeline-orchestrator]
+verify_jwt = false
