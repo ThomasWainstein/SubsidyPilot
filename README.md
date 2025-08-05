@@ -262,6 +262,21 @@ python AgriToolScraper-main/validate_selenium_compliance.py
 ![Languages](https://img.shields.io/badge/PLpgSQL-0.4%25-orange)
 ![Languages](https://img.shields.io/badge/CSS-0.1%25-purple)
 
+
+## Phase 1 CLI Usage
+
+These scripts provide a minimal scraping workflow for development.
+
+```bash
+# Validate arguments and environment
+python validate_pipeline.py --mode scraping --site franceagrimer --max-pages 1
+
+# Run the scraper in dry-run mode
+python main.py --mode scraping --site franceagrimer --max-pages 1 --dry-run
+
+# Run a demo (scraping + AI placeholder)
+python main.py --mode demo
+```
 ## 📄 License
 
 MIT License - see LICENSE file for details
