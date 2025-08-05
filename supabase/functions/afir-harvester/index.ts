@@ -15,7 +15,7 @@ const ROMANIAN_SELECTORS = {
   eligibility: '.conditii, .eligibilitate, .cerinte, .criterii',
   regions: '.judete, .regiuni, .zone-eligibile, .arii',
   documents: 'a[href$=".pdf"], a[href*="formular"], a[href*="cerere"]',
-  sectors: '.domenii, '.sectoare', '.activitati', '.filiere'
+  sectors: '.domenii, .sectoare, .activitati, .filiere'
 };
 
 serve(async (req) => {
