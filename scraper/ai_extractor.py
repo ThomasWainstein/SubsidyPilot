@@ -30,7 +30,11 @@ except ImportError:
 
 try:
     from supabase import create_client, Client
-    from supabase._async.client import AsyncClient, create_async_client
+    try:
+        from supabase._async.client import AsyncClient, create_async_client
+    except ImportError:
+        AsyncClient = None  # type: ignore
+        create_async_client = None  # type: ignore
 except ImportError:
     print("❌ ERROR: Supabase client not installed")
     print("Install with: pip install supabase")
@@ -931,14 +935,14 @@ QUALITY REQUIREMENTS:
         text = re.sub(r'_([^_]+)_', r'\1', text)        # Italic underscore
         
         # Remove headers but keep text
-        text = re.sub(r'^#+\s*(.*), r'\1', text, flags=re.MULTILINE)
+        text = re.sub(r'^#+\s*(.*)', r'\1', text, flags=re.MULTILINE)
         
         # Remove code blocks and inline code
         text = re.sub(r'```[^`]*```', '', text, flags=re.DOTALL)
         text = re.sub(r'`([^`]+)`', r'\1', text)
         
         # Remove blockquotes but keep content
-        text = re.sub(r'^>\s*(.*), r'\1', text, flags=re.MULTILINE)
+        text = re.sub(r'^>\s*(.*)', r'\1', text, flags=re.MULTILINE)
         
         # Convert list markers to simple dashes
         text = re.sub(r'^\s*[-*+]\s*', '- ', text, flags=re.MULTILINE)
