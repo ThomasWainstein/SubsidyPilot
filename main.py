@@ -7,6 +7,7 @@ from core import run_scraper
 from document_parser import extract_text_from_pdf
 from nlp_classifier import classify_project_text
 from project_rewriter import optimize_project_description
+from qa_report import generate_qa_report
 
 
 def run_demo():
@@ -43,7 +44,7 @@ def main():
     parser.add_argument(
         "--qa-report",
         action="store_true",
-        help="Generate qa_report.json during AI processing",
+        help="Generate QA report for processing steps",
     )
     parser.add_argument("--file", help="Path to project PDF for document-analysis")
     parser.add_argument(
@@ -51,6 +52,8 @@ def main():
         action="store_true",
         help="Rewrite project description during document-analysis",
     )
+    parser.add_argument("--target-lang", default="en", help="Target language for extraction")
+    parser.add_argument("--force-ocr", action="store_true", help="Force OCR on all pages")
     args = parser.parse_args()
 
     if args.mode == "scraping":
@@ -72,16 +75,30 @@ def main():
         if not args.file:
             parser.error("--file is required for document-analysis mode")
 
-        text = extract_text_from_pdf(args.file)
+        parsed = extract_text_from_pdf(
+            args.file, target_lang=args.target_lang, force_ocr=args.force_ocr
+        )
+        text = parsed["text"]
         metadata = classify_project_text(text)
-        result = {"text": text, "metadata": metadata}
+        result = {**parsed, "metadata": metadata, "file": Path(args.file).name}
         if args.rewrite:
-            result["rewrite"] = optimize_project_description(text)
+            rewrite = optimize_project_description(text)
+            result["rewrite"] = rewrite
+        token_usage = metadata.get("token_usage", 0)
+        if "rewrite" in result:
+            token_usage += result["rewrite"].get("token_usage", 0)
+        result["token_usage"] = token_usage
 
         output_dir = Path("output")
         output_dir.mkdir(exist_ok=True)
         out_file = output_dir / "project_analysis.json"
         out_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        if args.qa_report:
+            qa = generate_qa_report(result)
+            qa_file = output_dir / f"qa_report_{Path(args.file).stem}.json"
+            qa_file.write_text(json.dumps(qa, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(qa["summary"])
 
         if args.save_db:  # pragma: no cover - requires network
             try:

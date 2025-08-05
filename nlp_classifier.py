@@ -50,6 +50,8 @@ def _heuristic_classification(text: str) -> Dict[str, object]:
         "region": region,
         "legal_entity": legal_entity,
         "keywords": keywords,
+        "confidence": 0.5,
+        "token_usage": 0,
     }
 
 
@@ -77,6 +79,9 @@ def classify_project_text(text: str) -> Dict[str, object]:
             content = response["choices"][0]["message"]["content"].strip()
             data = json.loads(content)
             data.setdefault("keywords", [])
+            usage = response.get("usage", {}).get("total_tokens", 0)
+            data.setdefault("token_usage", usage)
+            data.setdefault("confidence", 0.9)
             return data
         except Exception:
             pass

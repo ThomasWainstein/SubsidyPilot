@@ -17,7 +17,8 @@ def test_extract_text_from_pdf(tmp_path):
     pdf_path = tmp_path / "sample.pdf"
     doc.save(pdf_path)
 
-    text = extract_text_from_pdf(str(pdf_path))
-    text = text.lower()
+    result = extract_text_from_pdf(str(pdf_path))
+    text = result["text"].lower()
     assert "solar farming" in text
     assert "occitanie region" in text
+    assert result["ocr_pages"] == []

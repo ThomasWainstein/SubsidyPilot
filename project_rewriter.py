@@ -19,7 +19,7 @@ def _heuristic_rewrite(text: str) -> Dict[str, object]:
     changes: List[str] = []
     if optimized != text:
         changes.append("farm -> agricultural project")
-    return {"original": text, "optimized": optimized, "changes": changes}
+    return {"original": text, "optimized": optimized, "changes": changes, "token_usage": 0}
 
 
 def optimize_project_description(text: str) -> Dict[str, object]:
@@ -49,6 +49,8 @@ def optimize_project_description(text: str) -> Dict[str, object]:
             data.setdefault("original", text)
             data.setdefault("optimized", text)
             data.setdefault("changes", [])
+            usage = response.get("usage", {}).get("total_tokens", 0)
+            data.setdefault("token_usage", usage)
             return data
         except Exception:
             pass
