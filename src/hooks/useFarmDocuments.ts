@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 export interface FarmDocument {
   id: string;
@@ -70,7 +71,7 @@ export const useUploadDocument = () => {
       // Force immediate refetch to ensure real-time updates
       queryClient.refetchQueries({ queryKey: ['farm-documents', variables.farmId] });
       
-      console.log('✅ Document upload successful, refreshing document list:', variables.file.name);
+      logger.debug('✅ Document upload successful, refreshing document list', { file: variables.file.name });
     },
     onError: (error: any) => {
       console.error('Document upload failed:', error);

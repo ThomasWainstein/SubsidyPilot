@@ -104,6 +104,7 @@ export const formatFileSize = (bytes: number): string => {
 
 export const farmCreationSchema = z.object({
   farmName: z.string().min(1, 'Farm name is required'),
+  ownerName: z.string().optional(), // Add owner name field
   farmAddress: z.string().min(1, 'Farm address is required'),
   legalStatus: z.string().min(1, 'Legal status is required'),
   cnpOrCui: z.string().min(1, 'CNP or CUI is required'),
@@ -123,6 +124,7 @@ export const farmCreationSchema = z.object({
   subsidyInterests: z.array(z.string()).default([]),
   otherSubsidyInterest: z.string().optional(),
   mobileNumber: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')), // Add email field
   preferredLanguage: z.string().optional(),
   gdprConsent: z.boolean().refine(val => val === true, 'GDPR consent is required'),
   notificationConsent: z.boolean().default(false),

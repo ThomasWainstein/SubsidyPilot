@@ -113,10 +113,35 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client
+    // Enhanced environment diagnostics for troubleshooting
+    console.log('🔧 Environment Check:', {
+      hasUrl: !!Deno.env.get('SUPABASE_URL'),
+      hasAnon: !!Deno.env.get('SUPABASE_ANON_KEY'),
+      availableVars: Object.keys(Deno.env.toObject()).filter(k => k.startsWith('SUPABASE')),
+    });
+
+    // Check required Supabase environment variables BEFORE creating client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY');
+
+    if (!supabaseUrl || !supabaseAnon) {
+      console.error('Supabase environment variables missing or empty', {
+        SUPABASE_URL: supabaseUrl,
+        SUPABASE_ANON_KEY: supabaseAnon,
+      });
+      return new Response(
+        JSON.stringify({ error: 'Supabase misconfiguration' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    // Create Supabase client - environment variables validated above
     const supabase = createClient(
-      Deno.env.get('NEXT_PUBLIC_SUPABASE_URL') ?? '',
-      Deno.env.get('NEXT_PUBLIC_SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnon,
       {
         auth: {
           autoRefreshToken: false,
@@ -126,7 +151,7 @@ serve(async (req) => {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
         },
-      }
+      },
     );
 
     // Get the current user

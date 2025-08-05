@@ -12,6 +12,7 @@ import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import EnhancedAlertsActions from '@/components/dashboard/EnhancedAlertsActions';
 import { toast } from '@/hooks/use-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { logger } from '@/lib/logger';
 
 interface Farm {
   id: string;
@@ -27,7 +28,7 @@ interface Farm {
 }
 
 const DashboardContainer = () => {
-  console.log('DashboardContainer: Rendering');
+  logger.debug('DashboardContainer: Rendering');
   
   // Wrap language context usage in try-catch
   let t: any;
@@ -54,12 +55,12 @@ const DashboardContainer = () => {
   useEffect(() => {
     const fetchFarms = async () => {
       if (!user) {
-        console.log('DashboardContainer: No user, skipping farm fetch');
+        logger.debug('DashboardContainer: No user, skipping farm fetch');
         setLoading(false);
         return;
       }
 
-      console.log('DashboardContainer: Fetching farms for user:', user.id);
+      logger.debug(`DashboardContainer: Fetching farms for user: ${user.id}`);
 
       try {
         const { data, error } = await supabase
@@ -67,7 +68,7 @@ const DashboardContainer = () => {
           .select('*')
           .eq('user_id', user.id);
 
-        console.log('DashboardContainer: Farms query result:', { data, error });
+        logger.debug('DashboardContainer: Farms query result', { data, error });
 
         if (error) throw error;
 
@@ -79,7 +80,7 @@ const DashboardContainer = () => {
           tags: farm.land_use_types || []
         }));
 
-        console.log('DashboardContainer: Transformed farms:', transformedFarms);
+        logger.debug('DashboardContainer: Transformed farms', transformedFarms);
         setFarms(transformedFarms);
         setError(null);
       } catch (error: any) {
@@ -156,7 +157,7 @@ const DashboardContainer = () => {
   });
 
   if (loading) {
-    console.log('DashboardContainer: Showing loading state');
+    logger.debug('DashboardContainer: Showing loading state');
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -175,7 +176,7 @@ const DashboardContainer = () => {
   }
 
   if (error) {
-    console.log('DashboardContainer: Showing error state:', error);
+    logger.debug('DashboardContainer: Showing error state', { error });
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -199,7 +200,7 @@ const DashboardContainer = () => {
     );
   }
 
-  console.log('DashboardContainer: Rendering main content with', farms.length, 'farms');
+  logger.debug('DashboardContainer: Rendering main content', { farmCount: farms.length });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -213,13 +214,8 @@ const DashboardContainer = () => {
             </h1>
           </div>
           
-          {/* Dashboard Overview with metrics */}
-          <ErrorBoundary fallback={DashboardErrorFallback}>
-            <DashboardOverview farmCount={farms.length} />
-          </ErrorBoundary>
-
           <div className="grid grid-cols-12 gap-6">
-            {/* Main content area */}
+            {/* Main content area - Farm cards prioritized */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
               <ErrorBoundary fallback={DashboardErrorFallback}>
                 <DashboardFilters 
@@ -238,11 +234,11 @@ const DashboardContainer = () => {
               
               {farms.length === 0 ? (
                 <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No farms yet</h3>
-                  <p className="text-gray-600 mb-4">Create your first farm to get started</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No farms yet</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">Create your first farm to get started</p>
                   <button
                     onClick={() => setIsAddFarmModalOpen(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                   >
                     Add Your First Farm
                   </button>
@@ -254,8 +250,29 @@ const DashboardContainer = () => {
               )}
             </div>
 
-            {/* Sidebar with alerts and quick actions */}
-            <div className="col-span-12 lg:col-span-4">
+            {/* Right sidebar - All metrics and secondary info */}
+            <div className="col-span-12 lg:col-span-4 space-y-6">
+              {/* Simple farm summary */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Farm Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-300">Total Farms:</span>
+                    <span className="font-medium">{farms.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-300">Filtered Results:</span>
+                    <span className="font-medium">{sortedFarms.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dashboard Overview in sidebar */}
+              <ErrorBoundary fallback={DashboardErrorFallback}>
+                <DashboardOverview farmCount={farms.length} />
+              </ErrorBoundary>
+
+              {/* Alerts and actions */}
               <ErrorBoundary fallback={DashboardErrorFallback}>
                 <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
               </ErrorBoundary>

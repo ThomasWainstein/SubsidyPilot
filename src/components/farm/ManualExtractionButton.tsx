@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '@/lib/logger';
 
 interface ManualExtractionButtonProps {
   documentId: string;
@@ -41,8 +42,8 @@ const ManualExtractionButton = ({
     setError(null);
     onExtractionStart?.();
     
-    console.log(`🔄 Starting manual extraction for: ${fileName}`);
-    console.log(`📄 Document details:`, { documentId, fileUrl, fileName, category });
+    logger.debug(`🔄 Starting manual extraction for: ${fileName}`);
+    logger.debug(`📄 Document details:`, { documentId, fileUrl, fileName, category });
 
     // Validate required parameters
     if (!documentId || !fileUrl || !fileName) {
@@ -55,7 +56,7 @@ const ManualExtractionButton = ({
     }
 
     try {
-      console.log(`🚀 Calling extract-document-data function...`);
+      logger.debug(`🚀 Calling extract-document-data function...`);
       
       const { data, error } = await supabase.functions.invoke('extract-document-data', {
         body: {
@@ -71,7 +72,7 @@ const ManualExtractionButton = ({
         throw new Error(error.message || 'Edge function call failed');
       }
 
-      console.log(`✅ Manual extraction completed for ${fileName}:`, data);
+      logger.debug(`✅ Manual extraction completed for ${fileName}:`, data);
       
       if (data?.success && data?.extractedData) {
         const extractedData = data.extractedData;
@@ -79,7 +80,7 @@ const ManualExtractionButton = ({
         // Enhanced success feedback with details
         toast({
           title: t('common.extractionCompleted'),
-          description: `Successfully extracted ${extractedData.extractedFields?.length || 0} fields from ${fileName} (${Math.round((extractedData.confidence || 0) * 100)}% confidence)`,
+          description: `Successfully extracted ${Object.keys(extractedData.extractedFields || {}).length} fields from ${fileName} (${Math.round((extractedData.confidence || 0) * 100)}% confidence)`,
         });
 
         onExtractionComplete?.(extractedData);
@@ -125,7 +126,7 @@ const ManualExtractionButton = ({
           status: 'failed',
           error_message: errorMessage
         });
-        console.log(`📝 Error logged to database for admin review`);
+        logger.debug(`📝 Error logged to database for admin review`);
       } catch (dbError) {
         console.error(`❌ Failed to log error to database:`, dbError);
       }

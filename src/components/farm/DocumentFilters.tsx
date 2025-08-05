@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X } from 'lucide-react';
 import { CATEGORY_LABELS, isValidDocumentCategory } from '@/utils/documentValidation';
+import { logger } from '@/lib/logger';
 
 interface DocumentFiltersProps {
   searchTerm: string;
@@ -31,7 +32,7 @@ const DocumentFilters = ({
 
   // Safe category change handler that validates input
   const handleCategoryChange = (value: string) => {
-    console.log('Filter category change requested:', value);
+    logger.debug('Filter category change requested', { value });
     
     // Allow "all" for clearing selection (equivalent to empty string)
     if (value === 'all' || value === '') {
@@ -56,7 +57,7 @@ const DocumentFilters = ({
            isValidDocumentCategory(category);
   });
 
-  console.log('Rendering filter categories:', safeCategories);
+  logger.debug('Rendering filter categories:', safeCategories);
 
   return (
     <div className="space-y-4">

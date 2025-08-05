@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface SimpleDataQualityProps {
   className?: string;
@@ -44,7 +45,7 @@ export const SimpleDataQuality: React.FC<SimpleDataQualityProps> = ({ className 
       
       if (error) throw error;
       
-      console.log('Title improvement result:', data);
+      logger.debug('Title improvement result:', data);
       
       // Reload stats after improvement
       await loadStats();

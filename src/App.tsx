@@ -19,6 +19,7 @@ import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
 import AdminPage from '@/pages/AdminPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AdminPanel from '@/components/admin/AdminPanel';
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
 import ConsultantDashboardPage from '@/pages/ConsultantDashboardPage';
 import OrganizationDashboardPage from '@/pages/OrganizationDashboardPage';
@@ -26,6 +27,12 @@ import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import FarmEditPage from '@/pages/FarmEditPage';
+import DocumentReviewPage from '@/pages/DocumentReviewPage';
+import DocumentReviewDetailPage from '@/pages/DocumentReviewDetailPage';
+import ExtractionAnalyticsPage from '@/pages/ExtractionAnalyticsPage';
+import SupportedFileTypesPage from '@/pages/SupportedFileTypesPage';
+import ReviewWorkflowDocsPage from '@/pages/ReviewWorkflowDocsPage';
+import TrainingPipelinePage from '@/pages/TrainingPipelinePage';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
 
@@ -93,6 +100,50 @@ function App() {
                     } 
                   />
                   <Route 
+                    path="/farm/:farmId/document-review" 
+                    element={
+                      <ProtectedRoute>
+                        <DocumentReviewPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/document-review/:documentId" 
+                    element={
+                      <ProtectedRoute>
+                        <DocumentReviewDetailPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/document-review/analytics" 
+                    element={
+                      <ProtectedRoute>
+                        <ExtractionAnalyticsPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/supported-file-types" 
+                    element={
+                      <SupportedFileTypesPage />
+                    } 
+                  />
+                  <Route 
+                    path="/review-workflow" 
+                    element={
+                      <ReviewWorkflowDocsPage />
+                    } 
+                  />
+                  <Route 
+                    path="/farm/:farmId/training" 
+                    element={
+                      <ProtectedRoute>
+                        <TrainingPipelinePage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
                     path="/search" 
                     element={
                       <ProtectedRoute>
@@ -133,22 +184,30 @@ function App() {
                     } 
                   />
                     {/* Regulations route removed per business requirements */}
-                  <Route 
-                    path="/admin" 
-                    element={
-                      <ProtectedRoute>
-                        <AdminPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/settings" 
-                    element={
-                      <ProtectedRoute>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    } 
-                  />
+                   <Route 
+                     path="/admin" 
+                     element={
+                       <ProtectedRoute>
+                         <AdminPage />
+                       </ProtectedRoute>
+                     } 
+                   />
+                   <Route 
+                     path="/admin-panel" 
+                     element={
+                       <ProtectedRoute>
+                         <AdminPanel />
+                       </ProtectedRoute>
+                     } 
+                   />
+                   <Route 
+                     path="/settings" 
+                     element={
+                       <ProtectedRoute>
+                         <SettingsPage />
+                       </ProtectedRoute>
+                     } 
+                   />
                   <Route 
                     path="/employee-dashboard" 
                     element={

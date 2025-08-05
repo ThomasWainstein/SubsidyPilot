@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { REQUIRED_DOCUMENT_CATEGORIES } from '@/utils/requiredDocumentCategories';
 
 interface FarmMetrics {
   totalMatches: number;
@@ -43,44 +44,61 @@ export const useFarmMetrics = (farmId: string) => {
       ).length || 0;
 
       // Check for missing critical documents - using proper enum values
-      const requiredCategories = ['ownership_proof', 'id_document', 'financial'] as const;
+      const requiredCategories = REQUIRED_DOCUMENT_CATEGORIES;
       const uploadedCategories = documents?.map(doc => doc.category) || [];
       const missingDocuments = requiredCategories.filter(cat => 
         !uploadedCategories.includes(cat)
       ).length;
 
-      // Mock subsidy matching data - in real implementation, this would come from matching service
-      const mockTotalMatches = Math.floor(Math.random() * 8) + 3; // 3-10 matches
-      const mockNewMatches = Math.floor(mockTotalMatches * 0.2); // 20% new
-      const mockExpiringMatches = Math.floor(mockTotalMatches * 0.1); // 10% expiring
+      // Fetch real subsidy matches for this farm (no mock data)
+      const { data: subsidyMatches } = await supabase
+        .from('subsidy_matches')
+        .select(`
+          id,
+          confidence,
+          created_at,
+          subsidies_structured (
+            id,
+            title,
+            amount,
+            deadline
+          )
+        `)
+        .eq('farm_id', farmId)
+        .eq('status', 'active');
 
-      // Mock top match
-      const mockTopMatch = {
-        id: `top-match-${farmId}`,
-        title: [
-          'Agricultural Modernization Grant',
-          'Organic Certification Support',
-          'Green Technology Investment',
-          'Sustainable Farming Initiative',
-          'Rural Development Fund'
-        ][Math.floor(Math.random() * 5)],
-        amount: [
-          [5000, 25000],
-          [10000, 50000],
-          [15000, 75000],
-          [8000, 35000],
-          [12000, 60000]
-        ][Math.floor(Math.random() * 5)],
-        confidence: Math.floor(Math.random() * 25) + 70 // 70-95%
-      };
+      const totalMatches = subsidyMatches?.length || 0;
+
+      // Only calculate metrics from real data
+      const now = new Date();
+      const newMatches = subsidyMatches?.filter(m => {
+        const created = new Date(m.created_at);
+        return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      }).length || 0;
+
+      const expiringMatches = subsidyMatches?.filter(m => {
+        const deadline = m.subsidies_structured?.deadline;
+        return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }).length || 0;
+
+      // Only show top match if real data exists
+      const topMatchData = subsidyMatches?.[0];
+      const topMatch = topMatchData?.subsidies_structured
+        ? {
+            id: topMatchData.id,
+            title: topMatchData.subsidies_structured.title || null,
+            amount: topMatchData.subsidies_structured.amount || null,
+            confidence: topMatchData.confidence,
+          }
+        : undefined;
 
       return {
-        totalMatches: mockTotalMatches,
-        newMatches: mockNewMatches,
-        expiringMatches: mockExpiringMatches,
+        totalMatches,
+        newMatches,
+        expiringMatches,
         urgentDeadlines,
         missingDocuments,
-        topMatch: mockTopMatch
+        topMatch
       };
     },
     enabled: !!farmId,

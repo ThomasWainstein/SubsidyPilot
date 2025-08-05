@@ -36,91 +36,115 @@ export const useDashboardMetrics = () => {
         throw new Error('User not authenticated');
       }
 
-      // Fetch user's farms
-      const { data: farms, error: farmsError } = await supabase
-        .from('farms')
-        .select('id, name')
-        .eq('user_id', user.id);
+      try {
+        // Fetch user's farms
+        const { data: farms, error: farmsError } = await supabase
+          .from('farms')
+          .select('id, name')
+          .eq('user_id', user.id);
 
-      if (farmsError) throw farmsError;
+        if (farmsError) throw farmsError;
 
-      const farmIds = farms?.map(f => f.id) || [];
+        const farmIds = farms?.map(f => f.id) || [];
 
-      // Fetch applications for user's farms
-      const { data: applications, error: appsError } = await supabase
-        .from('applications')
-        .select(`
-          id,
-          status,
-          created_at,
-          farm_id,
-          farms(name)
-        `)
-        .in('farm_id', farmIds);
+        // Fetch applications for user's farms
+        const { data: applications, error: appsError } = await supabase
+          .from('applications')
+          .select('id, status, created_at, farm_id')
+          .in('farm_id', farmIds);
 
-      if (appsError) throw appsError;
+        if (appsError) throw appsError;
 
-      // Calculate application metrics
-      const applicationCount = applications?.length || 0;
-      const activeApplications = applications?.filter(app => 
-        ['draft', 'submitted', 'under_review'].includes(app.status)
-      ).length || 0;
-      const approvedApplications = applications?.filter(app => 
-        app.status === 'approved'
-      ).length || 0;
+        // Calculate application metrics
+        const applicationCount = applications?.length || 0;
+        const activeApplications = applications?.filter(app => 
+          ['draft', 'submitted', 'under_review'].includes(app.status)
+        ).length || 0;
+        const approvedApplications = applications?.filter(app => 
+          app.status === 'approved'
+        ).length || 0;
 
-      // For now, we'll use mock data for subsidy matches since the matching system
-      // needs to be enhanced. In a real implementation, this would fetch from
-      // a subsidies matching table or service.
-      const mockSubsidyMatches = farmIds.length * 3; // Mock: 3 matches per farm
-      const mockNewMatches = Math.floor(mockSubsidyMatches * 0.2); // 20% are new
-      const mockExpiringMatches = Math.floor(mockSubsidyMatches * 0.1); // 10% expiring
+        // Fetch real subsidy matches (no mock data)
+        const { data: subsidyMatches } = await supabase
+          .from('subsidy_matches')
+          .select(`
+            id,
+            farm_id,
+            confidence,
+            created_at,
+            subsidies_structured (
+              id,
+              title,
+              amount,
+              deadline
+            )
+          `)
+          .in('farm_id', farmIds)
+          .eq('status', 'active');
 
-      // Generate mock top matches
-      const topMatches = farms?.slice(0, 3).map((farm, index) => ({
-        id: `match-${farm.id}-${index}`,
-        title: [
-          'Agricultural Modernization Grant',
-          'Organic Certification Support',
-          'Green Technology Investment'
-        ][index] || 'Agricultural Support Program',
-        amount: [
-          [5000, 25000],
-          [10000, 50000],
-          [15000, 75000]
-        ][index] || [5000, 25000],
-        deadline: new Date(Date.now() + (30 - index * 10) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        farmName: farm.name,
-        confidence: [85, 92, 78][index] || 80
-      })) || [];
+        const totalSubsidyMatches = subsidyMatches?.length || 0;
+        const now = new Date();
+        
+        const newMatches = subsidyMatches?.filter(m => {
+          const created = new Date(m.created_at);
+          return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
+        }).length || 0;
 
-      // Generate urgent deadlines from recent applications
-      const urgentDeadlines = applications
-        ?.filter(app => ['submitted', 'under_review'].includes(app.status))
-        .slice(0, 3)
-        .map((app, index) => {
-          const deadline = new Date(Date.now() + (15 - index * 5) * 24 * 60 * 60 * 1000);
-          return {
-            id: app.id,
-            title: `Application #${app.id.slice(-6)}`,
-            deadline: deadline.toISOString().split('T')[0],
-            farmName: (app as any).farms?.name || 'Unknown Farm',
-            daysLeft: Math.ceil((deadline.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-          };
-        }) || [];
+        const expiringMatches = subsidyMatches?.filter(m => {
+          const deadline = m.subsidies_structured?.deadline;
+          return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        }).length || 0;
 
-      return {
-        totalSubsidyMatches: mockSubsidyMatches,
-        newMatches: mockNewMatches,
-        expiringMatches: mockExpiringMatches,
-        applicationCount,
-        activeApplications,
-        approvedApplications,
-        topMatches,
-        urgentDeadlines
-      };
+        const topMatches = subsidyMatches?.slice(0, 3).map(m => ({
+          id: m.id,
+          title: m.subsidies_structured?.title || null,
+          amount: m.subsidies_structured?.amount || null,
+          deadline: m.subsidies_structured?.deadline || null,
+          farmName: farms?.find(f => f.id === m.farm_id)?.name || 'Unknown Farm',
+          confidence: m.confidence
+        })).filter(m => m.title) || []; // Only include matches with real titles
+
+        // Generate urgent deadlines from recent applications
+        const urgentDeadlines = applications
+          ?.filter(app => ['submitted', 'under_review'].includes(app.status))
+          .slice(0, 3)
+          .map((app, index) => {
+            const deadline = new Date(Date.now() + (15 - index * 5) * 24 * 60 * 60 * 1000);
+            return {
+              id: app.id,
+              title: `Application #${app.id.slice(-6)}`,
+              deadline: deadline.toISOString().split('T')[0],
+              farmName: farms?.find(f => f.id === app.farm_id)?.name || 'Unknown Farm',
+              daysLeft: Math.ceil((deadline.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+            };
+          }) || [];
+
+        return {
+          totalSubsidyMatches,
+          newMatches,
+          expiringMatches,
+          applicationCount,
+          activeApplications,
+          approvedApplications,
+          topMatches,
+          urgentDeadlines
+        };
+      } catch (error) {
+        console.error('Error fetching dashboard metrics:', error);
+        // Return empty metrics on error
+        return {
+          totalSubsidyMatches: 0,
+          newMatches: 0,
+          expiringMatches: 0,
+          applicationCount: 0,
+          activeApplications: 0,
+          approvedApplications: 0,
+          topMatches: [],
+          urgentDeadlines: []
+        };
+      }
     },
     enabled: !!user?.id,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    refetchInterval: 5 * 60 * 1000,
   });
 };

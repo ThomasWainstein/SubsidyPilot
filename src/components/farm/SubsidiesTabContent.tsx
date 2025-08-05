@@ -11,16 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Euro, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getSubsidyTitle } from '@/utils/subsidyFormatting';
 
 interface SubsidiesTabContentProps {
   farmId: string;
 }
 
 const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
-  const getTitle = () => {
-    return subsidy.title || 'Untitled';
-  };
-
   const getDescription = () => {
     return subsidy.description || 'No description';
   };
@@ -30,7 +27,7 @@ const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-base md:text-lg mb-1 line-clamp-2">{getTitle()}</h3>
+            <h3 className="font-semibold text-base md:text-lg mb-1 line-clamp-2">{getSubsidyTitle(subsidy)}</h3>
             <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm line-clamp-2">{getDescription()}</p>
           </div>
           <Badge 

@@ -22,21 +22,11 @@ interface Farm {
   address: string;
   department?: string | null;
   total_hectares?: number | null;
+  staff_count?: number | null;
   created_at: string;
   updated_at?: string | null;
-  updatedAt?: string;
-  size?: string;
-  staff?: number;
   status?: 'Profile Complete' | 'Incomplete' | 'Pending';
-  region?: string;
-  tags?: string[];
   certifications?: string[];
-  irrigationMethod?: string;
-  crops?: string[];
-  revenue?: string;
-  activities?: string[];
-  carbonScore?: number;
-  software?: string[];
 }
 
 interface EnhancedFarmCardProps {
@@ -79,7 +69,7 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
   const urgencyLevel = getUrgencyLevel();
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200 relative">
+    <Card className="hover:shadow-lg transition-shadow duration-200 relative flex flex-col h-full">
       {urgencyLevel && (
         <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${
           urgencyLevel === 'high' ? 'bg-red-500' : 
@@ -98,107 +88,87 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        <div className="flex items-start gap-2">
-          <MapPin size={16} className="text-gray-400 mt-1 flex-shrink-0" />
-          <div className="text-sm text-gray-600 dark:text-gray-300">
-            <p>{farm.address}</p>
-            {farm.department && (
-              <p className="text-xs text-gray-500">{farm.department}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-500">Size:</span>
-            <p className="font-medium">
-              {farm.total_hectares ? `${farm.total_hectares} ha` : farm.size || 'N/A'}
-            </p>
-          </div>
-          <div>
-            <span className="text-gray-500">Staff:</span>
-            <p className="font-medium">{farm.staff || 0}</p>
-          </div>
-        </div>
-
-        {/* Subsidy Metrics */}
-        {!isLoading && metrics && (
-          <div className="space-y-3 border-t pt-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={14} className="text-green-600" />
-                <span className="text-sm font-medium">Subsidies</span>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {metrics.totalMatches || 0} matches
-              </Badge>
+      <CardContent className="space-y-4 flex-1 flex flex-col">
+        <div className="space-y-4 flex-1">
+          <div className="flex items-start gap-2">
+            <MapPin size={16} className="text-gray-400 mt-1 flex-shrink-0" />
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              <p>{farm.address}</p>
+              {farm.department && (
+                <p className="text-xs text-gray-500">{farm.department}</p>
+              )}
             </div>
-            
-            {metrics.topMatch && (
-              <div className="text-xs text-gray-600 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                <p className="font-medium truncate">{metrics.topMatch.title}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span>{formatFundingAmount(metrics.topMatch.amount)}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {metrics.topMatch.confidence}% match
+          </div>
+
+          {/* Only show farm details if we have real data */}
+          {(farm.total_hectares || farm.staff_count) && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {farm.total_hectares && (
+                <div>
+                  <span className="text-gray-500">Size:</span>
+                  <p className="font-medium">{farm.total_hectares} ha</p>
+                </div>
+              )}
+              {farm.staff_count !== undefined && farm.staff_count !== null && (
+                <div>
+                  <span className="text-gray-500">Staff:</span>
+                  <p className="font-medium">{farm.staff_count}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Real Subsidy Metrics - Only show if data exists */}
+          {!isLoading && metrics && (metrics.urgentDeadlines > 0 || metrics.missingDocuments > 0) && (
+            <div className="space-y-2 border-t pt-3">
+              {metrics.urgentDeadlines > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <AlertTriangle size={12} className="text-red-500" />
+                  <Badge variant="destructive" className="text-xs">
+                    {metrics.urgentDeadlines} urgent deadline{metrics.urgentDeadlines > 1 ? 's' : ''}
                   </Badge>
                 </div>
-              </div>
-            )}
-
-            {/* Urgent Items */}
-            {(metrics.urgentDeadlines > 0 || metrics.missingDocuments > 0 || metrics.expiringMatches > 0) && (
-              <div className="flex items-center gap-2 text-xs">
-                <AlertTriangle size={12} className="text-orange-500" />
-                <div className="flex gap-2">
-                  {metrics.urgentDeadlines > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      {metrics.urgentDeadlines} urgent deadline{metrics.urgentDeadlines > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  {metrics.missingDocuments > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      {metrics.missingDocuments} missing doc{metrics.missingDocuments > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  {metrics.expiringMatches > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {metrics.expiringMatches} expiring
-                    </Badge>
-                  )}
+              )}
+              {metrics.missingDocuments > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <FileText size={12} className="text-orange-500" />
+                  <Badge variant="outline" className="text-xs">
+                    {metrics.missingDocuments} missing doc{metrics.missingDocuments > 1 ? 's' : ''}
+                  </Badge>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {farm.tags && farm.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {farm.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {farm.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{farm.tags.length - 3} more
-              </Badge>
-            )}
-          </div>
-        )}
+          {/* Only show real tags if they exist */}
+          {farm.certifications && farm.certifications.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {farm.certifications.slice(0, 3).map((tag, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {farm.certifications.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{farm.certifications.length - 3} more
+                </Badge>
+              )}
+            </div>
+          )}
 
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Calendar size={14} />
-          <span>Updated {formatDate(farm.updated_at || farm.updatedAt || farm.created_at)}</span>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Calendar size={14} />
+            <span>Updated {formatDate(farm.updated_at || farm.created_at)}</span>
+          </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        {/* Button aligned to bottom */}
+        <div className="pt-2 mt-auto">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => navigate(`/farm/${farm.id}`)}
-            className="flex-1"
+            className="w-full"
           >
             <Eye size={16} className="mr-2" />
             View Details

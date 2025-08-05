@@ -1,22 +1,34 @@
 # --- Web automation ---
 selenium==4.15.2
 webdriver-manager==4.0.1
-
 # --- HTTP/HTML parsing ---
 requests>=2.31
 beautifulsoup4>=4.12
 lxml>=4.9
-
 # --- Data handling & progress ---
 tqdm>=4.66
-pandas>=2.0                  # For data analysis if needed
-
+pandas>=2.0
 # --- Cloud/API/AI ---
-python-dotenv>=1.0           # For .env config
-openai>=1.0                  # For AI processing if needed
-supabase>=2.0.0              # Supabase client
-tenacity>=8.2                # For retries
-langdetect>=1.0.9            # For automatic language detection
-
+python-dotenv>=1.0
+openai>=1.0
+supabase>=2.0.0
+tenacity>=8.2
+langdetect>=1.0.9
+markdownify>=0.11.6
+# --- Python document extraction (replaces Tika) ---
+pdfplumber>=0.10.0
+pdfminer.six>=20221105
+PyMuPDF>=1.23.0
+pdf2image>=1.14.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+xlrd>=2.0.1
+odfpy>=1.4.0
+unstructured[all-docs]>=0.10.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+chardet>=5.2.0
 # --- Development ---
-pytest>=7.0                  # For testing
+pytest>=7.0

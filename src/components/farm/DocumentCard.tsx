@@ -1,22 +1,24 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  FileText, 
-  FileSpreadsheet, 
-  FileImage, 
-  File, 
-  ExternalLink, 
-  Trash2, 
+import {
+  FileText,
+  FileSpreadsheet,
+  FileImage,
+  File,
+  ExternalLink,
+  Trash2,
   Calendar,
   Tag,
   Download,
-  Sparkles
+  Sparkles,
+  AlertCircle,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import { FarmDocument } from '@/hooks/useFarmDocuments';
-import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
+import { useFarmDocumentStatus } from '@/hooks/useFarmDocumentStatus';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -43,7 +45,7 @@ interface DocumentCardProps {
 const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }: DocumentCardProps) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { data: extraction } = useLatestDocumentExtraction(document.id);
+  const { data: extractionStatus } = useFarmDocumentStatus(document.id);
   const getDocumentIcon = (mimeType: string | null) => {
     if (!mimeType) return <File className="h-6 w-6 text-gray-500" />;
     
@@ -92,9 +94,55 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
     return 'bg-orange-100 text-orange-800';
   };
 
+  const renderExtractionBadge = () => {
+    if (!extractionStatus || extractionStatus.status === 'not_extracted') {
+      return (
+        <Badge variant="outline" className="text-xs">
+          <Sparkles className="h-3 w-3 mr-1" />
+          {t('common.readyToExtract')}
+        </Badge>
+      );
+    }
+
+    switch (extractionStatus.status) {
+      case 'completed':
+        return (
+          <Badge
+            variant="secondary"
+            className={`${getConfidenceColor(extractionStatus.confidence_score)} text-xs`}
+          >
+            <CheckCircle className="h-3 w-3 mr-1" />
+            {`${t('common.extractionAvailable')} (${Math.round(extractionStatus.confidence_score ?? 0)}%)`}
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {t('common.extractionFailed')}
+          </Badge>
+        );
+      case 'processing':
+      case 'pending':
+        return (
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+            <Clock className="h-3 w-3 mr-1" />
+            {t('status.processing')}
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-xs">
+            <Sparkles className="h-3 w-3 mr-1" />
+            {t('common.readyToExtract')}
+          </Badge>
+        );
+    }
+  };
+
   const handlePrefillClick = () => {
-    if (extraction) {
-      navigate(`/farm/${farmId}/edit?prefill=true&extractionId=${extraction.id}`);
+    if (extractionStatus?.status === 'completed') {
+      navigate(`/farm/${farmId}/edit?prefill=true&extractionId=${document.id}`);
     }
   };
 
@@ -111,23 +159,23 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
                 {document.file_name}
               </h4>
               <div className="flex items-center space-x-2 mt-2 flex-wrap gap-1">
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className={`${getCategoryColor(document.category)} text-xs`}
                 >
                   <Tag className="h-3 w-3 mr-1" />
                   {document.category}
                 </Badge>
-                {extraction && (
-                  <Badge 
-                    variant="secondary" 
-                    className={`${getConfidenceColor(extraction.confidence_score)} text-xs`}
-                  >
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {t('common.extractionAvailable')}
-                  </Badge>
-                )}
+                {renderExtractionBadge()}
               </div>
+              {extractionStatus?.error_message && (
+                <div
+                  className="mt-1 text-xs text-red-600"
+                  title={extractionStatus.error_message}
+                >
+                  {extractionStatus.error_message.substring(0, 30)}...
+                </div>
+              )}
               <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center">
                   <Calendar className="h-3 w-3 mr-1" />
@@ -139,7 +187,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
           </div>
           
           <div className="flex items-center space-x-1 ml-2">
-            {extraction && (
+            {extractionStatus?.status === 'completed' && (
               <Button
                 variant="default"
                 size="sm"
@@ -157,7 +205,7 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
               fileName={document.file_name}
               fileUrl={document.file_url}
               category={document.category}
-              hasExistingExtraction={!!extraction}
+              hasExistingExtraction={extractionStatus?.status === 'completed'}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 h-auto"
             />
             <Button

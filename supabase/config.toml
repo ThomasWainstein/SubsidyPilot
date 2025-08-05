@@ -31,7 +31,7 @@ max_header_length = 4096
 enabled = true
 port = 54324
 api_url = "http://127.0.0.1:54321"
-openai_api_key = "env(lovable_reguline)"
+openai_api_key = "env(SCRAPER_RAW_GPT_API)"
 
 [inbucket]
 enabled = true
@@ -63,4 +63,16 @@ enable_confirmations = false
 verify_jwt = true
 
 [functions.extract-document-data]
+verify_jwt = false
+
+[functions.hybrid-extraction]
+verify_jwt = true
+
+[functions.environment-diagnostic]
+verify_jwt = false
+
+[functions.enhance-subsidy-extraction]
+verify_jwt = false
+
+[functions.improve-subsidy-titles]
 verify_jwt = false

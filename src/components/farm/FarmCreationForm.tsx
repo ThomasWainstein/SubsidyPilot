@@ -16,18 +16,21 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/hooks/use-toast';
 import FileUploadField from '@/components/form/FileUploadField';
-import SmartFormPrefill from '@/components/farm/SmartFormPrefill';
+import DocumentUploadSection from '@/components/farm/DocumentUploadSection';
+import { logger } from '@/lib/logger';
 
 const FarmCreationForm = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const createFarmMutation = useCreateFarm();
+  const [extractedDocuments, setExtractedDocuments] = useState<any[]>([]);
 
   const form = useForm<FarmCreationData>({
     resolver: zodResolver(farmCreationSchema),
     defaultValues: {
       farmName: '',
+      ownerName: '', // Add owner name field
       farmAddress: '',
       legalStatus: '',
       cnpOrCui: '',
@@ -45,6 +48,7 @@ const FarmCreationForm = () => {
       subsidyInterests: [],
       otherSubsidyInterest: '',
       mobileNumber: '',
+      email: '', // Add email field
       preferredLanguage: '',
       gdprConsent: false,
       notificationConsent: false,
@@ -63,16 +67,144 @@ const FarmCreationForm = () => {
     : [];
 
   const handleApplyExtraction = (extractedData: any) => {
+    logger.debug('🎯 Applying extracted data:', extractedData);
+    const appliedFields: string[] = [];
+    
+    // Enhanced field mapping from extracted data to form fields
+    const fieldMapping: Record<string, string> = {
+      farmName: 'farmName',
+      ownerName: 'ownerName',
+      address: 'farmAddress',
+      totalHectares: 'totalArea',
+      legalStatus: 'legalStatus',
+      registrationNumber: 'cnpOrCui',
+      country: 'country',
+      department: 'department',
+      locality: 'locality',
+      revenue: 'revenue',
+      numberOfEmployees: 'staff',
+      phoneNumber: 'mobileNumber',
+      email: 'email',
+      irrigationMethods: 'irrigationMethod',
+      activities: 'landUseTypes',
+      certifications: 'certifications',
+      softwareUsed: 'software',
+      subsidyInterests: 'subsidyInterests',
+      livestockPresent: 'hasLivestock',
+      technicalDocs: 'hasTechnicalDocs'
+    };
+    
     Object.keys(extractedData).forEach(key => {
-      if (extractedData[key] !== undefined && extractedData[key] !== null) {
-        form.setValue(key as any, extractedData[key]);
+      const formFieldName = fieldMapping[key];
+      const value = extractedData[key];
+      
+      logger.debug(`🔄 Processing field: ${key} → ${formFieldName}:`, value);
+      
+      if (formFieldName && value !== undefined && value !== null && value !== '') {
+        try {
+          // Special handling for different field types
+          if (formFieldName === 'landUseTypes' && Array.isArray(value)) {
+            // Map activities to standard land use types
+            const activityMap: Record<string, string> = {
+              'Potato Production': 'cereals',
+              'Plantații de migdal': 'fruit-orchards',
+              'Vie': 'vineyards', 
+              'Cultură de șofran': 'aromatic-medicinal',
+              'Măslini': 'fruit-orchards',
+              'Agroturism': 'other',
+              'Barley': 'cereals',
+              'Pig Farming': 'livestock',
+              'Vegetables': 'vegetables',
+              'Fruits': 'fruit-orchards',
+              'Herbs': 'aromatic-medicinal',
+              'Viticulture': 'vineyards',
+              'Cereal Crops': 'cereals',
+              'Orchard': 'fruit-orchards',
+              'Weather monitoring': 'other'
+            };
+            
+            const mappedActivities = value.map(activity => {
+              const mapped = activityMap[activity];
+              if (mapped) return mapped;
+              
+              // Fallback mapping for partial matches
+              const lowerActivity = activity.toLowerCase();
+              if (lowerActivity.includes('potato') || lowerActivity.includes('cereal') || lowerActivity.includes('barley')) return 'cereals';
+              if (lowerActivity.includes('fruit') || lowerActivity.includes('migdal') || lowerActivity.includes('orchard')) return 'fruit-orchards';
+              if (lowerActivity.includes('vine') || lowerActivity.includes('vin')) return 'vineyards';
+              if (lowerActivity.includes('vegetable')) return 'vegetables';
+              if (lowerActivity.includes('herb') || lowerActivity.includes('aromatic')) return 'aromatic-medicinal';
+              if (lowerActivity.includes('livestock') || lowerActivity.includes('pig') || lowerActivity.includes('animal')) return 'pasture-grassland';
+              
+              return 'other';
+            }).filter((item, index, array) => array.indexOf(item) === index); // Remove duplicates
+            
+            form.setValue(formFieldName as any, mappedActivities);
+            logger.debug(`✅ Applied activities mapping:`, mappedActivities);
+          } else if (formFieldName === 'country') {
+            // Map country names to country codes
+            const countryMap: Record<string, string> = {
+              'Germany': 'DE',
+              'Spania': 'ES',
+              'Spain': 'ES',
+              'Romania': 'RO',
+              'France': 'FR',
+              'Italy': 'IT',
+              'Polen': 'PL',
+              'Poland': 'PL'
+            };
+            const countryCode = countryMap[value] || value;
+            form.setValue(formFieldName as any, countryCode);
+            logger.debug(`✅ Applied country mapping: ${value} → ${countryCode}`);
+          } else if (formFieldName === 'legalStatus') {
+            // Map legal status values to form options
+            const legalStatusMap: Record<string, string> = {
+              'GmbH': 'limited-company',
+              'S.A.': 'joint-stock-company',
+              'SRL': 'limited-company',
+              'PFA': 'individual-enterprise',
+              'LLC': 'limited-company',
+              'Inc': 'corporation',
+              'Ltd': 'limited-company'
+            };
+            const mappedStatus = legalStatusMap[value] || value.toLowerCase().replace(/\s+/g, '-');
+            form.setValue(formFieldName as any, mappedStatus);
+            logger.debug(`✅ Applied legal status mapping: ${value} → ${mappedStatus}`);
+          } else if (formFieldName === 'hasLivestock' && typeof value === 'boolean') {
+            form.setValue(formFieldName as any, value);
+            logger.debug(`✅ Applied boolean field: ${formFieldName} = ${value}`);
+          } else if (formFieldName === 'hasTechnicalDocs' && typeof value === 'boolean') {
+            form.setValue(formFieldName as any, value);
+            logger.debug(`✅ Applied boolean field: ${formFieldName} = ${value}`);
+          } else if (Array.isArray(value)) {
+            form.setValue(formFieldName as any, value);
+            logger.debug(`✅ Applied array field: ${formFieldName}`, value);
+          } else {
+            // Convert to string for text fields
+            const stringValue = typeof value === 'string' ? value : String(value);
+            form.setValue(formFieldName as any, stringValue);
+            logger.debug(`✅ Applied text field: ${formFieldName} = "${stringValue}"`);
+          }
+          
+          appliedFields.push(formFieldName);
+        } catch (error) {
+          console.warn(`❌ Failed to apply field ${key}:`, error);
+        }
+      } else {
+        logger.debug(`⚠️ Skipped field ${key}: no mapping or empty value`);
       }
     });
     
+    logger.debug(`🎉 Applied ${appliedFields.length} fields total:`, appliedFields);
+    
     toast({
-      title: 'Data Applied',
-      description: 'AI-extracted data has been applied to the form. Please review and adjust as needed.',
+      title: 'Data Applied Successfully',
+      description: `Applied ${appliedFields.length} fields: ${appliedFields.slice(0, 3).join(', ')}${appliedFields.length > 3 ? ` and ${appliedFields.length - 3} more` : ''}`,
     });
+  };
+
+  const handleExtractedDocumentsChange = (documents: any[]) => {
+    setExtractedDocuments(documents);
   };
 
   const onSubmit = async (data: FarmCreationData) => {
@@ -86,8 +218,8 @@ const FarmCreationForm = () => {
     }
 
     try {
-      console.log('Creating farm with data:', data);
-      console.log('User ID:', user.id);
+      logger.debug('Creating farm with data:', data);
+      logger.debug('User ID', { userId: user.id });
       
       const farmData = {
         name: data.farmName,
@@ -117,9 +249,9 @@ const FarmCreationForm = () => {
         software_used: data.software,
       };
 
-      console.log('Submitting farm data to Supabase:', farmData);
+      logger.debug('Submitting farm data to Supabase:', farmData);
       const createdFarm = await createFarmMutation.mutateAsync(farmData);
-      console.log('Farm created successfully:', createdFarm);
+      logger.debug('Farm created successfully:', createdFarm);
       
       toast({
         title: 'Success',
@@ -140,7 +272,7 @@ const FarmCreationForm = () => {
 
   const handleFileUpload = (fieldName: string) => (file: File | null) => {
     if (file) {
-      console.log(`File selected for ${fieldName}:`, file.name);
+      logger.debug('File selected', { fieldName, fileName: file.name });
       
       // Update upload state
       form.setValue(`uploadedFiles.${fieldName}`, {
@@ -198,18 +330,28 @@ const FarmCreationForm = () => {
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Farm Profile</h1>
-          <p className="text-gray-600">Complete all sections to create a comprehensive farm profile</p>
+          <p className="text-gray-600">Upload documents to automatically extract farm information, or fill in the details manually</p>
         </div>
 
+        {/* Document Upload Section - Primary Method */}
+        <DocumentUploadSection
+          onExtractedDataChange={handleExtractedDocumentsChange}
+          onApplyAllData={handleApplyExtraction}
+          disabled={createFarmMutation.isPending}
+        />
+
+        {/* Manual Form Entry - Secondary/Optional */}
+        <div className="border-t pt-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Manual Farm Information Entry
+            </h2>
+            <p className="text-gray-600">
+              Complete or adjust any information below. Fields may already be filled from uploaded documents.
+            </p>
+          </div>
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Smart Prefill Section - Only show for existing farms with documents */}
-          {user && (
-            <SmartFormPrefill 
-              farmId="" // Will be empty for new farms
-              onApplyExtraction={handleApplyExtraction}
-              disabled={createFarmMutation.isPending}
-            />
-          )}
 
           {/* Section 1: Farm Identity & Legal Info */}
           <Card>
@@ -823,6 +965,7 @@ const FarmCreationForm = () => {
             </Button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -6,14 +6,14 @@ import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
 // File parsing utilities
-const parseCSV = (text: string): any[] => {
+const parseCSV = (text: string): Record<string, string>[] => {
   const lines = text.split('\n').filter(line => line.trim());
   if (lines.length === 0) return [];
   
   const headers = lines[0].split(',').map(h => h.trim().replace(/\"/g, ''));
   const data = lines.slice(1).map(line => {
     const values = line.split(',').map(v => v.trim().replace(/\"/g, ''));
-    const row: any = {};
+    const row: Record<string, string> = {};
     headers.forEach((header, index) => {
       row[header] = values[index] || '';
     });
@@ -23,14 +23,14 @@ const parseCSV = (text: string): any[] => {
   return data;
 };
 
-const parseExcel = async (file: File): Promise<any[]> => {
+const parseExcel = async (file: File): Promise<Record<string, unknown>[]> => {
   // For simplicity, we'll treat Excel as CSV for now
   // In production, you'd use a library like xlsx
   const text = await file.text();
   return parseCSV(text);
 };
 
-const parseJSON = (text: string): any[] => {
+const parseJSON = (text: string): Record<string, unknown>[] => {
   try {
     const parsed = JSON.parse(text);
     return Array.isArray(parsed) ? parsed : [parsed];
@@ -43,7 +43,7 @@ export const useImportJobs = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentJob, setCurrentJob] = useState<ImportJob | null>(null);
-  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [parsedData, setParsedData] = useState<Record<string, unknown>[]>([]);
   const [sourceFields, setSourceFields] = useState<string[]>([]);
 
   // Create import job
@@ -51,7 +51,7 @@ export const useImportJobs = () => {
     file: File, 
     type: 'subsidies' | 'farms' | 'applications'
   ): Promise<ImportJob> => {
-    let data: any[] = [];
+    let data: Record<string, unknown>[] = [];
     
     try {
       const fileType = file.name.split('.').pop()?.toLowerCase();
@@ -134,11 +134,14 @@ export const useImportJobs = () => {
     try {
       // Transform data based on field mappings
       const transformedData = parsedData.map(row => {
-        const transformed: any = {};
+        const transformed: Record<string, unknown> = {};
         
         currentJob.fieldMappings.forEach(mapping => {
-          if (mapping.canonicalField && row[mapping.sourceField] !== undefined) {
-            let value = row[mapping.sourceField];
+          if (
+            mapping.canonicalField &&
+            (row as Record<string, any>)[mapping.sourceField] !== undefined
+          ) {
+            let value: any = (row as Record<string, any>)[mapping.sourceField];
             
             // Apply transformations
             switch (mapping.transform) {
@@ -173,7 +176,7 @@ export const useImportJobs = () => {
         
         // Generate code if not provided
         if (!transformed.code && transformed.title) {
-          const titleStr = typeof transformed.title === 'string' ? transformed.title : transformed.title.en || '';
+          const titleStr = typeof transformed.title === 'string' ? transformed.title : String(transformed.title);
           transformed.code = titleStr.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20) + '-' + Date.now();
         }
         
@@ -229,11 +232,15 @@ export const useImportJobs = () => {
       
       // Transform data based on field mappings
       const transformedData = parsedData.map(row => {
-        const transformed: any = {};
+        const transformed: Record<string, unknown> = {};
         
         currentJob.fieldMappings.forEach(mapping => {
-          if (mapping.canonicalField && row[mapping.sourceField] !== undefined) {
-            transformed[mapping.canonicalField] = row[mapping.sourceField];
+          if (
+            mapping.canonicalField &&
+            (row as Record<string, any>)[mapping.sourceField] !== undefined
+          ) {
+            transformed[mapping.canonicalField] =
+              (row as Record<string, any>)[mapping.sourceField];
           }
         });
         
@@ -248,7 +255,7 @@ export const useImportJobs = () => {
         const batch = transformedData.slice(i, i + 10);
         
         try {
-          const { error } = await supabase.from('subsidies').insert(batch);
+          const { error } = await supabase.from('subsidies').insert(batch as any);
           if (error) throw error;
           
           successCount += batch.length;

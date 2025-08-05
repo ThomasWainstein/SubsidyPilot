@@ -5,6 +5,9 @@ A robust Python agent that processes unprocessed subsidy logs from Supabase, ext
 ## Features
 
 - **Canonical Field Extraction**: Maps every record exactly to the canonical schema using OpenAI Assistant
+- **Asynchronous Processing**: Concurrent OpenAI API calls with intelligent rate limiting
+- **Configurable Batch Processing**: Process 10-100 logs per batch with CLI overrides
+- **Performance Metrics**: Real-time throughput tracking and timing analysis
 - **Idempotency & Concurrency Safety**: Prevents duplicate processing through PostgreSQL advisory locks
 - **Rich Observability**: Comprehensive logging, audit trails, and error tracking
 - **Config-Driven**: All settings configurable via environment variables
@@ -52,7 +55,8 @@ cp config.env .env
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BATCH_SIZE` | 50 | Number of logs to process per batch |
+| `BATCH_SIZE` | 50 | Number of logs to process per batch (10-100 recommended) |
+| `MAX_CONCURRENT_EXTRACTIONS` | 5 | Max concurrent OpenAI API calls (3-10 recommended) |
 | `POLL_INTERVAL` | 300 | Seconds between polling cycles |
 | `LOG_LEVEL` | INFO | Logging verbosity (DEBUG, INFO, WARNING, ERROR) |
 | `SLACK_WEBHOOK_URL` | - | Slack webhook for alerts |
@@ -62,19 +66,50 @@ cp config.env .env
 
 ## Usage
 
-### Continuous Processing (Production Mode)
+### Command Line Options
 ```bash
-python agent.py
-```
+# Show all available options
+python agent.py --help
 
-The agent will run continuously, polling for new unprocessed logs every `POLL_INTERVAL` seconds.
+# Custom batch size and concurrency (recommended for production)
+python agent.py --batch-size 75 --max-concurrent 8 --single-batch
 
-### Single Batch Processing (Testing/Debug)
-```bash
+# Conservative settings (recommended for development)
+python agent.py --batch-size 25 --max-concurrent 3 --single-batch
+
+# Use environment variables (default behavior)
 python agent.py --single-batch
 ```
 
-Processes one batch of logs and exits. Useful for testing and debugging.
+### Performance Modes
+
+#### High-Throughput Mode (Production)
+```bash
+# Environment variables
+BATCH_SIZE=100 MAX_CONCURRENT_EXTRACTIONS=8 python agent.py --single-batch
+
+# Or via CLI
+python agent.py --batch-size 100 --max-concurrent 8 --single-batch
+```
+
+#### Conservative Mode (Development/Testing)
+```bash
+python agent.py --batch-size 15 --max-concurrent 2 --single-batch
+```
+
+#### Continuous Processing (24/7 Production)
+```bash
+# Runs indefinitely, polling every POLL_INTERVAL seconds
+python agent.py
+```
+
+### GitHub Actions Integration
+The workflow supports performance tuning via inputs:
+```yaml
+# Workflow dispatch inputs
+agent_batch_size: '75'              # Logs per batch
+max_concurrent_extractions: '6'     # Concurrent API calls
+```
 
 ## Database Schema
 
@@ -152,7 +187,7 @@ This enables frontend teams to build dynamic "Apply" flows that automatically gu
 
 The agent can process various file types attached to raw logs:
 
-- **PDF/DOCX**: Text extraction using Apache Tika
+- **PDF/DOCX**: Text extraction using Python-native libraries (pdfplumber, python-docx)
 - **TXT**: Direct text reading
 - **Images (PNG/JPG/TIFF)**: OCR using Tesseract
 

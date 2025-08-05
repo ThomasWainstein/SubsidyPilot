@@ -13,12 +13,41 @@ import time
 import json
 import logging
 import traceback
+import argparse
 from typing import List, Dict, Any, Optional, Tuple
 from enhanced_agent import RawLogInterpreterAgent as _EnhancedRawLogInterpreterAgent
 from datetime import datetime, date
 from decimal import Decimal
 import asyncio
 from pathlib import Path
+
+# Import logging setup functions
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "scraper"))
+    from logging_setup import ensure_artifact_files
+except ImportError:
+    # Fallback if logging_setup is not available
+    def ensure_artifact_files():
+        """Fallback implementation"""
+        import os
+        from pathlib import Path
+        from datetime import datetime
+        
+        required_paths = [
+            "data/logs/scraper.log",
+            "data/logs/uploader.log", 
+            "data/logs/ai_extractor.log",
+            "logs/pipeline.log"
+        ]
+        
+        for file_path in required_paths:
+            path = Path(file_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if not path.exists():
+                with open(path, 'w') as f:
+                    f.write(f"# {path.stem} log file created at {datetime.now()}\n")
+                    f.write("# This file ensures artifact upload compatibility\n")
 
 # Load environment variables
 try:
@@ -32,7 +61,11 @@ try:
     from supabase import create_client, Client
     from openai import OpenAI
     import requests
-    from tika import parser as tika_parser
+    import sys
+    import os
+    # Import Python document extractor instead of Tika
+    sys.path.append(os.path.dirname(__file__))
+    from python_document_extractor import PythonDocumentExtractor
     import pytesseract
     from PIL import Image
     import io
@@ -71,13 +104,14 @@ class Config:
     
     def __init__(self):
         # Required environment variables
-        self.SUPABASE_URL = self._get_required_env("NEXT_PUBLIC_SUPABASE_URL")
+        self.SUPABASE_URL = self._get_required_env("SUPABASE_URL")
         self.SUPABASE_SERVICE_KEY = self._get_required_env("SUPABASE_SERVICE_ROLE_KEY")
         self.OPENAI_API_KEY = self._get_required_env("SCRAPER_RAW_GPT_API")
         print("✅ SCRAPER_RAW_GPT_API detected")
         
-        # Optional configuration
-        self.BATCH_SIZE = int(os.getenv("BATCH_SIZE", "25"))  # Reduced for more robust processing
+        # Processing configuration with intelligent defaults
+        self.BATCH_SIZE = int(os.getenv("BATCH_SIZE", "50"))  # Increased default for better throughput
+        self.MAX_CONCURRENT_EXTRACTIONS = int(os.getenv("MAX_CONCURRENT_EXTRACTIONS", "5"))  # New: Concurrency control
         self.POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "300"))
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
         self.SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
@@ -95,15 +129,32 @@ class Config:
             print("Please set all required variables and try again.")
             sys.exit(1)
         return value
+    
+    def update_from_args(self, args):
+        """Update configuration from CLI arguments"""
+        if args.batch_size:
+            self.BATCH_SIZE = args.batch_size
+            print(f"📊 Batch size overridden to: {self.BATCH_SIZE}")
+        if args.max_concurrent:
+            self.MAX_CONCURRENT_EXTRACTIONS = args.max_concurrent
+            print(f"⚡ Max concurrent extractions: {self.MAX_CONCURRENT_EXTRACTIONS}")
 
 class LogInterpreterAgent:
     """Main agent class for processing raw logs"""
     
     def __init__(self, config: Config):
         self.config = config
+        # Ensure log files exist for artifact uploads
+        ensure_artifact_files()
         self.logger = self._setup_logging()
         self.supabase = self._init_supabase()
         self.openai_client = self._init_openai()
+        
+        # Initialize concurrency control for async processing
+        self.semaphore = asyncio.Semaphore(self.config.MAX_CONCURRENT_EXTRACTIONS)
+        
+        # Timing and performance tracking
+        self.processing_start_time = None
         
     def _setup_logging(self) -> logging.Logger:
         """Setup logging configuration"""
@@ -171,8 +222,15 @@ class LogInterpreterAgent:
             return False
     
     def extract_file_content(self, file_refs: List[str]) -> str:
-        """Extract text content from attached files"""
+        """Extract text content from attached files using Python document extraction"""
         content = ""
+        
+        # Initialize Python document extractor
+        extractor = PythonDocumentExtractor(
+            enable_ocr=True,
+            ocr_language='eng+fra+ron',  # Multi-language OCR support
+            max_file_size_mb=10.0
+        )
         
         for file_ref in file_refs:
             try:
@@ -186,40 +244,99 @@ class LogInterpreterAgent:
                     file_content = response
                 
                 # Extract text based on file type
-                if file_ref.lower().endswith('.pdf'):
-                    parsed = tika_parser.from_buffer(file_content)
-                    if parsed.get('content'):
+                # Use Python document extractor for all document types
+                temp_file_path = None
+                try:
+                    # Determine file extension and handle supported document types
+                    if file_ref.lower().endswith(('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.odt')):
+                        file_ext = os.path.splitext(file_ref)[1].lower()
+                        
+                        # Save to temp file for document extraction
+                        import tempfile
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
+                            temp_file.write(file_content)
+                            temp_file_path = temp_file.name
+                        
+                        self.logger.info(f"📄 Attempting Python document extraction for: {file_ref}")
+                        
+                        # Extract using Python document extractor
+                        extraction_result = extractor.extract_document_text(temp_file_path)
+                        
+                        if extraction_result['success'] and extraction_result.get('text_content'):
+                            content += f"\n\n--- Content from {file_ref} ---\n"
+                            content += extraction_result['text_content']
+                            
+                            # Add extraction metadata
+                            metadata = extraction_result.get('metadata', {})
+                            if metadata:
+                                content += f"\n--- Extracted using: {metadata.get('method', 'unknown')}"
+                                if metadata.get('page_count'):
+                                    content += f", {metadata['page_count']} pages"
+                                if metadata.get('ocr_applied'):
+                                    content += f", OCR applied"
+                                content += " ---"
+                            
+                            self.logger.info(f"✅ Python document extraction successful for: {file_ref}")
+                        else:
+                            error_msg = extraction_result.get('error', 'Unknown extraction error')
+                            self.logger.warning(f"❌ Document extraction failed for {file_ref}: {error_msg}")
+                            content += f"\n\n--- Failed to extract content from {file_ref}: {error_msg} ---\n"
+                            
+                    elif file_ref.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+                        # OCR for images
+                        try:
+                            image = Image.open(io.BytesIO(file_content))
+                            ocr_text = pytesseract.image_to_string(image)
+                            if ocr_text.strip():
+                                content += f"\n\n--- OCR Content from {file_ref} ---\n"
+                                content += ocr_text
+                                self.logger.info(f"✅ OCR extraction successful for: {file_ref}")
+                            else:
+                                self.logger.warning(f"⚠️ OCR returned no text for: {file_ref}")
+                        except Exception as ocr_error:
+                            self.logger.error(f"❌ OCR failed for {file_ref}: {ocr_error}")
+                            content += f"\n\n--- OCR failed for {file_ref}: {str(ocr_error)} ---\n"
+                    
+                    elif file_ref.lower().endswith(('.txt', '.text')):
                         content += f"\n\n--- Content from {file_ref} ---\n"
-                        content += parsed['content']
+                        content += file_content.decode('utf-8', errors='ignore')
+                        
+                except Exception as extraction_error:
+                    self.logger.error(f"❌ File extraction failed for {file_ref}: {extraction_error}")
+                    content += f"\n\n--- Failed to extract content from {file_ref}: {str(extraction_error)} ---\n"
                 
-                elif file_ref.lower().endswith(('.docx', '.doc')):
-                    parsed = tika_parser.from_buffer(file_content)
-                    if parsed.get('content'):
-                        content += f"\n\n--- Content from {file_ref} ---\n"
-                        content += parsed['content']
-                
-                elif file_ref.lower().endswith(('.txt', '.text')):
-                    content += f"\n\n--- Content from {file_ref} ---\n"
-                    content += file_content.decode('utf-8', errors='ignore')
-                
-                elif file_ref.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff')):
-                    # OCR for images
-                    image = Image.open(io.BytesIO(file_content))
-                    ocr_text = pytesseract.image_to_string(image)
-                    if ocr_text.strip():
-                        content += f"\n\n--- OCR from {file_ref} ---\n"
-                        content += ocr_text
-                
+                finally:
+                    # Always cleanup temp files
+                    if temp_file_path and os.path.exists(temp_file_path):
+                        try:
+                            os.unlink(temp_file_path)
+                            self.logger.debug(f"🗑️ Cleaned up temp file: {temp_file_path}")
+                        except Exception as cleanup_error:
+                            self.logger.warning(f"⚠️ Failed to cleanup temp file {temp_file_path}: {cleanup_error}")
+            
             except Exception as e:
-                self.logger.warning(f"Failed to extract content from {file_ref}: {e}")
-                content += f"\n\n--- Failed to extract content from {file_ref}: {str(e)} ---\n"
+                self.logger.error(f"Error processing file {file_ref}: {e}")
+                content += f"\n\n--- Error processing {file_ref}: {str(e)} ---\n"
         
         return content
     
     def call_openai_assistant(self, payload: str, file_content: str) -> Dict[str, Any]:
         """Call OpenAI Assistant to extract canonical fields"""
         system_prompt = """You are the SCRAPER_RAW_LOGS_INTERPRETER assistant. 
-        Extract canonical subsidy fields from the provided text content.
+        Extract canonical subsidy fields from the provided text content with ABSOLUTE PRECISION.
+        
+        CRITICAL TITLE EXTRACTION REQUIREMENTS:
+        - NEVER use "Subsidy Page" as a title - this is a placeholder that must be avoided
+        - Extract the ACTUAL, SPECIFIC title from the source page content
+        - Look for headings like "Aide à...", "Subvention pour...", specific program names
+        - If no clear title is found, create a descriptive title from agency + sector + purpose
+        - Title must be unique, descriptive, and reflect the actual subsidy program
+        
+        CONTENT EXTRACTION REQUIREMENTS:
+        - Extract content VERBATIM from source - no summarization or paraphrasing
+        - Preserve ALL original formatting, line breaks, and structure exactly as in source
+        - For lists (eligibility, documents, steps), maintain original order and wording
+        - Empty sections should be null, not {} or generic text
         
         CRITICAL: Always return array fields (amount, region, sector, documents, priority_groups, 
         application_requirements, questionnaire_steps, legal_entity_type, objectives, 
@@ -228,7 +345,7 @@ class LogInterpreterAgent:
         strings for these fields. Return empty arrays if no data is present.
         
         Return a JSON object with exactly these fields (use null for missing values):
-        - url, title, description, eligibility, documents (array), deadline (YYYY-MM-DD),
+        - url, title (NEVER "Subsidy Page"), description, eligibility, documents (array), deadline (YYYY-MM-DD),
         - amount (array of numbers), program, agency, region (array), sector (array), funding_type,
         - co_financing_rate (numeric), project_duration, payment_terms, application_method,
         - evaluation_criteria, previous_acceptance_rate (numeric), priority_groups (array),
@@ -241,6 +358,11 @@ class LogInterpreterAgent:
         - questionnaire_steps (array): For each requirement, generate a user-friendly question/instruction
           (e.g. [{"requirement": "Business Plan", "question": "Please upload your business plan (PDF or DOCX)."}])
         - requirements_extraction_status (string): Set to "extracted" if requirements found, "not_found" if unclear
+        
+        QUALITY ASSURANCE:
+        - Validate that title is meaningful and specific (not generic)
+        - Ensure all text fields contain actual content, not placeholders
+        - Verify arrays contain actual data items, not empty or generic entries
         
         Ensure all fields are present in your response."""
         
@@ -569,39 +691,69 @@ class LogInterpreterAgent:
             # Always release the lock
             self.release_lock(log_id)
     
-    def process_batch(self) -> Dict[str, int]:
-        """Process a batch of logs"""
+    async def process_single_log_async(self, log_data: Dict[str, Any]) -> bool:
+        """Async wrapper for processing a single log entry with concurrency control"""
+        async with self.semaphore:
+            # Use asyncio.to_thread to run the synchronous method in a thread pool
+            return await asyncio.to_thread(self.process_single_log, log_data)
+    
+    async def process_batch_async(self) -> Dict[str, int]:
+        """Process a batch of logs asynchronously with controlled concurrency"""
+        self.processing_start_time = time.time()
         logs = self.fetch_unprocessed_logs()
         
         if not logs:
             self.logger.info("No unprocessed logs found")
             return {"processed": 0, "failed": 0, "total": 0}
         
-        stats = {"processed": 0, "failed": 0, "total": len(logs)}
+        self.logger.info(f"🚀 Starting async batch processing of {len(logs)} logs")
+        self.logger.info(f"⚡ Max concurrent extractions: {self.config.MAX_CONCURRENT_EXTRACTIONS}")
         
-        for log_data in logs:
-            if self.process_single_log(log_data):
-                stats["processed"] += 1
-            else:
-                stats["failed"] += 1
+        # Process all logs concurrently, respecting semaphore limits
+        tasks = [self.process_single_log_async(log_data) for log_data in logs]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Check failure rate
+        # Calculate statistics
+        processed = sum(1 for result in results if result is True)
+        failed = len(results) - processed
+        stats = {"processed": processed, "failed": failed, "total": len(logs)}
+        
+        # Performance tracking
+        elapsed_time = time.time() - self.processing_start_time
+        throughput = len(logs) / elapsed_time if elapsed_time > 0 else 0
+        
+        self.logger.info(f"⏱️  Async batch completed in {elapsed_time:.2f}s")
+        self.logger.info(f"📊 Throughput: {throughput:.2f} logs/second")
+        
+        # Check failure rate and send alerts
         failure_rate = stats["failed"] / stats["total"] if stats["total"] > 0 else 0
-        
         if failure_rate > self.config.SLACK_ALERT_THRESHOLD:
             self.send_alert(f"High failure rate: {failure_rate:.2%} ({stats['failed']}/{stats['total']} failed)")
         
-        self.logger.info(f"Batch processing complete: {stats}")
+        self.logger.info(f"Async batch processing complete: {stats}")
         return stats
+    
+    def process_batch(self) -> Dict[str, int]:
+        """Process a batch of logs (synchronous wrapper for backwards compatibility)"""
+        # Check if we're in an async context
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, run the async version
+            return asyncio.create_task(self.process_batch_async())
+        except RuntimeError:
+            # Not in async context, create new event loop
+            return asyncio.run(self.process_batch_async())
     
     def run_continuous(self):
         """Run the agent continuously with polling"""
-        self.logger.info("Starting AgriTool Raw Log Interpreter Agent")
-        self.logger.info(f"Configuration: batch_size={self.config.BATCH_SIZE}, poll_interval={self.config.POLL_INTERVAL}s")
+        self.logger.info("🔄 Starting AgriTool Raw Log Interpreter Agent (Continuous Mode)")
+        self.logger.info(f"📋 Configuration: batch_size={self.config.BATCH_SIZE}, poll_interval={self.config.POLL_INTERVAL}s")
+        self.logger.info(f"⚡ Max concurrent extractions: {self.config.MAX_CONCURRENT_EXTRACTIONS}")
         
         while True:
             try:
-                self.process_batch()
+                # Use async processing for better performance
+                asyncio.run(self.process_batch_async())
                 time.sleep(self.config.POLL_INTERVAL)
             except KeyboardInterrupt:
                 self.logger.info("Received interrupt signal, shutting down...")
@@ -625,24 +777,68 @@ class RawLogInterpreterAgent(_EnhancedRawLogInterpreterAgent):
         self.FIELD_TYPES = FIELD_TYPES
 
 def main():
-    """Main entry point"""
-    # Validate environment variables early
+    """Main entry point with CLI argument parsing"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="AgriTool Raw Log Interpreter Agent",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--batch-size", 
+        type=int, 
+        help="Number of logs to process per batch (overrides BATCH_SIZE env var)"
+    )
+    parser.add_argument(
+        "--max-concurrent", 
+        type=int, 
+        help="Maximum concurrent OpenAI extractions (overrides MAX_CONCURRENT_EXTRACTIONS env var)"
+    )
+    parser.add_argument(
+        "--single-batch", 
+        action="store_true", 
+        help="Process only one batch and exit (for CI/CD workflows)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Initialize configuration
     config = Config()
+    
+    # Override config with CLI arguments
+    config.update_from_args(args)
     
     # Create and run agent
     agent = LogInterpreterAgent(config)
     
-    # Check if running single batch or continuous
-    if "--single-batch" in sys.argv:
-        stats = agent.process_batch()
-        print(f"Single batch processing complete: {stats}")
+    # Show final configuration
+    print(f"🚀 AgriTool AI Agent Starting...")
+    print(f"📊 Batch size: {config.BATCH_SIZE}")
+    print(f"⚡ Max concurrent extractions: {config.MAX_CONCURRENT_EXTRACTIONS}")
+    print(f"🔄 Mode: {'Single batch' if args.single_batch else 'Continuous'}")
+    
+    if args.single_batch:
+        # Single batch processing for CI/CD
+        stats = asyncio.run(agent.process_batch_async())
+        print(f"✅ Single batch processing complete: {stats}")
+        
+        # Calculate and log performance metrics
+        if agent.processing_start_time:
+            total_time = time.time() - agent.processing_start_time
+            throughput = stats['total'] / total_time if total_time > 0 else 0
+            print(f"⏱️  Total processing time: {total_time:.2f}s")
+            print(f"📈 Overall throughput: {throughput:.2f} logs/second")
+        
+        # Save statistics for CI/CD analysis
         try:
             with open("agent_stats.json", "w", encoding="utf-8") as f:
                 json.dump(stats, f)
+            print(f"📄 Statistics saved to agent_stats.json")
         except Exception as e:
-            print(f"Failed to write agent_stats.json: {e}")
+            print(f"⚠️  Failed to write agent_stats.json: {e}")
+        
         sys.exit(0)
     else:
+        # Continuous processing
         agent.run_continuous()
 
 if __name__ == "__main__":

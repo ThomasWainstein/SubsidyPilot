@@ -26,6 +26,7 @@ from typing import Dict, List, Any, Optional
 try:
     import requests
     from supabase import create_client, Client
+    from supabase.lib.client_options import ClientOptions
     import tenacity
 except ImportError as e:
     print(f"❌ Missing dependencies: {e}")
@@ -40,12 +41,22 @@ class PipelineIntegrationTester:
         """Initialize tester with environment validation."""
         self.supabase_url = os.getenv('NEXT_PUBLIC_SUPABASE_URL')
         self.supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+        self.supabase_anon = os.getenv('NEXT_PUBLIC_SUPABASE_ANON')
         self.openai_key = os.getenv('SCRAPER_RAW_GPT_API')
-        
-        if not all([self.supabase_url, self.supabase_key]):
-            raise ValueError("Missing required Supabase environment variables")
-            
-        self.supabase: Client = create_client(self.supabase_url, self.supabase_key)
+        self.supabase_timeout = int(os.getenv('SUPABASE_TIMEOUT', '10'))
+
+        if not all([self.supabase_url, self.supabase_key, self.supabase_anon]):
+            missing = [name for name, val in [
+                ('NEXT_PUBLIC_SUPABASE_URL', self.supabase_url),
+                ('SUPABASE_SERVICE_ROLE_KEY', self.supabase_key),
+                ('NEXT_PUBLIC_SUPABASE_ANON', self.supabase_anon),
+            ] if not val]
+            raise ValueError(
+                f"Missing required environment variables: {', '.join(missing)}"
+            )
+
+        options = ClientOptions(postgrest_client_timeout=self.supabase_timeout)
+        self.supabase: Client = create_client(self.supabase_url, self.supabase_key, options=options)
         self.test_results = []
         self.start_time = datetime.now(timezone.utc)
         
@@ -98,11 +109,18 @@ class PipelineIntegrationTester:
             return True
             
         except Exception as e:
-            self.log_test(
-                "Supabase Connectivity",
-                False, 
-                f"Connection failed: {str(e)}"
-            )
+            if "timeout" in str(e).lower():
+                self.log_test(
+                    "Supabase Connectivity",
+                    False,
+                    f"Connection timed out after {self.supabase_timeout} seconds"
+                )
+            else:
+                self.log_test(
+                    "Supabase Connectivity",
+                    False,
+                    f"Connection failed: {str(e)}"
+                )
             return False
 
     def test_raw_data_insertion(self) -> Optional[str]:

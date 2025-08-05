@@ -2,7 +2,8 @@
 """
 Fast Environment Variable Validation Test
 
-This script validates that the required Supabase environment variables
+This script validates that the required environment variables
+for Supabase access and the OpenAI-powered extraction pipeline
 are present and properly formatted. It runs in <1 second and fails
 fast if variables are missing or invalid.
 
@@ -46,13 +47,43 @@ def validate_service_role_key(key: str) -> Tuple[bool, str]:
     
     return True, "Valid"
 
+def validate_scraper_raw_gpt_api(key: str) -> Tuple[bool, str]:
+    """Basic validation for OpenAI API key"""
+    if not key:
+        return False, "API key is empty"
+    if not key.startswith('sk-'):
+        return False, "API key should start with 'sk-'"
+    if len(key) < 20:
+        return False, f"API key too short. Got length {len(key)}"
+    return True, "Valid"
+
 def main() -> int:
     """Main validation function"""
-    print("🔍 Validating Supabase environment variables...")
+    print("🔍 Validating environment variables...")
+
+    # Print found environment variables at start
+    print("🔍 Environment variables found:")
+    for key in [
+        'NEXT_PUBLIC_SUPABASE_URL',
+        'NEXT_PUBLIC_SUPABASE_ANON',
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'SCRAPPER_RAW_GPT_API',
+        'SCRAPER_RAW_GPT_API',
+    ]:
+        value = os.getenv(key, 'NOT_SET')
+        if 'KEY' in key or 'API' in key:
+            # Mask sensitive values
+            masked = f"{value[:8]}..." if value != 'NOT_SET' and len(value) > 8 else value
+            print(f"  {key}: {masked}")
+        else:
+            print(f"  {key}: {value}")
     
     required_vars = [
         ('NEXT_PUBLIC_SUPABASE_URL', validate_supabase_url),
-        ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key)
+        ('NEXT_PUBLIC_SUPABASE_ANON', lambda x: (True, "Valid") if x and len(x) > 20 else (False, "Invalid anon key")),
+        ('SUPABASE_SERVICE_ROLE_KEY', validate_service_role_key),
+        ('SCRAPPER_RAW_GPT_API', validate_scraper_raw_gpt_api),
+        ('SCRAPER_RAW_GPT_API', validate_scraper_raw_gpt_api),
     ]
     
     errors: List[str] = []
@@ -78,7 +109,10 @@ def main() -> int:
         
         print(f"\n📋 REQUIRED ENVIRONMENT VARIABLES:")
         print(f"   export NEXT_PUBLIC_SUPABASE_URL='https://your-project.supabase.co'")
+        print(f"   export NEXT_PUBLIC_SUPABASE_ANON='your-anon-key'")
         print(f"   export SUPABASE_SERVICE_ROLE_KEY='your-service-role-key'")
+        print(f"   export SCRAPPER_RAW_GPT_API='your-openai-api-key'")
+        print(f"   export SCRAPER_RAW_GPT_API='your-openai-api-key'")
         
         return 1
     

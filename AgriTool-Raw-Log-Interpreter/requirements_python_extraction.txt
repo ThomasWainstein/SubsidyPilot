@@ -1,0 +1,53 @@
+# Python Document Extraction Requirements
+# Pure Python document extraction to replace Tika
+
+# Core dependencies
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# PDF extraction
+pdfplumber>=0.10.0
+pdfminer.six>=20221105
+PyMuPDF>=1.23.0  # For PDF to image conversion
+pdf2image>=1.14.0  # Alternative PDF to image
+
+# DOCX extraction
+python-docx>=1.1.0
+
+# Excel extraction
+openpyxl>=3.1.0
+pandas>=2.0.0
+xlrd>=2.0.1  # For older Excel files
+
+# ODT extraction
+odfpy>=1.4.0
+
+# OCR capabilities
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Fallback extraction
+unstructured[all-docs]>=0.10.0
+
+# Image processing and OCR enhancements
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Text processing and cleaning
+python-dateutil>=2.8.0
+chardet>=5.2.0  # Character encoding detection
+
+# Database integration (existing)
+supabase>=2.0.0
+
+# Async support (future enhancement)
+asyncio
+
+# Development dependencies (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0
+
+# Additional utility libraries
+pathlib2>=2.3.0  # Better path handling
+tqdm>=4.66.0  # Progress bars for batch processing

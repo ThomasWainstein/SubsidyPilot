@@ -38,16 +38,10 @@ interface SearchResultsPanelProps {
   onClearFilters?: () => void;
 }
 
-import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus } from '@/utils/subsidyFormatting';
-import { SubsidyDataQuality } from '@/utils/subsidyDataQuality';
+import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplayString, formatFilterLabel } from '@/utils/subsidyFormatting';
 
 const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const deadlineStatus = getDeadlineStatus(subsidy.deadline);
-  
-  // Check data quality for this subsidy
-  React.useEffect(() => {
-    SubsidyDataQuality.checkSubsidyQuality(subsidy);
-  }, [subsidy]);
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
@@ -69,12 +63,12 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
       <div className="flex flex-wrap gap-2 mb-3">
         {subsidy.sector && (
           <Badge variant="outline" className="text-xs">
-            {subsidy.sector}
+            {getSectorDisplayString(subsidy.sector)}
           </Badge>
         )}
         {subsidy.funding_type && (
           <Badge variant="outline" className="text-xs">
-            {subsidy.funding_type}
+            {formatFilterLabel(subsidy.funding_type)}
           </Badge>
         )}
       </div>

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { logger } from '@/lib/logger';
 
 type Farm = Database['public']['Tables']['farms']['Row'];
 type FarmInsert = Database['public']['Tables']['farms']['Insert'];
@@ -16,11 +17,11 @@ export const useFarms = () => {
     queryKey: ['farms', user?.id],
     queryFn: async () => {
       if (!user) {
-        console.log('No user found for farms query');
+        logger.debug('No user found for farms query');
         throw new Error('User not authenticated');
       }
-      
-      console.log('Fetching farms for user:', user.id);
+
+      logger.debug(`Fetching farms for user: ${user.id}`);
       
       const { data, error } = await supabase
         .from('farms')
@@ -33,7 +34,7 @@ export const useFarms = () => {
         throw error;
       }
       
-      console.log('Fetched farms:', data);
+      logger.debug('Fetched farms:', { data });
       return data as Farm[];
     },
     enabled: !!user,
@@ -51,15 +52,15 @@ export const useCreateFarm = () => {
         throw new Error('User not authenticated');
       }
 
-      console.log('Creating farm for user:', user.id);
-      console.log('Farm data being inserted:', farmData);
+      logger.debug(`Creating farm for user: ${user.id}`);
+      logger.debug('Farm data being inserted:', { farmData });
 
       const insertData = {
         ...farmData,
         user_id: user.id,
       };
 
-      console.log('Final insert data:', insertData);
+      logger.debug('Final insert data:', { insertData });
 
       const { data, error } = await supabase
         .from('farms')
@@ -72,11 +73,11 @@ export const useCreateFarm = () => {
         throw error;
       }
       
-      console.log('Farm created successfully:', data);
+      logger.debug('Farm created successfully:', { data });
       return data;
     },
     onSuccess: (data) => {
-      console.log('Farm creation successful, invalidating queries');
+      logger.debug('Farm creation successful, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['farms'] });
       toast({
         title: 'Success',
@@ -99,7 +100,7 @@ export const useUpdateFarm = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: FarmUpdate & { id: string }) => {
-      console.log('Updating farm:', id, updates);
+      logger.debug('Updating farm:', { id, updates });
       
       const { data, error } = await supabase
         .from('farms')
@@ -113,7 +114,7 @@ export const useUpdateFarm = () => {
         throw error;
       }
       
-      console.log('Farm updated successfully:', data);
+      logger.debug('Farm updated successfully:', { data });
       return data;
     },
     onSuccess: () => {
@@ -138,7 +139,7 @@ export const useFarm = (farmId: string) => {
   return useQuery({
     queryKey: ['farm', farmId],
     queryFn: async () => {
-      console.log('Fetching single farm:', farmId);
+      logger.debug(`Fetching single farm: ${farmId}`);
       
       const { data, error } = await supabase
         .from('farms')
@@ -151,7 +152,7 @@ export const useFarm = (farmId: string) => {
         throw error;
       }
       
-      console.log('Fetched farm:', data);
+      logger.debug('Fetched farm:', { data });
       return data as Farm;
     },
     enabled: !!farmId,

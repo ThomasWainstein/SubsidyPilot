@@ -9,11 +9,13 @@
 | `VITE_SUPABASE_URL` | Public | Frontend Supabase project URL | `https://xxxxx.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Public | Frontend anonymous key | `eyJhbGciOiJIUz...` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Scraper Supabase project URL | `https://xxxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Scraper anonymous key | `eyJhbGciOiJIUz...` |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Backend service key | `eyJhbGciOiJIUz...` |
 
 The `VITE_` variables configure the public frontend client. The
-`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` variables are used
-only by server-side code such as the scraper and should be kept secret.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+`SUPABASE_SERVICE_ROLE_KEY` variables are used only by server-side code such as
+the scraper and should be kept secret.
 
 ### Security Best Practices
 
@@ -30,7 +32,15 @@ In your repository settings → Secrets and variables → Actions, add:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+```
+
+Configure your Supabase project with the same variables:
+
+```bash
+supabase secrets set NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
 ### Local Development
@@ -38,6 +48,34 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 1. Copy `.env.example` to `.env`
 2. Fill in your Supabase credentials
 3. Ensure `.env` is in `.gitignore`
+
+### Setting Supabase CLI Secrets
+
+Store the runtime secrets for your edge functions using the Supabase CLI:
+
+```bash
+supabase secrets set \
+  NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+```
+
+#### GitHub Actions Example
+
+```yaml
+- name: Deploy edge functions
+  run: |
+    supabase secrets set \
+      NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+      NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+      SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+    supabase functions deploy extract-canonical-subsidy
+  env:
+    NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+```
 
 ### Frontend Build
 
@@ -54,6 +92,23 @@ The Python scraper loads credentials at runtime:
 url = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 ```
+
+### Logging Environment Checks Safely
+
+When verifying environment variables, **never** print the full URL or token. Log
+only boolean flags or partial metadata. The Phase 2 fixes demonstrate this in
+`supabase/functions/extract-document-data/databaseService.ts`:
+
+```typescript
+console.log('🔧 Connection check:', {
+  hasUrl: !!supabaseUrl,
+  hasServiceKey: !!supabaseServiceKey,
+  urlDomain: supabaseUrl?.split('://')[1]?.split('.')[0] || 'unknown'
+});
+```
+
+This confirms configuration without leaking credentials. Always review logs
+before deployment and remove or mask any sensitive output.
 
 ## Testing Environment
 
