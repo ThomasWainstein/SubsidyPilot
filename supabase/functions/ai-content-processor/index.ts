@@ -50,12 +50,17 @@ class OpenAIClient {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       try {
+        // Add timeout controller
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${key}`,
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
           body: JSON.stringify({
             model: options.model || 'gpt-4o-mini',
             messages: [
@@ -63,9 +68,11 @@ class OpenAIClient {
               { role: 'user', content: content }
             ],
             temperature: options.temperature || 0.1,
-            max_tokens: options.maxTokens || 2000
+            max_tokens: options.maxTokens || 4000 // Increased for complete extractions
           })
         });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           const data = await response.json();
@@ -169,7 +176,7 @@ class BatchProcessor {
 }
 
 class ContentProcessor {
-  static optimizeContentForAI(content, maxLength = 8000) {
+  static optimizeContentForAI(content, maxLength = 20000) { // Increased limit
     if (content.length <= maxLength) {
       return content;
     }
@@ -256,11 +263,12 @@ serve(async (req) => {
 
     console.log(`📊 Processing ${pagesToProcess.length} pages`);
 
-    // Process pages in batches for better performance
-    const results = await BatchProcessor.processInBatches(
-      pagesToProcess,
-      async (page) => {
-        return PerformanceMonitor.trackOperation(`ProcessPage-${page.id}`, async () => {
+    // Process pages with timeout protection
+    const results = await Promise.race([
+      BatchProcessor.processInBatches(
+        pagesToProcess,
+        async (page) => {
+          return PerformanceMonitor.trackOperation(`ProcessPage-${page.id}`, async () => {
           console.log(`🔍 Processing page: ${page.source_url}`);
           
           // Extract structured data using OpenAI with verbatim extraction
@@ -327,9 +335,14 @@ serve(async (req) => {
           }
         }, { page_url: page.source_url, source_site: page.source_site });
       },
-      3, // Process 3 pages at a time
-      2000 // 2 second delay between batches
-    );
+      2, // Process 2 pages at a time to avoid timeouts
+      1000 // 1 second delay between batches
+    ),
+    // Add overall timeout protection (8 minutes for edge functions)
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Function timeout approaching')), 420000)
+    )
+  ]);
 
     const processedSubsidies = results.filter(r => r !== undefined);
     const failedPages = pagesToProcess.length - processedSubsidies.length;
@@ -457,8 +470,8 @@ VERBATIM TEXT PRESERVATION RULES:
 NEVER create generic descriptions - always use the actual French text from the page.
 If a section is not found, return null or empty string, do not make up content.`;
 
-  // Optimize content for AI processing with better context preservation
-  const optimizedContent = ContentProcessor.optimizeContentForAI(cleanText, 12000);
+  // Optimize content for AI processing with increased limits for documents
+  const optimizedContent = ContentProcessor.optimizeContentForAI(cleanText, 25000);
   
   const userPrompt = `Extract subsidy information from this French government website content.
 
