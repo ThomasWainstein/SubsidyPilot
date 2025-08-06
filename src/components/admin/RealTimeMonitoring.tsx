@@ -25,6 +25,40 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+// Helper functions
+const getStatusColor = (status: PipelineOperation['status']) => {
+  switch (status) {
+    case 'running': return 'bg-green-500';
+    case 'paused': return 'bg-yellow-500';
+    case 'failed': return 'bg-red-500';
+    case 'completed': return 'bg-blue-500';
+    case 'queued': return 'bg-gray-500';
+    default: return 'bg-gray-400';
+  }
+};
+
+const getOperationIcon = (type: PipelineOperation['type']) => {
+  switch (type) {
+    case 'scraping': return <Globe className="h-4 w-4" />;
+    case 'ai_processing': return <Zap className="h-4 w-4" />;
+    case 'form_generation': return <Database className="h-4 w-4" />;
+    default: return <Activity className="h-4 w-4" />;
+  }
+};
+
+const formatDuration = (start: Date, end?: Date) => {
+  const duration = ((end || new Date()).getTime() - start.getTime()) / 1000;
+  const minutes = Math.floor(duration / 60);
+  const seconds = Math.floor(duration % 60);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const formatETA = (eta?: Date) => {
+  if (!eta) return 'Calculating...';
+  const minutes = Math.ceil((eta.getTime() - new Date().getTime()) / 60000);
+  return minutes > 0 ? `${minutes}m remaining` : 'Completing...';
+};
+
 interface PipelineOperation {
   id: string;
   type: 'scraping' | 'ai_processing' | 'form_generation';
@@ -131,38 +165,6 @@ export function RealTimeMonitoring() {
     ));
   };
 
-  const getStatusColor = (status: PipelineOperation['status']) => {
-    switch (status) {
-      case 'running': return 'bg-green-500';
-      case 'paused': return 'bg-yellow-500';
-      case 'failed': return 'bg-red-500';
-      case 'completed': return 'bg-blue-500';
-      case 'queued': return 'bg-gray-500';
-      default: return 'bg-gray-400';
-    }
-  };
-
-  const getOperationIcon = (type: PipelineOperation['type']) => {
-    switch (type) {
-      case 'scraping': return <Globe className="h-4 w-4" />;
-      case 'ai_processing': return <Zap className="h-4 w-4" />;
-      case 'form_generation': return <Database className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const formatDuration = (start: Date, end?: Date) => {
-    const duration = ((end || new Date()).getTime() - start.getTime()) / 1000;
-    const minutes = Math.floor(duration / 60);
-    const seconds = Math.floor(duration % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const formatETA = (eta?: Date) => {
-    if (!eta) return 'Calculating...';
-    const minutes = Math.ceil((eta.getTime() - new Date().getTime()) / 60000);
-    return minutes > 0 ? `${minutes}m remaining` : 'Completing...';
-  };
 
   return (
     <div className="space-y-6">
