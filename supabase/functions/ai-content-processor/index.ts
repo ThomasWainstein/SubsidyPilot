@@ -73,14 +73,23 @@ class OpenAIClient {
           if (!content) throw new Error('No content in OpenAI response');
           
           try {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            // Try to parse the entire content first
+            const fullContent = content.trim();
+            if (fullContent.startsWith('{') && fullContent.endsWith('}')) {
+              return JSON.parse(fullContent);
+            }
+            
+            // Extract JSON block from markdown formatting
+            const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-              return JSON.parse(jsonMatch[0]);
+              const jsonStr = jsonMatch[1] || jsonMatch[0];
+              return JSON.parse(jsonStr);
             } else {
               throw new Error('No valid JSON found in response');
             }
           } catch (parseError) {
-            console.error('❌ Failed to parse OpenAI response:', content.substring(0, 200));
+            console.error('❌ Failed to parse OpenAI response:', content.substring(0, 500));
+            console.error('Parse error:', parseError.message);
             throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
           }
         } else if (response.status === 429 && i < keys.length - 1) {
@@ -389,7 +398,7 @@ async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?
   
   const systemPrompt = `You are an expert at extracting structured subsidy information from government websites in ${language === 'fr' ? 'French' : language === 'ro' ? 'Romanian' : 'English'}.
 
-Extract the following information from the provided text and return it as JSON:
+Extract the following information from the provided text and return ONLY valid JSON (no markdown formatting, no extra text):
 
 {
   "title": "Exact title of the subsidy/grant program",
