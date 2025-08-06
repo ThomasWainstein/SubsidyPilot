@@ -276,20 +276,29 @@ serve(async (req) => {
                   url: page.source_url,
                   title: extractedData.title,
                   description: extractedData.description,
+                  presentation: extractedData.presentation,
+                  eligibility: extractedData.eligibility,
+                  application_process: extractedData.application_process,
+                  deadlines: extractedData.deadlines,
+                  amounts: extractedData.amounts,
                   amount: extractedData.amount,
                   deadline: extractedData.deadline,
-                  eligibility: extractedData.eligibility,
                   program: extractedData.program,
                   agency: extractedData.agency,
                   region: extractedData.regions || [],
                   sector: extractedData.sectors || [],
+                  extracted_documents: extractedData.extracted_documents || [],
+                  document_count: extractedData.document_count || 0,
+                  verbatim_extraction: extractedData.verbatim_extraction || true,
                   language: getLanguageFromSource(source),
                   scrape_date: page.scrape_date,
                   source_url_verified: page.source_url,
                   audit: {
                     extraction_confidence: extractedData.confidence,
                     extraction_timestamp: new Date().toISOString(),
-                    source_processor: 'ai-content-processor-v2'
+                    source_processor: 'ai-content-processor-v3-verbatim',
+                    verbatim_extraction: true,
+                    documents_found: extractedData.document_count || 0
                   }
                 })
                 .select()
@@ -371,35 +380,48 @@ serve(async (req) => {
 async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?: string): Promise<any> {
   const language = getLanguageFromSource(source);
   
-  const systemPrompt = `You are an expert at extracting structured subsidy information from government websites in ${language === 'fr' ? 'French' : language === 'ro' ? 'Romanian' : 'English'}.
+  const systemPrompt = `You are an expert at extracting VERBATIM content from French government subsidy pages. Your job is to preserve the exact French text as it appears, not to translate or summarize.
 
-Extract the following information from the provided text and return ONLY valid JSON (no markdown formatting, no extra text):
+CRITICAL: Extract and preserve original French text exactly as written. DO NOT translate, summarize, or paraphrase.
+
+Extract the following information and return ONLY valid JSON:
 
 {
-  "title": "Exact title of the subsidy/grant program",
-  "description": "Clear, detailed description of what the subsidy supports and its objectives",
-  "amount": [array of numbers representing funding amounts in euros],
-  "deadline": "Application deadline if mentioned (YYYY-MM-DD format, or null if not found)",
-  "eligibility": "Detailed requirements: who can apply, conditions, criteria",
-  "program": "Official program or scheme name",
-  "agency": "Government agency or institution providing the funding", 
-  "regions": ["array", "of", "eligible", "geographic", "regions"],
-  "sectors": ["array", "of", "eligible", "economic", "sectors"],
+  "title": "EXACT title from the page (preserve original French)",
+  "description": "VERBATIM description text - copy exact French phrases",
+  "presentation": "Complete 'Présentation' section text VERBATIM if found",
+  "eligibility": "Complete 'Pour qui ?' or eligibility section VERBATIM if found", 
+  "application_process": "Complete 'Comment ?' or application process text VERBATIM if found",
+  "deadlines": "EXACT deadline text as written (e.g. 'jusqu'au 8 septembre 2025')",
+  "amounts": "EXACT funding amount text as written (e.g. '8 millions d'euros')",
+  "amount": [extract numeric values if clearly stated],
+  "deadline": "Parse date to YYYY-MM-DD format if clear date found",
+  "program": "Official program name VERBATIM",
+  "agency": "Government agency name VERBATIM (e.g. 'FranceAgriMer')", 
+  "regions": ["exact", "region", "names", "as", "written"],
+  "sectors": ["exact", "sector", "names", "from", "page"],
+  "extracted_documents": ["array of document URLs found on page"],
+  "document_count": 0,
+  "verbatim_extraction": true,
   "language": "${language}",
-  "confidence": 0.8
+  "confidence": 0.9
 }
 
-IMPORTANT GUIDELINES:
-- Be generous with information extraction - include relevant details even if not perfectly structured
-- For amounts, extract any monetary values mentioned (minimum, maximum, average)
-- For deadlines, look for application periods, submission dates, or closing dates
-- For eligibility, include all relevant criteria: legal forms, geographic restrictions, sector requirements
-- For regions, include departments, counties, or administrative areas mentioned
-- For sectors, include industries, activities, or target beneficiaries
-- Set confidence between 0.3-1.0: 0.3-0.5 for basic info, 0.6-0.8 for good extraction, 0.9-1.0 for complete data
-- If the page contains subsidy/grant information but details are unclear, still extract what you can with lower confidence
+DOCUMENT EXTRACTION RULES:
+- Find ALL PDF links, forms, and documents
+- Look for "Documents annexes", "Formulaires", "Télécharger" sections
+- Extract URLs for: .pdf, .doc, .xls files and form links
+- Include "Décision", "Protocole", "Liste", "Formulaire" documents
+- Count total documents found
 
-If no subsidy information is found, return confidence: 0.1`;
+VERBATIM TEXT PRESERVATION:
+- Copy French text EXACTLY as it appears - DO NOT translate
+- Preserve official terminology: "téléprocédure", "campagnes", etc.
+- Keep dates in original format: "du 17/07/2025 au 08/09/2025"
+- Maintain French phrases: "Dans le cadre du Plan de souveraineté..."
+- Preserve section headers: "Présentation", "Pour qui ?", "Comment ?"
+
+NEVER create generic descriptions - always use the actual French text from the page.`;
 
   // Optimize content for AI processing with better context preservation
   const content = ContentProcessor.optimizeContentForAI(
