@@ -180,26 +180,57 @@ async function extractFromPDFWithAI(pdfBuffer: ArrayBuffer, openAIApiKey: string
 }
 
 /**
- * Extract text from DOCX files (basic implementation)
+ * Extract text from DOCX files using proper DOCX parsing
  */
 async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
   try {
-    // Basic DOCX text extraction - in production, use a proper DOCX parser
-    const text = new TextDecoder().decode(docxBuffer);
+    // Import JSZip for extracting DOCX content
+    const JSZip = (await import('https://esm.sh/jszip@3.10.1')).default;
     
-    // Extract readable text between XML tags (very basic)
-    const textContent = text
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+    console.log('📄 Parsing DOCX file...');
+    
+    // Load the DOCX file (which is a ZIP archive)
+    const zip = await JSZip.loadAsync(docxBuffer);
+    
+    // Extract the main document XML
+    const documentXml = await zip.file('word/document.xml')?.async('text');
+    
+    if (!documentXml) {
+      throw new Error('Could not find document.xml in DOCX file');
+    }
+    
+    // Parse XML to extract text content
+    let textContent = '';
+    
+    // Extract text from <w:t> tags (text runs)
+    const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    textContent = textMatches
+      .map(match => match.replace(/<[^>]*>/g, ''))
+      .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
     
-    if (textContent.length < 100) {
-      throw new Error('Insufficient text extracted from DOCX');
+    // Also extract text from <w:p> paragraphs to maintain structure
+    const paragraphMatches = documentXml.match(/<w:p[^>]*>.*?<\/w:p>/gs) || [];
+    const paragraphs = paragraphMatches.map(para => {
+      const textInPara = (para.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [])
+        .map(match => match.replace(/<[^>]*>/g, ''))
+        .join(' ')
+        .trim();
+      return textInPara;
+    }).filter(text => text.length > 0);
+    
+    // Use paragraph structure if available, otherwise use simple text
+    const finalText = paragraphs.length > 0 ? paragraphs.join('\n') : textContent;
+    
+    if (finalText.length < 50) {
+      throw new Error('Insufficient text extracted from DOCX - document may be empty or corrupted');
     }
     
-    return textContent;
+    console.log(`✅ DOCX extraction successful: ${finalText.length} characters`);
+    return finalText;
   } catch (error) {
+    console.error('❌ DOCX extraction failed:', error);
     throw new Error(`DOCX extraction failed: ${error.message}`);
   }
 }
