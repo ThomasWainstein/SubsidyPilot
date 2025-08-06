@@ -17,7 +17,7 @@ import ApplicationFormPage from '@/pages/ApplicationFormPage';
 import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
 import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
-import AdminPage from '@/pages/AdminPage';
+import TestVerbatimPage from '@/pages/TestVerbatimPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AdminPanel from '@/components/admin/AdminPanel';
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
@@ -193,10 +193,11 @@ function App() {
                      path="/admin" 
                      element={
                        <ProtectedRoute>
-                         <AdminPage />
-                       </ProtectedRoute>
-                     } 
-                   />
+                          <AdminPanel />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route path="/test-verbatim" element={<TestVerbatimPage />} />
                    <Route 
                      path="/admin-panel" 
                      element={
