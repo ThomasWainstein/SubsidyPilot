@@ -10,7 +10,7 @@ import EnhancedImportManagement from '@/components/admin/EnhancedImportManagemen
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
 import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipelineManager';
 import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfig';
-import { RealTimeMonitoring } from '@/components/admin/RealTimeMonitoring';
+import RealTimePipelineMonitor from '@/components/admin/RealTimePipelineMonitor';
 import { AIProcessingControl } from '@/components/admin/AIProcessingControl';
 import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -132,7 +132,7 @@ const AdminPage = () => {
             </TabsContent>
             
             <TabsContent value="monitoring" className="mt-6">
-              <RealTimeMonitoring />
+              <RealTimePipelineMonitor />
             </TabsContent>
             
             <TabsContent value="ai-control" className="mt-6">
