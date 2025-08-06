@@ -111,7 +111,7 @@ const SettingsPage = () => {
       title: 'Developer Tools',
       description: 'Access development and testing tools',
       icon: Settings,
-      action: () => navigate('/admin'),
+      action: () => navigate('/admin-panel'),
       badge: 'Dev Tools',
       disabled: currentRole !== 'admin'
     }

@@ -20,6 +20,7 @@ import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 import TestVerbatimPage from '@/pages/TestVerbatimPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AdminPanel from '@/components/admin/AdminPanel';
+import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
 import ConsultantDashboardPage from '@/pages/ConsultantDashboardPage';
 import OrganizationDashboardPage from '@/pages/OrganizationDashboardPage';
@@ -193,7 +194,7 @@ function App() {
                      path="/admin" 
                      element={
                        <ProtectedRoute>
-                          <AdminPanel />
+                          <AdminDashboardPage />
                         </ProtectedRoute>
                       } 
                     />
