@@ -395,7 +395,7 @@ async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?
     .replace(/&ugrave;/g, 'ù')
     .replace(/&ucirc;/g, 'û')
     .replace(/&ccedil;/g, 'ç')
-    .replace(/&rsquo;/g, ''')
+    .replace(/&rsquo;/g, "'")
     .replace(/&nbsp;/g, ' ')
     .replace(/&euro;/g, '€')
     .replace(/&#039;/g, "'")
