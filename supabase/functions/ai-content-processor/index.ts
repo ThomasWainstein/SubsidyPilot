@@ -178,7 +178,7 @@ class ContentProcessor {
     const prioritized = sections
       .filter(section => section.length > 50)
       .sort((a, b) => {
-        const keyTerms = ['aide', 'subvention', 'financement', 'măsura', 'finanțare', 'eligible', 'amount', 'deadline'];
+        const keyTerms = ['aide', 'subvention', 'financement', 'măsura', 'finanțare', 'eligible', 'amount', 'deadline', 'présentation', 'pour qui', 'comment', 'documents'];
         const aScore = keyTerms.reduce((score, term) => score + (a.toLowerCase().includes(term) ? 1 : 0), 0);
         const bScore = keyTerms.reduce((score, term) => score + (b.toLowerCase().includes(term) ? 1 : 0), 0);
         return bScore - aScore;
@@ -234,8 +234,7 @@ serve(async (req) => {
       const { data: pages, error } = await supabase
         .from('raw_scraped_pages')
         .select('*')
-        .in('id', page_ids)
-        .eq('status', 'scraped'); // Only process unprocessed pages
+        .in('id', page_ids);
       
       if (error) throw error;
       pagesToProcess = pages || [];
@@ -264,12 +263,12 @@ serve(async (req) => {
         return PerformanceMonitor.trackOperation(`ProcessPage-${page.id}`, async () => {
           console.log(`🔍 Processing page: ${page.source_url}`);
           
-          // Extract structured data using OpenAI
-          const extractedData = await extractSubsidyData(page, openaiClient, source);
+          // Extract structured data using OpenAI with verbatim extraction
+          const extractedData = await extractSubsidyDataVerbatim(page, openaiClient, source);
           
           if (extractedData && extractedData.confidence >= quality_threshold) {
             try {
-              // Insert directly into subsidies_structured without raw_logs dependency
+              // Insert directly into subsidies_structured with verbatim content
               const { data: insertedSubsidy, error: insertError } = await supabase
                 .from('subsidies_structured')
                 .insert({
@@ -282,21 +281,20 @@ serve(async (req) => {
                   deadlines: extractedData.deadlines,
                   amounts: extractedData.amounts,
                   amount: extractedData.amount,
-                  deadline: extractedData.deadline,
+                  deadline: extractedData.deadline ? extractedData.deadline : null,
                   program: extractedData.program,
                   agency: extractedData.agency,
                   region: extractedData.regions || [],
                   sector: extractedData.sectors || [],
-                  extracted_documents: extractedData.extracted_documents || [],
+                  extracted_documents: extractedData.document_urls || [],
                   document_count: extractedData.document_count || 0,
-                  verbatim_extraction: extractedData.verbatim_extraction || true,
+                  verbatim_extraction: true,
                   language: getLanguageFromSource(source),
                   scrape_date: page.scrape_date,
-                  source_url_verified: page.source_url,
                   audit: {
                     extraction_confidence: extractedData.confidence,
                     extraction_timestamp: new Date().toISOString(),
-                    source_processor: 'ai-content-processor-v3-verbatim',
+                    source_processor: 'ai-content-processor-v3-verbatim-enhanced',
                     verbatim_extraction: true,
                     documents_found: extractedData.document_count || 0
                   }
@@ -344,7 +342,7 @@ serve(async (req) => {
         message: `AI processing completed: ${processedSubsidies.length} subsidies created`,
         details: {
           successful: processedSubsidies.length,
-      failed: failedPages,
+          failed: failedPages,
           source: source
         }
       });
@@ -377,25 +375,31 @@ serve(async (req) => {
   }
 });
 
-async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?: string): Promise<any> {
+async function extractSubsidyDataVerbatim(page: any, openaiClient: OpenAIClient, source?: string): Promise<any> {
   const language = getLanguageFromSource(source);
   
   // Clean HTML entities and extract readable text
   let cleanText = page.raw_text || page.text_markdown || page.combined_content_markdown || '';
   
-  // Decode HTML entities
+  // Comprehensive HTML entity decoding for French characters
   cleanText = cleanText
     .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
     .replace(/&eacute;/g, 'é')
     .replace(/&egrave;/g, 'è')
     .replace(/&ecirc;/g, 'ê')
     .replace(/&euml;/g, 'ë')
     .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
     .replace(/&ocirc;/g, 'ô')
     .replace(/&ugrave;/g, 'ù')
     .replace(/&ucirc;/g, 'û')
+    .replace(/&uuml;/g, 'ü')
     .replace(/&ccedil;/g, 'ç')
-    .replace(/&rsquo;/g, "'")
+    .replace(/&rsquo;/g, ''')
+    .replace(/&lsquo;/g, ''')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&ldquo;/g, '"')
     .replace(/&nbsp;/g, ' ')
     .replace(/&euro;/g, '€')
     .replace(/&#039;/g, "'")
@@ -406,71 +410,84 @@ async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?
   const systemPrompt = `You are an expert at extracting VERBATIM content from French government subsidy pages. Your job is to preserve the exact French text as it appears, not to translate or summarize.
 
 CRITICAL INSTRUCTIONS:
-1. Extract and preserve original French text exactly as written
-2. DO NOT translate, summarize, or paraphrase
-3. Look for document URLs and files (PDF, DOCX, etc.)
-4. Preserve French government terminology exactly
+1. Extract and preserve original French text exactly as written - NEVER translate
+2. Look for document URLs and files (PDF, DOCX, Excel, etc.)
+3. Preserve French government terminology exactly
+4. Copy section headers and content verbatim
+5. Find ALL documents in "Documents associés" or "Documents annexes" sections
 
 Extract the following information and return ONLY valid JSON:
 
 {
   "title": "EXACT title from the page (preserve original French)",
-  "description": "VERBATIM first paragraph or description - copy exact French phrases",
+  "description": "VERBATIM first key description paragraph",
   "presentation": "Complete 'Présentation' section text VERBATIM if found",
   "eligibility": "Complete 'Pour qui ?' or eligibility section VERBATIM if found", 
   "application_process": "Complete 'Comment ?' or application process text VERBATIM if found",
   "deadlines": "EXACT deadline text as written (e.g. 'La téléprocédure de dépôt des demandes d'avance est close')",
   "amounts": "EXACT funding amount text as written (e.g. 'enveloppe globale de 75M€')",
-  "amount": [extract numeric values if clearly stated],
-  "deadline": "Parse date to YYYY-MM-DD format if clear date found",
+  "amount": [extract numeric values only if clearly stated],
+  "deadline": "Parse date to YYYY-MM-DD format only if clear date found",
   "program": "Official program name VERBATIM",
   "agency": "Government agency name VERBATIM (e.g. 'FranceAgriMer')",
-  "regions": ["exact", "region", "names", "as", "written"],
-  "sectors": ["exact", "sector", "names", "from", "page"],
-  "extracted_documents": ["array of document URLs found on page"],
+  "regions": ["exact region names as written"],
+  "sectors": ["exact sector names from page"],
+  "document_urls": ["ALL document URLs found - PDFs, forms, Excel files, etc."],
   "document_count": 0,
   "verbatim_extraction": true,
-  "language": "${language}",
   "confidence": 0.9
 }
 
-DOCUMENT EXTRACTION RULES:
-- Find ALL PDF links, forms, and documents
-- Look for "Documents annexes", "Formulaires", "Télécharger" sections
-- Extract URLs for: .pdf, .doc, .xls files and form links
-- Include "Décision", "Protocole", "Liste", "Formulaire" documents
+DOCUMENT EXTRACTION PRIORITY:
+- Find ALL PDF links (.pdf files)
+- Excel files (.xlsx, .xls)
+- Forms and applications
+- "Décision", "Protocole", "FAQ" documents
+- Look in "Documents associés" sections
 - Count total documents found
 
-VERBATIM TEXT PRESERVATION:
+VERBATIM TEXT PRESERVATION RULES:
 - Copy French text EXACTLY as it appears - DO NOT translate
-- Preserve official terminology: "téléprocédure", "campagnes", etc.
+- Preserve official terminology: "téléprocédure", "campagnes", "dispositif", etc.
 - Keep dates in original format: "du 17/07/2025 au 08/09/2025"
-- Maintain French phrases: "Dans le cadre du Plan de souveraineté..."
-- Preserve section headers: "Présentation", "Pour qui ?", "Comment ?"
+- Maintain French phrases exactly: "Dans le cadre du Plan de souveraineté..."
+- Preserve section headers exactly: "Présentation", "Pour qui ?", "Comment ?"
+- Keep funding amounts as written: "enveloppe globale de 75M€"
 
-NEVER create generic descriptions - always use the actual French text from the page.`;
+NEVER create generic descriptions - always use the actual French text from the page.
+If a section is not found, return null or empty string, do not make up content.`;
 
   // Optimize content for AI processing with better context preservation
-  const content = ContentProcessor.optimizeContentForAI(
-    page.combined_content_markdown || 
-    page.text_markdown || 
-    page.raw_text || 
-    'No content available',
-    12000  // Increased token limit for better extraction
-  );
+  const optimizedContent = ContentProcessor.optimizeContentForAI(cleanText, 12000);
+  
+  const userPrompt = `Extract subsidy information from this French government website content.
 
-  const userPrompt = `Extract subsidy information from this ${source || 'government'} website content:
+CRITICAL: Use VERBATIM French text - do not translate or summarize!
 
 URL: ${page.source_url}
 
 Content:
-${content}`;
+${optimizedContent}
+
+Focus on extracting:
+1. EXACT French text from sections like "Présentation", "Pour qui ?", "Comment ?"
+2. All document URLs (PDFs, forms, Excel files, etc.)
+3. Precise dates and amounts as written
+4. Official French terminology exactly as it appears
+5. Document links from "Documents associés" sections
+
+Return structured JSON with verbatim French content.`;
 
   try {
     const result = await openaiClient.extractContent(userPrompt, systemPrompt, {
       model: 'gpt-4o-mini',
-      maxTokens: 2000
+      maxTokens: 2500
     });
+    
+    // Ensure document_count matches document_urls length
+    if (result.document_urls && Array.isArray(result.document_urls)) {
+      result.document_count = result.document_urls.length;
+    }
     
     return result;
   } catch (error) {
