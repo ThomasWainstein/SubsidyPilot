@@ -19,7 +19,7 @@ export async function extractFarmDataWithOpenAI(
   documentText: string,
   apiKey: string,
   textDebugInfo: any,
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-4.1-2025-04-14'
 ): Promise<OpenAIExtractionResult> {
   console.log(`🤖 Starting OpenAI extraction with model: ${model}`);
   

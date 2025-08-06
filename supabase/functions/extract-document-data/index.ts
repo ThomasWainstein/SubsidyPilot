@@ -240,7 +240,7 @@ serve(async (req) => {
       extractionMethod = 'openai_fallback';
       
       // 🔥 FIX: Make OpenAI model configurable
-      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini';
+      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-2025-04-14';
       
       extractedData = await extractFarmDataWithOpenAI(
         extractionResult.text, 

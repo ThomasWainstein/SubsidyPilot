@@ -117,7 +117,7 @@ Confidence should be between 0.0 and 1.0 based on how certain you are about the 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-2025-04-14',
       messages: [
         { role: 'system', content: 'You are an expert agricultural data analyst. Respond only with valid JSON.' },
         { role: 'user', content: prompt }

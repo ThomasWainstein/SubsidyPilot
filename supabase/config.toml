@@ -71,5 +71,8 @@ verify_jwt = true
 [functions.enhanced-franceagrimer-extraction]
 verify_jwt = false
 
+[functions.extract-document-schema]
+verify_jwt = false
+
 [functions.generate-application-form]
 verify_jwt = false
