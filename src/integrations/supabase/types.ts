@@ -247,6 +247,94 @@ export type Database = {
           },
         ]
       }
+      content_change_log: {
+        Row: {
+          change_type: string
+          changed_fields: Json
+          created_at: string
+          detected_by: string | null
+          detection_confidence: number | null
+          id: string
+          resource_id: string
+          version_id: string
+        }
+        Insert: {
+          change_type: string
+          changed_fields?: Json
+          created_at?: string
+          detected_by?: string | null
+          detection_confidence?: number | null
+          id?: string
+          resource_id: string
+          version_id: string
+        }
+        Update: {
+          change_type?: string
+          changed_fields?: Json
+          created_at?: string
+          detected_by?: string | null
+          detection_confidence?: number | null
+          id?: string
+          resource_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_change_log_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "content_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_versions: {
+        Row: {
+          change_confidence: number | null
+          change_summary: Json
+          content_hash: string
+          created_at: string
+          id: string
+          previous_version_id: string | null
+          resource_id: string
+          resource_type: string
+          source_url: string | null
+          version_number: number
+        }
+        Insert: {
+          change_confidence?: number | null
+          change_summary?: Json
+          content_hash: string
+          created_at?: string
+          id?: string
+          previous_version_id?: string | null
+          resource_id: string
+          resource_type: string
+          source_url?: string | null
+          version_number?: number
+        }
+        Update: {
+          change_confidence?: number | null
+          change_summary?: Json
+          content_hash?: string
+          created_at?: string
+          id?: string
+          previous_version_id?: string | null
+          resource_id?: string
+          resource_type?: string
+          source_url?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_versions_previous_version_id_fkey"
+            columns: ["previous_version_id"]
+            isOneToOne: false
+            referencedRelation: "content_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_classification_logs: {
         Row: {
           agrees: boolean
@@ -1930,6 +2018,10 @@ export type Database = {
       complete_data_purge: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      compute_content_hash: {
+        Args: { content_data: Json }
+        Returns: string
       }
       get_data_summary: {
         Args: Record<PropertyKey, never>
