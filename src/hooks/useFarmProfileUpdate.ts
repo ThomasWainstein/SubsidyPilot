@@ -12,6 +12,7 @@ import { unifiedExtractionService } from '@/lib/extraction/unified-extraction-se
 import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { useFarm, useUpdateFarm } from '@/hooks/useFarms';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface FarmProfileUpdateOptions {
   farmId: string;
@@ -180,10 +181,41 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
     const { fieldWhitelist, skipConfirmation = false } = options;
 
     try {
-      // Get extraction data
-      const extraction = extractedData || pendingExtractions.get(documentId)?.mappedData;
+      // Get extraction data - if not provided, fetch the best extraction from database
+      let extraction = extractedData;
+      
       if (!extraction) {
-        throw new Error('No extraction data found');
+        const { data: bestExtraction, error } = await supabase
+          .from('document_extractions')
+          .select('*')
+          .eq('document_id', documentId)
+          .eq('status', 'completed')
+          .gte('confidence_score', 0.5)  // Only get decent confidence extractions
+          .order('confidence_score', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (error) throw error;
+        
+        if (!bestExtraction) {
+          throw new Error('No suitable extraction found with sufficient confidence');
+        }
+        
+        // Map the extracted data using the centralized mapper
+        const { mapExtractionToForm } = await import('@/lib/extraction/centralized-mapper');
+        const mappingResult = mapExtractionToForm(bestExtraction.extracted_data as any);
+        extraction = mappingResult.mappedData;
+        
+        console.log('📋 Applied best extraction:', {
+          documentId,
+          confidence: bestExtraction.confidence_score,
+          mappedFields: Object.keys(extraction).length,
+          extractionData: bestExtraction.extracted_data
+        });
+      }
+      
+      if (!extraction || Object.keys(extraction).length === 0) {
+        throw new Error('No valid extraction data found');
       }
 
       logger.step('Applying extraction to form', {

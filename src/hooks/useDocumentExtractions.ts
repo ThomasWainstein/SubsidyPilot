@@ -29,7 +29,30 @@ export const useLatestDocumentExtraction = (documentId: string) => {
         .from('document_extractions')
         .select('*, debug_info, error_message')
         .eq('document_id', documentId)
-        .order('created_at', { ascending: false })
+        .eq('status', 'completed')
+        .order('confidence_score', { ascending: false })  // Order by confidence first
+        .order('created_at', { ascending: false })        // Then by recency as tiebreaker
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as DocumentExtraction | null;
+    },
+    enabled: !!documentId,
+  });
+};
+
+export const useBestDocumentExtraction = (documentId: string) => {
+  return useQuery({
+    queryKey: ['best-document-extraction', documentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('document_extractions')
+        .select('*, debug_info, error_message')
+        .eq('document_id', documentId)
+        .eq('status', 'completed')
+        .gte('confidence_score', 0.5)  // Only get extractions with decent confidence
+        .order('confidence_score', { ascending: false })
         .limit(1)
         .maybeSingle();
 
