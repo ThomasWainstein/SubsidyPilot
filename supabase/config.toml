@@ -94,3 +94,6 @@ verify_jwt = false
 
 [functions.dual-pipeline-orchestrator]
 verify_jwt = false
+
+[functions.pipeline-qa-validator]
+verify_jwt = false
