@@ -190,7 +190,7 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
           .select('*')
           .eq('document_id', documentId)
           .eq('status', 'completed')
-          .gte('confidence_score', 0.5)  // Only get decent confidence extractions
+          .gte('confidence_score', 0.2)  // Temporarily lower for debugging
           .order('confidence_score', { ascending: false })
           .limit(1)
           .maybeSingle();

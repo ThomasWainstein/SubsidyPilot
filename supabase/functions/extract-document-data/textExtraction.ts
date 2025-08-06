@@ -189,12 +189,14 @@ async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
     // Import JSZip for extracting DOCX content
     console.log('🔍 DOCX EXTRACTION: Importing JSZip...');
     const JSZip = (await import('https://esm.sh/jszip@3.10.1')).default;
+    console.log('🔍 DOCX EXTRACTION: JSZip imported successfully, type:', typeof JSZip);
     console.log('🔍 DOCX EXTRACTION: JSZip imported successfully');
     
     // Load the DOCX file (which is a ZIP archive)
     console.log('🔍 DOCX EXTRACTION: Loading ZIP archive...');
     const zip = await JSZip.loadAsync(docxBuffer);
     console.log('🔍 DOCX EXTRACTION: ZIP loaded, files:', Object.keys(zip.files));
+    console.log('🔍 DOCX EXTRACTION: ZIP object type:', typeof zip, 'JSZip constructor:', JSZip.name);
     
     // Extract the main document XML
     const documentFile = zip.file('word/document.xml');
