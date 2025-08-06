@@ -1,14 +1,192 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { 
-  getStandardizedConfig, 
-  validateAIProcessorRequest, 
-  OpenAIClient, 
-  PerformanceMonitor, 
-  BatchProcessor,
-  ContentProcessor 
-} from '../shared/utils.ts';
+
+// Inline utilities for self-contained edge function
+function getStandardizedConfig() {
+  const config = {
+    supabase_url: Deno.env.get('SUPABASE_URL'),
+    supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    openai_primary_key: Deno.env.get('SCRAPPER_RAW_GPT_API'),
+    openai_backup_key: Deno.env.get('OPENAI_API_KEY')
+  };
+
+  if (!config.supabase_url || !config.supabase_service_key) {
+    const missing = [];
+    if (!config.supabase_url) missing.push('SUPABASE_URL');
+    if (!config.supabase_service_key) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    throw new Error(`Missing required Supabase configuration: ${missing.join(', ')}`);
+  }
+
+  return config;
+}
+
+function validateAIProcessorRequest(body) {
+  const { source = 'all', session_id, page_ids, quality_threshold = 0.7 } = body;
+  
+  if (!['franceagrimer', 'afir', 'all'].includes(source)) {
+    throw new Error('Invalid source. Must be: franceagrimer, afir, or all');
+  }
+  
+  if (quality_threshold < 0 || quality_threshold > 1) {
+    throw new Error('quality_threshold must be between 0 and 1');
+  }
+  
+  return { source, session_id, page_ids, quality_threshold };
+}
+
+class OpenAIClient {
+  constructor(primaryKey, backupKey) {
+    this.primaryKey = primaryKey;
+    this.backupKey = backupKey;
+    if (!primaryKey && !backupKey) {
+      throw new Error('At least one OpenAI API key must be provided');
+    }
+  }
+
+  async extractContent(content, systemPrompt, options = {}) {
+    const keys = [this.primaryKey, this.backupKey].filter(Boolean);
+    
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: options.model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: content }
+            ],
+            temperature: options.temperature || 0.1,
+            max_tokens: options.maxTokens || 2000
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices[0]?.message?.content;
+          if (!content) throw new Error('No content in OpenAI response');
+          
+          try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              return JSON.parse(jsonMatch[0]);
+            } else {
+              throw new Error('No valid JSON found in response');
+            }
+          } catch (parseError) {
+            console.error('❌ Failed to parse OpenAI response:', content.substring(0, 200));
+            throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
+          }
+        } else if (response.status === 429 && i < keys.length - 1) {
+          console.warn(`⚠️ Rate limited on key ${i + 1}, trying next...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        } else {
+          throw new Error(`OpenAI API error: ${response.status}`);
+        }
+      } catch (error) {
+        if (i === keys.length - 1) {
+          throw error;
+        }
+        console.warn(`⚠️ OpenAI key ${i + 1} failed, trying backup:`, error.message);
+      }
+    }
+    
+    throw new Error('All OpenAI keys failed');
+  }
+}
+
+class PerformanceMonitor {
+  static async trackOperation(operationName, fn, metadata = {}) {
+    const startTime = Date.now();
+    
+    try {
+      const result = await fn();
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ ${operationName} completed:`, {
+        duration: `${duration}ms`,
+        status: 'success',
+        ...metadata
+      });
+      
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ ${operationName} failed:`, {
+        duration: `${duration}ms`,
+        error: error.message,
+        status: 'failed',
+        ...metadata
+      });
+      throw error;
+    }
+  }
+}
+
+class BatchProcessor {
+  static async processInBatches(items, processor, batchSize = 3, delayBetweenBatches = 1000) {
+    const results = [];
+    
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(items.length / batchSize)}`);
+      
+      const batchResults = await Promise.allSettled(
+        batch.map(item => processor(item))
+      );
+      
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          console.warn('⚠️ Batch item failed:', result.reason);
+        }
+      }
+      
+      if (i + batchSize < items.length) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+      }
+    }
+    
+    return results;
+  }
+}
+
+class ContentProcessor {
+  static optimizeContentForAI(content, maxLength = 8000) {
+    if (content.length <= maxLength) {
+      return content;
+    }
+    
+    const sections = content.split(/\n\n+/);
+    const prioritized = sections
+      .filter(section => section.length > 50)
+      .sort((a, b) => {
+        const keyTerms = ['aide', 'subvention', 'financement', 'măsura', 'finanțare', 'eligible', 'amount', 'deadline'];
+        const aScore = keyTerms.reduce((score, term) => score + (a.toLowerCase().includes(term) ? 1 : 0), 0);
+        const bScore = keyTerms.reduce((score, term) => score + (b.toLowerCase().includes(term) ? 1 : 0), 0);
+        return bScore - aScore;
+      });
+    
+    let result = '';
+    for (const section of prioritized) {
+      if (result.length + section.length + 2 <= maxLength) {
+        result += section + '\n\n';
+      } else {
+        break;
+      }
+    }
+    
+    return result.trim();
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

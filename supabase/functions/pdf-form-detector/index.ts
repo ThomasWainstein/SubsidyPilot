@@ -1,7 +1,102 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getStandardizedConfig, OpenAIClient, PerformanceMonitor } from '../shared/utils.ts';
+
+// Inline utilities for self-contained edge function
+function getStandardizedConfig() {
+  const config = {
+    supabase_url: Deno.env.get('SUPABASE_URL'),
+    supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    openai_primary_key: Deno.env.get('SCRAPPER_RAW_GPT_API'),
+    openai_backup_key: Deno.env.get('OPENAI_API_KEY')
+  };
+
+  if (!config.supabase_url || !config.supabase_service_key) {
+    const missing = [];
+    if (!config.supabase_url) missing.push('SUPABASE_URL');
+    if (!config.supabase_service_key) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    throw new Error(`Missing required Supabase configuration: ${missing.join(', ')}`);
+  }
+
+  return config;
+}
+
+class OpenAIClient {
+  constructor(primaryKey, backupKey) {
+    this.primaryKey = primaryKey;
+    this.backupKey = backupKey;
+    if (!primaryKey && !backupKey) {
+      throw new Error('At least one OpenAI API key must be provided');
+    }
+  }
+
+  async extractContent(content, systemPrompt, options = {}) {
+    const keys = [this.primaryKey, this.backupKey].filter(Boolean);
+    
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: options.model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: content }
+            ],
+            temperature: options.temperature || 0.1,
+            max_tokens: options.maxTokens || 2000
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices[0]?.message?.content;
+          if (!content) throw new Error('No content in OpenAI response');
+          
+          try {
+            const patterns = [
+              /```json\n([\s\S]*?)\n```/,
+              /```\n([\s\S]*?)\n```/,
+              /\{[\s\S]*\}/
+            ];
+            
+            for (const pattern of patterns) {
+              const match = content.match(pattern);
+              if (match) {
+                const jsonStr = match[1] || match[0];
+                return JSON.parse(jsonStr);
+              }
+            }
+            
+            return JSON.parse(content);
+          } catch (parseError) {
+            console.error('❌ Failed to parse OpenAI response:', content.substring(0, 200));
+            throw new Error(`Invalid JSON response from OpenAI: ${parseError.message}`);
+          }
+        } else if (response.status === 429 && i < keys.length - 1) {
+          console.warn(`⚠️ Rate limited on key ${i + 1}, trying next...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        } else {
+          const errorText = await response.text();
+          throw new Error(`OpenAI API error ${response.status}: ${errorText}`);
+        }
+      } catch (error) {
+        if (i === keys.length - 1) {
+          throw error;
+        }
+        console.warn(`⚠️ OpenAI key ${i + 1} failed, trying backup:`, error.message);
+      }
+    }
+    
+    throw new Error('All OpenAI keys failed');
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,16 +143,9 @@ serve(async (req) => {
   }
 
   try {
-import { getStandardizedConfig, OpenAIClient, PerformanceMonitor } from '../shared/utils.ts';
-
     const config = getStandardizedConfig();
     const openaiClient = new OpenAIClient(config.openai_primary_key, config.openai_backup_key);
-
-    if (!config.openai_api_key) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const supabase = createClient(config.supabase_url!, config.supabase_service_key!);
+    const supabase = createClient(config.supabase_url, config.supabase_service_key);
     
     const { action, subsidy_id, document_url, document_content } = await req.json();
 

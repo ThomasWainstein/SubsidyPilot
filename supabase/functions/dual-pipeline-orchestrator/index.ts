@@ -1,12 +1,87 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { 
-  getStandardizedConfig, 
-  validatePipelineRequest, 
-  PerformanceMonitor, 
-  RetryHandler 
-} from '../shared/utils.ts';
+
+// Inline utilities for self-contained edge function
+function getStandardizedConfig() {
+  const config = {
+    supabase_url: Deno.env.get('SUPABASE_URL'),
+    supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+  };
+
+  if (!config.supabase_url || !config.supabase_service_key) {
+    const missing = [];
+    if (!config.supabase_url) missing.push('SUPABASE_URL');
+    if (!config.supabase_service_key) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    throw new Error(`Missing required Supabase configuration: ${missing.join(', ')}`);
+  }
+
+  return config;
+}
+
+function validatePipelineRequest(body: any) {
+  const validActions = ['start_full_pipeline', 'trigger_harvesting', 'trigger_processing', 'monitor_pipeline', 'health_check'];
+  const { action, execution_config = {}, pipeline_id } = body;
+  
+  if (!validActions.includes(action)) {
+    throw new Error(`Invalid action. Must be one of: ${validActions.join(', ')}`);
+  }
+  
+  return { action, execution_config, pipeline_id };
+}
+
+class RetryHandler {
+  static async withRetry(fn, maxRetries = 3, baseDelay = 1000) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt === maxRetries) {
+          console.error(`❌ Max retries (${maxRetries}) exceeded:`, error);
+          throw error;
+        }
+        
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ Attempt ${attempt} failed, retrying in ${delay}ms:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    throw lastError;
+  }
+}
+
+class PerformanceMonitor {
+  static async trackOperation(operationName, fn, metadata = {}) {
+    const startTime = Date.now();
+    
+    try {
+      const result = await fn();
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ ${operationName} completed:`, {
+        duration: `${duration}ms`,
+        status: 'success',
+        ...metadata
+      });
+      
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ ${operationName} failed:`, {
+        duration: `${duration}ms`,
+        error: error.message,
+        status: 'failed',
+        ...metadata
+      });
+      throw error;
+    }
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
