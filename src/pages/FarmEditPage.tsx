@@ -51,12 +51,20 @@ const FarmEditPage: React.FC = () => {
     const shouldPrefill = searchParams.get('prefill') === 'true';
     const extractionId = searchParams.get('extractionId');
     
+    console.log('🔍 Prefill check:', {
+      shouldPrefill,
+      extractionId,
+      prefillApplied,
+      farmLoading
+    });
+    
     if (shouldPrefill && extractionId && !prefillApplied && !farmLoading) {
-      console.log('🔄 Applying prefill for extraction:', extractionId);
+      console.log('🔄 Starting prefill process for document:', extractionId);
       
       // Apply the extraction data
       applyExtractionToForm(extractionId, 'merge')
         .then(() => {
+          console.log('✅ Prefill completed successfully');
           setPrefillApplied(true);
           setHasUnsavedChanges(true);
           toast.success('Farm profile prefilled with extracted data');
@@ -68,8 +76,8 @@ const FarmEditPage: React.FC = () => {
           setSearchParams(newSearchParams, { replace: true });
         })
         .catch((error) => {
-          console.error('Failed to apply prefill:', error);
-          toast.error('Failed to apply extracted data');
+          console.error('❌ Failed to apply prefill:', error);
+          toast.error(`Failed to apply extracted data: ${error.message}`);
         });
     }
   }, [searchParams, prefillApplied, farmLoading, applyExtractionToForm, setSearchParams]);
