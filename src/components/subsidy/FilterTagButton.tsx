@@ -22,7 +22,7 @@ const FilterTagButton: React.FC<FilterTagButtonProps> = ({ value, active, onClic
       className={`mb-2 mr-2 ${active ? 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300' : ''}`}
       onClick={onClick}
     >
-      {translationKey.startsWith('search.filters.') ? t(translationKey as TranslationKey) : translationKey}
+      {translationKey && typeof translationKey === 'string' && translationKey.startsWith('search.filters.') ? t(translationKey as TranslationKey) : translationKey}
       {active && <X className="ml-1 h-3 w-3" />}
     </Button>
   );
