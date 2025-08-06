@@ -226,10 +226,10 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
     }
   };
 
-  // Store execution record
+  // Store execution record for scraping phase
   await supabase.from('pipeline_executions').insert({
     id: execution_id,
-    execution_type: execution.execution_type,
+    execution_type: 'scraping',
     status: execution.status,
     config: execution.config,
     metrics: execution.metrics,
@@ -253,8 +253,33 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
     // Phase 2: AI Processing Pipeline (if enabled)
     if (execution.config.enable_ai_processing) {
       console.log('🤖 Phase 2: AI Content Processing');
+      
+      // Create separate execution record for AI processing
+      const ai_execution_id = `ai-${Date.now()}`;
+      await supabase.from('pipeline_executions').insert({
+        id: ai_execution_id,
+        execution_type: 'ai_processing',
+        status: 'running',
+        config: execution.config,
+        metrics: { pages_to_process: execution.metrics.pages_scraped },
+        started_at: new Date().toISOString()
+      });
+      
       const processingResults = await triggerProcessingPipeline(execution.config, supabase);
       execution.metrics.subsidies_extracted = processingResults.subsidies_created;
+      
+      // Update AI processing execution
+      await supabase.from('pipeline_executions').update({
+        status: 'completed',
+        processed_count: execution.metrics.pages_scraped,
+        success_count: processingResults.subsidies_created,
+        failure_count: processingResults.processing_errors,
+        metrics: { 
+          subsidies_extracted: processingResults.subsidies_created,
+          processing_errors: processingResults.processing_errors
+        },
+        completed_at: new Date().toISOString()
+      }).eq('id', ai_execution_id);
     }
 
     // Phase 3: Form Generation (if enabled)
@@ -270,9 +295,12 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
     execution.metrics.success_rate = calculateSuccessRate(execution.metrics);
     execution.status = 'completed';
 
-    // Update execution record
+    // Update scraping execution record
     await supabase.from('pipeline_executions').update({
       status: execution.status,
+      processed_count: execution.metrics.pages_scraped,
+      success_count: execution.metrics.pages_scraped,
+      failure_count: Math.max(0, execution.metrics.pages_discovered - execution.metrics.pages_scraped),
       metrics: execution.metrics,
       completed_at: new Date().toISOString()
     }).eq('id', execution_id);
