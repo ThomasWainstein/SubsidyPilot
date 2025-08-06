@@ -38,6 +38,38 @@ serve(async (req) => {
       throw new Error('Subsidy not found');
     }
 
+    // Check for existing extraction status to avoid duplicates
+    const { data: existingStatus } = await supabase
+      .from('document_extraction_status')
+      .select('*')
+      .eq('subsidy_id', subsidyId)
+      .single();
+
+    // If status is stuck in processing for more than 5 minutes, reset it
+    if (existingStatus && existingStatus.extraction_status === 'processing') {
+      const processingTime = new Date().getTime() - new Date(existingStatus.created_at).getTime();
+      if (processingTime > 5 * 60 * 1000) { // 5 minutes
+        console.log('⚠️ Resetting stuck processing status');
+        await supabase
+          .from('document_extraction_status')
+          .update({
+            extraction_status: 'failed',
+            extraction_errors: [{ error: 'Processing timeout - retrying extraction' }],
+            updated_at: new Date().toISOString()
+          })
+          .eq('subsidy_id', subsidyId);
+      } else if (!forceExtraction) {
+        console.log('ℹ️ Extraction already in progress, skipping...');
+        return new Response(JSON.stringify({
+          success: true,
+          extraction_status: 'processing',
+          message: 'Extraction already in progress'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Check if enhanced extraction data exists
     if (!subsidy.raw_content || !subsidy.raw_content.enhanced_data) {
       // Trigger enhanced extraction first
@@ -58,18 +90,19 @@ serve(async (req) => {
         throw new Error(`Enhanced extraction failed: ${enhancedData.error}`);
       }
 
-      // Refresh subsidy data
+      // Refresh subsidy data with the updated enhanced data
       const { data: refreshedSubsidy, error: refreshError } = await supabase
         .from('subsidies')
         .select('*')
-        .eq('id', subsidyId)
+        .eq('source_url', subsidy.source_url) // Use source_url since that's what enhanced extraction updates
         .single();
 
       if (refreshError || !refreshedSubsidy) {
-        throw new Error('Failed to refresh subsidy data after enhanced extraction');
+        console.warn('⚠️ Could not refresh subsidy data, using original');
+      } else {
+        console.log('✅ Successfully refreshed subsidy data');
+        Object.assign(subsidy, refreshedSubsidy);
       }
-
-      subsidy.raw_content = refreshedSubsidy.raw_content;
     }
 
     // Now try to detect actual application forms from documents
