@@ -235,7 +235,7 @@ serve(async (req) => {
         .from('raw_scraped_pages')
         .select('*')
         .in('id', page_ids)
-        .in('status', ['scraped', 'raw']); // Accept both statuses
+        .eq('status', 'scraped'); // Only process unprocessed pages
       
       if (error) throw error;
       pagesToProcess = pages || [];
@@ -244,7 +244,7 @@ serve(async (req) => {
       const query = supabase
         .from('raw_scraped_pages')
         .select('*')
-        .in('status', ['scraped', 'raw']); // Accept both scraped and raw status
+        .eq('status', 'scraped'); // Only process 'scraped' status, not 'processed'
       
       if (source && source !== 'all') {
         query.eq('source_site', source);
@@ -268,36 +268,11 @@ serve(async (req) => {
           const extractedData = await extractSubsidyData(page, openaiClient, source);
           
           if (extractedData && extractedData.confidence >= quality_threshold) {
-            // Store in subsidies_structured table with proper error handling
             try {
-              // First create a raw_log entry to satisfy foreign key constraint
-              const { data: rawLogEntry, error: rawLogError } = await supabase
-                .from('raw_logs')
-                .insert({
-                  id: page.id, // Use the same ID as the scraped page
-                  payload: JSON.stringify({
-                    source_url: page.source_url,
-                    scrape_date: page.scrape_date,
-                    source_site: page.source_site
-                  }),
-                  text_markdown: page.text_markdown,
-                  raw_markdown: page.raw_markdown,
-                  combined_content_markdown: page.combined_content_markdown,
-                  processed: true,
-                  processed_at: new Date().toISOString()
-                })
-                .select()
-                .single();
-
-              if (rawLogError && rawLogError.code !== '23505') { // Ignore duplicate key errors
-                console.warn('⚠️ Failed to create raw_log entry:', rawLogError);
-              }
-
-              // Now insert into subsidies_structured
+              // Insert directly into subsidies_structured without raw_logs dependency
               const { data: insertedSubsidy, error: insertError } = await supabase
                 .from('subsidies_structured')
                 .insert({
-                  raw_log_id: page.id,
                   url: page.source_url,
                   title: extractedData.title,
                   description: extractedData.description,
