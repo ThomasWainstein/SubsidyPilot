@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
-import { HierarchicalSubsidyDisplay } from '@/components/subsidy/HierarchicalSubsidyDisplay';
-import { NewComprehensiveSubsidyDisplay } from '@/components/subsidy/NewComprehensiveSubsidyDisplay';
+import { SimpleSubsidyDisplay } from '@/components/subsidy/SimpleSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
 import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
@@ -182,20 +181,9 @@ const SubsidyDetailPage = () => {
             </Button>
           </div>
 
-          {/* Comprehensive or Hierarchical Subsidy Display */}
+          {/* Direct Comprehensive Subsidy Display - No Tabs! */}
           <div className="space-y-6">
-            {(subsidy.audit as any)?.comprehensive_sections && (subsidy.audit as any).comprehensive_sections.length > 0 ? (
-              <NewComprehensiveSubsidyDisplay 
-                subsidy={subsidy} 
-                currentLanguage={language}
-              />
-            ) : (
-              <HierarchicalSubsidyDisplay 
-                subsidy={subsidy} 
-                extractedData={extractedData}
-                currentLanguage={language}
-              />
-            )}
+            <SimpleSubsidyDisplay subsidy={subsidy} />
             
             {/* Schema Extraction Status */}
             <SchemaExtractionStatus
