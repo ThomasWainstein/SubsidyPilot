@@ -8,6 +8,28 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 };
 
+// Site configuration inspired by GitHub scraper
+interface SiteConfig {
+  base_url: string;
+  list_page_pattern: string;
+  detail_page_pattern?: string;
+  link_selector: string;
+  wait_selector: string;
+  fallback_wait_selector?: string;
+  exclude_url_patterns: string[];
+  pagination_type: 'page_number' | 'infinite_scroll' | 'next_button';
+  empty_result_indicators: string[];
+}
+
+interface HarvesterConfig {
+  site_name: string;
+  max_pages: number;
+  max_urls?: number;
+  start_page?: number;
+  enable_pagination: boolean;
+  respect_delays: boolean;
+}
+
 interface ScrapingSession {
   session_id: string;
   target_sources: string[];
@@ -20,16 +42,186 @@ interface ScrapingSession {
   processing_status: 'discovering' | 'scraping' | 'processing' | 'complete';
 }
 
-const FRENCH_SELECTORS = {
-  title: 'h1.page-title, .aide-title, .dispositif-title, h1',
-  amount: '.montant, .budget, .financement-montant, .amount',
-  deadline: '.date-limite, .echeance, .periode-depot, .deadline',
-  description: '.description, .resume, .objectifs, .content',
-  eligibility: '.conditions, .beneficiaires, .eligibilite, .eligible',
-  regions: '.zones-eligibles, .territoires, .regions, .zone',
-  documents: '.documents a[href$=".pdf"], .telecharger a, a[href*=".pdf"]',
-  sectors: '.filieres, .secteurs, .productions, .sector'
+const SITE_CONFIGS: Record<string, SiteConfig> = {
+  'franceagrimer': {
+    base_url: 'https://www.franceagrimer.fr',
+    list_page_pattern: 'https://www.franceagrimer.fr/rechercher-une-aide?page={page}',
+    detail_page_pattern: 'https://www.franceagrimer.fr/aides/par-programme/aides-de-crises',
+    link_selector: 'h3.fr-card__title a[href*="/aides/"], .fr-card h3 a[href*="/aides/"], .fr-card a[href*="/aides/"]',
+    wait_selector: 'div#search-results article.fr-card h3.fr-card__title',
+    fallback_wait_selector: '.fr-card, .aide-item',
+    exclude_url_patterns: ['javascript:', 'mailto:', '#', '/rechercher-une-aide', '/par-programme'],
+    pagination_type: 'page_number',
+    empty_result_indicators: [
+      "Votre recherche n'a retourné aucun résultat",
+      "No results found", 
+      "Aucun résultat",
+      "0 résultat"
+    ]
+  }
 };
+
+// Smart URL Collector implementation inspired by GitHub scraper
+class SmartUrlCollector {
+  private config: SiteConfig;
+  private collectedUrls: Set<string> = new Set();
+  private processedPages: number = 0;
+
+  constructor(config: SiteConfig) {
+    this.config = config;
+  }
+
+  async collectDetailUrls(harvesterConfig: HarvesterConfig): Promise<string[]> {
+    console.log(`🔍 Starting smart URL collection for ${harvesterConfig.site_name}`);
+    console.log(`📊 Config: max_pages=${harvesterConfig.max_pages}, max_urls=${harvesterConfig.max_urls || 'unlimited'}`);
+
+    // Strategy 1: Try direct crisis aids page for individual subsidies
+    await this.collectFromDirectPage();
+
+    // Strategy 2: If we need more URLs, use pagination
+    if (harvesterConfig.enable_pagination && this.collectedUrls.size < (harvesterConfig.max_urls || 50)) {
+      await this.collectFromPagination(harvesterConfig.start_page || 0, harvesterConfig.max_pages, harvesterConfig.max_urls);
+    }
+
+    console.log(`✅ Collection complete: ${this.collectedUrls.size} unique URLs from ${this.processedPages} pages`);
+    return Array.from(this.collectedUrls);
+  }
+
+  private async collectFromDirectPage(): Promise<void> {
+    try {
+      const directUrl = 'https://www.franceagrimer.fr/aides/par-programme/aides-de-crises';
+      console.log(`📄 Fetching direct crisis aids page: ${directUrl}`);
+      
+      const response = await fetch(directUrl);
+      if (!response.ok) {
+        console.warn(`⚠️ Direct page failed: ${response.status}`);
+        return;
+      }
+
+      const html = await response.text();
+      const urls = this.extractUrlsFromHtml(html, directUrl);
+      
+      console.log(`📊 Found ${urls.length} URLs from direct crisis aids page`);
+      urls.forEach(url => this.collectedUrls.add(url));
+      
+      if (urls.length > 0) {
+        this.processedPages++;
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching direct page: ${error.message}`);
+    }
+  }
+
+  private async collectFromPagination(startPage: number, maxPages: number, maxUrls?: number): Promise<void> {
+    console.log(`📑 Starting pagination from page ${startPage} to ${startPage + maxPages - 1}`);
+    
+    for (let page = startPage; page < startPage + maxPages; page++) {
+      try {
+        const pageUrl = this.config.list_page_pattern.replace('{page}', page.toString());
+        console.log(`📄 Fetching page ${page}: ${pageUrl}`);
+        
+        const response = await fetch(pageUrl);
+        if (!response.ok) {
+          console.warn(`⚠️ Page ${page} failed: ${response.status}`);
+          continue;
+        }
+
+        const html = await response.text();
+        
+        // Check for empty results
+        if (this.hasEmptyResults(html)) {
+          console.log(`📭 Empty results detected on page ${page}, stopping pagination`);
+          break;
+        }
+
+        const urls = this.extractUrlsFromHtml(html, pageUrl);
+        console.log(`📊 Page ${page}: found ${urls.length} URLs`);
+        
+        if (urls.length === 0) {
+          console.log(`📭 No URLs found on page ${page}, stopping pagination`);
+          break;
+        }
+
+        const initialSize = this.collectedUrls.size;
+        urls.forEach(url => this.collectedUrls.add(url));
+        const newUrls = this.collectedUrls.size - initialSize;
+        
+        console.log(`📈 Added ${newUrls} new URLs (total: ${this.collectedUrls.size})`);
+        this.processedPages++;
+
+        // Check max_urls limit
+        if (maxUrls && this.collectedUrls.size >= maxUrls) {
+          console.log(`🎯 Reached max_urls limit (${maxUrls}), stopping pagination`);
+          break;
+        }
+
+        // Respectful delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`❌ Error on page ${page}: ${error.message}`);
+        continue;
+      }
+    }
+  }
+
+  private extractUrlsFromHtml(html: string, baseUrl: string): string[] {
+    const urls: string[] = [];
+    
+    try {
+      // Use regex to extract href attributes matching our selector patterns
+      const linkPatterns = [
+        /href="([^"]*\/aides\/[^"]*)"[^>]*>/g,
+        /href="([^"]*aide[^"]*)"[^>]*>/g
+      ];
+
+      for (const pattern of linkPatterns) {
+        let match;
+        while ((match = pattern.exec(html)) !== null) {
+          const href = match[1];
+          if (href && this.isValidDetailUrl(href, baseUrl)) {
+            const fullUrl = href.startsWith('http') ? href : new URL(href, baseUrl).toString();
+            urls.push(fullUrl);
+          }
+        }
+      }
+
+      // Remove duplicates
+      return Array.from(new Set(urls));
+      
+    } catch (error) {
+      console.error(`❌ Error extracting URLs: ${error.message}`);
+      return [];
+    }
+  }
+
+  private isValidDetailUrl(href: string, baseUrl: string): boolean {
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:')) {
+      return false;
+    }
+
+    // Check against exclusion patterns
+    for (const pattern of this.config.exclude_url_patterns) {
+      if (href.toLowerCase().includes(pattern.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Must contain '/aides/' and be for specific subsidies
+    if (!href.includes('/aides/') || href.includes('/par-programme') || href.includes('/rechercher-une-aide')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private hasEmptyResults(html: string): boolean {
+    const lowercaseHtml = html.toLowerCase();
+    return this.config.empty_result_indicators.some(indicator => 
+      lowercaseHtml.includes(indicator.toLowerCase())
+    );
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -115,7 +307,7 @@ serve(async (req) => {
         // Continue execution even if logging fails
       }
 
-      // Discover and scrape subsidy pages
+      // Discover and scrape subsidy pages using smart collector
       const scrapedPages = await discoverAndScrapePages(session, supabase);
       
       console.log(`📊 Scraped ${scrapedPages.length} pages from FranceAgriMer`);
@@ -140,6 +332,7 @@ serve(async (req) => {
         success: true,
         session_id,
         pages_scraped: scrapedPages.length,
+        pages_discovered: scrapedPages.length,
         message: 'FranceAgriMer harvesting completed',
         scraped_pages: scrapedPages
       }), {
@@ -167,139 +360,86 @@ serve(async (req) => {
 async function discoverAndScrapePages(session: ScrapingSession, supabase: any): Promise<any[]> {
   const scrapedPages: any[] = [];
   
-  for (const baseUrl of session.target_sources) {
+  // Use smart URL collection inspired by GitHub scraper
+  const config = SITE_CONFIGS['franceagrimer'];
+  const collector = new SmartUrlCollector(config);
+  
+  const harvesterConfig: HarvesterConfig = {
+    site_name: 'franceagrimer',
+    max_pages: session.extraction_config.max_pages_per_source,
+    max_urls: 50, // Reasonable limit
+    start_page: 0,
+    enable_pagination: true,
+    respect_delays: true
+  };
+
+  console.log(`🚀 Starting smart discovery with config:`, harvesterConfig);
+
+  // Collect URLs using the smart collector
+  const subsidyUrls = await collector.collectDetailUrls(harvesterConfig);
+  console.log(`🔗 Smart collection found ${subsidyUrls.length} subsidy URLs`);
+  
+  // Scrape individual subsidy pages
+  for (const url of subsidyUrls) {
     try {
-      console.log(`🔍 Discovering pages from: ${baseUrl}`);
+      console.log(`🔍 Scraping: ${url}`);
+      const pageContent = await scrapeSubsidyPage(url);
       
-      // Enhanced fetch with better headers and error handling
-      const response = await fetch(baseUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        method: 'GET'
-      });
+      const pageData = {
+        source_url: url,
+        source_site: 'franceagrimer',
+        raw_html: pageContent.html,
+        raw_text: pageContent.text,
+        raw_markdown: pageContent.markdown,
+        text_markdown: pageContent.text,
+        combined_content_markdown: pageContent.markdown,
+        attachment_paths: pageContent.documents || [],
+        attachment_count: (pageContent.documents || []).length,
+        status: 'scraped',
+        scrape_date: new Date().toISOString()
+      };
       
-      if (!response.ok) {
-        console.warn(`⚠️ Failed to fetch ${baseUrl}: ${response.status} ${response.statusText}`);
-        continue;
-      }
+      const { data: insertedPage, error } = await supabase
+        .from('raw_scraped_pages')
+        .insert(pageData)
+        .select()
+        .single();
       
-      const html = await response.text();
-      console.log(`📄 Retrieved ${html.length} characters from ${baseUrl}`);
-      
-      const subsidyUrls = extractSubsidyUrls(html, baseUrl);
-      console.log(`🔗 Found ${subsidyUrls.length} subsidy URLs`);
-      
-      // Scrape individual subsidy pages (limited by max_pages)
-      const urlsToScrape = subsidyUrls.slice(0, session.extraction_config.max_pages_per_source);
-      
-      for (const url of urlsToScrape) {
-        try {
-          console.log(`🔍 Scraping: ${url}`);
-          const pageContent = await scrapeSubsidyPage(url);
+      if (error) {
+        if (error.code === '23505') {
+          // URL already exists, skip with warning
+          console.warn(`⚠️ URL already exists, skipping: ${url}`);
           
-          const pageData = {
-            source_url: url,
-            source_site: 'franceagrimer',
-            raw_html: pageContent.html,
-            raw_text: pageContent.text,
-            raw_markdown: pageContent.markdown,
-            text_markdown: pageContent.text,
-            combined_content_markdown: pageContent.markdown,
-            attachment_paths: pageContent.documents || [],
-            attachment_count: (pageContent.documents || []).length,
-            status: 'scraped',
-            scrape_date: new Date().toISOString()
-          };
-          
-          const { data: insertedPage, error } = await supabase
+          // Get existing page for AI processing
+          const { data: existingPage } = await supabase
             .from('raw_scraped_pages')
-            .insert(pageData)
-            .select()
+            .select('*')
+            .eq('source_url', url)
             .single();
           
-          if (error) {
-            if (error.code === '23505') {
-              // URL already exists, skip with warning
-              console.warn(`⚠️ URL already exists, skipping: ${url}`);
-              
-              // Get existing page for AI processing
-              const { data: existingPage } = await supabase
-                .from('raw_scraped_pages')
-                .select('*')
-                .eq('source_url', url)
-                .single();
-              
-              if (existingPage) {
-                scrapedPages.push(existingPage);
-                console.log(`✅ Using existing page: ${url}`);
-              }
-            } else {
-              console.error('❌ Failed to store page:', error);
-            }
-          } else {
-            scrapedPages.push(insertedPage);
-            console.log(`✅ Scraped and stored: ${url}`);
+          if (existingPage) {
+            scrapedPages.push(existingPage);
+            console.log(`✅ Using existing page: ${url}`);
           }
-          
-          // Rate limiting to be respectful
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-        } catch (pageError) {
-          console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
+        } else {
+          console.error('❌ Failed to store page:', error);
         }
+      } else {
+        scrapedPages.push(insertedPage);
+        console.log(`✅ Scraped and stored: ${url}`);
       }
       
-    } catch (error) {
-      console.error(`❌ Error processing ${baseUrl}:`, error);
+      // Rate limiting to be respectful (inspired by GitHub delays)
+      if (harvesterConfig.respect_delays) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+    } catch (pageError) {
+      console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
     }
   }
   
   return scrapedPages;
-}
-
-function extractSubsidyUrls(html: string, baseUrl: string): string[] {
-  const urls: string[] = [];
-  
-  // Extract URLs from various patterns common in FranceAgriMer
-  const patterns = [
-    /href="([^"]*\/aide[^"]*)"/, // Direct aide URLs
-    /href="([^"]*\/dispositif[^"]*)"/, // Dispositif URLs  
-    /href="([^"]*\/financement[^"]*)"/, // Financement URLs
-    /href="([^"]*\.php\?[^"]*aide[^"]*)"/ // Dynamic aide URLs
-  ];
-  
-  patterns.forEach(pattern => {
-    const matches = html.matchAll(new RegExp(pattern.source, 'gi'));
-    for (const match of matches) {
-      const url = match[1];
-      if (url && !url.startsWith('#') && !url.startsWith('javascript:')) {
-        const fullUrl = url.startsWith('http') ? url : new URL(url, baseUrl).toString();
-        if (!urls.includes(fullUrl)) {
-          urls.push(fullUrl);
-        }
-      }
-    }
-  });
-  
-  // Also extract from common list structures
-  const listMatches = html.matchAll(/<a[^>]+href="([^"]+)"[^>]*>[^<]*(?:aide|subvention|financement)/gi);
-  for (const match of listMatches) {
-    const url = match[1];
-    if (url && !url.startsWith('#')) {
-      const fullUrl = url.startsWith('http') ? url : new URL(url, baseUrl).toString();
-      if (!urls.includes(fullUrl)) {
-        urls.push(fullUrl);
-      }
-    }
-  }
-  
-  return urls.filter(url => url.includes('franceagrimer.fr'));
 }
 
 async function scrapeSubsidyPage(url: string): Promise<{html: string, text: string, markdown: string, documents: string[]}> {
