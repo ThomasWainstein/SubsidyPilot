@@ -55,6 +55,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   totalHectares: 'total_hectares',
   activities: 'land_use_types',
   cropTypes: 'land_use_types',
+  landUseTypes: 'land_use_types',
   
   // Livestock
   livestockPresent: 'livestock_present',
@@ -209,10 +210,17 @@ export function mapExtractionToForm(extractionData: ExtractionData): MappingResu
   logger.step('Starting extraction to form mapping', { extractionData });
   
   try {
-    // Extract the actual fields from the nested structure
-    // Edge function returns: { extractedFields: {...}, confidence: ..., etc }
-    // But we need to map the extractedFields object
+    // Handle different extraction result structures
+    // OpenAI extraction returns: { extractedFields: {...}, confidence: ..., etc }
+    // Local extraction returns data directly: { farmName: '...', ownerName: '...', etc }
     const fieldsToMap = extractionData.extractedFields || extractionData;
+    
+    // If fieldsToMap is a string (like "merge"), that indicates an error in the calling code
+    if (typeof fieldsToMap === 'string') {
+      console.error('Extraction data is a string instead of object:', fieldsToMap);
+      throw new Error(`Invalid extraction data format: received string "${fieldsToMap}"`);
+    }
+    
     
     logger.debug('Fields to map extracted', { fieldsToMap, originalStructure: extractionData });
     
