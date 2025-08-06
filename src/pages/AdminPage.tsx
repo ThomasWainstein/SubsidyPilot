@@ -12,6 +12,7 @@ import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipeline
 import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfig';
 import { RealTimeMonitoring } from '@/components/admin/RealTimeMonitoring';
 import { AIProcessingControl } from '@/components/admin/AIProcessingControl';
+import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -90,8 +91,11 @@ const AdminPage = () => {
           <StatusDashboard />
 
           {/* Main Admin Tabs */}
-          <Tabs defaultValue="pipeline" className="w-full">
-            <TabsList className="grid w-full grid-cols-7 h-12">
+          <Tabs defaultValue="health" className="w-full">
+            <TabsList className="grid w-full grid-cols-8 h-12">
+              <TabsTrigger value="health" className="flex items-center gap-2">
+                🏥 Health
+              </TabsTrigger>
               <TabsTrigger value="pipeline" className="flex items-center gap-2">
                 🔄 Pipeline
               </TabsTrigger>
@@ -114,6 +118,10 @@ const AdminPage = () => {
                 📤 Import
               </TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="health" className="mt-6">
+              <SystemHealthDashboard />
+            </TabsContent>
             
             <TabsContent value="pipeline" className="mt-6">
               <EnhancedDualPipelineManager />

@@ -214,7 +214,7 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
       max_pages_per_country: config.max_pages_per_country || 20,
       enable_ai_processing: config.enable_ai_processing !== false,
       enable_form_generation: config.enable_form_generation !== false,
-      quality_threshold: config.quality_threshold || 0.7
+      quality_threshold: config.quality_threshold || 0.4  // Lowered from 0.7 to 0.4
     },
     metrics: {
       pages_discovered: 0,
@@ -362,7 +362,7 @@ async function triggerProcessingPipeline(config: any, supabase: any) {
       return await supabase.functions.invoke('ai-content-processor', {
         body: {
           source: 'all', // Process all unprocessed pages
-          quality_threshold: config.quality_threshold || 0.7
+          quality_threshold: config.quality_threshold || 0.4  // Lowered threshold
         }
       });
     }, 2, 10000); // 2 retries with 10s base delay

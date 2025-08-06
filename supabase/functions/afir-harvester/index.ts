@@ -43,11 +43,14 @@ serve(async (req) => {
 
     if (action === 'scrape') {
       const session_id = `afir-${Date.now()}`;
+      // Updated Romanian URLs with working alternatives
       const target_sources = target_urls || [
-        'https://www.afir.info/sesiune_finantare',
-        'https://www.afir.info/masuri', 
-        'https://www.madr.ro/pndr-2014-2020',
-        'https://ampro.ro/fonduri-europene'
+        'https://www.afir.info/masuri-201920',  // Updated URL for current measures
+        'https://www.afir.info/',  // Main AFIR page
+        'https://www.madr.ro/acasa',  // Updated MADR URL
+        'https://www.fonduri-ue.ro/fonduri-europene',  // Alternative EU funds site
+        'https://mfe.gov.ro/fonduri-europene/',  // Ministry of European Funds
+        'https://www.pnrr.gov.ro/finantari/'  // PNRR funding opportunities
       ];
 
       // Log session start

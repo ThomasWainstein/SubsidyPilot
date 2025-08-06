@@ -259,41 +259,75 @@ serve(async (req) => {
           const extractedData = await extractSubsidyData(page, openaiClient, source);
           
           if (extractedData && extractedData.confidence >= quality_threshold) {
-            // Store in subsidies_structured table
-            const { data: insertedSubsidy, error: insertError } = await supabase
-              .from('subsidies_structured')
-              .insert({
-                raw_log_id: page.id,
-                url: page.source_url,
-                title: extractedData.title,
-                description: extractedData.description,
-                amount: extractedData.amount,
-                deadline: extractedData.deadline,
-                eligibility: extractedData.eligibility,
-                program: extractedData.program,
-                agency: extractedData.agency,
-                region: extractedData.regions || [],
-                sector: extractedData.sectors || [],
-                language: extractedData.language || [getLanguageFromSource(source)],
-                scrape_date: page.scrape_date,
-                source_url_verified: page.source_url
-              })
-              .select()
-              .single();
-            
-            if (insertError) {
-              console.error('❌ Failed to insert structured subsidy:', insertError);
-              throw new Error(`Insert failed: ${insertError.message}`);
-            } else {
-              console.log(`✅ Processed and stored: ${extractedData.title}`);
+            // Store in subsidies_structured table with proper error handling
+            try {
+              // First create a raw_log entry to satisfy foreign key constraint
+              const { data: rawLogEntry, error: rawLogError } = await supabase
+                .from('raw_logs')
+                .insert({
+                  id: page.id, // Use the same ID as the scraped page
+                  payload: JSON.stringify({
+                    source_url: page.source_url,
+                    scrape_date: page.scrape_date,
+                    source_site: page.source_site
+                  }),
+                  text_markdown: page.text_markdown,
+                  raw_markdown: page.raw_markdown,
+                  combined_content_markdown: page.combined_content_markdown,
+                  processed: true,
+                  processed_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+              if (rawLogError && rawLogError.code !== '23505') { // Ignore duplicate key errors
+                console.warn('⚠️ Failed to create raw_log entry:', rawLogError);
+              }
+
+              // Now insert into subsidies_structured
+              const { data: insertedSubsidy, error: insertError } = await supabase
+                .from('subsidies_structured')
+                .insert({
+                  raw_log_id: page.id,
+                  url: page.source_url,
+                  title: extractedData.title,
+                  description: extractedData.description,
+                  amount: extractedData.amount,
+                  deadline: extractedData.deadline,
+                  eligibility: extractedData.eligibility,
+                  program: extractedData.program,
+                  agency: extractedData.agency,
+                  region: extractedData.regions || [],
+                  sector: extractedData.sectors || [],
+                  language: getLanguageFromSource(source),
+                  scrape_date: page.scrape_date,
+                  source_url_verified: page.source_url,
+                  audit: {
+                    extraction_confidence: extractedData.confidence,
+                    extraction_timestamp: new Date().toISOString(),
+                    source_processor: 'ai-content-processor-v2'
+                  }
+                })
+                .select()
+                .single();
               
-              // Update page status
-              await supabase
-                .from('raw_scraped_pages')
-                .update({ status: 'processed' })
-                .eq('id', page.id);
-              
-              return insertedSubsidy;
+              if (insertError) {
+                console.error('❌ Failed to insert structured subsidy:', insertError);
+                throw new Error(`Insert failed: ${insertError.message}`);
+              } else {
+                console.log(`✅ Processed and stored: ${extractedData.title}`);
+                
+                // Update page status
+                await supabase
+                  .from('raw_scraped_pages')
+                  .update({ status: 'processed' })
+                  .eq('id', page.id);
+                
+                return insertedSubsidy;
+              }
+            } catch (dbError) {
+              console.error('❌ Database operation failed:', dbError);
+              throw dbError;
             }
           } else {
             const confidence = extractedData?.confidence || 0;
@@ -353,32 +387,43 @@ serve(async (req) => {
 async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?: string): Promise<any> {
   const language = getLanguageFromSource(source);
   
-  const systemPrompt = `You are an expert at extracting structured subsidy information from government websites.
+  const systemPrompt = `You are an expert at extracting structured subsidy information from government websites in ${language === 'fr' ? 'French' : language === 'ro' ? 'Romanian' : 'English'}.
+
 Extract the following information from the provided text and return it as JSON:
 
 {
-  "title": "Exact title of the subsidy/grant",
-  "description": "Clear, concise description of what the subsidy supports",
-  "amount": [array of numbers representing funding amounts],
-  "deadline": "Application deadline if mentioned (YYYY-MM-DD format)",
-  "eligibility": "Who can apply and requirements",
-  "program": "Program or scheme name",
-  "agency": "Government agency providing the funding", 
-  "regions": ["array", "of", "eligible", "regions"],
-  "sectors": ["array", "of", "eligible", "sectors"],
-  "language": ["${language}"],
-  "confidence": 0.9
+  "title": "Exact title of the subsidy/grant program",
+  "description": "Clear, detailed description of what the subsidy supports and its objectives",
+  "amount": [array of numbers representing funding amounts in euros],
+  "deadline": "Application deadline if mentioned (YYYY-MM-DD format, or null if not found)",
+  "eligibility": "Detailed requirements: who can apply, conditions, criteria",
+  "program": "Official program or scheme name",
+  "agency": "Government agency or institution providing the funding", 
+  "regions": ["array", "of", "eligible", "geographic", "regions"],
+  "sectors": ["array", "of", "eligible", "economic", "sectors"],
+  "language": "${language}",
+  "confidence": 0.8
 }
 
-Focus on accuracy. If information is not clearly stated, use null for that field.
-Set confidence between 0.0-1.0 based on how clear and complete the extraction is.`;
+IMPORTANT GUIDELINES:
+- Be generous with information extraction - include relevant details even if not perfectly structured
+- For amounts, extract any monetary values mentioned (minimum, maximum, average)
+- For deadlines, look for application periods, submission dates, or closing dates
+- For eligibility, include all relevant criteria: legal forms, geographic restrictions, sector requirements
+- For regions, include departments, counties, or administrative areas mentioned
+- For sectors, include industries, activities, or target beneficiaries
+- Set confidence between 0.3-1.0: 0.3-0.5 for basic info, 0.6-0.8 for good extraction, 0.9-1.0 for complete data
+- If the page contains subsidy/grant information but details are unclear, still extract what you can with lower confidence
 
-  // Optimize content for AI processing
+If no subsidy information is found, return confidence: 0.1`;
+
+  // Optimize content for AI processing with better context preservation
   const content = ContentProcessor.optimizeContentForAI(
     page.combined_content_markdown || 
     page.text_markdown || 
     page.raw_text || 
-    'No content available'
+    'No content available',
+    12000  // Increased token limit for better extraction
   );
 
   const userPrompt = `Extract subsidy information from this ${source || 'government'} website content:
