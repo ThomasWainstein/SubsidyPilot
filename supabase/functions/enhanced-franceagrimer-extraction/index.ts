@@ -72,7 +72,7 @@ Output this EXACT JSON structure:
     {
       "title": "EXACT document title as shown",
       "filename": "actual-filename.pdf",
-      "url": "full download URL",
+      "url": "https://www.franceagrimer.fr/full/path/to/document.pdf",
       "type": "pdf|docx|xlsx|etc",
       "size": "file size if shown (e.g. 84.55 KB)",
       "date": "date if shown",
@@ -144,10 +144,19 @@ EXTRACTION RULES:
 - If a section is not found, set to null or empty array
 - Extract complete text blocks, don't summarize
 - For documents, use EXACT titles as shown on page
-- Convert relative URLs to absolute URLs
+- For document URLs: Find actual download links from href attributes, NOT constructed paths
+- Extract absolute URLs starting with https://www.franceagrimer.fr/
+- DO NOT construct URLs by appending filenames to the base page URL
+- Look for download links in the HTML, often in <a> tags with href to PDF files
 - Preserve all formatting in content fields
 - Extract ALL dates and convert to YYYY-MM-DD format
-- Include ALL contact information found anywhere on page`;
+- Include ALL contact information found anywhere on page
+
+CRITICAL FOR DOCUMENTS:
+- Look for actual download links in the HTML: <a href="https://www.franceagrimer.fr/Programmes-et-services/services/Documents/..." 
+- DO NOT create URLs like base_url + filename
+- Only include documents with valid, complete URLs that start with https://
+- If you cannot find the actual download URL, omit the document rather than guessing`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -302,12 +311,14 @@ ${allTabContent.substring(0, 50000)}`
     // Get existing subsidy ID if it exists
     const { data: existingSubsidy } = await supabase
       .from('subsidies')
-      .select('id')
+      .select('id, code')
       .eq('source_url', url)
       .maybeSingle();
 
     // Map to database format matching the 'subsidies' table schema
     const mappedData = {
+      ...(existingSubsidy?.id && { id: existingSubsidy.id }),
+      code: existingSubsidy?.code || url,
       source_url: url,
       title: { fr: extractedData.title || 'Extracted Title' },
       agency: extractedData.agency || 'FranceAgriMer',
@@ -316,8 +327,8 @@ ${allTabContent.substring(0, 50000)}`
       description: { fr: extractedData.presentation?.content || '' },
       eligibility_criteria: { fr: extractedData.eligibility?.content || '' },
       
-      // Documents with complete metadata  
-      documents: extractedData.documents || [],
+      // Documents with validated URLs only
+      documents: validateAndCleanDocuments(extractedData.documents || []),
       
       // Timing information
       deadline: extractedData.timeline?.deadline || extractedData.timeline?.application_period_end || null,
@@ -379,7 +390,7 @@ ${allTabContent.substring(0, 50000)}`
     console.log('💾 Storing enhanced extraction...');
     const { data: subsidyData, error: upsertError } = await supabase
       .from('subsidies')
-      .upsert(mappedData, { onConflict: 'source_url' })
+      .upsert(mappedData, { onConflict: 'code' })
       .select('id')
       .single();
 
@@ -564,4 +575,35 @@ function extractFundingAmount(text: string | undefined, isMax: boolean = false):
   
   // Return minimum or maximum based on parameter
   return isMax ? uniqueAmounts[uniqueAmounts.length - 1] : uniqueAmounts[0];
+}
+
+// Helper function to validate and clean document URLs
+function validateAndCleanDocuments(documents: any[]): any[] {
+  return documents
+    .filter(doc => {
+      // Only keep documents with valid URLs
+      if (!doc.url || typeof doc.url !== 'string') {
+        console.warn('⚠️ Document missing URL:', doc.title);
+        return false;
+      }
+      
+      // Must be a valid franceagrimer.fr URL
+      if (!doc.url.startsWith('https://www.franceagrimer.fr/')) {
+        console.warn('⚠️ Invalid document URL (not franceagrimer.fr):', doc.url);
+        return false;
+      }
+      
+      // Should not be the base page URL
+      if (doc.url.includes('aide-en-faveur-dinvestissements-realises-pour-la-production-de-plantes-parfum-aromatiques-et/') && 
+          !doc.url.includes('.pdf') && !doc.url.includes('.docx') && !doc.url.includes('.xlsx')) {
+        console.warn('⚠️ Document URL appears to be page URL, not download URL:', doc.url);
+        return false;
+      }
+      
+      return true;
+    })
+    .map(doc => ({
+      ...doc,
+      url: doc.url.trim() // Clean up any whitespace
+    }));
 }
