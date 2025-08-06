@@ -188,22 +188,12 @@ serve(async (req) => {
       }
     }
 
-    // Fetch page content
-    console.log('📄 Fetching page content...');
-    const pageResponse = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
+    // Fetch page content with tab navigation
+    console.log('📄 Fetching complete page content with all tabs...');
+    const allTabContent = await fetchAllTabContent(url);
+    console.log(`📄 Complete content: ${allTabContent.length} characters`);
 
-    if (!pageResponse.ok) {
-      throw new Error(`Failed to fetch page: ${pageResponse.status}`);
-    }
-
-    const pageContent = await pageResponse.text();
-    console.log(`📄 Page content: ${pageContent.length} characters`);
-
-    // Extract with OpenAI
+    // Extract with OpenAI using all tab content
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
@@ -229,8 +219,8 @@ serve(async (req) => {
 
 URL: ${url}
 
-HTML Content:
-${pageContent.substring(0, 50000)}`
+Complete HTML Content (All Tabs):
+${allTabContent.substring(0, 50000)}`
           }
         ],
         temperature: 0.05,
@@ -379,3 +369,118 @@ ${pageContent.substring(0, 50000)}`
     });
   }
 });
+
+async function fetchAllTabContent(url: string): Promise<string> {
+  console.log('🔄 Fetching content from all tabs...');
+  
+  // Fetch main page first
+  const mainResponse = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+  });
+
+  if (!mainResponse.ok) {
+    throw new Error(`Failed to fetch main page: ${mainResponse.status}`);
+  }
+
+  let allContent = await mainResponse.text();
+  console.log(`📄 Main page content: ${allContent.length} characters`);
+
+  // For FranceAgriMer pages, the tab content might be loaded via AJAX
+  // Let's try to find and extract all tab content sections
+  
+  // Extract any script-embedded data that might contain all tab content
+  const scriptMatches = allContent.match(/<script[^>]*>(.*?)<\/script>/gs);
+  if (scriptMatches) {
+    scriptMatches.forEach(script => {
+      allContent += '\n\n--- SCRIPT CONTENT ---\n' + script;
+    });
+  }
+
+  // Try to fetch tab-specific content if we can identify the pattern
+  // Look for tab URLs or AJAX endpoints in the HTML
+  const tabUrlPatterns = [
+    /data-url=["']([^"']*pour-qui[^"']*)["']/gi,
+    /data-url=["']([^"']*quand[^"']*)["']/gi,
+    /data-url=["']([^"']*comment[^"']*)["']/gi,
+    /href=["']([^"']*\?tab=pour-qui[^"']*)["']/gi,
+    /href=["']([^"']*\?tab=quand[^"']*)["']/gi,
+    /href=["']([^"']*\?tab=comment[^"']*)["']/gi
+  ];
+
+  const baseUrl = new URL(url);
+  const foundTabUrls: string[] = [];
+
+  // Check for tab-specific URLs
+  tabUrlPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(allContent)) !== null) {
+      const tabUrl = match[1].startsWith('http') ? match[1] : new URL(match[1], baseUrl).href;
+      if (!foundTabUrls.includes(tabUrl)) {
+        foundTabUrls.push(tabUrl);
+      }
+    }
+  });
+
+  // If no specific tab URLs found, try constructing them
+  if (foundTabUrls.length === 0) {
+    const possibleTabUrls = [
+      `${url}?tab=pour-qui`,
+      `${url}?tab=quand`, 
+      `${url}?tab=comment`,
+      `${url}#pour-qui`,
+      `${url}#quand`,
+      `${url}#comment`
+    ];
+    foundTabUrls.push(...possibleTabUrls);
+  }
+
+  console.log(`🔍 Found ${foundTabUrls.length} potential tab URLs`);
+
+  // Fetch content from each tab
+  for (const tabUrl of foundTabUrls.slice(0, 6)) { // Limit to avoid too many requests
+    try {
+      console.log(`📱 Fetching tab content: ${tabUrl}`);
+      const tabResponse = await fetch(tabUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+          'Referer': url
+        }
+      });
+
+      if (tabResponse.ok) {
+        const tabContent = await tabResponse.text();
+        if (tabContent.length > 1000 && !allContent.includes(tabContent.substring(100, 500))) {
+          console.log(`✅ Added unique tab content: ${tabContent.length} characters`);
+          allContent += `\n\n--- TAB CONTENT: ${tabUrl} ---\n${tabContent}`;
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch tab content from ${tabUrl}:`, error);
+    }
+  }
+
+  // Also try to extract any hidden/collapsed content from the main page
+  // Look for content in hidden divs that might contain tab data
+  const hiddenContentPatterns = [
+    /<div[^>]*class="[^"]*tab-content[^"]*"[^>]*>(.*?)<\/div>/gs,
+    /<div[^>]*id="[^"]*pour-qui[^"]*"[^>]*>(.*?)<\/div>/gs,
+    /<div[^>]*id="[^"]*quand[^"]*"[^>]*>(.*?)<\/div>/gs,
+    /<div[^>]*id="[^"]*comment[^"]*"[^>]*>(.*?)<\/div>/gs,
+    /<section[^>]*class="[^"]*hidden[^"]*"[^>]*>(.*?)<\/section>/gs
+  ];
+
+  hiddenContentPatterns.forEach(pattern => {
+    const matches = allContent.match(pattern);
+    if (matches) {
+      matches.forEach(match => {
+        allContent += '\n\n--- HIDDEN CONTENT ---\n' + match;
+      });
+    }
+  });
+
+  console.log(`📊 Final content size: ${allContent.length} characters`);
+  return allContent;
