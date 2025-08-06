@@ -58,11 +58,13 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
 }) => {
   const [activeTab, setActiveTab] = useState('presentation');
 
-  // Get comprehensive sections from audit data
+  // Get comprehensive sections from audit data or create from extracted data
   const comprehensiveSections: SubsidySection[] = subsidy.audit?.comprehensive_sections || [];
   
-  // Fallback to existing structure if comprehensive sections not available
-  if (comprehensiveSections.length === 0) {
+  // If no comprehensive sections, create them from structured data
+  const hasDetailedData = subsidy.deadlines || subsidy.amounts || subsidy.eligibility || subsidy.application_method || subsidy.documents;
+  
+  if (comprehensiveSections.length === 0 && !hasDetailedData) {
     return <SimpleSubsidyDisplay subsidy={subsidy} />;
   }
 
@@ -310,47 +312,179 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-              {comprehensiveSections.slice(0, 6).map((section) => (
-                <TabsTrigger 
-                  key={getTabValue(section.name)} 
-                  value={getTabValue(section.name)}
-                  className="text-xs"
-                >
-                  {section.name}
-                </TabsTrigger>
-              ))}
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
+              <TabsTrigger value="eligibility" className="text-xs">
+                Eligibility
+              </TabsTrigger>
+              <TabsTrigger value="application" className="text-xs">
+                Application
+              </TabsTrigger>
+              <TabsTrigger value="deadlines" className="text-xs">
+                Deadlines
+              </TabsTrigger>
+              <TabsTrigger value="funding" className="text-xs">
+                Funding
+              </TabsTrigger>
+              <TabsTrigger value="content" className="text-xs">
+                Full Content
+              </TabsTrigger>
             </TabsList>
 
-            {comprehensiveSections.map((section) => (
-              <TabsContent key={getTabValue(section.name)} value={getTabValue(section.name)} className="mt-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">{section.name}</h3>
-                  
-                  {/* Main content - check for markdown fields first */}
-                  {subsidy[`${section.name.toLowerCase()}_markdown`] ? (
-                    <MarkdownRenderer content={subsidy[`${section.name.toLowerCase()}_markdown`]} />
-                  ) : section.content_html ? (
-                    <div 
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: section.content_html }}
-                    />
-                  ) : null}
-                  
-                  {/* Special sections */}
-                  {section.deadlines && renderDeadlines(section.deadlines)}
-                  {section.application_steps && renderApplicationSteps(section.application_steps)}
-                  {section.documents && (
-                    <ModernDocumentTable 
-                      documents={section.documents} 
-                      title="Documents"
-                      showTitle={false}
-                    />
-                  )}
-                  {section.name === 'Contact' && renderContactInfo(section)}
-                </div>
-              </TabsContent>
-            ))}
+            {/* Eligibility Tab */}
+            <TabsContent value="eligibility" className="mt-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Eligibility Criteria</h3>
+                {subsidy.eligibility ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.eligibility} />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No specific eligibility criteria provided.</p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Application Tab */}
+            <TabsContent value="application" className="mt-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Application Process</h3>
+                {subsidy.application_method ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.application_method} />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No application method details provided.</p>
+                )}
+                
+                {/* Application Requirements */}
+                {subsidy.application_requirements && subsidy.application_requirements.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-semibold mb-2">Application Requirements</h4>
+                    <div className="space-y-2">
+                      {subsidy.application_requirements.map((req: any, index: number) => (
+                        <div key={index} className="p-3 border rounded-lg">
+                          <CheckCircle className="w-4 h-4 text-green-500 inline mr-2" />
+                          {typeof req === 'string' ? req : req.requirement || req.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Deadlines Tab */}
+            <TabsContent value="deadlines" className="mt-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Important Deadlines</h3>
+                {subsidy.deadlines ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.deadlines} />
+                  </div>
+                ) : subsidy.deadline ? (
+                  <div className="p-3 border rounded-lg bg-orange-50 border-orange-200">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-orange-500" />
+                      <span className="font-medium">Application Deadline:</span>
+                      <Badge variant="destructive">
+                        {new Date(subsidy.deadline).toLocaleDateString()}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No deadline information available.</p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Funding Tab */}
+            <TabsContent value="funding" className="mt-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Funding Details</h3>
+                {subsidy.amounts ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.amounts} />
+                  </div>
+                ) : subsidy.amount ? (
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Euro className="w-4 h-4 text-green-500" />
+                      <span className="font-medium">Amount:</span>
+                      <span>{formatAmount(subsidy.amount)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No funding information available.</p>
+                )}
+                
+                {/* Co-financing rate */}
+                {subsidy.co_financing_rate && (
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium">Co-financing Rate:</span>
+                      <span>{subsidy.co_financing_rate}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Full Content Tab */}
+            <TabsContent value="content" className="mt-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Complete Program Information</h3>
+                
+                {/* Use combined content if available */}
+                {subsidy.combined_content_markdown ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.combined_content_markdown} />
+                  </div>
+                ) : subsidy.raw_markdown ? (
+                  <div className="prose max-w-none">
+                    <MarkdownRenderer content={subsidy.raw_markdown} />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Full content not available in structured format</p>
+                )}
+
+                {/* Documents Section */}
+                {subsidy.documents && subsidy.documents.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Associated Documents
+                    </h4>
+                    <div className="space-y-2">
+                      {subsidy.documents.map((doc: any, index: number) => (
+                        <div key={index} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-medium">{doc.title || doc.label || doc.name}</span>
+                              {doc.type && (
+                                <Badge variant="outline" className="text-xs">{doc.type.toUpperCase()}</Badge>
+                              )}
+                            </div>
+                            {doc.url && (
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-3 h-3 mr-1" />
+                                  Download
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                          {doc.size && (
+                            <p className="text-xs text-muted-foreground mt-1">Size: {doc.size}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
