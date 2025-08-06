@@ -484,3 +484,4 @@ async function fetchAllTabContent(url: string): Promise<string> {
 
   console.log(`📊 Final content size: ${allContent.length} characters`);
   return allContent;
+}
