@@ -221,7 +221,6 @@ export function mapExtractionToForm(extractionData: ExtractionData): MappingResu
       throw new Error(`Invalid extraction data format: received string "${fieldsToMap}"`);
     }
     
-    
     logger.debug('Fields to map extracted', { fieldsToMap, originalStructure: extractionData });
     
     Object.entries(fieldsToMap).forEach(([sourceKey, value]) => {
