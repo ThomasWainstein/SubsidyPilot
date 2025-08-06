@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSubsidies, useCreateSubsidy } from '@/hooks/useSubsidies';
+import { useSubsidies, useCreateSubsidy, useDeleteSubsidy } from '@/hooks/useSubsidies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,7 @@ const EnhancedSubsidyManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: subsidies, isLoading } = useSubsidies();
   const createSubsidyMutation = useCreateSubsidy();
+  const deleteSubsidyMutation = useDeleteSubsidy();
 
   const form = useForm<SubsidyCreationData>({
     resolver: zodResolver(subsidyCreationSchema),
@@ -77,6 +78,14 @@ const EnhancedSubsidyManagement = () => {
       ? [...currentRegions, region]
       : currentRegions.filter(r => r !== region);
     form.setValue('region', newRegions);
+  };
+
+  const handleDelete = async (subsidyId: string) => {
+    try {
+      await deleteSubsidyMutation.mutateAsync(subsidyId);
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
   const filteredSubsidies = subsidies?.filter(subsidy => {
@@ -384,7 +393,8 @@ const EnhancedSubsidyManagement = () => {
                         variant="outline"
                         tooltip="Delete this subsidy"
                         confirmAction={true}
-                        confirmMessage="Delete?"
+                        confirmMessage="Are you sure you want to delete this subsidy? This action cannot be undone."
+                        onClick={() => handleDelete(subsidy.id)}
                         icon={<Trash2 className="w-4 h-4" />}
                       />
                     </div>

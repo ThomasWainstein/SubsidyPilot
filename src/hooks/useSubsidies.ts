@@ -168,3 +168,33 @@ export const useCreateSubsidy = () => {
     },
   });
 };
+
+export const useDeleteSubsidy = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (subsidyId: string) => {
+      const { error } = await supabase
+        .from('subsidies_structured')
+        .delete()
+        .eq('id', subsidyId);
+
+      if (error) throw error;
+      return subsidyId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subsidies_structured'] });
+      toast({
+        title: 'Success',
+        description: 'Subsidy deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: `Failed to delete subsidy: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+};
