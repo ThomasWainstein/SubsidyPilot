@@ -61,6 +61,71 @@ export type Database = {
           },
         ]
       }
+      application_forms: {
+        Row: {
+          application_steps: Json | null
+          confidence_score: number | null
+          contact_info: string | null
+          created_at: string | null
+          deadlines: string | null
+          document_type: string | null
+          document_url: string
+          extracted_at: string | null
+          form_description: string | null
+          form_fields: Json | null
+          form_title: string | null
+          id: string
+          pipeline_id: string | null
+          required_documents: Json | null
+          subsidy_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          application_steps?: Json | null
+          confidence_score?: number | null
+          contact_info?: string | null
+          created_at?: string | null
+          deadlines?: string | null
+          document_type?: string | null
+          document_url: string
+          extracted_at?: string | null
+          form_description?: string | null
+          form_fields?: Json | null
+          form_title?: string | null
+          id?: string
+          pipeline_id?: string | null
+          required_documents?: Json | null
+          subsidy_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          application_steps?: Json | null
+          confidence_score?: number | null
+          contact_info?: string | null
+          created_at?: string | null
+          deadlines?: string | null
+          document_type?: string | null
+          document_url?: string
+          extracted_at?: string | null
+          form_description?: string | null
+          form_fields?: Json | null
+          form_title?: string | null
+          id?: string
+          pipeline_id?: string | null
+          required_documents?: Json | null
+          subsidy_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_forms_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies_structured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_sessions: {
         Row: {
           completed_at: string | null
@@ -1135,8 +1200,10 @@ export type Database = {
         Row: {
           agency: string | null
           amount: number[] | null
+          amounts: string | null
           application_method: string | null
           application_method_markdown: string | null
+          application_process: string | null
           application_requirements: Json | null
           application_window_end: string | null
           application_window_start: string | null
@@ -1149,15 +1216,18 @@ export type Database = {
           conditional_eligibility: Json | null
           created_at: string
           deadline: string | null
+          deadlines: string | null
           deadlines_markdown: string | null
           description: string | null
           description_markdown: string | null
+          document_count: number | null
           documents: Json | null
           documents_markdown: string | null
           eligibility: string | null
           eligibility_markdown: string | null
           eligible_actions: string[] | null
           evaluation_criteria: string | null
+          extracted_documents: Json | null
           extraction_batch_id: string | null
           funding_markdown: string | null
           funding_source: string | null
@@ -1175,6 +1245,7 @@ export type Database = {
           missing_fields: string[] | null
           objectives: string[] | null
           payment_terms: string | null
+          presentation: string | null
           previous_acceptance_rate: number | null
           priority_groups: Json | null
           program: string | null
@@ -1197,12 +1268,15 @@ export type Database = {
           title: string | null
           updated_at: string
           url: string | null
+          verbatim_extraction: boolean | null
         }
         Insert: {
           agency?: string | null
           amount?: number[] | null
+          amounts?: string | null
           application_method?: string | null
           application_method_markdown?: string | null
+          application_process?: string | null
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
@@ -1215,15 +1289,18 @@ export type Database = {
           conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
+          deadlines?: string | null
           deadlines_markdown?: string | null
           description?: string | null
           description_markdown?: string | null
+          document_count?: number | null
           documents?: Json | null
           documents_markdown?: string | null
           eligibility?: string | null
           eligibility_markdown?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extracted_documents?: Json | null
           extraction_batch_id?: string | null
           funding_markdown?: string | null
           funding_source?: string | null
@@ -1241,6 +1318,7 @@ export type Database = {
           missing_fields?: string[] | null
           objectives?: string[] | null
           payment_terms?: string | null
+          presentation?: string | null
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
@@ -1263,12 +1341,15 @@ export type Database = {
           title?: string | null
           updated_at?: string
           url?: string | null
+          verbatim_extraction?: boolean | null
         }
         Update: {
           agency?: string | null
           amount?: number[] | null
+          amounts?: string | null
           application_method?: string | null
           application_method_markdown?: string | null
+          application_process?: string | null
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
@@ -1281,15 +1362,18 @@ export type Database = {
           conditional_eligibility?: Json | null
           created_at?: string
           deadline?: string | null
+          deadlines?: string | null
           deadlines_markdown?: string | null
           description?: string | null
           description_markdown?: string | null
+          document_count?: number | null
           documents?: Json | null
           documents_markdown?: string | null
           eligibility?: string | null
           eligibility_markdown?: string | null
           eligible_actions?: string[] | null
           evaluation_criteria?: string | null
+          extracted_documents?: Json | null
           extraction_batch_id?: string | null
           funding_markdown?: string | null
           funding_source?: string | null
@@ -1307,6 +1391,7 @@ export type Database = {
           missing_fields?: string[] | null
           objectives?: string[] | null
           payment_terms?: string | null
+          presentation?: string | null
           previous_acceptance_rate?: number | null
           priority_groups?: Json | null
           program?: string | null
@@ -1329,6 +1414,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           url?: string | null
+          verbatim_extraction?: boolean | null
         }
         Relationships: [
           {
