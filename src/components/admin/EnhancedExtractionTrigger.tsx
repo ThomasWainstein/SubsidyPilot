@@ -109,11 +109,11 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
   };
 
   return (
-    <Card className="border-orange-200 bg-orange-50">
+    <Card className="border-border bg-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Enhanced Data Extraction</CardTitle>
-          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
             AI-Powered
           </Badge>
         </div>
@@ -133,7 +133,7 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
           </ul>
         </div>
 
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-white border">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-background border">
           {getStatusIcon()}
           <span className="text-sm font-medium">{getStatusText()}</span>
           <Badge className={`ml-auto text-xs ${getStatusColor()}`}>
@@ -142,18 +142,18 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
         </div>
 
         {extractionStats && extractionStatus === 'success' && (
-          <div className="grid grid-cols-3 gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="grid grid-cols-3 gap-2 p-3 bg-success/10 rounded-lg border border-success/20">
             <div className="text-center">
-              <div className="text-lg font-bold text-green-700">{extractionStats.sections_found || 0}</div>
-              <div className="text-xs text-green-600">Sections</div>
+              <div className="text-lg font-bold text-success">{extractionStats.sections_found || 0}</div>
+              <div className="text-xs text-success/70">Sections</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-green-700">{extractionStats.documents_found || 0}</div>
-              <div className="text-xs text-green-600">Documents</div>
+              <div className="text-lg font-bold text-success">{extractionStats.documents_found || 0}</div>
+              <div className="text-xs text-success/70">Documents</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-green-700">{extractionStats.completeness_score || 0}%</div>
-              <div className="text-xs text-green-600">Complete</div>
+              <div className="text-lg font-bold text-success">{extractionStats.completeness_score || 0}%</div>
+              <div className="text-xs text-success/70">Complete</div>
             </div>
           </div>
         )}
@@ -161,7 +161,7 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
         <Button 
           onClick={triggerEnhancedExtraction}
           disabled={isExtracting}
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+          className="w-full"
         >
           {isExtracting ? (
             <>

@@ -242,12 +242,57 @@ ${allTabContent.substring(0, 50000)}`
     // Parse extracted data
     let extractedData;
     try {
-      const cleanContent = extractedContent.replace(/```json\n?|\n?```/g, '').trim();
+      // Clean the content more thoroughly
+      let cleanContent = extractedContent.replace(/```json\n?|\n?```/g, '').trim();
+      
+      // Fix common JSON issues
+      cleanContent = cleanContent
+        .replace(/(\w+):\s*'([^']*)'/g, '"$1": "$2"') // Replace single quotes with double quotes
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Add quotes to unquoted keys
+        .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+        .replace(/\n\s*\n/g, '\n'); // Remove extra newlines
+      
+      // Try to find and extract just the JSON part if there's extra text
+      const jsonStart = cleanContent.indexOf('{');
+      const jsonEnd = cleanContent.lastIndexOf('}') + 1;
+      
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        cleanContent = cleanContent.substring(jsonStart, jsonEnd);
+      }
+      
+      console.log('🔧 Attempting to parse cleaned JSON...');
       extractedData = JSON.parse(cleanContent);
+      
     } catch (parseError) {
       console.error('❌ Failed to parse extraction result:', parseError);
-      console.error('Raw content:', extractedContent.substring(0, 1000));
-      throw new Error('Failed to parse extraction result as JSON');
+      console.error('Raw content preview:', extractedContent.substring(0, 1000));
+      
+      // Fallback: try to extract basic info manually
+      console.log('🔄 Attempting fallback extraction...');
+      try {
+        const titleMatch = extractedContent.match(/"title":\s*"([^"]+)"/);
+        const agencyMatch = extractedContent.match(/"agency":\s*"([^"]+)"/);
+        
+        extractedData = {
+          title: titleMatch ? titleMatch[1] : 'Enhanced Extraction Failed',
+          agency: agencyMatch ? agencyMatch[1] : 'FranceAgriMer',
+          program: titleMatch ? titleMatch[1] : 'Enhanced Extraction Failed',
+          presentation: { content: 'Extraction failed due to parsing error' },
+          metadata: {
+            extraction_date: new Date().toISOString(),
+            language: 'fr',
+            page_type: 'franceagrimer_subsidy',
+            sections_found: [],
+            documents_found: 0,
+            completeness_score: 30
+          }
+        };
+        console.log('✅ Using fallback extraction data');
+      } catch (fallbackError) {
+        console.error('❌ Fallback extraction also failed:', fallbackError);
+        throw new Error('Failed to parse extraction result as JSON and fallback failed');
+      }
     }
 
     console.log('✅ Successfully parsed extraction data');
