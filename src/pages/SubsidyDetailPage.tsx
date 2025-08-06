@@ -9,6 +9,7 @@ import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { SimpleSubsidyDisplay } from '@/components/subsidy/SimpleSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
+import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
 import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
 import { toast } from 'sonner';
@@ -192,6 +193,15 @@ const SubsidyDetailPage = () => {
               autoRefresh={true}
               showDetails={true}
             />
+            
+            {/* Enhanced Data Extraction - Between Schema and Form */}
+            {subsidy?.url && (
+              <EnhancedExtractionTrigger 
+                subsidyUrl={subsidy.url}
+                subsidyTitle={subsidy.title}
+                onSuccess={() => window.location.reload()}
+              />
+            )}
             
             {/* Application Form Section */}
             <ExtractedFormApplication

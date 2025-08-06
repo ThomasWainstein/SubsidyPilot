@@ -52,14 +52,6 @@ export const SimpleSubsidyDisplay: React.FC<SimpleSubsidyDisplayProps> = ({ subs
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Extraction Trigger - Show when data appears incomplete */}
-      {shouldShowEnhancedExtraction && subsidy.url && (
-        <EnhancedExtractionTrigger 
-          subsidyUrl={subsidy.url}
-          subsidyTitle={subsidy.title}
-          onSuccess={() => window.location.reload()}
-        />
-      )}
       {/* Header Information */}
       <Card>
         <CardHeader>
