@@ -184,34 +184,50 @@ async function extractFromPDFWithAI(pdfBuffer: ArrayBuffer, openAIApiKey: string
  */
 async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
   try {
-    // Import JSZip for extracting DOCX content
-    const JSZip = (await import('https://esm.sh/jszip@3.10.1')).default;
+    console.log('🔍 DOCX EXTRACTION: Starting with buffer size:', docxBuffer.byteLength);
     
-    console.log('📄 Parsing DOCX file...');
+    // Import JSZip for extracting DOCX content
+    console.log('🔍 DOCX EXTRACTION: Importing JSZip...');
+    const JSZip = (await import('https://esm.sh/jszip@3.10.1')).default;
+    console.log('🔍 DOCX EXTRACTION: JSZip imported successfully');
     
     // Load the DOCX file (which is a ZIP archive)
+    console.log('🔍 DOCX EXTRACTION: Loading ZIP archive...');
     const zip = await JSZip.loadAsync(docxBuffer);
+    console.log('🔍 DOCX EXTRACTION: ZIP loaded, files:', Object.keys(zip.files));
     
     // Extract the main document XML
-    const documentXml = await zip.file('word/document.xml')?.async('text');
+    const documentFile = zip.file('word/document.xml');
+    console.log('🔍 DOCX EXTRACTION: Document file found:', !!documentFile);
     
-    if (!documentXml) {
+    if (!documentFile) {
       throw new Error('Could not find document.xml in DOCX file');
     }
+    
+    const documentXml = await documentFile.async('text');
+    console.log('🔍 DOCX EXTRACTION: Document XML length:', documentXml.length);
+    console.log('🔍 DOCX EXTRACTION: Document XML preview:', documentXml.substring(0, 500));
     
     // Parse XML to extract text content
     let textContent = '';
     
     // Extract text from <w:t> tags (text runs)
     const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    console.log('🔍 DOCX EXTRACTION: Found text matches:', textMatches.length);
+    
     textContent = textMatches
       .map(match => match.replace(/<[^>]*>/g, ''))
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
     
+    console.log('🔍 DOCX EXTRACTION: Simple text content length:', textContent.length);
+    console.log('🔍 DOCX EXTRACTION: Simple text preview:', textContent.substring(0, 300));
+    
     // Also extract text from <w:p> paragraphs to maintain structure
     const paragraphMatches = documentXml.match(/<w:p[^>]*>.*?<\/w:p>/gs) || [];
+    console.log('🔍 DOCX EXTRACTION: Found paragraphs:', paragraphMatches.length);
+    
     const paragraphs = paragraphMatches.map(para => {
       const textInPara = (para.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [])
         .map(match => match.replace(/<[^>]*>/g, ''))
@@ -220,8 +236,14 @@ async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
       return textInPara;
     }).filter(text => text.length > 0);
     
+    console.log('🔍 DOCX EXTRACTION: Extracted paragraphs:', paragraphs.length);
+    console.log('🔍 DOCX EXTRACTION: First few paragraphs:', paragraphs.slice(0, 3));
+    
     // Use paragraph structure if available, otherwise use simple text
     const finalText = paragraphs.length > 0 ? paragraphs.join('\n') : textContent;
+    
+    console.log('🔍 DOCX EXTRACTION: Final text length:', finalText.length);
+    console.log('🔍 DOCX EXTRACTION: Final text preview:', finalText.substring(0, 500));
     
     if (finalText.length < 50) {
       throw new Error('Insufficient text extracted from DOCX - document may be empty or corrupted');
@@ -231,6 +253,7 @@ async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
     return finalText;
   } catch (error) {
     console.error('❌ DOCX extraction failed:', error);
+    console.error('❌ DOCX extraction error stack:', error.stack);
     throw new Error(`DOCX extraction failed: ${error.message}`);
   }
 }
