@@ -17,10 +17,11 @@ import ApplicationFormPage from '@/pages/ApplicationFormPage';
 import EUSubsidyPortalPage from '@/pages/EUSubsidyPortalPage';
 import SubsidyDetailPage from '@/pages/SubsidyDetailPage';
 // import RegulationsPage from '@/pages/RegulationsPage'; // Removed per business requirements
+import AdminPage from '@/pages/AdminPage';
 import TestVerbatimPage from '@/pages/TestVerbatimPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AdminPanel from '@/components/admin/AdminPanel';
-import AdminDashboardPage from '@/pages/AdminDashboardPage';
+
 import EmployeeDashboardPage from '@/pages/EmployeeDashboardPage';
 import ConsultantDashboardPage from '@/pages/ConsultantDashboardPage';
 import OrganizationDashboardPage from '@/pages/OrganizationDashboardPage';
@@ -194,7 +195,7 @@ function App() {
                      path="/admin" 
                      element={
                        <ProtectedRoute>
-                          <AdminDashboardPage />
+                          <AdminPage />
                         </ProtectedRoute>
                       } 
                     />
