@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ModernDocumentTable } from './ModernDocumentTable';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
 
 interface SimpleSubsidyDisplayProps {
   subsidy: any;
@@ -32,8 +33,28 @@ export const SimpleSubsidyDisplay: React.FC<SimpleSubsidyDisplayProps> = ({ subs
     return 'All regions';
   };
 
+  // Check if this looks like incomplete data (especially FranceAgriMer pages)
+  const isDataIncomplete = () => {
+    // Check if this is a FranceAgriMer subsidy with minimal data
+    const isFranceAgriMer = subsidy.agency === 'FranceAgriMer' || subsidy.url?.includes('franceagrimer.fr');
+    const hasMinimalData = !subsidy.application_method && !subsidy.documents?.length && 
+                          !subsidy.requirements_markdown && !subsidy.funding_markdown;
+    
+    return isFranceAgriMer && hasMinimalData;
+  };
+
+  const shouldShowEnhancedExtraction = isDataIncomplete();
+
   return (
     <div className="space-y-6">
+      {/* Enhanced Extraction Trigger - Show when data appears incomplete */}
+      {shouldShowEnhancedExtraction && subsidy.url && (
+        <EnhancedExtractionTrigger 
+          subsidyUrl={subsidy.url}
+          subsidyTitle={subsidy.title}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
       {/* Header Information */}
       <Card>
         <CardHeader>
