@@ -13,6 +13,7 @@ import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfi
 import RealTimePipelineMonitor from '@/components/admin/RealTimePipelineMonitor';
 import { AIProcessingControl } from '@/components/admin/AIProcessingControl';
 import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard';
+import { AuditTrailViewer } from '@/components/admin/AuditTrailViewer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -92,7 +93,7 @@ const AdminPage = () => {
 
           {/* Main Admin Tabs */}
           <Tabs defaultValue="health" className="w-full">
-            <TabsList className="grid w-full grid-cols-8 h-12">
+            <TabsList className="grid w-full grid-cols-9 h-12">
               <TabsTrigger value="health" className="flex items-center gap-2">
                 🏥 Health
               </TabsTrigger>
@@ -113,6 +114,9 @@ const AdminPage = () => {
               </TabsTrigger>
               <TabsTrigger value="validation" className="flex items-center gap-2">
                 ✅ Validation
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                🔍 Audit
               </TabsTrigger>
               <TabsTrigger value="import" className="flex items-center gap-2">
                 📤 Import
@@ -145,6 +149,10 @@ const AdminPage = () => {
             
             <TabsContent value="validation" className="mt-6">
               <CanonicalValidationDashboard />
+            </TabsContent>
+            
+            <TabsContent value="audit" className="mt-6">
+              <AuditTrailViewer />
             </TabsContent>
             
             <TabsContent value="import" className="mt-6">

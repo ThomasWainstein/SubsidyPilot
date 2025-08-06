@@ -388,8 +388,11 @@ export type Database = {
           extracted_data: Json
           extraction_type: string
           id: string
+          session_id: string | null
           status: string
+          triggered_by: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           confidence_score?: number | null
@@ -401,8 +404,11 @@ export type Database = {
           extracted_data: Json
           extraction_type?: string
           id?: string
+          session_id?: string | null
           status?: string
+          triggered_by?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           confidence_score?: number | null
@@ -414,8 +420,11 @@ export type Database = {
           extracted_data?: Json
           extraction_type?: string
           id?: string
+          session_id?: string | null
           status?: string
+          triggered_by?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -426,6 +435,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_subsidy_mappings: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          document_id: string
+          extraction_method: string | null
+          id: string
+          mapping_type: string
+          subsidy_id: string
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          document_id: string
+          extraction_method?: string | null
+          id?: string
+          mapping_type: string
+          subsidy_id: string
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          document_id?: string
+          extraction_method?: string | null
+          id?: string
+          mapping_type?: string
+          subsidy_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       error_log: {
         Row: {
@@ -481,10 +523,12 @@ export type Database = {
           review_data: Json | null
           reviewed_at: string | null
           reviewed_by: string | null
+          session_id: string | null
           source_url: string
           structural_integrity_score: number | null
           structure_loss: string[] | null
           updated_at: string
+          user_id: string | null
           warnings: string[] | null
         }
         Insert: {
@@ -502,10 +546,12 @@ export type Database = {
           review_data?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          session_id?: string | null
           source_url: string
           structural_integrity_score?: number | null
           structure_loss?: string[] | null
           updated_at?: string
+          user_id?: string | null
           warnings?: string[] | null
         }
         Update: {
@@ -523,10 +569,12 @@ export type Database = {
           review_data?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          session_id?: string | null
           source_url?: string
           structural_integrity_score?: number | null
           structure_loss?: string[] | null
           updated_at?: string
+          user_id?: string | null
           warnings?: string[] | null
         }
         Relationships: []
@@ -889,10 +937,13 @@ export type Database = {
           id: string
           metrics: Json | null
           processed_count: number | null
+          session_id: string | null
           started_at: string | null
           status: string
           success_count: number | null
+          triggered_by: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           batch_size?: number | null
@@ -906,10 +957,13 @@ export type Database = {
           id?: string
           metrics?: Json | null
           processed_count?: number | null
+          session_id?: string | null
           started_at?: string | null
           status?: string
           success_count?: number | null
+          triggered_by?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           batch_size?: number | null
@@ -923,10 +977,13 @@ export type Database = {
           id?: string
           metrics?: Json | null
           processed_count?: number | null
+          session_id?: string | null
           started_at?: string | null
           status?: string
           success_count?: number | null
+          triggered_by?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1628,6 +1685,48 @@ export type Database = {
           timestamp?: string | null
           unit?: string | null
           value?: number
+        }
+        Relationships: []
+      }
+      user_actions: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          session_id: string | null
+          triggered_by: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          session_id?: string | null
+          triggered_by?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          session_id?: string | null
+          triggered_by?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
