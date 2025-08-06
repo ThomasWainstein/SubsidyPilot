@@ -1,516 +1,241 @@
 /**
- * Robust text extraction utilities with proper libraries
- * Supports DOCX (mammoth), PDF (pdf-parse + OCR fallback), XLSX, Images (OCR)
+ * Text Extraction Service for Farm Documents
+ * Handles PDF, DOCX, XLSX, TXT, and CSV files
  */
 
-export interface ExtractionDebugInfo {
-  fileName: string;
-  fileSize: number;
-  extractionMethod: string;
-  textLength: number;
-  extractionTime: number;
-  rawText: string;
-  errors: string[];
-  warnings: string[];
-  libraryUsed?: string;
-  ocrConfidence?: number;
+export interface TextExtractionResult {
+  text: string;
+  debugInfo: {
+    extractionMethod: string;
+    fileSize: number;
+    processingTime: number;
+    warnings?: string[];
+  };
 }
 
+/**
+ * Extract text from various file types
+ */
 export async function extractTextFromFile(
   fileResponse: Response,
   fileName: string,
   openAIApiKey: string
-): Promise<{ text: string; debugInfo: ExtractionDebugInfo }> {
+): Promise<TextExtractionResult> {
   const startTime = Date.now();
-  const fileExtension = fileName.split('.').pop()?.toLowerCase();
-  const fileSize = parseInt(fileResponse.headers.get('content-length') || '0');
-  
-  const debugInfo: ExtractionDebugInfo = {
-    fileName,
-    fileSize,
-    extractionMethod: '',
-    textLength: 0,
-    extractionTime: 0,
-    rawText: '',
-    errors: [],
-    warnings: []
-  };
-
-  console.log(`🔍 Extracting text from ${fileExtension} file: ${fileName}`);
-  console.log(`📁 File size: ${fileSize} bytes`);
-
-  let extractedText = '';
+  const warnings: string[] = [];
+  let extractionMethod = 'unknown';
+  let text = '';
 
   try {
-    switch (fileExtension) {
-      case 'txt':
-      case 'csv':
-        const result = await extractPlainText(fileResponse, debugInfo);
-        extractedText = result.text;
-        break;
-        
-      case 'pdf':
-        const pdfResult = await extractPDFText(fileResponse, openAIApiKey, debugInfo);
-        extractedText = pdfResult.text;
-        break;
-        
-      case 'docx':
-        const docxResult = await extractDOCXText(fileResponse, debugInfo);
-        extractedText = docxResult.text;
-        break;
-        
-      case 'xlsx':
-      case 'xls':
-        const xlsxResult = await extractXLSXText(fileResponse, debugInfo);
-        extractedText = xlsxResult.text;
-        break;
-        
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-      case 'bmp':
-        const imageResult = await extractImageText(fileResponse, openAIApiKey, debugInfo);
-        extractedText = imageResult.text;
-        break;
-        
-      default:
-        debugInfo.extractionMethod = 'fallback_text';
-        debugInfo.warnings.push(`Unknown file type ${fileExtension}, attempting text extraction`);
-        console.log(`📄 Processing ${fileExtension} as plain text...`);
-        try {
-          extractedText = await fileResponse.text();
-          debugInfo.libraryUsed = 'native_text_decoder';
-          console.log(`✅ Text extraction successful`);
-        } catch (textError) {
-          const errorMsg = `Text extraction failed: ${(textError as Error).message}`;
-          debugInfo.errors.push(errorMsg);
-          console.error(`❌ ${errorMsg}`);
-          extractedText = `Failed to extract text: ${fileName} (${fileExtension})`;
-        }
+    const fileSize = parseInt(fileResponse.headers.get('content-length') || '0');
+    const contentType = fileResponse.headers.get('content-type') || '';
+    const fileExtension = fileName.toLowerCase().split('.').pop() || '';
+
+    console.log(`🔍 Extracting text from: ${fileName} (${contentType}, ${fileSize} bytes)`);
+
+    // Handle different file types
+    if (fileExtension === 'txt' || contentType.includes('text/plain')) {
+      extractionMethod = 'direct_text';
+      text = await fileResponse.text();
+    } 
+    else if (fileExtension === 'csv' || contentType.includes('text/csv')) {
+      extractionMethod = 'csv_parsing';
+      text = await extractFromCSV(await fileResponse.text());
     }
-  } catch (mainError) {
-    const errorMsg = `Main extraction failed: ${(mainError as Error).message}`;
-    debugInfo.errors.push(errorMsg);
-    console.error('❌ Text extraction failed:', mainError);
-    extractedText = `Failed to extract text from ${fileName}. File type: ${fileExtension}, Size: ${fileSize} bytes. Error: ${errorMsg}`;
-  }
+    else if (fileExtension === 'pdf' || contentType.includes('application/pdf')) {
+      extractionMethod = 'pdf_ocr_ai';
+      text = await extractFromPDFWithAI(await fileResponse.arrayBuffer(), openAIApiKey);
+    }
+    else if (fileExtension === 'docx' || contentType.includes('wordprocessingml')) {
+      extractionMethod = 'docx_parsing';
+      text = await extractFromDOCX(await fileResponse.arrayBuffer());
+    }
+    else if (fileExtension === 'xlsx' || contentType.includes('spreadsheetml')) {
+      extractionMethod = 'xlsx_parsing';
+      text = await extractFromXLSX(await fileResponse.arrayBuffer());
+    }
+    else {
+      extractionMethod = 'fallback_text';
+      warnings.push(`Unsupported file type: ${contentType}, attempting text extraction`);
+      text = await fileResponse.text();
+    }
 
-  // 🔍 CRITICAL DEBUG: Log text BEFORE cleaning
-  console.log(`🔍 BEFORE CLEANING: Text length = ${extractedText.length}`);
-  console.log(`🔍 BEFORE CLEANING: Text preview = "${extractedText.substring(0, 300)}"`);
-  console.log(`🔍 BEFORE CLEANING: Text type = ${typeof extractedText}`);
-  
-  // Clean and validate extracted text
-  const originalText = extractedText;
-  extractedText = cleanExtractedText(extractedText);
-  
-  // 🔍 CRITICAL DEBUG: Log text AFTER cleaning
-  console.log(`🔍 AFTER CLEANING: Original length = ${originalText.length}, Cleaned length = ${extractedText.length}`);
-  console.log(`🔍 AFTER CLEANING: Text preview = "${extractedText.substring(0, 300)}"`);
-  
-  debugInfo.rawText = extractedText;
-  debugInfo.textLength = extractedText.length;
-  debugInfo.extractionTime = Date.now() - startTime;
-  
-  // Log preview and quality assessment
-  const textPreview = extractedText.substring(0, 500);
-  console.log(`📄 Text extraction preview (first 500 chars): ${textPreview}`);
-  console.log(`📊 Total extracted text length: ${extractedText.length} characters`);
-  console.log(`⏱️ Extraction time: ${debugInfo.extractionTime}ms`);
-  console.log(`🔧 Extraction method: ${debugInfo.extractionMethod} (${debugInfo.libraryUsed || 'unknown'})`);
+    // Clean up extracted text
+    text = cleanExtractedText(text);
 
-  // Quality checks
-  if (extractedText.length < 50) {
-    debugInfo.warnings.push('Very little text extracted from document');
-    console.warn('⚠️ Warning: Very little text extracted from document');
-  }
-  
-  const hasReadableContent = /[a-zA-Z]{10,}/.test(extractedText);
-  if (!hasReadableContent) {
-    debugInfo.warnings.push('Document appears to contain no readable text content');
-    console.warn('⚠️ Warning: Document appears to contain no readable text content');
-  }
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Text extraction completed: ${text.length} characters in ${processingTime}ms`);
 
-  return { text: extractedText, debugInfo };
-}
-
-async function extractPlainText(
-  fileResponse: Response,
-  debugInfo: ExtractionDebugInfo
-): Promise<{ text: string }> {
-  debugInfo.extractionMethod = 'plain_text';
-  debugInfo.libraryUsed = 'native_text_decoder';
-  console.log(`📄 Processing plain text file...`);
-  
-  const text = await fileResponse.text();
-  console.log(`✅ Plain text extraction successful`);
-  return { text };
-}
-
-async function extractPDFText(
-  fileResponse: Response, 
-  openAIApiKey: string, 
-  debugInfo: ExtractionDebugInfo
-): Promise<{ text: string }> {
-  console.log(`📋 Processing PDF with fallback to OCR...`);
-  
-  try {
-    // First attempt: Use pdf-parse library
-    debugInfo.extractionMethod = 'pdf_parse_library';
-    debugInfo.libraryUsed = 'pdf-parse';
-    
-    const arrayBuffer = await fileResponse.arrayBuffer();
-    
-    // Try to use pdf-parse if available in environment
-    try {
-      // Note: In Deno edge functions, we'll use Vision API as primary method
-      // since pdf-parse requires Node.js modules not available in Deno
-      throw new Error('pdf-parse not available in Deno environment, using OCR');
-    } catch (parseError) {
-      debugInfo.warnings.push('PDF text parsing failed, falling back to OCR');
-      console.log(`⚠️ PDF parsing failed, using OCR fallback: ${parseError.message}`);
-      
-      // Fallback: Use OpenAI Vision for OCR
-      debugInfo.extractionMethod = 'pdf_ocr_vision';
-      debugInfo.libraryUsed = 'openai_vision';
-      
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      console.log(`📤 Sending PDF to OpenAI Vision (${Math.round(base64.length/1024)}KB)`);
-      
-      const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Extract all readable text from this PDF document. Focus on: farm names, addresses, legal information, land area, activities, certifications, and contact details. Preserve structure and return clean, readable text.'
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:application/pdf;base64,${base64}`
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: 4000,
-        }),
-      });
-
-      if (visionResponse.ok) {
-        const visionData = await visionResponse.json();
-        const extractedText = visionData.choices[0]?.message?.content || '';
-        debugInfo.ocrConfidence = 0.8; // Estimated confidence for Vision API
-        console.log(`✅ PDF OCR extraction successful`);
-        return { text: extractedText };
-      } else {
-        const errorText = await visionResponse.text();
-        debugInfo.errors.push(`Vision API failed: ${visionResponse.status} ${errorText}`);
-        throw new Error(`Vision API failed: ${visionResponse.status} ${visionResponse.statusText}`);
+    return {
+      text,
+      debugInfo: {
+        extractionMethod,
+        fileSize,
+        processingTime,
+        warnings: warnings.length > 0 ? warnings : undefined
       }
-    }
-  } catch (pdfError) {
-    debugInfo.errors.push(`PDF extraction failed: ${(pdfError as Error).message}`);
-    throw pdfError;
+    };
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error(`❌ Text extraction failed for ${fileName}:`, error);
+    
+    return {
+      text: '',
+      debugInfo: {
+        extractionMethod: `${extractionMethod}_failed`,
+        fileSize: 0,
+        processingTime,
+        warnings: [`Extraction failed: ${error.message}`]
+      }
+    };
   }
 }
 
-async function extractDOCXText(
-  fileResponse: Response,
-  debugInfo: ExtractionDebugInfo
-): Promise<{ text: string }> {
-  debugInfo.extractionMethod = 'docx_mammoth';
-  debugInfo.libraryUsed = 'mammoth.js';
-  console.log(`📄 Processing DOCX with mammoth.js...`);
-  
+/**
+ * Extract text from CSV files
+ */
+async function extractFromCSV(csvContent: string): Promise<string> {
   try {
-    const arrayBuffer = await fileResponse.arrayBuffer();
+    const lines = csvContent.split('\n');
+    const headers = lines[0]?.split(',') || [];
     
-    // Import mammoth dynamically for Deno edge function compatibility
-    const mammoth = await import('npm:mammoth@1.9.1');
-    console.log(`📋 Mammoth.js imported successfully`);
+    let extractedText = `CSV Document with ${headers.length} columns:\n`;
+    extractedText += `Headers: ${headers.join(', ')}\n\n`;
     
-    // Convert ArrayBuffer to Buffer for mammoth.js
-    const buffer = new Uint8Array(arrayBuffer);
-    console.log(`📄 Converting DOCX buffer (${Math.round(buffer.length/1024)}KB)`);
-    
-    // Extract raw text using mammoth.js
-    const result = await mammoth.extractRawText({ buffer });
-    let text = result.value || "";
-    
-    // Clean up whitespace and normalize text
-    text = text.replace(/\s+/g, " ").trim();
-    
-    console.log(`✅ DOCX extraction successful with mammoth.js`);
-    console.log(`📋 Extracted text preview: "${text.slice(0, 200)}..."`);
-    
-    if (!text || text.length < 10) {
-      debugInfo.warnings.push('DOCX extraction resulted in very short text');
-      console.log(`⚠️ Warning: Extracted text is very short (${text.length} chars)`);
+    // Include first few rows as context
+    for (let i = 1; i < Math.min(6, lines.length); i++) {
+      if (lines[i]?.trim()) {
+        const values = lines[i].split(',');
+        extractedText += `Row ${i}: ${values.join(' | ')}\n`;
+      }
     }
     
-    debugInfo.textLength = text.length;
-    return { text };
-    
-  } catch (mammothError) {
-    debugInfo.errors.push(`Mammoth.js extraction failed: ${(mammothError as Error).message}`);
-    console.log(`❌ Mammoth.js extraction failed: ${(mammothError as Error).message}`);
-    
-    // Fallback to enhanced XML parsing if mammoth fails
-    debugInfo.libraryUsed = 'enhanced_xml_parser_fallback';
-    console.log(`🔄 Falling back to XML parsing...`);
-    debugInfo.extractionMethod = 'docx_enhanced_xml';
-    
-    try {
-      const arrayBuffer = await fileResponse.arrayBuffer();
-      const text = new TextDecoder().decode(arrayBuffer);
-      
-      // Enhanced DOCX text extraction with multiple strategies
-      const extractors = [
-        // Word 2016+ format
-        /<w:t[^>]*>(.*?)<\/w:t>/g,
-        // Word 2010-2013 format  
-        /<t[^>]*>(.*?)<\/t>/g,
-        // Alternative text nodes
-        /<text[^>]*>(.*?)<\/text>/g,
-        // Paragraph content
-        /<w:p[^>]*>.*?<w:t[^>]*>(.*?)<\/w:t>.*?<\/w:p>/g,
-      ];
-      
-      let extractedText = '';
-      let bestExtraction = '';
-      
-      for (const regex of extractors) {
-        const matches = Array.from(text.matchAll(regex));
-        if (matches.length > 0) {
-          const currentExtraction = matches
-            .map(match => match[1])
-            .filter(text => text && text.trim().length > 0)
-            .join(' ');
-          
-          if (currentExtraction.length > bestExtraction.length) {
-            bestExtraction = currentExtraction;
-          }
-        }
-      }
-      
-      extractedText = bestExtraction;
-      
-      // Enhanced fallback with document structure awareness
-      if (extractedText.length < 100) {
-        debugInfo.warnings.push('Primary DOCX extraction yielded insufficient text, using enhanced fallback');
-        
-        // Look for document.xml content specifically
-        const documentMatch = text.match(/<document[^>]*>(.*?)<\/document>/s);
-        if (documentMatch) {
-          const documentContent = documentMatch[1];
-          
-          // Extract all text content from document structure
-          const allTextMatches = documentContent.match(/>([^<]+)</g);
-          if (allTextMatches) {
-            extractedText = allTextMatches
-              .map(match => match.slice(1, -1).trim())
-              .filter(text => text.length > 2 && /[a-zA-Z]/.test(text))
-              .join(' ');
-          }
-        }
-        
-        // Last resort: clean XML and extract readable text
-        if (extractedText.length < 50) {
-          const cleanText = text
-            .replace(/<[^>]*>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          const readableSegments = cleanText.match(/[a-zA-Z][a-zA-Z\s,.-]{15,}/g);
-          if (readableSegments) {
-            extractedText = readableSegments.join(' ');
-          }
-        }
-      }
-      
-      if (extractedText.length < 50) {
-        debugInfo.warnings.push('DOCX extraction yielded very little text - document may be corrupted or image-based');
-        debugInfo.errors.push('Insufficient text extracted from DOCX file');
-      }
-      
-      console.log(`✅ DOCX XML fallback extraction completed, extracted ${extractedText.length} characters`);
-      return { text: extractedText };
-      
-    } catch (xmlError) {
-      debugInfo.errors.push(`XML fallback extraction failed: ${(xmlError as Error).message}`);
-      throw new Error(`Both mammoth.js and XML fallback extraction failed: ${(mammothError as Error).message}`);
+    if (lines.length > 6) {
+      extractedText += `... and ${lines.length - 6} more rows\n`;
     }
+    
+    return extractedText;
+  } catch (error) {
+    throw new Error(`CSV parsing failed: ${error.message}`);
   }
 }
 
-async function extractXLSXText(
-  fileResponse: Response,
-  debugInfo: ExtractionDebugInfo
-): Promise<{ text: string }> {
-  debugInfo.extractionMethod = 'xlsx_custom_parser';
-  debugInfo.libraryUsed = 'custom_xml_parser';
-  console.log(`📊 Processing XLSX file...`);
-  
+/**
+ * Extract text from PDF using AI Vision
+ */
+async function extractFromPDFWithAI(pdfBuffer: ArrayBuffer, openAIApiKey: string): Promise<string> {
   try {
-    const arrayBuffer = await fileResponse.arrayBuffer();
+    console.log('🤖 Using AI for PDF text extraction...');
     
-    // Note: In Deno environment, we'll use enhanced XML parsing
-    // since xlsx library requires Node.js modules
-    const text = new TextDecoder().decode(arrayBuffer);
+    // Convert PDF to base64 for AI processing
+    const base64PDF = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
     
-    // Extract text from shared strings and sheet data
-    const extractors = [
-      // Shared strings
-      /<si[^>]*>.*?<t[^>]*>(.*?)<\/t>.*?<\/si>/g,
-      // Direct cell values
-      /<c[^>]*>.*?<v[^>]*>(.*?)<\/v>.*?<\/c>/g,
-      // Inline strings
-      /<is[^>]*>.*?<t[^>]*>(.*?)<\/t>.*?<\/is>/g,
-    ];
-    
-    let extractedText = '';
-    const extractedValues = new Set<string>();
-    
-    for (const regex of extractors) {
-      const matches = Array.from(text.matchAll(regex));
-      for (const match of matches) {
-        const value = match[1]?.trim();
-        if (value && value.length > 1 && /[a-zA-Z]/.test(value)) {
-          extractedValues.add(value);
-        }
-      }
-    }
-    
-    extractedText = Array.from(extractedValues).join(' ');
-    
-    // Enhanced fallback for complex XLSX structures
-    if (extractedText.length < 100) {
-      debugInfo.warnings.push('Primary XLSX extraction yielded insufficient text, using fallback');
-      
-      // Look for any text content in the XML
-      const allTextMatches = text.match(/>([^<]+)</g);
-      if (allTextMatches) {
-        const readableTexts = allTextMatches
-          .map(match => match.slice(1, -1).trim())
-          .filter(text => text.length > 2 && /[a-zA-Z]/.test(text) && !/^[\d\s.,-]+$/.test(text))
-          .slice(0, 200); // Limit to prevent noise
-        
-        extractedText = readableTexts.join(' ');
-      }
-    }
-    
-    if (extractedText.length < 20) {
-      debugInfo.warnings.push('XLSX extraction yielded very little text - file may contain mostly numerical data');
-    }
-    
-    console.log(`✅ XLSX extraction completed, extracted ${extractedText.length} characters`);
-    return { text: extractedText };
-    
-  } catch (xlsxError) {
-    debugInfo.errors.push(`XLSX extraction failed: ${(xlsxError as Error).message}`);
-    throw xlsxError;
-  }
-}
-
-async function extractImageText(
-  fileResponse: Response,
-  openAIApiKey: string,
-  debugInfo: ExtractionDebugInfo
-): Promise<{ text: string }> {
-  debugInfo.extractionMethod = 'image_ocr_vision';
-  debugInfo.libraryUsed = 'openai_vision';
-  console.log(`🖼️ Processing image with OCR...`);
-  
-  try {
-    const arrayBuffer = await fileResponse.arrayBuffer();
-    const mimeType = fileResponse.headers.get('content-type') || 'image/jpeg';
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    
-    console.log(`📤 Sending image to OpenAI Vision (${Math.round(base64.length/1024)}KB)`);
-    
-    const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
+          {
+            role: 'system',
+            content: 'Extract all text content from this PDF document. Focus on farm-related information like names, addresses, areas, crops, livestock, and legal details.'
+          },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Extract all readable text from this image. Focus on: farm names, addresses, legal information, land area, activities, certifications, and contact details. Return clean, structured text preserving important information.'
+                text: 'Please extract all text from this PDF document:'
               },
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${mimeType};base64,${base64}`
+                  url: `data:application/pdf;base64,${base64PDF}`
                 }
               }
             ]
           }
         ],
-        max_tokens: 4000,
-      }),
+        max_tokens: 2000,
+        temperature: 0.1
+      })
     });
 
-    if (visionResponse.ok) {
-      const visionData = await visionResponse.json();
-      const extractedText = visionData.choices[0]?.message?.content || '';
-      debugInfo.ocrConfidence = 0.85; // Vision API typically has good confidence
-      console.log(`✅ Image OCR extraction successful`);
-      return { text: extractedText };
-    } else {
-      const errorText = await visionResponse.text();
-      debugInfo.errors.push(`Vision API failed: ${visionResponse.status} ${errorText}`);
-      throw new Error(`Vision API failed: ${visionResponse.status} ${visionResponse.statusText}`);
+    if (!response.ok) {
+      throw new Error(`AI PDF extraction failed: ${response.status} ${response.statusText}`);
     }
+
+    const result = await response.json();
+    const extractedText = result.choices[0].message.content;
     
-  } catch (imageError) {
-    debugInfo.errors.push(`Image extraction failed: ${(imageError as Error).message}`);
-    throw imageError;
+    console.log(`✅ AI PDF extraction completed: ${extractedText.length} characters`);
+    return extractedText;
+  } catch (error) {
+    console.error('❌ AI PDF extraction failed:', error);
+    throw new Error(`PDF extraction failed: ${error.message}`);
   }
 }
 
-function cleanExtractedText(text: string): string {
-  if (!text || typeof text !== 'string') {
-    console.warn('⚠️ cleanExtractedText received invalid input:', typeof text);
-    return '';
-  }
-  
-  console.log(`🧹 Cleaning text: ${text.length} characters -> starting cleanup...`);
-  
-  let cleaned = text
-    // Remove excessive whitespace but preserve structure
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n/g, '\n')
-    // Remove common PDF artifacts and control characters but be more permissive
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
-    // Remove only truly problematic characters, keep most unicode
-    .replace(/\uFEFF/g, '') // Remove BOM
-    .trim();
+/**
+ * Extract text from DOCX files (basic implementation)
+ */
+async function extractFromDOCX(docxBuffer: ArrayBuffer): Promise<string> {
+  try {
+    // Basic DOCX text extraction - in production, use a proper DOCX parser
+    const text = new TextDecoder().decode(docxBuffer);
     
-  console.log(`🧹 Text cleaned: ${text.length} -> ${cleaned.length} characters`);
-  
-  // Additional validation
-  if (cleaned.length < text.length * 0.3) {
-    console.warn('⚠️ Text cleaning removed too much content! Reverting to original with minimal cleaning.');
-    cleaned = text.replace(/\s+/g, ' ').trim();
+    // Extract readable text between XML tags (very basic)
+    const textContent = text
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (textContent.length < 100) {
+      throw new Error('Insufficient text extracted from DOCX');
+    }
+    
+    return textContent;
+  } catch (error) {
+    throw new Error(`DOCX extraction failed: ${error.message}`);
   }
-  
-  return cleaned;
+}
+
+/**
+ * Extract text from XLSX files (basic implementation)
+ */
+async function extractFromXLSX(xlsxBuffer: ArrayBuffer): Promise<string> {
+  try {
+    // Basic XLSX text extraction - in production, use a proper XLSX parser
+    const text = new TextDecoder().decode(xlsxBuffer);
+    
+    // Extract strings between shared strings XML (very basic)
+    const stringMatches = text.match(/<t[^>]*>([^<]+)<\/t>/g) || [];
+    const extractedStrings = stringMatches.map(match => 
+      match.replace(/<[^>]*>/g, '').trim()
+    ).filter(str => str.length > 0);
+    
+    if (extractedStrings.length === 0) {
+      throw new Error('No text content found in XLSX');
+    }
+    
+    return `Excel Document Content:\n${extractedStrings.join('\n')}`;
+  } catch (error) {
+    throw new Error(`XLSX extraction failed: ${error.message}`);
+  }
+}
+
+/**
+ * Clean and normalize extracted text
+ */
+function cleanExtractedText(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

@@ -67,33 +67,3 @@ verify_jwt = false
 
 [functions.hybrid-extraction]
 verify_jwt = true
-
-[functions.environment-diagnostic]
-verify_jwt = false
-
-[functions.enhance-subsidy-extraction]
-verify_jwt = false
-
-[functions.improve-subsidy-titles]
-verify_jwt = false
-
-[functions.franceagrimer-scraper]
-verify_jwt = false
-
-[functions.franceagrimer-harvester]
-verify_jwt = false
-
-[functions.afir-harvester]
-verify_jwt = false
-
-[functions.ai-content-processor]
-verify_jwt = false
-
-[functions.pdf-form-detector]
-verify_jwt = false
-
-[functions.dual-pipeline-orchestrator]
-verify_jwt = false
-
-[functions.pipeline-qa-validator]
-verify_jwt = false
