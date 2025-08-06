@@ -31,17 +31,27 @@ serve(async (req) => {
   }
 
   try {
+    // Check required environment variables first
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration missing');
+    }
+
     const { subsidyId, documentUrl, forceExtraction = false } = await req.json() as DocumentSchemaExtractionRequest;
     
     if (!subsidyId) {
       throw new Error('Subsidy ID is required');
     }
 
-    console.log(`Starting document schema extraction for subsidy: ${subsidyId}`);
+    console.log(`🔍 Starting document schema extraction for subsidy: ${subsidyId}`);
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Check if extraction already exists and is successful
@@ -141,11 +151,11 @@ serve(async (req) => {
       });
 
     if (schemaError) {
-      console.error('Failed to store form schema:', schemaError);
+      console.error('⚠️ Failed to store form schema:', schemaError);
       // Don't fail the whole operation for this
     }
 
-    console.log(`Schema extraction completed for subsidy ${subsidyId}: ${fieldCount} fields, ${coveragePercentage}% coverage`);
+    console.log(`✅ Schema extraction completed for subsidy ${subsidyId}: ${fieldCount} fields, ${coveragePercentage}% coverage`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -161,7 +171,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Schema extraction error:', error);
+    console.error('❌ Schema extraction error:', error.message);
     
     // Try to update extraction status to failed if we have the subsidy ID
     try {
@@ -200,6 +210,8 @@ async function extractDocumentSchema(subsidy: any, documentUrl?: string): Promis
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
+
+  console.log(`🤖 Extracting schema for subsidy: ${subsidy.title}`);
 
   // Get comprehensive sections if available
   const comprehensiveSections = subsidy.audit?.comprehensive_sections || [];
@@ -354,7 +366,9 @@ Return ONLY the JSON object.`;
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`❌ OpenAI API error (${response.status}):`, errorText);
+    throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -373,7 +387,8 @@ Return ONLY the JSON object.`;
 
     return schema;
   } catch (parseError) {
-    console.error('Failed to parse OpenAI response:', parseError);
+    console.error('❌ Failed to parse OpenAI response:', parseError);
+    console.error('Raw response content:', extractedContent);
     throw new Error('Failed to parse extracted schema as JSON');
   }
 }
