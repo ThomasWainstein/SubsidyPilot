@@ -1124,6 +1124,107 @@ export type Database = {
         }
         Relationships: []
       }
+      review_assignments: {
+        Row: {
+          assigned_by: string | null
+          assigned_to: string | null
+          assignment_data: Json
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: number
+          resource_id: string
+          resource_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assignment_data?: Json
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: number
+          resource_id: string
+          resource_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assignment_data?: Json
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: number
+          resource_id?: string
+          resource_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      review_decisions: {
+        Row: {
+          assignment_id: string
+          changes_requested: Json | null
+          confidence_level: number | null
+          created_at: string
+          decision: string
+          decision_data: Json
+          id: string
+          review_notes: string | null
+          reviewer_id: string
+          time_spent_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          changes_requested?: Json | null
+          confidence_level?: number | null
+          created_at?: string
+          decision: string
+          decision_data?: Json
+          id?: string
+          review_notes?: string | null
+          reviewer_id: string
+          time_spent_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          changes_requested?: Json | null
+          confidence_level?: number | null
+          created_at?: string
+          decision?: string
+          decision_data?: Json
+          id?: string
+          review_notes?: string | null
+          reviewer_id?: string
+          time_spent_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_decisions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "review_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scraper_logs: {
         Row: {
           created_at: string
@@ -1795,7 +1896,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      review_queue_stats: {
+        Row: {
+          active_reviewers: number | null
+          avg_review_time_minutes: number | null
+          completed_count: number | null
+          date_created: string | null
+          escalated_count: number | null
+          high_priority_count: number | null
+          in_progress_count: number | null
+          overdue_count: number | null
+          pending_count: number | null
+          resource_type: string | null
+          urgent_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       acquire_processing_lock: {
