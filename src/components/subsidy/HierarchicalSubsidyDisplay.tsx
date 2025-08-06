@@ -47,7 +47,46 @@ export const HierarchicalSubsidyDisplay: React.FC<HierarchicalSubsidyDisplayProp
   const evaluationMarkdown = getMarkdownContent('evaluation') || subsidy.evaluation_criteria;
   const deadlinesMarkdown = getMarkdownContent('deadlines');
   const amountsMarkdown = getMarkdownContent('amounts');
-  const fullContentMarkdown = subsidy.audit?.content_markdown;
+  
+  // Check if we have structured content from enhanced extraction
+  const hasStructuredContent = subsidy.presentation || subsidy.application_process || 
+                               subsidy.deadlines || subsidy.amounts || 
+                               subsidy.extracted_documents?.length > 0;
+  
+  // Build comprehensive full content from all available structured fields
+  const buildFullContent = () => {
+    const sections = [];
+    
+    if (subsidy.presentation) {
+      sections.push(`## Program Overview\n\n${subsidy.presentation}`);
+    }
+    
+    if (subsidy.eligibility) {
+      sections.push(`## Eligibility Requirements\n\n${subsidy.eligibility}`);
+    }
+    
+    if (subsidy.application_process) {
+      sections.push(`## Application Process\n\n${subsidy.application_process}`);
+    }
+    
+    if (subsidy.deadlines) {
+      sections.push(`## Important Dates\n\n${subsidy.deadlines}`);
+    }
+    
+    if (subsidy.amounts) {
+      sections.push(`## Funding Details\n\n${subsidy.amounts}`);
+    }
+    
+    if (subsidy.extracted_documents && subsidy.extracted_documents.length > 0) {
+      sections.push(`## Related Documents\n\n${subsidy.extracted_documents.map((doc: string, index: number) => 
+        `${index + 1}. [${doc.split('/').pop() || `Document ${index + 1}`}](${doc})`
+      ).join('\n')}`);
+    }
+    
+    return sections.length > 0 ? sections.join('\n\n---\n\n') : null;
+  };
+  
+  const fullContentMarkdown = buildFullContent() || subsidy.audit?.content_markdown;
 
   const formatAmount = (amount: any) => {
     if (Array.isArray(amount) && amount.length > 0) {
