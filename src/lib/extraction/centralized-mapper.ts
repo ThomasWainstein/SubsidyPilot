@@ -39,7 +39,7 @@ export interface MappingResult {
 export const FIELD_MAPPINGS: Record<string, string> = {
   // Farm Identity
   farmName: 'name',
-  ownerName: 'ownerName',
+  ownerName: 'name', // The owner name often represents the farm name in small operations
   
   // Address & Location
   address: 'address',
@@ -63,6 +63,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   // Contact
   email: 'email',
   phoneNumber: 'phone',
+  phone: 'phone',
   
   // Technical
   irrigationMethods: 'irrigation_method',
@@ -178,6 +179,22 @@ export const VALUE_TRANSFORMERS: Record<string, (value: any) => any> = {
     
     const normalized = value.toString().toLowerCase().replace(/\./g, '');
     return statusMappings[normalized] || value;
+  },
+  
+  email: (value: any) => {
+    if (!value) return '';
+    const emailStr = value.toString();
+    // Extract email using regex to clean up contaminated email strings
+    const emailMatch = emailStr.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    return emailMatch ? emailMatch[1] : emailStr;
+  },
+  
+  phone: (value: any) => {
+    if (!value) return '';
+    const phoneStr = value.toString();
+    // Clean up phone numbers by removing extra text
+    const phoneMatch = phoneStr.match(/(\+?[\d\s\-\(\)]+)/);
+    return phoneMatch ? phoneMatch[1].trim() : phoneStr;
   }
 };
 
@@ -189,10 +206,17 @@ export function mapExtractionToForm(extractionData: ExtractionData): MappingResu
   const unmappedFields: string[] = [];
   const errors: string[] = [];
   
-  logger.debug('Starting extraction to form mapping', { extractionData });
+  logger.step('Starting extraction to form mapping', { extractionData });
   
   try {
-    Object.entries(extractionData).forEach(([sourceKey, value]) => {
+    // Extract the actual fields from the nested structure
+    // Edge function returns: { extractedFields: {...}, confidence: ..., etc }
+    // But we need to map the extractedFields object
+    const fieldsToMap = extractionData.extractedFields || extractionData;
+    
+    logger.debug('Fields to map extracted', { fieldsToMap, originalStructure: extractionData });
+    
+    Object.entries(fieldsToMap).forEach(([sourceKey, value]) => {
       const targetKey = FIELD_MAPPINGS[sourceKey];
       
       if (targetKey) {
@@ -203,7 +227,7 @@ export function mapExtractionToForm(extractionData: ExtractionData): MappingResu
           
           mappedData[targetKey] = transformedValue;
           
-          logger.debug(`Mapped field: ${sourceKey} → ${targetKey}`, {
+          logger.debug(`✅ Mapped field: ${sourceKey} → ${targetKey}`, {
             originalValue: value,
             transformedValue
           });
@@ -213,15 +237,16 @@ export function mapExtractionToForm(extractionData: ExtractionData): MappingResu
         }
       } else {
         unmappedFields.push(sourceKey);
-        logger.debug(`Unmapped field: ${sourceKey}`, { value });
+        logger.debug(`🔍 Unmapped field: ${sourceKey}`, { value });
       }
     });
     
+    const fieldsToMapCount = Object.keys(fieldsToMap).length;
     const mappingStats = {
-      totalFields: Object.keys(extractionData).length,
+      totalFields: fieldsToMapCount,
       mappedFields: Object.keys(mappedData).length,
-      successRate: Object.keys(extractionData).length > 0 
-        ? (Object.keys(mappedData).length / Object.keys(extractionData).length) * 100 
+      successRate: fieldsToMapCount > 0 
+        ? (Object.keys(mappedData).length / fieldsToMapCount) * 100 
         : 0
     };
     
