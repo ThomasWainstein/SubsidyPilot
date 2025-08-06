@@ -171,12 +171,12 @@ serve(async (req) => {
     // Check if already processed with enhanced extraction
     if (!forceReprocess) {
       const { data: existing } = await supabase
-        .from('subsidies_structured')
-        .select('id, audit')
-        .eq('url', url)
+        .from('subsidies')
+        .select('id, raw_content')
+        .eq('source_url', url)
         .maybeSingle();
 
-      if (existing?.audit?.extraction_method === 'enhanced_franceagrimer_v1') {
+      if (existing?.raw_content?.extraction_method === 'enhanced_franceagrimer_v1') {
         console.log('✅ Already processed with enhanced extraction');
         return new Response(JSON.stringify({
           success: true,
@@ -299,61 +299,58 @@ ${allTabContent.substring(0, 50000)}`
     console.log(`📊 Sections found: ${extractedData.metadata?.sections_found?.length || 0}`);
     console.log(`📋 Documents found: ${extractedData.documents?.length || 0}`);
 
-    // Map to database format with comprehensive data
+    // Get existing subsidy ID if it exists
+    const { data: existingSubsidy } = await supabase
+      .from('subsidies')
+      .select('id')
+      .eq('source_url', url)
+      .maybeSingle();
+
+    // Map to database format matching the 'subsidies' table schema
     const mappedData = {
-      url: url,
-      title: extractedData.title,
+      source_url: url,
+      title: { fr: extractedData.title || 'Extracted Title' },
       agency: extractedData.agency || 'FranceAgriMer',
-      program: extractedData.program,
       
-      // Rich content fields using markdown
-      description: extractedData.presentation?.content || '',
-      description_markdown: extractedData.presentation?.content || null,
-      
-      eligibility: extractedData.eligibility?.content || '',
-      eligibility_markdown: extractedData.eligibility?.content || null,
-      
-      application_method: extractedData.application_process?.content || '',
-      application_method_markdown: extractedData.application_process?.content || null,
+      // Rich content fields 
+      description: { fr: extractedData.presentation?.content || '' },
+      eligibility_criteria: { fr: extractedData.eligibility?.content || '' },
       
       // Documents with complete metadata  
       documents: extractedData.documents || [],
       
       // Timing information
-      deadline: extractedData.timeline?.deadline || extractedData.timeline?.application_period_end,
-      application_window_start: extractedData.timeline?.application_period_start,
-      application_window_end: extractedData.timeline?.application_period_end,
-      deadlines: extractedData.timeline?.period_text || '',
-      deadlines_markdown: extractedData.timeline?.period_text || null,
+      deadline: extractedData.timeline?.deadline || extractedData.timeline?.application_period_end || null,
       
-      // Geographic and sectoral scope
+      // Geographic scope
       region: extractedData.geographic_scope?.regions || [],
-      sector: extractedData.sectoral_scope?.sectors || [],
       
-      // Funding information
-      amount: extractedData.funding?.amounts || [],
-      amounts: extractedData.funding?.amount_description || '',
-      co_financing_rate: extractedData.funding?.cofinancing_rate ? parseFloat(extractedData.funding.cofinancing_rate) : null,
-      funding_source: extractedData.funding?.funding_source,
-      funding_markdown: extractedData.funding?.amount_description || null,
+      // Parse funding amounts correctly - extract numbers from text
+      amount_min: extractFundingAmount(extractedData.funding?.amount_description),
+      amount_max: extractFundingAmount(extractedData.funding?.amount_description, true),
+      funding_type: extractedData.funding?.funding_source || null,
       
-      // Application process
-      questionnaire_steps: extractedData.application_process?.steps || [],
-      application_requirements: extractedData.application_process?.steps?.map((step: any) => ({
-        step: step.step_number,
-        title: step.title,
-        description: step.description
-      })) || [],
+      // Categories and classification
+      categories: extractedData.sectoral_scope?.sectors || [],
+      legal_entities: extractedData.eligibility?.beneficiary_types || [],
       
-      // Evaluation
-      evaluation_criteria: extractedData.evaluation?.criteria?.join('; ') || '',
+      // Application schema for form generation
+      application_schema: {
+        presentation: extractedData.presentation,
+        eligibility: extractedData.eligibility,
+        application_process: extractedData.application_process,
+        timeline: extractedData.timeline,
+        funding: extractedData.funding,
+        documents: extractedData.documents,
+        contact: extractedData.contact,
+        legal_framework: extractedData.legal_framework,
+        evaluation: extractedData.evaluation,
+        additional_info: extractedData.additional_info,
+        metadata: extractedData.metadata
+      },
       
-      // Legal framework
-      legal_entity_type: extractedData.eligibility?.beneficiary_types || [],
-      compliance_requirements: extractedData.legal_framework?.compliance_requirements?.join('; ') || '',
-      
-      // Contact information stored in audit
-      audit: {
+      // Raw content for display
+      raw_content: {
         extraction_method: 'enhanced_franceagrimer_v1',
         extraction_timestamp: new Date().toISOString(),
         enhanced_data: {
@@ -362,7 +359,11 @@ ${allTabContent.substring(0, 50000)}`
           contact: extractedData.contact,
           legal_framework: extractedData.legal_framework,
           evaluation: extractedData.evaluation,
-          additional_info: extractedData.additional_info
+          additional_info: extractedData.additional_info,
+          application_process: extractedData.application_process,
+          funding: extractedData.funding,
+          eligibility: extractedData.eligibility,
+          documents: extractedData.documents
         },
         sections_extracted: extractedData.metadata?.sections_found || [],
         documents_found: extractedData.documents?.length || 0,
@@ -370,16 +371,15 @@ ${allTabContent.substring(0, 50000)}`
       },
       
       // System fields
-      missing_fields: [],
-      audit_notes: `Enhanced FranceAgriMer extraction - ${extractedData.metadata?.sections_found?.length || 0} sections`,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      record_status: 'active'
     };
 
     // Upsert to database
     console.log('💾 Storing enhanced extraction...');
     const { data: subsidyData, error: upsertError } = await supabase
-      .from('subsidies_structured')
-      .upsert(mappedData)
+      .from('subsidies')
+      .upsert(mappedData, { onConflict: 'source_url' })
       .select('id')
       .single();
 
@@ -529,4 +529,39 @@ async function fetchAllTabContent(url: string): Promise<string> {
 
   console.log(`📊 Final content size: ${allContent.length} characters`);
   return allContent;
+}
+
+// Helper function to extract funding amounts from text
+function extractFundingAmount(text: string | undefined, isMax: boolean = false): number | null {
+  if (!text) return null;
+  
+  // Look for various amount patterns
+  const patterns = [
+    /(\d{1,3}(?:\s?\d{3})*)\s*€/g, // "20 000 €" or "20000€"
+    /(\d{1,3}(?:[\s,]\d{3})*)\s*euros?/gi, // "20,000 euros"
+    /€\s*(\d{1,3}(?:[\s,]\d{3})*)/g, // "€ 20000"
+    /montant.*?(\d{1,3}(?:[\s,]\d{3})*)/gi, // "montant de 20000"
+    /aide.*?(\d{1,3}(?:[\s,]\d{3})*)/gi, // "aide de 20000"
+  ];
+  
+  const amounts: number[] = [];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const amountStr = match[1].replace(/[\s,]/g, '');
+      const amount = parseInt(amountStr, 10);
+      if (!isNaN(amount) && amount > 0) {
+        amounts.push(amount);
+      }
+    }
+  }
+  
+  if (amounts.length === 0) return null;
+  
+  // Remove duplicates and sort
+  const uniqueAmounts = [...new Set(amounts)].sort((a, b) => a - b);
+  
+  // Return minimum or maximum based on parameter
+  return isMax ? uniqueAmounts[uniqueAmounts.length - 1] : uniqueAmounts[0];
 }
