@@ -236,6 +236,8 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
         if (value !== undefined && value !== null && value !== '') {
           const currentValue = form.getValues(key as keyof FarmEditData);
           
+          console.log(`🔧 Field ${key}: current="${currentValue}" new="${value}" strategy="${mergeStrategy}"`);
+          
           // Apply merge strategy
           let shouldApply = false;
           switch (mergeStrategy) {
@@ -243,16 +245,25 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
               shouldApply = true;
               break;
             case 'merge':
-              shouldApply = !currentValue || currentValue === '' || currentValue === 0;
+              // For extraction, we want to replace obvious placeholder values
+              const isPlaceholder = currentValue === 'Registration Document Farm Name' || 
+                                  currentValue === 'Document' ||
+                                  !currentValue || currentValue === '' || currentValue === 0;
+              shouldApply = isPlaceholder;
               break;
             case 'preserve_existing':
               shouldApply = !currentValue;
               break;
           }
 
+          console.log(`🔧 Field ${key}: shouldApply=${shouldApply}`);
+
           if (shouldApply) {
             form.setValue(key as keyof FarmEditData, value, { shouldValidate: true });
             appliedCount++;
+            console.log(`✅ Applied ${key}: ${value}`);
+          } else {
+            console.log(`⏭️ Skipped ${key}: keeping current value "${currentValue}"`);
           }
         }
       }
