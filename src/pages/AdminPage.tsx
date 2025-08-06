@@ -7,9 +7,11 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatusDashboard } from '@/components/admin/StatusDashboard';
 import EnhancedSubsidyManagement from '@/components/admin/EnhancedSubsidyManagement';
 import EnhancedImportManagement from '@/components/admin/EnhancedImportManagement';
-import SubsidyTitleImprover from '@/components/admin/SubsidyTitleImprover';
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
 import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipelineManager';
+import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfig';
+import { RealTimeMonitoring } from '@/components/admin/RealTimeMonitoring';
+import { AIProcessingControl } from '@/components/admin/AIProcessingControl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -89,18 +91,24 @@ const AdminPage = () => {
 
           {/* Main Admin Tabs */}
           <Tabs defaultValue="pipeline" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 h-12">
+            <TabsList className="grid w-full grid-cols-7 h-12">
               <TabsTrigger value="pipeline" className="flex items-center gap-2">
                 🔄 Pipeline
+              </TabsTrigger>
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                ⚙️ Config
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="flex items-center gap-2">
+                📊 Monitor
+              </TabsTrigger>
+              <TabsTrigger value="ai-control" className="flex items-center gap-2">
+                🤖 AI Control
               </TabsTrigger>
               <TabsTrigger value="subsidies" className="flex items-center gap-2">
                 📋 Subsidies
               </TabsTrigger>
               <TabsTrigger value="validation" className="flex items-center gap-2">
                 ✅ Validation
-              </TabsTrigger>
-              <TabsTrigger value="quality" className="flex items-center gap-2">
-                🔧 Quality
               </TabsTrigger>
               <TabsTrigger value="import" className="flex items-center gap-2">
                 📤 Import
@@ -111,18 +119,24 @@ const AdminPage = () => {
               <EnhancedDualPipelineManager />
             </TabsContent>
             
+            <TabsContent value="config" className="mt-6">
+              <AdvancedPipelineConfig />
+            </TabsContent>
+            
+            <TabsContent value="monitoring" className="mt-6">
+              <RealTimeMonitoring />
+            </TabsContent>
+            
+            <TabsContent value="ai-control" className="mt-6">
+              <AIProcessingControl />
+            </TabsContent>
+            
             <TabsContent value="subsidies" className="mt-6">
               <EnhancedSubsidyManagement />
             </TabsContent>
             
             <TabsContent value="validation" className="mt-6">
               <CanonicalValidationDashboard />
-            </TabsContent>
-            
-            <TabsContent value="quality" className="mt-6">
-              <div className="space-y-6">
-                <SubsidyTitleImprover />
-              </div>
             </TabsContent>
             
             <TabsContent value="import" className="mt-6">
