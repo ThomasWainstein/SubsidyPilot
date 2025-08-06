@@ -318,7 +318,7 @@ ${allTabContent.substring(0, 50000)}`
     // Map to database format matching the 'subsidies' table schema
     const mappedData = {
       ...(existingSubsidy?.id && { id: existingSubsidy.id }),
-      code: existingSubsidy?.code || url,
+      code: existingSubsidy?.code || url.split('/').pop() || url,
       source_url: url,
       title: { fr: extractedData.title || 'Extracted Title' },
       agency: extractedData.agency || 'FranceAgriMer',
@@ -390,7 +390,7 @@ ${allTabContent.substring(0, 50000)}`
     console.log('💾 Storing enhanced extraction...');
     const { data: subsidyData, error: upsertError } = await supabase
       .from('subsidies')
-      .upsert(mappedData, { onConflict: 'code' })
+      .upsert(mappedData, { onConflict: 'source_url' })
       .select('id')
       .single();
 
