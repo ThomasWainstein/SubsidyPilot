@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Form } from '@/components/ui/form';
 import { Save, Upload, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useFarmProfileUpdate } from '@/hooks/useFarmProfileUpdate';
 import { toast } from 'sonner';
@@ -163,19 +164,21 @@ const FarmEditPage: React.FC = () => {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
-                    <FarmCreationFormSections form={form} />
-                    
-                    <div className="flex justify-end gap-4 pt-6 border-t">
-                      <Button type="button" variant="outline" onClick={handleCancel}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={!hasUnsavedChanges}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </Button>
-                    </div>
-                  </form>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
+                      <FarmCreationFormSections form={form} />
+                      
+                      <div className="flex justify-end gap-4 pt-6 border-t">
+                        <Button type="button" variant="outline" onClick={handleCancel}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={!hasUnsavedChanges}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
