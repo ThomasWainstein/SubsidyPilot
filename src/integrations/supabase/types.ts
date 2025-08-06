@@ -565,6 +565,10 @@ export type Database = {
           id: string
           metadata: Json | null
           raw_log_id: string | null
+          resolution_notes: string | null
+          resolution_status: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           stack_trace: string | null
         }
         Insert: {
@@ -574,6 +578,10 @@ export type Database = {
           id?: string
           metadata?: Json | null
           raw_log_id?: string | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           stack_trace?: string | null
         }
         Update: {
@@ -583,6 +591,10 @@ export type Database = {
           id?: string
           metadata?: Json | null
           raw_log_id?: string | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           stack_trace?: string | null
         }
         Relationships: [
@@ -1323,6 +1335,7 @@ export type Database = {
           session_id: string
           status: string
           timestamp: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1333,6 +1346,7 @@ export type Database = {
           session_id: string
           status: string
           timestamp?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1343,6 +1357,7 @@ export type Database = {
           session_id?: string
           status?: string
           timestamp?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2033,6 +2048,10 @@ export type Database = {
       release_processing_lock: {
         Args: { log_id: string }
         Returns: boolean
+      }
+      verify_system_health: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {
