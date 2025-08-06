@@ -380,24 +380,51 @@ serve(async (req) => {
 async function extractSubsidyData(page: any, openaiClient: OpenAIClient, source?: string): Promise<any> {
   const language = getLanguageFromSource(source);
   
+  // Clean HTML entities and extract readable text
+  let cleanText = page.raw_text || page.text_markdown || page.combined_content_markdown || '';
+  
+  // Decode HTML entities
+  cleanText = cleanText
+    .replace(/&agrave;/g, 'à')
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&rsquo;/g, ''')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&euro;/g, '€')
+    .replace(/&#039;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
   const systemPrompt = `You are an expert at extracting VERBATIM content from French government subsidy pages. Your job is to preserve the exact French text as it appears, not to translate or summarize.
 
-CRITICAL: Extract and preserve original French text exactly as written. DO NOT translate, summarize, or paraphrase.
+CRITICAL INSTRUCTIONS:
+1. Extract and preserve original French text exactly as written
+2. DO NOT translate, summarize, or paraphrase
+3. Look for document URLs and files (PDF, DOCX, etc.)
+4. Preserve French government terminology exactly
 
 Extract the following information and return ONLY valid JSON:
 
 {
   "title": "EXACT title from the page (preserve original French)",
-  "description": "VERBATIM description text - copy exact French phrases",
+  "description": "VERBATIM first paragraph or description - copy exact French phrases",
   "presentation": "Complete 'Présentation' section text VERBATIM if found",
   "eligibility": "Complete 'Pour qui ?' or eligibility section VERBATIM if found", 
   "application_process": "Complete 'Comment ?' or application process text VERBATIM if found",
-  "deadlines": "EXACT deadline text as written (e.g. 'jusqu'au 8 septembre 2025')",
-  "amounts": "EXACT funding amount text as written (e.g. '8 millions d'euros')",
+  "deadlines": "EXACT deadline text as written (e.g. 'La téléprocédure de dépôt des demandes d'avance est close')",
+  "amounts": "EXACT funding amount text as written (e.g. 'enveloppe globale de 75M€')",
   "amount": [extract numeric values if clearly stated],
   "deadline": "Parse date to YYYY-MM-DD format if clear date found",
   "program": "Official program name VERBATIM",
-  "agency": "Government agency name VERBATIM (e.g. 'FranceAgriMer')", 
+  "agency": "Government agency name VERBATIM (e.g. 'FranceAgriMer')",
   "regions": ["exact", "region", "names", "as", "written"],
   "sectors": ["exact", "sector", "names", "from", "page"],
   "extracted_documents": ["array of document URLs found on page"],
