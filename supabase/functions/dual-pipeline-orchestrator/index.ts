@@ -1,6 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { 
+  getStandardizedConfig, 
+  validatePipelineRequest, 
+  PerformanceMonitor, 
+  RetryHandler 
+} from '../shared/utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,23 +40,14 @@ serve(async (req) => {
   }
 
   try {
-    const config = {
-      supabase_url: Deno.env.get('SUPABASE_URL'),
-      supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    };
-
-    console.log('🔧 Dual Pipeline Environment Check:', {
-      has_supabase_url: !!config.supabase_url,
-      has_service_key: !!config.supabase_service_key
-    });
-
-    if (!config.supabase_url || !config.supabase_service_key) {
-      throw new Error('Missing required Supabase configuration');
-    }
+    const config = getStandardizedConfig();
+    console.log('🔧 Dual Pipeline Environment Check: ✅ Configuration validated');
 
     const supabase = createClient(config.supabase_url, config.supabase_service_key);
     
-    const { action, execution_config, pipeline_id } = await req.json();
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const { action, execution_config, pipeline_id } = validatePipelineRequest(requestBody);
 
     console.log('🔄 Dual Pipeline Orchestrator:', { action });
 
@@ -222,77 +219,85 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
 }
 
 async function triggerHarvestingPipeline(countries: string[], config: any, supabase: any) {
-  const results = {
-    total_pages_discovered: 0,
-    total_pages_scraped: 0,
-    country_results: {} as Record<string, any>
-  };
+  return PerformanceMonitor.trackOperation('HarvestingPipeline', async () => {
+    const results = {
+      total_pages_discovered: 0,
+      total_pages_scraped: 0,
+      country_results: {} as Record<string, any>
+    };
 
-  for (const country of countries) {
-    try {
-      console.log(`🌍 Triggering harvesting for: ${country}`);
-      
-      let harvesterResult;
-      
-      if (country === 'france') {
-        harvesterResult = await supabase.functions.invoke('franceagrimer-harvester', {
-          body: {
-            action: 'scrape',
-            max_pages: config.max_pages_per_country
+    for (const country of countries) {
+      try {
+        console.log(`🌍 Triggering harvesting for: ${country}`);
+        
+        const harvesterResult = await RetryHandler.withRetry(async () => {
+          if (country === 'france') {
+            return await supabase.functions.invoke('franceagrimer-harvester', {
+              body: {
+                action: 'scrape',
+                max_pages: config.max_pages_per_country || 20
+              }
+            });
+          } else if (country === 'romania') {
+            return await supabase.functions.invoke('afir-harvester', {
+              body: {
+                action: 'scrape',
+                max_pages: config.max_pages_per_country || 20
+              }
+            });
+          } else {
+            throw new Error(`Unsupported country: ${country}`);
           }
-        });
-      } else if (country === 'romania') {
-        harvesterResult = await supabase.functions.invoke('afir-harvester', {
-          body: {
-            action: 'scrape',
-            max_pages: config.max_pages_per_country
-          }
-        });
-      }
+        }, 2, 5000); // 2 retries with 5s base delay
 
-      if (harvesterResult?.data?.success) {
-        const pages_scraped = harvesterResult.data.pages_scraped || 0;
-        results.total_pages_scraped += pages_scraped;
-        results.total_pages_discovered += pages_scraped;
-        results.country_results[country] = {
-          success: true,
-          pages_scraped,
-          session_id: harvesterResult.data.session_id
-        };
-      } else {
+        if (harvesterResult?.data?.success) {
+          const pages_scraped = harvesterResult.data.pages_scraped || 0;
+          results.total_pages_scraped += pages_scraped;
+          results.total_pages_discovered += pages_scraped;
+          results.country_results[country] = {
+            success: true,
+            pages_scraped,
+            session_id: harvesterResult.data.session_id
+          };
+        } else {
+          results.country_results[country] = {
+            success: false,
+            error: harvesterResult?.error?.message || 'Unknown error'
+          };
+        }
+
+      } catch (error) {
+        console.warn(`⚠️ Harvesting failed for ${country}:`, error);
         results.country_results[country] = {
           success: false,
-          error: harvesterResult?.error?.message || 'Unknown error'
+          error: error.message
         };
       }
-
-    } catch (error) {
-      console.warn(`⚠️ Harvesting failed for ${country}:`, error);
-      results.country_results[country] = {
-        success: false,
-        error: error.message
-      };
     }
-  }
 
-  return results;
+    return results;
+  }, { countries: countries.join(','), total_countries: countries.length });
 }
 
 async function triggerProcessingPipeline(config: any, supabase: any) {
-  console.log('🔄 Triggering AI processing pipeline');
-  
-  const processingResult = await supabase.functions.invoke('ai-content-processor', {
-    body: {
-      source: 'all', // Process all unprocessed pages
-      quality_threshold: config.quality_threshold
-    }
-  });
+  return PerformanceMonitor.trackOperation('AIProcessingPipeline', async () => {
+    console.log('🔄 Triggering AI processing pipeline');
+    
+    const processingResult = await RetryHandler.withRetry(async () => {
+      return await supabase.functions.invoke('ai-content-processor', {
+        body: {
+          source: 'all', // Process all unprocessed pages
+          quality_threshold: config.quality_threshold || 0.7
+        }
+      });
+    }, 2, 10000); // 2 retries with 10s base delay
 
-  return {
-    success: processingResult?.data?.success || false,
-    subsidies_created: processingResult?.data?.successful || 0,
-    processing_errors: processingResult?.data?.failed || 0
-  };
+    return {
+      success: processingResult?.data?.success || false,
+      subsidies_created: processingResult?.data?.successful || 0,
+      processing_errors: processingResult?.data?.failed || 0
+    };
+  }, { quality_threshold: config.quality_threshold });
 }
 
 async function triggerFormGeneration(config: any, supabase: any) {

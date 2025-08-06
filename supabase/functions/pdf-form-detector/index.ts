@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getStandardizedConfig, OpenAIClient, PerformanceMonitor } from '../shared/utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,11 +48,10 @@ serve(async (req) => {
   }
 
   try {
-    const config = {
-      supabase_url: Deno.env.get('NEXT_PUBLIC_SUPABASE_URL'),
-      supabase_service_key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-      openai_api_key: Deno.env.get('SCRAPER_RAW_GPT_API') || Deno.env.get('OPENAI_API_KEY'),
-    };
+import { getStandardizedConfig, OpenAIClient, PerformanceMonitor } from '../shared/utils.ts';
+
+    const config = getStandardizedConfig();
+    const openaiClient = new OpenAIClient(config.openai_primary_key, config.openai_backup_key);
 
     if (!config.openai_api_key) {
       throw new Error('OpenAI API key not configured');
@@ -84,7 +84,7 @@ serve(async (req) => {
       }
 
       // Analyze content with OpenAI to detect form structure
-      const formSchema = await analyzeDocumentForForms(contentToAnalyze, config.openai_api_key);
+      const formSchema = await analyzeDocumentForForms(contentToAnalyze, openaiClient);
       
       if (!formSchema) {
         return new Response(JSON.stringify({
@@ -212,7 +212,7 @@ serve(async (req) => {
   }
 });
 
-async function analyzeDocumentForForms(content: string, apiKey: string): Promise<GeneratedFormSchema | null> {
+async function analyzeDocumentForForms(content: string, openaiClient: OpenAIClient): Promise<GeneratedFormSchema | null> {
   const systemPrompt = `You are an expert at analyzing government agricultural subsidy application documents and converting them into structured web form schemas.
 
 Analyze the provided document content and extract the form structure. Return a JSON schema that can be used to generate a dynamic web form.
@@ -263,52 +263,16 @@ Guidelines:
 - Create select options from enumerated choices
 - Return null if no clear form structure is detected`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { 
-          role: 'user', 
-          content: `Analyze this document and extract the form structure:\n\n${content.substring(0, 8000)}` // Limit content length
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 3000
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const responseContent = data.choices[0]?.message?.content;
-
-  if (!responseContent) {
-    return null;
-  }
-
   try {
-    // Extract JSON from the response
-    const jsonMatch = responseContent.match(/```json\n([\s\S]*?)\n```/) || 
-                     responseContent.match(/```\n([\s\S]*?)\n```/);
+    const prompt = `Analyze this document and extract the form structure:\n\n${content}`;
+    const result = await openaiClient.extractContent(prompt, systemPrompt, {
+      model: 'gpt-4o',
+      maxTokens: 3000
+    });
     
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[1]);
-      return validateFormSchema(parsed) ? parsed : null;
-    } else {
-      // Try parsing the entire response as JSON
-      const parsed = JSON.parse(responseContent);
-      return validateFormSchema(parsed) ? parsed : null;
-    }
-  } catch (parseError) {
-    console.warn('⚠️ Failed to parse form detection response:', parseError);
+    return validateFormSchema(result) ? result : null;
+  } catch (error) {
+    console.warn('⚠️ Failed to analyze document for forms:', error);
     return null;
   }
 }
