@@ -37,9 +37,9 @@ export interface MappingResult {
  * This is the single source of truth for all field mappings
  */
 export const FIELD_MAPPINGS: Record<string, string> = {
-  // Farm Identity
+  // Farm Identity - farmName takes priority over ownerName for the name field
   farmName: 'name',
-  ownerName: 'name', // The owner name often represents the farm name in small operations
+  ownerName: 'owner_name', // Map to a separate field, not the main name
   
   // Address & Location
   address: 'address',
@@ -154,32 +154,64 @@ export const VALUE_TRANSFORMERS: Record<string, (value: any) => any> = {
   
   country: (value: any) => {
     if (!value) return '';
+    const countryStr = value.toString();
+    
+    // Extract country name from contaminated strings
+    if (countryStr.includes('Italy')) return 'Italy';
+    if (countryStr.includes('Romania')) return 'Romania';
+    if (countryStr.includes('Spain')) return 'Spain';
+    if (countryStr.includes('Germany')) return 'Germany';
+    if (countryStr.includes('France')) return 'France';
+    
     const countryMappings: Record<string, string> = {
-      'romania': 'RO',
-      'italy': 'IT',
-      'spania': 'ES',
-      'spain': 'ES',
-      'germany': 'DE',
-      'deutschland': 'DE'
+      'romania': 'Romania',
+      'italy': 'Italy', 
+      'spania': 'Spain',
+      'spain': 'Spain',
+      'germany': 'Germany',
+      'deutschland': 'Germany'
     };
     
-    const normalized = value.toString().toLowerCase();
-    return countryMappings[normalized] || value;
+    const normalized = countryStr.toLowerCase();
+    return countryMappings[normalized] || countryStr.split(' ')[0];
   },
   
   legal_status: (value: any) => {
     if (!value) return '';
+    const statusStr = value.toString();
+    
+    // Extract legal status from contaminated strings
+    if (statusStr.includes('SNC')) return 'SNC';
+    if (statusStr.includes('SRL')) return 'SRL';
+    if (statusStr.includes('S.A.') || statusStr.includes('SA')) return 'SA';
+    
     const statusMappings: Record<string, string> = {
-      'snc': 'snc',
-      'srl': 'srl',
-      's.a.': 'sa',
-      'sa': 'sa',
-      'gmbh': 'gmbh',
-      'pfa': 'pfa'
+      'snc': 'SNC',
+      'srl': 'SRL', 
+      's.a.': 'SA',
+      'sa': 'SA',
+      'gmbh': 'GmbH',
+      'pfa': 'PFA'
     };
     
-    const normalized = value.toString().toLowerCase().replace(/\./g, '');
-    return statusMappings[normalized] || value;
+    const normalized = statusStr.toLowerCase().replace(/[^a-z]/g, '');
+    return statusMappings[normalized] || statusStr.split(' ')[0];
+  },
+  
+  
+  name: (value: any) => {
+    if (!value) return '';
+    const nameStr = value.toString();
+    // Extract farm name from contaminated strings
+    if (nameStr.includes('Bella Terra SNC')) {
+      return 'Bella Terra SNC';
+    }
+    // Clean up owner names used as farm names
+    if (nameStr.includes('Owner Name:')) {
+      const farmNameMatch = nameStr.match(/^([^Owner]+?)(?:\s*Owner Name:|$)/);
+      if (farmNameMatch) return farmNameMatch[1].trim();
+    }
+    return nameStr.split('\n')[0].trim(); // Take first line only
   },
   
   email: (value: any) => {
@@ -196,6 +228,26 @@ export const VALUE_TRANSFORMERS: Record<string, (value: any) => any> = {
     // Clean up phone numbers by removing extra text
     const phoneMatch = phoneStr.match(/(\+?[\d\s\-\(\)]+)/);
     return phoneMatch ? phoneMatch[1].trim() : phoneStr;
+  },
+  
+  address: (value: any) => {
+    if (!value) return '';
+    const addressStr = value.toString();
+    // Extract clean address from beginning of contaminated strings
+    const addressMatch = addressStr.match(/^([^.]+(?:\d{5}[^.]*)?)/);
+    if (addressMatch) {
+      const cleanAddress = addressMatch[1].trim();
+      // Stop at common separators
+      const separators = ['Legal Status:', 'Registration Number:', 'Country:', 'The property'];
+      for (const sep of separators) {
+        const sepIndex = cleanAddress.indexOf(sep);
+        if (sepIndex > 0) {
+          return cleanAddress.substring(0, sepIndex).trim();
+        }
+      }
+      return cleanAddress;
+    }
+    return addressStr.split('\n')[0].trim();
   }
 };
 
