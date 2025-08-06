@@ -62,7 +62,7 @@ const FarmEditPage: React.FC = () => {
       console.log('🔄 Starting prefill process for document:', extractionId);
       
       // Apply the extraction data
-      applyExtractionToForm(extractionId, 'merge')
+      applyExtractionToForm(extractionId)
         .then(() => {
           console.log('✅ Prefill completed successfully');
           setPrefillApplied(true);

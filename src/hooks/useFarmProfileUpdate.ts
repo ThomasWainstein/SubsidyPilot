@@ -257,11 +257,7 @@ export const useFarmProfileUpdate = ({ farmId, enableAutoExtraction = true, merg
         }
       }
 
-      // Also apply to database for immediate persistence
-      await unifiedExtractionService.applyExtractionToFarm(farmId, extraction, {
-        mergeStrategy,
-        fieldWhitelist
-      });
+      // Form data will be saved when user clicks Save Changes
 
       // Remove from pending extractions
       setPendingExtractions(prev => {
