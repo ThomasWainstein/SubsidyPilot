@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,8 +14,10 @@ import EnhancedDocumentUpload from '@/components/farm/EnhancedDocumentUpload';
 const FarmEditPage: React.FC = () => {
   const { farmId } = useParams<{ farmId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('profile');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [prefillApplied, setPrefillApplied] = useState(false);
 
   if (!farmId) {
     return (
@@ -36,12 +38,41 @@ const FarmEditPage: React.FC = () => {
     farmLoading,
     isExtracting,
     pendingExtractions,
-    saveFarmProfile
+    saveFarmProfile,
+    applyExtractionToForm
   } = useFarmProfileUpdate({
     farmId,
     enableAutoExtraction: true,
     mergeStrategy: 'merge'
   });
+
+  // Handle prefill from URL parameters
+  useEffect(() => {
+    const shouldPrefill = searchParams.get('prefill') === 'true';
+    const extractionId = searchParams.get('extractionId');
+    
+    if (shouldPrefill && extractionId && !prefillApplied && !farmLoading) {
+      console.log('🔄 Applying prefill for extraction:', extractionId);
+      
+      // Apply the extraction data
+      applyExtractionToForm(extractionId, 'merge')
+        .then(() => {
+          setPrefillApplied(true);
+          setHasUnsavedChanges(true);
+          toast.success('Farm profile prefilled with extracted data');
+          
+          // Clean up URL parameters
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('prefill');
+          newSearchParams.delete('extractionId');
+          setSearchParams(newSearchParams, { replace: true });
+        })
+        .catch((error) => {
+          console.error('Failed to apply prefill:', error);
+          toast.error('Failed to apply extracted data');
+        });
+    }
+  }, [searchParams, prefillApplied, farmLoading, applyExtractionToForm, setSearchParams]);
 
   // Track form changes
   React.useEffect(() => {
