@@ -45,6 +45,11 @@ export const SimpleSubsidyDisplay: React.FC<SimpleSubsidyDisplayProps> = ({ subs
 
   const shouldShowEnhancedExtraction = isDataIncomplete();
 
+  // Check if we have structured content from enhanced extraction
+  const hasStructuredContent = subsidy.presentation || subsidy.application_process || 
+                               subsidy.deadlines || subsidy.amounts || 
+                               subsidy.extracted_documents?.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Enhanced Extraction Trigger - Show when data appears incomplete */}
@@ -185,8 +190,96 @@ export const SimpleSubsidyDisplay: React.FC<SimpleSubsidyDisplayProps> = ({ subs
         </Card>
       )}
 
-      {/* Documents Section */}
-      {subsidy.documents && subsidy.documents.length > 0 && (
+      {/* Complete Program Information - Enhanced Structured Content */}
+      {hasStructuredContent && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Program Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Presentation Section */}
+            {subsidy.presentation && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-primary">Program Overview</h3>
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownRenderer content={subsidy.presentation} />
+                </div>
+              </div>
+            )}
+
+            {/* Application Process */}
+            {subsidy.application_process && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-primary">Application Process</h3>
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownRenderer content={subsidy.application_process} />
+                </div>
+              </div>
+            )}
+
+            {/* Deadlines */}
+            {subsidy.deadlines && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-primary">Important Dates</h3>
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownRenderer content={subsidy.deadlines} />
+                </div>
+              </div>
+            )}
+
+            {/* Funding Information */}
+            {subsidy.amounts && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-primary">Funding Details</h3>
+                <div className="prose prose-sm max-w-none">
+                  <MarkdownRenderer content={subsidy.amounts} />
+                </div>
+              </div>
+            )}
+
+            {/* Extracted Documents */}
+            {subsidy.extracted_documents && subsidy.extracted_documents.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-primary">Related Documents</h3>
+                <div className="grid gap-2">
+                  {subsidy.extracted_documents.map((docUrl: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <a 
+                        href={docUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-sm flex-1"
+                      >
+                        {docUrl.split('/').pop() || `Document ${index + 1}`}
+                      </a>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Extraction Quality Info */}
+            {subsidy.audit?.extraction_timestamp && (
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Enhanced extraction completed</span>
+                  <span>{new Date(subsidy.audit.extraction_timestamp).toLocaleDateString()}</span>
+                </div>
+                {subsidy.audit.documents_found > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    📎 Found {subsidy.audit.documents_found} document(s)
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fallback Documents Section for legacy data */}
+      {!hasStructuredContent && subsidy.documents && subsidy.documents.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Related Documents</CardTitle>
