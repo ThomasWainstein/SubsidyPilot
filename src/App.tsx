@@ -207,6 +207,14 @@ function App() {
                      } 
                    />
                    <Route 
+                     path="/data-quality" 
+                     element={
+                       <ProtectedRoute>
+                         <EmployeeDashboardPage />
+                       </ProtectedRoute>
+                     } 
+                   />
+                   <Route 
                      path="/settings" 
                      element={
                        <ProtectedRoute>
