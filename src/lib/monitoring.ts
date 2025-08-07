@@ -1,256 +1,202 @@
-import { logger } from './logger';
-import { IS_PRODUCTION } from '@/config/environment';
+/**
+ * Production Monitoring System
+ * Provides global error handling, performance monitoring, and real-time metrics collection
+ */
 
-export interface ErrorReport {
-  message: string;
-  stack?: string;
-  userAgent?: string;
-  url?: string;
-  userId?: string;
-  timestamp: number;
-  level: 'error' | 'warning' | 'info';
-  context?: Record<string, any>;
+interface PerformanceMetrics {
+  lcp?: number;
+  fcp?: number;
+  cls?: number;
+  fid?: number;
+  ttfb?: number;
 }
 
-export interface PerformanceMetric {
-  name: string;
-  value: number;
+interface ErrorReport {
+  error: Error;
   timestamp: number;
-  userId?: string;
-  context?: Record<string, any>;
+  url: string;
+  userAgent: string;
+  stackTrace?: string;
+}
+
+interface NetworkMetrics {
+  isOnline: boolean;
+  effectiveType?: string;
+  downlink?: number;
+  rtt?: number;
 }
 
 class ProductionMonitoring {
-  private static instance: ProductionMonitoring;
-  private errorQueue: ErrorReport[] = [];
-  private metricsQueue: PerformanceMetric[] = [];
-  private isOnline = navigator.onLine;
-
-  static getInstance(): ProductionMonitoring {
-    if (!ProductionMonitoring.instance) {
-      ProductionMonitoring.instance = new ProductionMonitoring();
-    }
-    return ProductionMonitoring.instance;
-  }
+  private errors: ErrorReport[] = [];
+  private metrics: PerformanceMetrics = {};
+  private networkMetrics: NetworkMetrics = { isOnline: navigator.onLine };
+  private observers: Map<string, PerformanceObserver> = new Map();
 
   constructor() {
-    this.setupGlobalErrorHandling();
-    this.setupPerformanceObserver();
-    this.setupNetworkMonitoring();
-    this.startBatchProcessor();
+    this.initializeErrorHandling();
+    this.initializePerformanceMonitoring();
+    this.initializeNetworkMonitoring();
   }
 
-  private setupGlobalErrorHandling(): void {
-    // Catch unhandled errors
+  private initializeErrorHandling() {
+    // Global error handler
     window.addEventListener('error', (event) => {
-      this.captureError({
-        message: event.message,
-        stack: event.error?.stack,
-        url: event.filename,
-        timestamp: Date.now(),
-        level: 'error',
-        context: {
-          line: event.lineno,
-          column: event.colno,
-          type: 'javascript_error'
-        }
+      this.captureError(new Error(event.message), {
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
       });
     });
 
-    // Catch unhandled promise rejections
+    // Unhandled promise rejection handler
     window.addEventListener('unhandledrejection', (event) => {
-      this.captureError({
-        message: `Unhandled promise rejection: ${event.reason}`,
-        stack: event.reason?.stack,
-        timestamp: Date.now(),
-        level: 'error',
-        context: {
-          type: 'promise_rejection',
-          reason: event.reason
-        }
+      this.captureError(new Error(event.reason), {
+        type: 'unhandledrejection'
       });
     });
   }
 
-  private setupPerformanceObserver(): void {
-    if (!('PerformanceObserver' in window)) return;
-
-    try {
-      // Monitor Core Web Vitals
-      const observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'largest-contentful-paint') {
-            this.captureMetric({
-              name: 'LCP',
-              value: entry.startTime,
-              timestamp: Date.now(),
-              context: { type: 'core_web_vitals' }
-            });
-          }
-          
-          if (entry.entryType === 'first-input') {
-            this.captureMetric({
-              name: 'FID',
-              value: (entry as any).processingStart - entry.startTime,
-              timestamp: Date.now(),
-              context: { type: 'core_web_vitals' }
-            });
-          }
-
-          if (entry.entryType === 'layout-shift' && !(entry as any).hadRecentInput) {
-            this.captureMetric({
-              name: 'CLS',
-              value: (entry as any).value,
-              timestamp: Date.now(),
-              context: { type: 'core_web_vitals' }
-            });
-          }
-        }
+  private initializePerformanceMonitoring() {
+    // Web Vitals monitoring
+    if ('PerformanceObserver' in window) {
+      // Largest Contentful Paint
+      const lcpObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        const lastEntry = entries[entries.length - 1];
+        this.metrics.lcp = lastEntry.startTime;
       });
+      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+      this.observers.set('lcp', lcpObserver);
 
-      observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input', 'layout-shift'] });
-    } catch (error) {
-      logger.warn('Performance observer not supported', { error });
+      // First Contentful Paint
+      const fcpObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        entries.forEach((entry) => {
+          if (entry.name === 'first-contentful-paint') {
+            this.metrics.fcp = entry.startTime;
+          }
+        });
+      });
+      fcpObserver.observe({ entryTypes: ['paint'] });
+      this.observers.set('fcp', fcpObserver);
+
+      // Cumulative Layout Shift
+      const clsObserver = new PerformanceObserver((list) => {
+        let clsValue = 0;
+        list.getEntries().forEach((entry: any) => {
+          if (!entry.hadRecentInput) {
+            clsValue += entry.value;
+          }
+        });
+        this.metrics.cls = clsValue;
+      });
+      clsObserver.observe({ entryTypes: ['layout-shift'] });
+      this.observers.set('cls', clsObserver);
     }
   }
 
-  private setupNetworkMonitoring(): void {
+  private initializeNetworkMonitoring() {
+    // Network status monitoring
     window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.processBatches();
+      this.networkMetrics.isOnline = true;
     });
 
     window.addEventListener('offline', () => {
-      this.isOnline = false;
+      this.networkMetrics.isOnline = false;
     });
+
+    // Network information API (if available)
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      this.networkMetrics.effectiveType = connection.effectiveType;
+      this.networkMetrics.downlink = connection.downlink;
+      this.networkMetrics.rtt = connection.rtt;
+
+      connection.addEventListener('change', () => {
+        this.networkMetrics.effectiveType = connection.effectiveType;
+        this.networkMetrics.downlink = connection.downlink;
+        this.networkMetrics.rtt = connection.rtt;
+      });
+    }
   }
 
-  private startBatchProcessor(): void {
-    setInterval(() => {
-      if (this.isOnline) {
-        this.processBatches();
-      }
-    }, 30000); // Process every 30 seconds
-  }
-
-  captureError(error: Partial<ErrorReport>): void {
+  captureError(error: Error, context?: Record<string, any>) {
     const errorReport: ErrorReport = {
-      message: error.message || 'Unknown error',
-      stack: error.stack,
-      userAgent: navigator.userAgent,
+      error,
+      timestamp: Date.now(),
       url: window.location.href,
-      timestamp: error.timestamp || Date.now(),
-      level: error.level || 'error',
-      context: error.context
+      userAgent: navigator.userAgent,
+      stackTrace: error.stack
     };
 
-    this.errorQueue.push(errorReport);
-    logger.error('Error captured', new Error(errorReport.message), errorReport.context);
+    this.errors.push(errorReport);
 
-    // Immediate processing for critical errors in production
-    if (IS_PRODUCTION && errorReport.level === 'error') {
-      this.processBatches();
+    // Keep only last 100 errors to prevent memory issues
+    if (this.errors.length > 100) {
+      this.errors = this.errors.slice(-100);
     }
+
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Captured error:', error, context);
+    }
+
+    // In production, you would send this to your monitoring service
+    // Example: Sentry, LogRocket, etc.
   }
 
-  captureMetric(metric: PerformanceMetric): void {
-    this.metricsQueue.push(metric);
-
-    // Log performance issues
-    if (metric.name === 'LCP' && metric.value > 2500) {
-      logger.warn('Poor LCP detected', { value: metric.value });
-    }
-    if (metric.name === 'FID' && metric.value > 100) {
-      logger.warn('Poor FID detected', { value: metric.value });
-    }
-    if (metric.name === 'CLS' && metric.value > 0.1) {
-      logger.warn('Poor CLS detected', { value: metric.value });
-    }
+  getMetrics() {
+    return {
+      performance: this.metrics,
+      network: this.networkMetrics,
+      errors: this.errors.slice(-10), // Last 10 errors
+      memory: this.getMemoryInfo(),
+      timing: this.getTimingInfo()
+    };
   }
 
-  private async processBatches(): Promise<void> {
-    if (!this.isOnline || (!this.errorQueue.length && !this.metricsQueue.length)) {
-      return;
+  private getMemoryInfo() {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return {
+        usedJSHeapSize: memory.usedJSHeapSize,
+        totalJSHeapSize: memory.totalJSHeapSize,
+        jsHeapSizeLimit: memory.jsHeapSizeLimit,
+        usagePercentage: (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100
+      };
     }
-
-    try {
-      if (this.errorQueue.length > 0) {
-        await this.sendErrors([...this.errorQueue]);
-        this.errorQueue = [];
-      }
-
-      if (this.metricsQueue.length > 0) {
-        await this.sendMetrics([...this.metricsQueue]);
-        this.metricsQueue = [];
-      }
-    } catch (error) {
-      logger.error('Failed to send monitoring data', error as Error);
-    }
+    return null;
   }
 
-  private async sendErrors(errors: ErrorReport[]): Promise<void> {
-    if (!IS_PRODUCTION) {
-      logger.debug('Would send errors to monitoring service', { count: errors.length });
-      return;
-    }
-
-    // In production, send to actual monitoring service
-    // TODO: Replace with actual service (Sentry, LogRocket, etc.)
-    try {
-      const response = await fetch('/api/monitoring/errors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errors })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      logger.error('Failed to send error reports', error as Error);
-    }
+  private getTimingInfo() {
+    const timing = performance.timing;
+    return {
+      domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+      windowLoad: timing.loadEventEnd - timing.navigationStart,
+      ttfb: timing.responseStart - timing.navigationStart
+    };
   }
 
-  private async sendMetrics(metrics: PerformanceMetric[]): Promise<void> {
-    if (!IS_PRODUCTION) {
-      logger.debug('Would send metrics to monitoring service', { count: metrics.length });
-      return;
-    }
-
-    // In production, send to actual monitoring service
-    try {
-      const response = await fetch('/api/monitoring/metrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metrics })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      logger.error('Failed to send performance metrics', error as Error);
-    }
-  }
-
-  // Manual reporting methods
-  reportUserAction(action: string, context?: Record<string, any>): void {
-    this.captureMetric({
-      name: 'user_action',
-      value: 1,
+  trackCustomEvent(name: string, properties?: Record<string, any>) {
+    // Custom event tracking for business metrics
+    const event = {
+      name,
+      properties,
       timestamp: Date.now(),
-      context: { action, ...context }
-    });
+      url: window.location.href
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Custom event:', event);
+    }
+
+    // In production, send to analytics service
   }
 
-  reportFeatureUsage(feature: string, duration?: number): void {
-    this.captureMetric({
-      name: 'feature_usage',
-      value: duration || 1,
-      timestamp: Date.now(),
-      context: { feature }
-    });
+  cleanup() {
+    this.observers.forEach(observer => observer.disconnect());
+    this.observers.clear();
   }
 }
 
-export const monitoring = ProductionMonitoring.getInstance();
+export const prodMonitoring = new ProductionMonitoring();

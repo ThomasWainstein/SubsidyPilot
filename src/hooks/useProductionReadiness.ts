@@ -1,194 +1,198 @@
-import { useState, useEffect, useCallback } from 'react';
-import { monitoring } from '@/lib/monitoring';
-import { healthChecker, SystemHealth } from '@/lib/healthCheck';
-import { security } from '@/lib/security';
-import { cache } from '@/lib/caching';
-import { logger } from '@/lib/logger';
-import { PRODUCTION_CONFIG } from '@/config/production';
+/**
+ * Production Readiness Hook
+ * Unified access to system health, security, performance, and cache metrics
+ */
 
-export interface ProductionMetrics {
-  systemHealth: SystemHealth | null;
-  securityReport: ReturnType<typeof security.getSecurityReport>;
-  cacheStats: ReturnType<typeof cache.getStats>;
-  performanceMetrics: {
-    memoryUsage: number;
-    responseTime: number;
-    errorRate: number;
+import { useState, useEffect, useCallback } from 'react';
+import { prodMonitoring } from '@/lib/monitoring';
+import { healthCheck, SystemHealth } from '@/lib/healthCheck';
+import { security, SecurityMetrics } from '@/lib/security';
+import { productionCache, documentCache, subsidyCache } from '@/lib/caching';
+import { productionConfig } from '@/config/production';
+
+interface ProductionMetrics {
+  health: SystemHealth | null;
+  performance: ReturnType<typeof prodMonitoring.getMetrics>;
+  security: SecurityMetrics;
+  caching: {
+    production: ReturnType<typeof productionCache.getStats>;
+    documents: ReturnType<typeof documentCache.getStats>;
+    subsidies: ReturnType<typeof subsidyCache.getStats>;
   };
-  uptime: number;
+  config: typeof productionConfig;
 }
 
-export const useProductionReadiness = () => {
-  const [metrics, setMetrics] = useState<ProductionMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+interface ProductionReadinessState {
+  metrics: ProductionMetrics | null;
+  loading: boolean;
+  error: string | null;
+  lastUpdated: number | null;
+}
 
-  const startTime = useCallback(() => Date.now(), []);
+interface ProductionActions {
+  refreshMetrics: () => Promise<void>;
+  runHealthCheck: () => Promise<SystemHealth>;
+  clearCache: (type?: 'production' | 'documents' | 'subsidies' | 'all') => void;
+  trackEvent: (name: string, properties?: Record<string, any>) => void;
+  generateReport: (format?: 'json' | 'summary') => string;
+}
+
+export function useProductionReadiness(): ProductionReadinessState & ProductionActions {
+  const [state, setState] = useState<ProductionReadinessState>({
+    metrics: null,
+    loading: true,
+    error: null,
+    lastUpdated: null
+  });
 
   const collectMetrics = useCallback(async (): Promise<ProductionMetrics> => {
-    const start = startTime();
+    const [health, performance, securityMetrics] = await Promise.all([
+      healthCheck.performHealthCheck(),
+      Promise.resolve(prodMonitoring.getMetrics()),
+      Promise.resolve(security.getMetrics())
+    ]);
 
+    const caching = {
+      production: productionCache.getStats(),
+      documents: documentCache.getStats(),
+      subsidies: subsidyCache.getStats()
+    };
+
+    return {
+      health,
+      performance,
+      security: securityMetrics,
+      caching,
+      config: productionConfig
+    };
+  }, []);
+
+  const refreshMetrics = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
     try {
-      // Collect system health
-      const systemHealth = await healthChecker.performHealthCheck();
-
-      // Collect security metrics
-      const securityReport = security.getSecurityReport();
-
-      // Collect cache statistics
-      const cacheStats = cache.getStats();
-
-      // Collect performance metrics
-      let memoryUsage = 0;
-      if ('memory' in performance) {
-        const memInfo = (performance as any).memory;
-        memoryUsage = memInfo.usedJSHeapSize / memInfo.jsHeapSizeLimit;
-      }
-
-      const responseTime = Date.now() - start;
-      const errorRate = systemHealth.checks.filter(c => c.status === 'unhealthy').length / systemHealth.checks.length;
-
-      return {
-        systemHealth,
-        securityReport,
-        cacheStats,
-        performanceMetrics: {
-          memoryUsage,
-          responseTime,
-          errorRate
-        },
-        uptime: Date.now() - start
-      };
-    } catch (err) {
-      logger.error('Failed to collect production metrics', err as Error);
-      throw err;
-    }
-  }, [startTime]);
-
-  const initializeMonitoring = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Initialize production services
-      logger.info('Initializing production monitoring...');
-
-      // Start health checks
-      healthChecker.startPeriodicHealthChecks(PRODUCTION_CONFIG.MONITORING.HEALTH_CHECK_INTERVAL);
-
-      // Collect initial metrics
-      const initialMetrics = await collectMetrics();
-      setMetrics(initialMetrics);
-
-      // Report monitoring start
-      monitoring.reportFeatureUsage('production_monitoring_started');
-
-      setIsMonitoring(true);
-      logger.success('Production monitoring initialized');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      logger.error('Failed to initialize production monitoring', err as Error);
-    } finally {
-      setLoading(false);
+      const metrics = await collectMetrics();
+      setState({
+        metrics,
+        loading: false,
+        error: null,
+        lastUpdated: Date.now()
+      });
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to collect metrics'
+      }));
     }
   }, [collectMetrics]);
 
-  const refreshMetrics = useCallback(async () => {
-    if (!isMonitoring) return;
+  const runHealthCheck = useCallback(async (): Promise<SystemHealth> => {
+    const health = await healthCheck.performHealthCheck();
+    
+    setState(prev => ({
+      ...prev,
+      metrics: prev.metrics ? {
+        ...prev.metrics,
+        health
+      } : null,
+      lastUpdated: Date.now()
+    }));
 
-    try {
-      const updatedMetrics = await collectMetrics();
-      setMetrics(updatedMetrics);
-    } catch (err) {
-      logger.error('Failed to refresh metrics', err as Error);
+    return health;
+  }, []);
+
+  const clearCache = useCallback((type?: 'production' | 'documents' | 'subsidies' | 'all') => {
+    switch (type) {
+      case 'production':
+        productionCache.clear();
+        break;
+      case 'documents':
+        documentCache.clear();
+        break;
+      case 'subsidies':
+        subsidyCache.clear();
+        break;
+      case 'all':
+      default:
+        productionCache.clear();
+        documentCache.clear();
+        subsidyCache.clear();
+        break;
     }
-  }, [collectMetrics, isMonitoring]);
 
-  const stopMonitoring = useCallback(() => {
-    healthChecker.stopPeriodicHealthChecks();
-    setIsMonitoring(false);
-    logger.info('Production monitoring stopped');
+    // Refresh metrics to reflect cache clearing
+    refreshMetrics();
+  }, [refreshMetrics]);
+
+  const trackEvent = useCallback((name: string, properties?: Record<string, any>) => {
+    prodMonitoring.trackCustomEvent(name, properties);
   }, []);
 
-  const runHealthCheck = useCallback(async () => {
-    try {
-      const health = await healthChecker.performHealthCheck();
-      setMetrics(prev => prev ? { ...prev, systemHealth: health } : null);
-      return health;
-    } catch (err) {
-      logger.error('Health check failed', err as Error);
-      throw err;
+  const generateReport = useCallback((format: 'json' | 'summary' = 'summary'): string => {
+    if (!state.metrics) {
+      return 'No metrics available';
     }
-  }, []);
 
-  const clearCache = useCallback(() => {
-    cache.clear();
-    monitoring.reportUserAction('cache_cleared');
-    logger.info('Production cache cleared');
-  }, []);
+    if (format === 'json') {
+      return JSON.stringify(state.metrics, null, 2);
+    }
 
-  const generateReport = useCallback((): string => {
-    if (!metrics) return 'No metrics available';
+    const { health, performance, security, caching } = state.metrics;
+    
+    return `
+# Production Readiness Report
+Generated: ${new Date().toISOString()}
 
-    const report = {
-      timestamp: new Date().toISOString(),
-      systemHealth: {
-        overall: metrics.systemHealth?.overall || 'unknown',
-        services: metrics.systemHealth?.checks.map(c => ({
-          service: c.service,
-          status: c.status,
-          responseTime: c.responseTime
-        })) || []
-      },
-      security: {
-        blockedClients: metrics.securityReport.blockedClients,
-        securityEvents: metrics.securityReport.securityEvents
-      },
-      performance: {
-        memoryUsage: `${(metrics.performanceMetrics.memoryUsage * 100).toFixed(2)}%`,
-        responseTime: `${metrics.performanceMetrics.responseTime}ms`,
-        errorRate: `${(metrics.performanceMetrics.errorRate * 100).toFixed(2)}%`
-      },
-      cache: {
-        size: metrics.cacheStats.size,
-        hitRate: `${metrics.cacheStats.hitRate.toFixed(2)}%`
-      }
-    };
+## Overall System Health: ${health?.overall?.toUpperCase() || 'UNKNOWN'}
 
-    return JSON.stringify(report, null, 2);
-  }, [metrics]);
+### Health Status
+- Database: ${health?.database.status} (${health?.database.responseTime}ms)
+- Storage: ${health?.storage.status} (${health?.storage.responseTime}ms)
+- Edge Functions: ${health?.edgeFunctions.status} (${health?.edgeFunctions.responseTime}ms)
+- Network: ${health?.network.status}
+- Memory: ${health?.memory.status}
 
-  // Initialize monitoring on mount
+### Performance Metrics
+- LCP: ${performance.performance.lcp?.toFixed(2)}ms
+- FCP: ${performance.performance.fcp?.toFixed(2)}ms
+- CLS: ${performance.performance.cls?.toFixed(3)}
+- Memory Usage: ${performance.memory?.usagePercentage?.toFixed(1)}%
+
+### Security Status
+- Total Uploads: ${security.totalUploads}
+- Blocked Uploads: ${security.blockedUploads}
+- Rate Limit Hits: ${security.rateLimitHits}
+- CSP Violations: ${security.cspViolations}
+
+### Cache Performance
+- Production Cache: ${caching.production.size}/${caching.production.maxSize} items (${(caching.production.hitRate * 100).toFixed(1)}% hit rate)
+- Document Cache: ${caching.documents.size}/${caching.documents.maxSize} items
+- Subsidy Cache: ${caching.subsidies.size}/${caching.subsidies.maxSize} items
+
+### Recommendations
+${health?.overall === 'healthy' ? '✅ System is operating normally' : '⚠️  System requires attention'}
+${performance.memory?.usagePercentage > 80 ? '⚠️  High memory usage detected' : '✅ Memory usage is normal'}
+${security.blockedUploads > 10 ? '⚠️  High number of blocked uploads' : '✅ Security threats are minimal'}
+    `.trim();
+  }, [state.metrics]);
+
+  // Initial metrics collection and periodic updates
   useEffect(() => {
-    initializeMonitoring();
+    refreshMetrics();
 
-    // Cleanup on unmount
-    return () => {
-      stopMonitoring();
-    };
-  }, [initializeMonitoring, stopMonitoring]);
-
-  // Periodic metrics refresh
-  useEffect(() => {
-    if (!isMonitoring) return;
-
-    const interval = setInterval(refreshMetrics, 60000); // Refresh every minute
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(refreshMetrics, 30000);
 
     return () => clearInterval(interval);
-  }, [isMonitoring, refreshMetrics]);
+  }, [refreshMetrics]);
 
   return {
-    metrics,
-    loading,
-    error,
-    isMonitoring,
+    ...state,
     refreshMetrics,
     runHealthCheck,
     clearCache,
-    generateReport,
-    stopMonitoring,
-    initializeMonitoring
+    trackEvent,
+    generateReport
   };
-};
+}

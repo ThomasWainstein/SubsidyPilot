@@ -1,361 +1,266 @@
-import { supabase } from '@/integrations/supabase/client';
-import { logger } from './logger';
-import { monitoring } from './monitoring';
+/**
+ * Health Check System
+ * Monitors database, storage, edge functions, and network connectivity
+ */
 
-export interface HealthCheckResult {
-  service: string;
+import { supabase } from '@/integrations/supabase/client';
+
+interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
-  responseTime: number;
+  responseTime?: number;
   error?: string;
   details?: Record<string, any>;
 }
 
-export interface SystemHealth {
+interface SystemHealth {
+  database: HealthStatus;
+  storage: HealthStatus;
+  edgeFunctions: HealthStatus;
+  network: HealthStatus;
+  memory: HealthStatus;
   overall: 'healthy' | 'degraded' | 'unhealthy';
-  checks: HealthCheckResult[];
   timestamp: number;
 }
 
-class HealthChecker {
-  private static instance: HealthChecker;
+class HealthCheckSystem {
+  private lastCheck: SystemHealth | null = null;
   private checkInterval: NodeJS.Timeout | null = null;
-  private lastHealthCheck: SystemHealth | null = null;
 
-  static getInstance(): HealthChecker {
-    if (!HealthChecker.instance) {
-      HealthChecker.instance = new HealthChecker();
-    }
-    return HealthChecker.instance;
+  constructor() {
+    this.startPeriodicChecks();
   }
 
   async performHealthCheck(): Promise<SystemHealth> {
-    const startTime = Date.now();
-    const checks: HealthCheckResult[] = [];
+    const timestamp = Date.now();
+    
+    const [database, storage, edgeFunctions, network, memory] = await Promise.all([
+      this.checkDatabase(),
+      this.checkStorage(),
+      this.checkEdgeFunctions(),
+      this.checkNetwork(),
+      this.checkMemory()
+    ]);
 
-    // Database connectivity check
-    checks.push(await this.checkDatabase());
+    const overall = this.determineOverallHealth([database, storage, edgeFunctions, network, memory]);
 
-    // Storage check
-    checks.push(await this.checkStorage());
-
-    // Edge functions check
-    checks.push(await this.checkEdgeFunctions());
-
-    // Local storage check
-    checks.push(await this.checkLocalStorage());
-
-    // Network connectivity check
-    checks.push(await this.checkNetworkConnectivity());
-
-    // Memory usage check
-    checks.push(await this.checkMemoryUsage());
-
-    // Determine overall health
-    const healthyCount = checks.filter(c => c.status === 'healthy').length;
-    const degradedCount = checks.filter(c => c.status === 'degraded').length;
-    const unhealthyCount = checks.filter(c => c.status === 'unhealthy').length;
-
-    let overall: 'healthy' | 'degraded' | 'unhealthy';
-    if (unhealthyCount > 0) {
-      overall = 'unhealthy';
-    } else if (degradedCount > 0) {
-      overall = 'degraded';
-    } else {
-      overall = 'healthy';
-    }
-
-    const result: SystemHealth = {
+    const health: SystemHealth = {
+      database,
+      storage,
+      edgeFunctions,
+      network,
+      memory,
       overall,
-      checks,
-      timestamp: Date.now()
+      timestamp
     };
 
-    this.lastHealthCheck = result;
-
-    // Report health metrics
-    monitoring.captureMetric({
-      name: 'health_check_duration',
-      value: Date.now() - startTime,
-      timestamp: Date.now(),
-      context: { overall, checkCount: checks.length }
-    });
-
-    logger.debug('Health check completed', { 
-      overall, 
-      duration: Date.now() - startTime,
-      results: checks.map(c => ({ service: c.service, status: c.status }))
-    });
-
-    return result;
+    this.lastCheck = health;
+    return health;
   }
 
-  private async checkDatabase(): Promise<HealthCheckResult> {
+  private async checkDatabase(): Promise<HealthStatus> {
     const startTime = Date.now();
     
     try {
+      // Simple query to test database connectivity
       const { data, error } = await supabase
-        .from('user_profiles')
-        .select('count')
+        .from('farms')
+        .select('id')
         .limit(1);
 
       const responseTime = Date.now() - startTime;
 
       if (error) {
         return {
-          service: 'database',
           status: 'unhealthy',
           responseTime,
-          error: error.message
+          error: error.message,
+          details: { code: error.code }
         };
       }
 
-      const status = responseTime < 1000 ? 'healthy' : 'degraded';
-      
       return {
-        service: 'database',
-        status,
+        status: responseTime > 2000 ? 'degraded' : 'healthy',
         responseTime,
-        details: { recordCount: data?.length || 0 }
+        details: { recordsAccessible: data?.length ?? 0 }
       };
     } catch (error) {
       return {
-        service: 'database',
         status: 'unhealthy',
         responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown database error'
       };
     }
   }
 
-  private async checkStorage(): Promise<HealthCheckResult> {
+  private async checkStorage(): Promise<HealthStatus> {
     const startTime = Date.now();
     
     try {
-      const { data, error } = await supabase.storage
-        .from('farm-documents')
-        .list('', { limit: 1 });
+      // Test storage by listing buckets
+      const { data, error } = await supabase.storage.listBuckets();
 
       const responseTime = Date.now() - startTime;
 
       if (error) {
         return {
-          service: 'storage',
           status: 'unhealthy',
           responseTime,
           error: error.message
         };
       }
 
-      const status = responseTime < 1500 ? 'healthy' : 'degraded';
-
       return {
-        service: 'storage',
-        status,
+        status: responseTime > 3000 ? 'degraded' : 'healthy',
         responseTime,
-        details: { accessible: true }
+        details: { bucketsAvailable: data?.length ?? 0 }
       };
     } catch (error) {
       return {
-        service: 'storage',
         status: 'unhealthy',
         responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown storage error'
       };
     }
   }
 
-  private async checkEdgeFunctions(): Promise<HealthCheckResult> {
+  private async checkEdgeFunctions(): Promise<HealthStatus> {
     const startTime = Date.now();
     
     try {
-      const { data, error } = await supabase.functions.invoke('upload-farm-document', {
-        body: { healthCheck: true }
+      // Test a simple edge function (ping or health endpoint)
+      const { data, error } = await supabase.functions.invoke('health-check', {
+        method: 'GET'
       });
 
       const responseTime = Date.now() - startTime;
 
       if (error) {
         return {
-          service: 'edge_functions',
-          status: 'unhealthy',
+          status: 'degraded', // Edge functions being down shouldn't be critical
           responseTime,
           error: error.message
         };
       }
 
-      const status = responseTime < 2000 ? 'healthy' : 'degraded';
-
       return {
-        service: 'edge_functions',
-        status,
+        status: responseTime > 5000 ? 'degraded' : 'healthy',
         responseTime,
         details: { response: data }
       };
     } catch (error) {
       return {
-        service: 'edge_functions',
-        status: 'unhealthy',
+        status: 'degraded',
         responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Edge functions unavailable'
       };
     }
   }
 
-  private async checkLocalStorage(): Promise<HealthCheckResult> {
+  private async checkNetwork(): Promise<HealthStatus> {
     const startTime = Date.now();
     
     try {
-      const testKey = '__health_check_test__';
-      const testValue = Date.now().toString();
-      
-      localStorage.setItem(testKey, testValue);
-      const retrieved = localStorage.getItem(testKey);
-      localStorage.removeItem(testKey);
-
-      const responseTime = Date.now() - startTime;
-
-      if (retrieved !== testValue) {
+      if (!navigator.onLine) {
         return {
-          service: 'local_storage',
           status: 'unhealthy',
-          responseTime,
-          error: 'Local storage read/write failed'
+          error: 'No network connection'
         };
       }
 
-      return {
-        service: 'local_storage',
-        status: 'healthy',
-        responseTime,
-        details: { accessible: true }
-      };
-    } catch (error) {
-      return {
-        service: 'local_storage',
-        status: 'unhealthy',
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  private async checkNetworkConnectivity(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-    
-    try {
-      const response = await fetch('https://api.github.com/zen', { 
-        method: 'GET',
-        cache: 'no-cache'
+      // Test network connectivity with a simple request
+      const response = await fetch('https://httpbin.org/status/200', {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000)
       });
 
       const responseTime = Date.now() - startTime;
 
-      if (!response.ok) {
+      return {
+        status: response.ok ? (responseTime > 3000 ? 'degraded' : 'healthy') : 'degraded',
+        responseTime,
+        details: {
+          online: navigator.onLine,
+          effectiveType: (navigator as any).connection?.effectiveType,
+          downlink: (navigator as any).connection?.downlink
+        }
+      };
+    } catch (error) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Network check failed'
+      };
+    }
+  }
+
+  private checkMemory(): HealthStatus {
+    try {
+      if ('memory' in performance) {
+        const memory = (performance as any).memory;
+        const usagePercentage = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+
+        let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+        if (usagePercentage > 90) status = 'unhealthy';
+        else if (usagePercentage > 70) status = 'degraded';
+
         return {
-          service: 'network',
-          status: 'degraded',
-          responseTime,
-          error: `HTTP ${response.status}`
+          status,
+          details: {
+            usedJSHeapSize: memory.usedJSHeapSize,
+            totalJSHeapSize: memory.totalJSHeapSize,
+            jsHeapSizeLimit: memory.jsHeapSizeLimit,
+            usagePercentage: Math.round(usagePercentage)
+          }
         };
       }
 
-      const status = responseTime < 1000 ? 'healthy' : 'degraded';
-
       return {
-        service: 'network',
-        status,
-        responseTime,
-        details: { online: navigator.onLine }
+        status: 'healthy',
+        details: { message: 'Memory API not available' }
       };
     } catch (error) {
       return {
-        service: 'network',
-        status: 'unhealthy',
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  private async checkMemoryUsage(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-    
-    try {
-      let memoryInfo: any = {};
-      
-      // Check for performance.memory (Chrome/Edge)
-      if ('memory' in performance) {
-        memoryInfo = (performance as any).memory;
-      }
-
-      const responseTime = Date.now() - startTime;
-
-      let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-      
-      if (memoryInfo.usedJSHeapSize) {
-        const usageRatio = memoryInfo.usedJSHeapSize / memoryInfo.jsHeapSizeLimit;
-        if (usageRatio > 0.9) {
-          status = 'unhealthy';
-        } else if (usageRatio > 0.7) {
-          status = 'degraded';
-        }
-      }
-
-      return {
-        service: 'memory',
-        status,
-        responseTime,
-        details: {
-          ...memoryInfo,
-          usageRatio: memoryInfo.usedJSHeapSize ? 
-            (memoryInfo.usedJSHeapSize / memoryInfo.jsHeapSizeLimit * 100).toFixed(2) + '%' : 
-            'unavailable'
-        }
-      };
-    } catch (error) {
-      return {
-        service: 'memory',
         status: 'degraded',
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Memory check failed'
       };
     }
   }
 
-  startPeriodicHealthChecks(intervalMs: number = 300000): void { // Default: 5 minutes
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-    }
+  private determineOverallHealth(statuses: HealthStatus[]): 'healthy' | 'degraded' | 'unhealthy' {
+    const unhealthyCount = statuses.filter(s => s.status === 'unhealthy').length;
+    const degradedCount = statuses.filter(s => s.status === 'degraded').length;
 
-    this.checkInterval = setInterval(async () => {
-      try {
-        const health = await this.performHealthCheck();
-        
-        if (health.overall !== 'healthy') {
-          logger.warn('System health degraded', { 
-            overall: health.overall,
-            issues: health.checks.filter(c => c.status !== 'healthy')
-          });
-        }
-      } catch (error) {
-        logger.error('Health check failed', error as Error);
-      }
-    }, intervalMs);
-
-    logger.info('Periodic health checks started', { intervalMs });
+    if (unhealthyCount > 0) return 'unhealthy';
+    if (degradedCount > 1) return 'degraded';
+    if (degradedCount > 0) return 'degraded';
+    return 'healthy';
   }
 
-  stopPeriodicHealthChecks(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-      logger.info('Periodic health checks stopped');
-    }
+  private startPeriodicChecks(): void {
+    // Perform health check every 5 minutes
+    this.checkInterval = setInterval(() => {
+      this.performHealthCheck().catch(error => {
+        console.error('Health check failed:', error);
+      });
+    }, 5 * 60 * 1000);
+
+    // Initial check
+    this.performHealthCheck().catch(error => {
+      console.error('Initial health check failed:', error);
+    });
   }
 
   getLastHealthCheck(): SystemHealth | null {
-    return this.lastHealthCheck;
+    return this.lastCheck;
+  }
+
+  stop(): void {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
   }
 }
 
-export const healthChecker = HealthChecker.getInstance();
+export const healthCheck = new HealthCheckSystem();
+export type { SystemHealth, HealthStatus };

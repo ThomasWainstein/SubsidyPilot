@@ -1,146 +1,231 @@
-import { IS_PRODUCTION, IS_DEVELOPMENT } from './environment';
+/**
+ * Production Configuration
+ * Environment-specific settings, performance tuning, and feature flags
+ */
 
-export const PRODUCTION_CONFIG = {
-  // Performance settings
-  PERFORMANCE: {
-    LAZY_LOADING_ENABLED: true,
-    BUNDLE_ANALYSIS: IS_DEVELOPMENT,
-    PREFETCH_ENABLED: IS_PRODUCTION,
-    SERVICE_WORKER_ENABLED: IS_PRODUCTION,
-    COMPRESSION_ENABLED: IS_PRODUCTION,
+interface ProductionConfig {
+  // Environment
+  environment: 'development' | 'staging' | 'production';
+  
+  // Performance
+  performance: {
+    enableWebVitals: boolean;
+    enablePrefetch: boolean;
+    enableServiceWorker: boolean;
+    lazyLoadThreshold: number;
+    imageOptimization: boolean;
+    bundleAnalysis: boolean;
+  };
+
+  // Caching
+  caching: {
+    enableQueryCache: boolean;
+    enableDocumentCache: boolean;
+    enableSubsidyCache: boolean;
+    queryStaleTime: number;
+    queryCacheTime: number;
+    maxCacheSize: number;
+  };
+
+  // Security
+  security: {
+    enableCSP: boolean;
+    enableRateLimit: boolean;
+    maxFileSize: number;
+    allowedFileTypes: string[];
+    sessionTimeout: number;
+  };
+
+  // Monitoring
+  monitoring: {
+    enableErrorTracking: boolean;
+    enablePerformanceTracking: boolean;
+    enableUserAnalytics: boolean;
+    healthCheckInterval: number;
+    maxErrorsStored: number;
+  };
+
+  // Features
+  features: {
+    enableAdvancedFilters: boolean;
+    enableBulkOperations: boolean;
+    enableRealtimeUpdates: boolean;
+    enableOfflineMode: boolean;
+    enableExperimentalFeatures: boolean;
+  };
+
+  // API
+  api: {
+    timeout: number;
+    retryAttempts: number;
+    retryDelay: number;
+    batchSize: number;
+    rateLimitPerMinute: number;
+  };
+
+  // Build
+  build: {
+    enableSourceMaps: boolean;
+    enableMinification: boolean;
+    enableCompression: boolean;
+    chunkSizeLimit: number;
+    assetSizeLimit: number;
+  };
+}
+
+const baseConfig: ProductionConfig = {
+  environment: (process.env.NODE_ENV as any) || 'development',
+  
+  performance: {
+    enableWebVitals: true,
+    enablePrefetch: true,
+    enableServiceWorker: false, // Enable when PWA is implemented
+    lazyLoadThreshold: 300,
+    imageOptimization: true,
+    bundleAnalysis: process.env.ANALYZE === 'true'
   },
 
-  // Caching configuration
-  CACHE: {
-    STRATEGY: IS_PRODUCTION ? 'stale-while-revalidate' : 'no-cache',
-    TTL: {
-      DOCUMENTS: 10 * 60 * 1000, // 10 minutes
-      SUBSIDIES: 60 * 60 * 1000, // 1 hour
-      USER_DATA: 5 * 60 * 1000, // 5 minutes
-      STATIC_ASSETS: 24 * 60 * 60 * 1000, // 24 hours
-    },
-    MAX_SIZE: IS_PRODUCTION ? 100 : 50,
+  caching: {
+    enableQueryCache: true,
+    enableDocumentCache: true,
+    enableSubsidyCache: true,
+    queryStaleTime: 5 * 60 * 1000, // 5 minutes
+    queryCacheTime: 10 * 60 * 1000, // 10 minutes
+    maxCacheSize: 100
   },
 
-  // Monitoring configuration
-  MONITORING: {
-    ERROR_REPORTING: IS_PRODUCTION,
-    PERFORMANCE_MONITORING: true,
-    USER_ANALYTICS: IS_PRODUCTION,
-    HEALTH_CHECK_INTERVAL: IS_PRODUCTION ? 5 * 60 * 1000 : 30 * 1000, // 5 min prod, 30s dev
-    BATCH_SIZE: 50,
-    FLUSH_INTERVAL: 30 * 1000, // 30 seconds
+  security: {
+    enableCSP: true,
+    enableRateLimit: true,
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    allowedFileTypes: [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain',
+      'text/csv',
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ],
+    sessionTimeout: 24 * 60 * 60 * 1000 // 24 hours
   },
 
-  // Security settings
-  SECURITY: {
-    CSP_ENABLED: IS_PRODUCTION,
-    RATE_LIMITING: IS_PRODUCTION,
-    FILE_VALIDATION: true,
-    SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
-    MAX_UPLOAD_SIZE: 50 * 1024 * 1024, // 50MB
-    ALLOWED_ORIGINS: IS_PRODUCTION 
-      ? ['https://your-domain.com', 'https://www.your-domain.com']
-      : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  monitoring: {
+    enableErrorTracking: true,
+    enablePerformanceTracking: true,
+    enableUserAnalytics: false, // Enable when analytics service is configured
+    healthCheckInterval: 5 * 60 * 1000, // 5 minutes
+    maxErrorsStored: 100
   },
 
-  // API configuration
-  API: {
-    TIMEOUT: IS_PRODUCTION ? 30000 : 60000, // 30s prod, 60s dev
-    RETRY_ATTEMPTS: IS_PRODUCTION ? 3 : 1,
-    RETRY_DELAY: 1000,
-    BATCH_REQUESTS: IS_PRODUCTION,
-    REQUEST_DEDUPLICATION: true,
+  features: {
+    enableAdvancedFilters: true,
+    enableBulkOperations: true,
+    enableRealtimeUpdates: false, // Enable when realtime subscriptions are implemented
+    enableOfflineMode: false, // Enable when service worker is implemented
+    enableExperimentalFeatures: process.env.NODE_ENV === 'development'
   },
 
-  // Database configuration
-  DATABASE: {
-    CONNECTION_POOL_SIZE: IS_PRODUCTION ? 20 : 5,
-    QUERY_TIMEOUT: 30000,
-    RETRY_FAILED_QUERIES: IS_PRODUCTION,
-    ENABLE_QUERY_LOGGING: IS_DEVELOPMENT,
-    OPTIMIZE_QUERIES: IS_PRODUCTION,
+  api: {
+    timeout: 30000, // 30 seconds
+    retryAttempts: 3,
+    retryDelay: 1000, // 1 second
+    batchSize: 50,
+    rateLimitPerMinute: 100
   },
 
-  // Edge Functions configuration
-  EDGE_FUNCTIONS: {
-    TIMEOUT: 55000, // Vercel limit is 60s
-    MEMORY_LIMIT: '512MB',
-    CONCURRENT_EXECUTIONS: 10,
-    RETRY_FAILED_INVOCATIONS: IS_PRODUCTION,
-    ENABLE_WARMING: IS_PRODUCTION,
-  },
-
-  // Build and deployment
-  BUILD: {
-    TREE_SHAKING: true,
-    MINIFICATION: IS_PRODUCTION,
-    SOURCE_MAPS: IS_DEVELOPMENT,
-    CHUNK_SPLITTING: IS_PRODUCTION,
-    ANALYZE_BUNDLE: IS_DEVELOPMENT,
-    OPTIMIZE_IMAGES: IS_PRODUCTION,
-  },
-
-  // Logging configuration
-  LOGGING: {
-    LEVEL: IS_PRODUCTION ? 'warn' : 'debug',
-    CONSOLE_LOGGING: true,
-    REMOTE_LOGGING: IS_PRODUCTION,
-    LOG_ROTATION: IS_PRODUCTION,
-    MAX_LOG_SIZE: 10 * 1024 * 1024, // 10MB
-    STRUCTURED_LOGGING: IS_PRODUCTION,
-  },
-
-  // Feature flags
-  FEATURES: {
-    DOCUMENT_EXTRACTION: true,
-    SUBSIDY_MATCHING: true,
-    REAL_TIME_UPDATES: IS_PRODUCTION,
-    OFFLINE_SUPPORT: IS_PRODUCTION,
-    PWA_FEATURES: IS_PRODUCTION,
-    PUSH_NOTIFICATIONS: IS_PRODUCTION,
-  },
-
-  // Resource limits
-  LIMITS: {
-    MAX_CONCURRENT_UPLOADS: 3,
-    MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
-    MAX_FILES_PER_USER: 1000,
-    MAX_SESSION_DURATION: 8 * 60 * 60 * 1000, // 8 hours
-    API_RATE_LIMIT: IS_PRODUCTION ? 100 : 1000, // requests per minute
-  },
-
-  // CDN and assets
-  ASSETS: {
-    CDN_ENABLED: IS_PRODUCTION,
-    IMAGE_OPTIMIZATION: IS_PRODUCTION,
-    LAZY_LOAD_IMAGES: true,
-    WEBP_SUPPORT: true,
-    ASSET_VERSIONING: IS_PRODUCTION,
-  },
-
-} as const;
-
-// Environment-specific overrides
-export const getProductionConfig = () => {
-  if (IS_DEVELOPMENT) {
-    return {
-      ...PRODUCTION_CONFIG,
-      // Development overrides
-      MONITORING: {
-        ...PRODUCTION_CONFIG.MONITORING,
-        ERROR_REPORTING: false,
-        USER_ANALYTICS: false,
-      },
-      SECURITY: {
-        ...PRODUCTION_CONFIG.SECURITY,
-        CSP_ENABLED: false,
-        RATE_LIMITING: false,
-      },
-    };
+  build: {
+    enableSourceMaps: process.env.NODE_ENV === 'development',
+    enableMinification: process.env.NODE_ENV === 'production',
+    enableCompression: process.env.NODE_ENV === 'production',
+    chunkSizeLimit: 500 * 1024, // 500KB
+    assetSizeLimit: 250 * 1024  // 250KB
   }
-
-  return PRODUCTION_CONFIG;
 };
 
-export default PRODUCTION_CONFIG;
+// Environment-specific overrides
+const environmentConfigs: Record<string, Partial<ProductionConfig>> = {
+  development: {
+    security: {
+      ...baseConfig.security,
+      enableCSP: false, // Easier development
+      enableRateLimit: false
+    },
+    monitoring: {
+      ...baseConfig.monitoring,
+      enableErrorTracking: false,
+      enableUserAnalytics: false
+    },
+    features: {
+      ...baseConfig.features,
+      enableExperimentalFeatures: true
+    }
+  },
+
+  staging: {
+    monitoring: {
+      ...baseConfig.monitoring,
+      enableUserAnalytics: false // No tracking in staging
+    },
+    features: {
+      ...baseConfig.features,
+      enableExperimentalFeatures: true
+    }
+  },
+
+  production: {
+    performance: {
+      ...baseConfig.performance,
+      enableServiceWorker: true // Enable in production when ready
+    },
+    monitoring: {
+      ...baseConfig.monitoring,
+      enableUserAnalytics: true // Enable when privacy compliance is ready
+    },
+    features: {
+      ...baseConfig.features,
+      enableOfflineMode: true, // Enable when service worker is ready
+      enableExperimentalFeatures: false
+    }
+  }
+};
+
+// Merge base config with environment-specific config
+function createProductionConfig(): ProductionConfig {
+  const environment = process.env.NODE_ENV || 'development';
+  const envConfig = environmentConfigs[environment] || {};
+  
+  return {
+    ...baseConfig,
+    ...envConfig,
+    performance: { ...baseConfig.performance, ...envConfig.performance },
+    caching: { ...baseConfig.caching, ...envConfig.caching },
+    security: { ...baseConfig.security, ...envConfig.security },
+    monitoring: { ...baseConfig.monitoring, ...envConfig.monitoring },
+    features: { ...baseConfig.features, ...envConfig.features },
+    api: { ...baseConfig.api, ...envConfig.api },
+    build: { ...baseConfig.build, ...envConfig.build }
+  };
+}
+
+export const productionConfig = createProductionConfig();
+
+// Helper functions
+export const isProduction = () => productionConfig.environment === 'production';
+export const isDevelopment = () => productionConfig.environment === 'development';
+export const isStaging = () => productionConfig.environment === 'staging';
+
+export const getFeatureFlag = (feature: keyof ProductionConfig['features']): boolean => {
+  return productionConfig.features[feature];
+};
+
+export const getPerformanceSetting = (setting: keyof ProductionConfig['performance']) => {
+  return productionConfig.performance[setting];
+};
+
+export const getSecuritySetting = (setting: keyof ProductionConfig['security']) => {
+  return productionConfig.security[setting];
+};
+
+export type { ProductionConfig };
