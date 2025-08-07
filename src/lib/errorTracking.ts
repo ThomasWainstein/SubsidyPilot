@@ -104,7 +104,7 @@ class ErrorTracking {
         if (!response.ok) {
           this.captureError({
             message: `HTTP ${response.status}: ${response.statusText}`,
-            url: typeof args[0] === 'string' ? args[0] : args[0].url,
+            url: typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : args[0].toString()),
             type: 'network_error',
             status: response.status,
             statusText: response.statusText
@@ -116,7 +116,7 @@ class ErrorTracking {
         this.captureError({
           message: `Network request failed: ${(error as Error).message}`,
           stack: (error as Error).stack,
-          url: typeof args[0] === 'string' ? args[0] : args[0].url,
+          url: typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : args[0].toString()),
           type: 'network_error'
         });
         throw error;
@@ -237,7 +237,7 @@ class ErrorTracking {
     // Remove line numbers and file paths for grouping
     return stack
       .split('\n')
-      .map(line => line.replace(/:\\d+:\\d+/g, '').replace(/https?:\\/\\/[^/]+/g, ''))
+      .map(line => line.replace(/:\d+:\d+/g, '').replace(/https?:\/\/[^/]+/g, ''))
       .slice(0, 3) // Only use first 3 lines
       .join('\n');
   }
