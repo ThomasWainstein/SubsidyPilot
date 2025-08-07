@@ -1,45 +1,38 @@
-import { beforeAll, vi } from 'vitest';
+import { beforeAll, afterEach, afterAll } from 'vitest'
+import { cleanup } from '@testing-library/react'
 
-// Mock Supabase client
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    storage: {
-      from: vi.fn(() => ({
-        upload: vi.fn(),
-        getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'mock-url' } }))
-      }))
-    },
-    functions: {
-      invoke: vi.fn()
-    },
-    from: vi.fn(() => ({
-      insert: vi.fn(),
-      select: vi.fn(),
-      eq: vi.fn(),
-      single: vi.fn()
-    }))
-  }
-}));
+// Mock implementations for global objects
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+  }),
+})
 
-// Mock logger
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    success: vi.fn(),
-  }
-}));
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
-// Mock toast
-vi.mock('@/hooks/use-toast', () => ({
-  toast: vi.fn(),
-  useToast: () => ({
-    toast: vi.fn()
-  })
-}));
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  constructor() {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
-beforeAll(() => {
-  // Global test setup
-});
+// Cleanup after each test
+afterEach(() => {
+  cleanup()
+})

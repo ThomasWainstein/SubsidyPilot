@@ -1,74 +1,8 @@
-/**
- * Supabase mock utilities for testing
- */
 import { vi } from 'vitest'
 
-export const createMockSupabaseClient = () => ({
-  from: vi.fn().mockReturnValue({
-    select: vi.fn().mockReturnValue({ data: [], error: null }),
-    insert: vi.fn().mockReturnValue({ data: null, error: null }),
-    update: vi.fn().mockReturnValue({ data: null, error: null }),
-    delete: vi.fn().mockReturnValue({ data: null, error: null }),
-    eq: vi.fn().mockReturnThis(),
-    neq: vi.fn().mockReturnThis(),
-    gt: vi.fn().mockReturnThis(),
-    gte: vi.fn().mockReturnThis(),
-    lt: vi.fn().mockReturnThis(),
-    lte: vi.fn().mockReturnThis(),
-    like: vi.fn().mockReturnThis(),
-    ilike: vi.fn().mockReturnThis(),
-    is: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    contains: vi.fn().mockReturnThis(),
-    containedBy: vi.fn().mockReturnThis(),
-    rangeGt: vi.fn().mockReturnThis(),
-    rangeGte: vi.fn().mockReturnThis(),
-    rangeLt: vi.fn().mockReturnThis(),
-    rangeLte: vi.fn().mockReturnThis(),
-    rangeAdjacent: vi.fn().mockReturnThis(),
-    overlaps: vi.fn().mockReturnThis(),
-    textSearch: vi.fn().mockReturnThis(),
-    match: vi.fn().mockReturnThis(),
-    not: vi.fn().mockReturnThis(),
-    or: vi.fn().mockReturnThis(),
-    filter: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    range: vi.fn().mockReturnThis(),
-    abortSignal: vi.fn().mockReturnThis(),
-    single: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockReturnThis(),
-  }),
-  auth: {
-    getUser: vi.fn().mockResolvedValue({ 
-      data: { user: { id: 'test-user-id', email: 'test@example.com' } },
-      error: null 
-    }),
-    getSession: vi.fn().mockResolvedValue({ 
-      data: { session: { access_token: 'test-token', user: { id: 'test-user-id' } } },
-      error: null 
-    }),
-    signUp: vi.fn().mockResolvedValue({ data: null, error: null }),
-    signIn: vi.fn().mockResolvedValue({ data: null, error: null }),
-    signOut: vi.fn().mockResolvedValue({ error: null }),
-  },
-  functions: {
-    invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
-  },
-  storage: {
-    from: vi.fn().mockReturnValue({
-      upload: vi.fn().mockResolvedValue({ 
-        data: { path: 'test-path' }, 
-        error: null 
-      }),
-      getPublicUrl: vi.fn().mockReturnValue({ 
-        data: { publicUrl: 'https://test.example.com/test-file.pdf' } 
-      }),
-      remove: vi.fn().mockResolvedValue({ data: null, error: null }),
-      list: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }),
-  },
-})
+/**
+ * Mock data for Supabase entities used in tests
+ */
 
 export const mockExtractionData = {
   id: 'test-extraction-id',
@@ -77,40 +11,129 @@ export const mockExtractionData = {
     farm_name: 'Test Farm',
     owner_name: 'John Doe',
     total_hectares: '150',
-    location: 'Test Location'
+    legal_status: 'Individual',
+    address: '123 Test Street, Test City'
   },
   confidence_score: 0.85,
   status: 'completed',
-  extraction_method: 'ai',
-  created_at: '2024-01-01T00:00:00Z',
+  extraction_type: 'openai',
   debug_info: {
     model: 'gpt-4o-mini',
-    processing_time: 1500,
-    extraction_method: 'openai',
-  }
+    processingTime: '1.5s',
+    tokens: 250
+  },
+  created_at: '2023-01-01T00:00:00Z',
+  updated_at: '2023-01-01T00:00:00Z'
 }
 
 export const mockDocumentData = {
   id: 'test-document-id',
   farm_id: 'test-farm-id',
   file_name: 'test-document.pdf',
-  file_url: 'https://test.example.com/test-document.pdf',
-  file_size: 1024000,
-  document_type: 'financial',
-  upload_status: 'completed',
-  uploaded_at: '2024-01-01T00:00:00Z',
+  file_url: 'https://example.com/test-document.pdf',
+  category: 'financial',
+  uploaded_at: '2023-01-01T00:00:00Z',
+  file_size: 1024,
+  mime_type: 'application/pdf'
+}
+
+export const mockFarmData = {
+  id: 'test-farm-id',
+  user_id: 'test-user-id',
+  name: 'Test Farm',
+  address: '123 Test Street, Test City',
+  total_hectares: 150,
+  legal_status: 'Individual',
+  department: 'Test Department',
+  country: 'France',
+  created_at: '2023-01-01T00:00:00Z',
+  updated_at: '2023-01-01T00:00:00Z'
+}
+
+export const mockSubsidyData = {
+  id: 'test-subsidy-id',
+  code: 'TEST-001',
+  title: { fr: 'Test Subsidy' },
+  description: { fr: 'A test subsidy for agricultural projects' },
+  agency: 'Test Agricultural Agency',
+  funding_type: 'grant',
+  deadline: '2023-12-31',
+  status: 'open',
+  region: ['Test Region'],
+  tags: ['agriculture', 'test'],
+  created_at: '2023-01-01T00:00:00Z',
+  updated_at: '2023-01-01T00:00:00Z'
+}
+
+export const mockUserData = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  full_name: 'Test User',
+  user_type: 'farmer' as const,
+  created_at: '2023-01-01T00:00:00Z'
 }
 
 export const mockReviewData = {
   id: 'test-review-id',
   extraction_id: 'test-extraction-id',
   reviewer_id: 'test-user-id',
-  original_data: mockExtractionData.extracted_data,
-  corrected_data: {
-    ...mockExtractionData.extracted_data,
-    total_hectares: '175' // corrected value
-  },
-  reviewer_notes: 'Corrected hectare value based on updated survey',
+  original_data: { farm_name: 'Original Farm Name' },
+  corrected_data: { farm_name: 'Corrected Farm Name' },
+  reviewer_notes: 'Fixed spelling error in farm name',
   review_status: 'reviewed',
-  created_at: '2024-01-01T00:00:00Z',
+  created_at: '2023-01-01T00:00:00Z',
+  updated_at: '2023-01-01T00:00:00Z'
 }
+
+// Mock Supabase client functions
+export const createMockSupabaseClient = () => ({
+  auth: {
+    getUser: vi.fn().mockResolvedValue({
+      data: { user: mockUserData },
+      error: null
+    }),
+    signInWithPassword: vi.fn().mockResolvedValue({
+      data: { user: mockUserData },
+      error: null
+    }),
+    signOut: vi.fn().mockResolvedValue({ error: null })
+  },
+  from: vi.fn((table: string) => ({
+    select: vi.fn(() => ({
+      eq: vi.fn().mockResolvedValue({
+        data: table === 'farms' ? [mockFarmData] :
+               table === 'subsidies' ? [mockSubsidyData] :
+               table === 'document_extractions' ? [mockExtractionData] :
+               table === 'farm_documents' ? [mockDocumentData] : [],
+        error: null
+      }),
+      single: vi.fn().mockResolvedValue({
+        data: table === 'farms' ? mockFarmData :
+               table === 'subsidies' ? mockSubsidyData :
+               table === 'document_extractions' ? mockExtractionData :
+               table === 'farm_documents' ? mockDocumentData : null,
+        error: null
+      })
+    })),
+    insert: vi.fn().mockResolvedValue({
+      data: null,
+      error: null
+    }),
+    update: vi.fn(() => ({
+      eq: vi.fn().mockResolvedValue({
+        data: null,
+        error: null
+      })
+    })),
+    delete: vi.fn(() => ({
+      eq: vi.fn().mockResolvedValue({
+        data: null,
+        error: null
+      })
+    }))
+  })),
+  rpc: vi.fn().mockResolvedValue({
+    data: false, // Default: user is not admin
+    error: null
+  })
+})

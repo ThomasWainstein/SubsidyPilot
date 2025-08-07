@@ -1,5 +1,137 @@
 import { z } from 'zod';
 
+// Basic validation functions
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+export const validateRequired = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+};
+
+export const validateNumeric = (value: string, options: { min?: number; max?: number } = {}): boolean => {
+  const num = parseFloat(value);
+  if (isNaN(num)) return false;
+  if (options.min !== undefined && num < options.min) return false;
+  if (options.max !== undefined && num > options.max) return false;
+  return true;
+};
+
+export const validateUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+};
+
+export const sanitizeInput = (input: string): string => {
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'");
+};
+
+interface ValidationRule {
+  required?: boolean;
+  email?: boolean;
+  numeric?: boolean;
+  url?: boolean;
+  min?: number;
+  max?: number;
+}
+
+interface ValidationSchema {
+  [key: string]: ValidationRule;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: Record<string, string>;
+}
+
+export const validateFormData = (data: Record<string, unknown>, schema: ValidationSchema): ValidationResult => {
+  const errors: Record<string, string> = {};
+
+  for (const [field, rules] of Object.entries(schema)) {
+    const value = data[field];
+    const fieldErrors: string[] = [];
+
+    if (rules.required && !validateRequired(value)) {
+      fieldErrors.push('This field is required');
+    }
+
+    if (value && typeof value === 'string') {
+      if (rules.email && !validateEmail(value)) {
+        fieldErrors.push('Must be a valid email address');
+      }
+
+      if (rules.numeric && !validateNumeric(value, { min: rules.min, max: rules.max })) {
+        fieldErrors.push('Must be a valid number');
+        if (rules.min !== undefined) {
+          fieldErrors.push(`Must be at least ${rules.min}`);
+        }
+        if (rules.max !== undefined) {
+          fieldErrors.push(`Must be at most ${rules.max}`);
+        }
+      }
+
+      if (rules.url && !validateUrl(value)) {
+        fieldErrors.push('Must be a valid URL');
+      }
+    }
+
+    if (fieldErrors.length > 0) {
+      errors[field] = fieldErrors.join(', ');
+    }
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+export const createFieldValidator = (rules: ValidationRule) => {
+  return (value: unknown): boolean | string => {
+    if (rules.required && !validateRequired(value)) {
+      return 'This field is required';
+    }
+
+    if (value && typeof value === 'string') {
+      if (rules.email && !validateEmail(value)) {
+        return 'Must be a valid email address';
+      }
+
+      if (rules.numeric && !validateNumeric(value)) {
+        return 'Must be a valid number';
+      }
+
+      if (rules.numeric && rules.min !== undefined && parseFloat(value) < rules.min) {
+        return `Must be at least ${rules.min}`;
+      }
+
+      if (rules.numeric && rules.max !== undefined && parseFloat(value) > rules.max) {
+        return `Must be at most ${rules.max}`;
+      }
+
+      if (rules.url && !validateUrl(value)) {
+        return 'Must be a valid URL';
+      }
+    }
+
+    return true;
+  };
+};
+
 // Input sanitization utilities
 export const sanitizeString = (input: string): string => {
   return input
