@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
+import { useAdmin, AdminProvider } from '@/contexts/AdminContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatusDashboard } from '@/components/admin/StatusDashboard';
@@ -19,22 +20,35 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
 
-const AdminPage = () => {
-  const { user } = useAuth();
-  const { currentRole } = useRole();
-  const isAdmin = currentRole === 'admin';
+const AdminPageContent = () => {
+  const { user, loading } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+
+  if (loading || adminLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-lg">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
-          <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Access Denied</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>You must be logged in to access the admin panel.</p>
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+                <h2 className="mt-4 text-xl font-bold">Access Denied</h2>
+                <p className="mt-2 text-muted-foreground">
+                  You must be logged in to access the admin area.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </main>
@@ -44,21 +58,21 @@ const AdminPage = () => {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
-          <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Access Denied</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>You don't have permission to access the admin panel.</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Switch to Admin role using the "Switch Role" button in the top navigation.
-              </p>
-              <p className="text-xs text-blue-500 mt-2">
-                Current role: {currentRole}. Required role: admin.
-              </p>
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+                <h2 className="mt-4 text-xl font-bold">Access Denied</h2>
+                <p className="mt-2 text-muted-foreground">
+                  You need admin privileges to access this area.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Contact your administrator to request admin access.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </main>
@@ -90,85 +104,120 @@ const AdminPage = () => {
           )}
 
           {/* System Status Dashboard */}
-          <StatusDashboard />
+          <ErrorBoundary>
+            <StatusDashboard />
+          </ErrorBoundary>
 
           {/* Main Admin Tabs */}
           <Tabs defaultValue="health" className="w-full">
-            <TabsList className="grid w-full grid-cols-10 h-12">
-              <TabsTrigger value="health" className="flex items-center gap-2">
-                🏥 Health
-              </TabsTrigger>
-              <TabsTrigger value="pipeline" className="flex items-center gap-2">
-                🔄 Pipeline
-              </TabsTrigger>
-              <TabsTrigger value="debug" className="flex items-center gap-2">
-                🐛 Debug
-              </TabsTrigger>
-              <TabsTrigger value="config" className="flex items-center gap-2">
-                ⚙️ Config
-              </TabsTrigger>
-              <TabsTrigger value="monitoring" className="flex items-center gap-2">
-                📊 Monitor
-              </TabsTrigger>
-              <TabsTrigger value="ai-control" className="flex items-center gap-2">
-                🤖 AI Control
-              </TabsTrigger>
-              <TabsTrigger value="subsidies" className="flex items-center gap-2">
-                📋 Subsidies
-              </TabsTrigger>
-              <TabsTrigger value="validation" className="flex items-center gap-2">
-                ✅ Validation
-              </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-2">
-                🔍 Audit
-              </TabsTrigger>
-              <TabsTrigger value="import" className="flex items-center gap-2">
-                📤 Import
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto">
+              <TabsList className="grid w-full grid-cols-10 h-12 min-w-max">
+                <TabsTrigger value="health" className="flex items-center gap-2">
+                  🏥 Health
+                </TabsTrigger>
+                <TabsTrigger value="pipeline" className="flex items-center gap-2">
+                  🔄 Pipeline
+                </TabsTrigger>
+                <TabsTrigger value="debug" className="flex items-center gap-2">
+                  🐛 Debug
+                </TabsTrigger>
+                <TabsTrigger value="config" className="flex items-center gap-2">
+                  ⚙️ Config
+                </TabsTrigger>
+                <TabsTrigger value="monitoring" className="flex items-center gap-2">
+                  📊 Monitor
+                </TabsTrigger>
+                <TabsTrigger value="ai-control" className="flex items-center gap-2">
+                  🤖 AI Control
+                </TabsTrigger>
+                <TabsTrigger value="subsidies" className="flex items-center gap-2">
+                  📋 Subsidies
+                </TabsTrigger>
+                <TabsTrigger value="validation" className="flex items-center gap-2">
+                  ✅ Validation
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="flex items-center gap-2">
+                  🔍 Audit
+                </TabsTrigger>
+                <TabsTrigger value="import" className="flex items-center gap-2">
+                  📤 Import
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
             <TabsContent value="health" className="mt-6">
-              <SystemHealthDashboard />
+              <ErrorBoundary>
+                <SystemHealthDashboard />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="pipeline" className="mt-6">
-              <EnhancedDualPipelineManager />
+              <ErrorBoundary>
+                <EnhancedDualPipelineManager />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="debug" className="mt-6">
-              <ManualPipelineDebugger />
+              <ErrorBoundary>
+                <ManualPipelineDebugger />
+              </ErrorBoundary>
             </TabsContent>
+            
             <TabsContent value="config" className="mt-6">
-              <AdvancedPipelineConfig />
+              <ErrorBoundary>
+                <AdvancedPipelineConfig />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="monitoring" className="mt-6">
-              <RealTimePipelineMonitor />
+              <ErrorBoundary>
+                <RealTimePipelineMonitor />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="ai-control" className="mt-6">
-              <AIProcessingControl />
+              <ErrorBoundary>
+                <AIProcessingControl />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="subsidies" className="mt-6">
-              <EnhancedSubsidyManagement />
+              <ErrorBoundary>
+                <EnhancedSubsidyManagement />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="validation" className="mt-6">
-              <CanonicalValidationDashboard />
+              <ErrorBoundary>
+                <CanonicalValidationDashboard />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="audit" className="mt-6">
-              <AuditTrailViewer />
+              <ErrorBoundary>
+                <AuditTrailViewer />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="import" className="mt-6">
-              <EnhancedImportManagement />
+              <ErrorBoundary>
+                <EnhancedImportManagement />
+              </ErrorBoundary>
             </TabsContent>
           </Tabs>
         </div>
       </main>
     </div>
+  );
+};
+
+const AdminPage = () => {
+  return (
+    <AdminProvider>
+      <ErrorBoundary>
+        <AdminPageContent />
+      </ErrorBoundary>
+    </AdminProvider>
   );
 };
 
