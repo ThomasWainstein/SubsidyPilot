@@ -38,6 +38,8 @@ export const useFarms = () => {
       return data as Farm[];
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000, // Farm data is stable, consider fresh for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on every window focus
   });
 };
 
@@ -156,5 +158,7 @@ export const useFarm = (farmId: string) => {
       return data as Farm;
     },
     enabled: !!farmId,
+    staleTime: 5 * 60 * 1000, // Single farm data is stable
+    refetchOnWindowFocus: false,
   });
 };

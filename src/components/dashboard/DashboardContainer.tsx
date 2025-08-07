@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '@/contexts/language';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,62 +104,69 @@ const DashboardContainer = () => {
     fetchFarms();
   }, [user]);
 
-  // Get unique regions from farms
-  const getUniqueRegions = () => {
-    const uniqueRegions: string[] = [];
+  // Memoize unique regions calculation
+  const uniqueRegions = useMemo(() => {
+    const regions: string[] = [];
     
     farms.forEach(farm => {
       const region = farm.department || 'Unknown';
-      if (!uniqueRegions.includes(region)) {
-        uniqueRegions.push(region);
+      if (!regions.includes(region)) {
+        regions.push(region);
       }
     });
     
-    return uniqueRegions;
-  };
+    return regions;
+  }, [farms]);
 
-  const uniqueRegions = getUniqueRegions();
+  // Memoize toggle region filter callback
+  const toggleRegionFilter = useCallback((region: string) => {
+    setRegionFilter(prev => 
+      prev.includes(region) 
+        ? prev.filter(r => r !== region)
+        : [...prev, region]
+    );
+  }, []);
 
-  // Toggle region in filter
-  const toggleRegionFilter = (region: string) => {
-    if (regionFilter.includes(region)) {
-      setRegionFilter(regionFilter.filter(r => r !== region));
-    } else {
-      setRegionFilter([...regionFilter, region]);
-    }
-  };
-
-  // Filter farms based on search query, status, and region
-  const filteredFarms = farms.filter(farm => {
-    const matchesSearch = 
-      farm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (farm.department || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (farm.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || farm.status === statusFilter;
-    
-    const matchesRegion = () => {
-      if (regionFilter.length === 0) return true;
-      const farmRegion = farm.department || 'Unknown';
-      return regionFilter.includes(farmRegion);
-    };
-    
-    return matchesSearch && matchesStatus && matchesRegion();
-  });
+  // Memoize filtered farms
+  const filteredFarms = useMemo(() => {
+    return farms.filter(farm => {
+      const matchesSearch = 
+        farm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (farm.department || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (farm.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'all' || farm.status === statusFilter;
+      
+      const matchesRegion = () => {
+        if (regionFilter.length === 0) return true;
+        const farmRegion = farm.department || 'Unknown';
+        return regionFilter.includes(farmRegion);
+      };
+      
+      return matchesSearch && matchesStatus && matchesRegion();
+    });
+  }, [farms, searchQuery, statusFilter, regionFilter]);
   
-  // Sort farms based on sort option
-  const sortedFarms = [...filteredFarms].sort((a, b) => {
-    switch (sortOption) {
-      case 'status':
-        return (a.status || '').localeCompare(b.status || '');
-      case 'region':
-        return (a.department || '').localeCompare(b.department || '');
-      case 'updated':
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-      default:
-        return a.name.localeCompare(b.name);
-    }
-  });
+  // Memoize sorted farms
+  const sortedFarms = useMemo(() => {
+    return [...filteredFarms].sort((a, b) => {
+      switch (sortOption) {
+        case 'status':
+          return (a.status || '').localeCompare(b.status || '');
+        case 'region':
+          return (a.department || '').localeCompare(b.department || '');
+        case 'updated':
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [filteredFarms, sortOption]);
+
+  // Memoize callback for adding farm
+  const handleAddFarm = useCallback(() => {
+    setIsAddFarmModalOpen(true);
+  }, []);
 
   if (loading) {
     prodLogger.debug('DashboardContainer: Showing loading state');
@@ -259,7 +266,7 @@ const DashboardContainer = () => {
                   regionFilter={regionFilter}
                   toggleRegionFilter={toggleRegionFilter}
                   uniqueRegions={uniqueRegions}
-                  onAddFarm={() => setIsAddFarmModalOpen(true)}
+                  onAddFarm={handleAddFarm}
                 />
               </EnhancedErrorBoundary>
               
@@ -268,7 +275,7 @@ const DashboardContainer = () => {
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No farms yet</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">Create your first farm to get started</p>
                   <button
-                    onClick={() => setIsAddFarmModalOpen(true)}
+                    onClick={handleAddFarm}
                     className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                   >
                     Add Your First Farm

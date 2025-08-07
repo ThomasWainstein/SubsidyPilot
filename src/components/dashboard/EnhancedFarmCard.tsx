@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,12 +33,13 @@ interface EnhancedFarmCardProps {
   farm: Farm;
 }
 
-const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
+const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = React.memo(({ farm }) => {
   const navigate = useNavigate();
   const { data: metrics, isLoading } = useFarmMetrics(farm.id);
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
+  // Memoize expensive calculations
+  const statusColor = useMemo(() => {
+    switch (farm.status) {
       case 'Profile Complete':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'Incomplete':
@@ -48,13 +49,16 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
-  };
+  }, [farm.status]);
 
-  const formatDate = (dateString: string) => {
+  // Memoize date formatting
+  const formattedDate = useMemo(() => {
+    const dateString = farm.updated_at || farm.created_at;
     return new Date(dateString).toLocaleDateString();
-  };
+  }, [farm.updated_at, farm.created_at]);
 
-  const getUrgencyLevel = () => {
+  // Memoize urgency calculation
+  const urgencyLevel = useMemo(() => {
     if (!metrics) return null;
     
     const { urgentDeadlines = 0, missingDocuments = 0, expiringMatches = 0 } = metrics;
@@ -64,9 +68,12 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
     if (totalUrgent >= 3) return 'high';
     if (totalUrgent >= 2) return 'medium';
     return 'low';
-  };
+  }, [metrics]);
 
-  const urgencyLevel = getUrgencyLevel();
+  // Memoize navigation callback
+  const handleViewDetails = useCallback(() => {
+    navigate(`/farm/${farm.id}`);
+  }, [navigate, farm.id]);
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 relative flex flex-col h-full">
@@ -82,7 +89,7 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
             {farm.name}
           </CardTitle>
-          <Badge className={getStatusColor(farm.status)}>
+          <Badge className={statusColor}>
             {farm.status || 'Active'}
           </Badge>
         </div>
@@ -158,7 +165,7 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
 
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Calendar size={14} />
-            <span>Updated {formatDate(farm.updated_at || farm.created_at)}</span>
+            <span>Updated {formattedDate}</span>
           </div>
         </div>
 
@@ -167,7 +174,7 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => navigate(`/farm/${farm.id}`)}
+            onClick={handleViewDetails}
             className="w-full"
           >
             <Eye size={16} className="mr-2" />
@@ -177,6 +184,8 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = ({ farm }) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+EnhancedFarmCard.displayName = 'EnhancedFarmCard';
 
 export default EnhancedFarmCard;

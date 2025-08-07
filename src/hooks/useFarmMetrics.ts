@@ -102,6 +102,8 @@ export const useFarmMetrics = (farmId: string) => {
       };
     },
     enabled: !!farmId,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
+    refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes (reduced from 5)
+    refetchOnWindowFocus: false, // Don't refetch on every window focus
   });
 };
