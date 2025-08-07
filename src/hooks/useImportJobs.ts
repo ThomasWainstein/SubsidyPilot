@@ -5,7 +5,7 @@ import { ImportJob, FieldMapping, validateImportData, detectDuplicates, autoMapF
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-// File parsing utilities
+// 🔧 IMPROVED: Strict TypeScript typing for file parsing utilities
 const parseCSV = (text: string): Record<string, string>[] => {
   const lines = text.split('\n').filter(line => line.trim());
   if (lines.length === 0) return [];
@@ -139,9 +139,9 @@ export const useImportJobs = () => {
         currentJob.fieldMappings.forEach(mapping => {
           if (
             mapping.canonicalField &&
-            (row as Record<string, any>)[mapping.sourceField] !== undefined
+            (row as Record<string, unknown>)[mapping.sourceField] !== undefined
           ) {
-            let value: any = (row as Record<string, any>)[mapping.sourceField];
+            let value: unknown = (row as Record<string, unknown>)[mapping.sourceField];
             
             // Apply transformations
             switch (mapping.transform) {
@@ -150,14 +150,14 @@ export const useImportJobs = () => {
                 break;
               case 'parse_json':
                 try {
-                  value = JSON.parse(value);
+                  value = typeof value === 'string' ? JSON.parse(value) : value;
                 } catch {
                   // Keep original value if JSON parse fails
                 }
                 break;
               case 'date_format':
                 // Convert to ISO format
-                if (value) {
+                if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
                   const date = new Date(value);
                   value = isNaN(date.getTime()) ? value : date.toISOString();
                 }
@@ -237,10 +237,10 @@ export const useImportJobs = () => {
         currentJob.fieldMappings.forEach(mapping => {
           if (
             mapping.canonicalField &&
-            (row as Record<string, any>)[mapping.sourceField] !== undefined
+            (row as Record<string, unknown>)[mapping.sourceField] !== undefined
           ) {
             transformed[mapping.canonicalField] =
-              (row as Record<string, any>)[mapping.sourceField];
+              (row as Record<string, unknown>)[mapping.sourceField];
           }
         });
         

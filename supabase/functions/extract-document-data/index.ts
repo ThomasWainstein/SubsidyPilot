@@ -10,15 +10,16 @@ import { tryLocalExtraction } from './lib/localExtraction.ts';
 
 // Enhanced environment diagnostics and validation
 function validateEnvironment() {
+  // 🔒 SECURITY: Sanitized environment logging - no sensitive data exposed
   console.log('🔧 Environment Check for extract-document-data:', {
     hasOpenAI: !!Deno.env.get('OPENAI_API_KEY'),
     hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
     hasServiceKey: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
     hasAnonKey: !!Deno.env.get('SUPABASE_ANON_KEY'),
-    availableVars: Object.keys(Deno.env.toObject()).filter(k => 
+    // 🔒 Safe: Only show count, not actual variable names
+    envVarCount: Object.keys(Deno.env.toObject()).filter(k => 
       k.startsWith('SUPABASE') || k.startsWith('OPENAI')
-    ),
-    allEnvKeys: Object.keys(Deno.env.toObject()).sort()
+    ).length
   });
 
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -142,10 +143,11 @@ serve(async (req) => {
       }
     })();
 
+    // 🔒 SECURITY: Sanitized environment check - only show domain, not full URLs
     addDebugLog('ENVIRONMENT_CHECK', {
       hasOpenAIKey: !!openAIApiKey,
       openAIKeyLength: openAIApiKey?.length || 0,
-      supabaseDomain,
+      supabaseDomain: new URL(supabaseUrl).hostname,
       hasServiceKey: !!supabaseServiceKey,
       serviceKeyLength: supabaseServiceKey?.length || 0
     });
@@ -366,7 +368,7 @@ serve(async (req) => {
       documentId
     });
 
-    // Try to log error to database
+    // 🔧 IMPROVED: Better error handling - try to log error to database
     if (documentId) {
       try {
         await logExtractionError(
@@ -388,15 +390,17 @@ serve(async (req) => {
       }
     }
     
+    // 🔧 IMPROVED: Return proper HTTP error responses instead of throwing
     return new Response(JSON.stringify({
       success: false,
       error: errorMessage,
       debugLog,
-      stack: errorStack,
+      documentId,
       summary: {
         failedAt: debugLog[debugLog.length - 1]?.step || 'unknown',
         totalSteps: debugLog.length,
-        hasDocumentId: !!documentId
+        hasDocumentId: !!documentId,
+        timestamp: new Date().toISOString()
       }
     }), {
       status: 500,

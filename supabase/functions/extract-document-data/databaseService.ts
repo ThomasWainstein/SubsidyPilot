@@ -15,12 +15,17 @@ export interface StoreExtractionResult {
  */
 export async function storeExtractionResult(
   documentId: string,
-  extractionData: any,
+  extractionData: Record<string, unknown>,
   supabaseUrl: string,
   supabaseServiceKey: string
 ): Promise<StoreExtractionResult> {
   try {
-    console.log(`💾 Storing extraction result for document: ${documentId}`);
+    // 🔒 SECURITY: Safe connection check without exposing sensitive data
+    console.log('💾 Storing extraction result:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      urlDomain: supabaseUrl?.split('://')[1]?.split('.')[0] || 'unknown'
+    });
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -39,10 +44,11 @@ export async function storeExtractionResult(
       .single();
 
     if (error) {
-      console.error('❌ Database storage failed:', error);
+      const errorMessage = `Database storage failed: ${error.message}`;
+      console.error('❌', errorMessage);
       return {
         success: false,
-        error: `Database error: ${error.message}`
+        error: errorMessage
       };
     }
 
@@ -52,10 +58,11 @@ export async function storeExtractionResult(
       extractionId: data.id
     };
   } catch (error) {
-    console.error('❌ Database service error:', error);
+    const errorMessage = `Database service error: ${(error as Error).message}`;
+    console.error('❌', errorMessage);
     return {
       success: false,
-      error: `Database service error: ${error.message}`
+      error: errorMessage
     };
   }
 }
@@ -68,7 +75,7 @@ export async function logExtractionError(
   errorMessage: string,
   supabaseUrl: string,
   supabaseServiceKey: string,
-  additionalData?: any
+  additionalData?: Record<string, unknown>
 ): Promise<void> {
   try {
     console.log(`📝 Logging extraction error for document: ${documentId}`);
@@ -105,7 +112,7 @@ export async function updateDocumentStatus(
   status: 'processing' | 'completed' | 'failed',
   supabaseUrl: string,
   supabaseServiceKey: string,
-  additionalInfo?: any
+  additionalInfo?: Record<string, unknown>
 ): Promise<void> {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
