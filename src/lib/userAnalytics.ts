@@ -55,6 +55,8 @@ class UserAnalytics {
   private actionQueue: UserAction[] = [];
   private conversionGoals = new Map<string, { completed: boolean; timestamp?: number }>();
   private heatmapData = new Map<string, Array<{ x: number; y: number; intensity: number }>>();
+  private batchInterval?: NodeJS.Timeout;
+  private isDestroyed = false;
 
   static getInstance(): UserAnalytics {
     if (!UserAnalytics.instance) {
@@ -361,7 +363,10 @@ class UserAnalytics {
 
   // Batch processing
   private startBatchProcessor(): void {
-    setInterval(() => {
+    if (this.isDestroyed) return;
+    
+    this.batchInterval = setInterval(() => {
+      if (this.isDestroyed) return;
       this.processBatch();
     }, 10000); // Send batch every 10 seconds
   }
@@ -463,6 +468,27 @@ class UserAnalytics {
       goal,
       ...data
     }));
+  }
+
+  // Cleanup method for proper resource management
+  cleanup(): void {
+    this.isDestroyed = true;
+    
+    if (this.batchInterval) {
+      clearInterval(this.batchInterval);
+      this.batchInterval = undefined;
+    }
+    
+    // Send any remaining analytics data before cleanup
+    this.processBatch();
+    
+    // Clear data structures
+    this.actionQueue = [];
+    this.conversionGoals.clear();
+    this.heatmapData.clear();
+    this.currentSession = null;
+    
+    logger.info('User analytics cleaned up');
   }
 }
 

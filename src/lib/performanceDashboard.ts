@@ -51,6 +51,9 @@ class PerformanceDashboard {
   private widgets: Map<string, DashboardWidget> = new Map();
   private metricsHistory: Map<string, Array<{ timestamp: number; value: number }>> = new Map();
   private alertCallbacks: ((alert: PerformanceAlert) => void)[] = [];
+  private performanceInterval?: NodeJS.Timeout;
+  private anomalyInterval?: NodeJS.Timeout;
+  private isDestroyed = false;
 
   static getInstance(): PerformanceDashboard {
     if (!PerformanceDashboard.instance) {
@@ -318,7 +321,10 @@ class PerformanceDashboard {
 
   // Real-time monitoring
   private startPerformanceMonitoring(): void {
-    setInterval(() => {
+    if (this.isDestroyed) return;
+    
+    this.performanceInterval = setInterval(() => {
+      if (this.isDestroyed) return;
       this.collectSystemMetrics();
     }, 5000); // Collect every 5 seconds
   }
@@ -361,7 +367,10 @@ class PerformanceDashboard {
 
   // Anomaly detection
   private startAnomalyDetection(): void {
-    setInterval(() => {
+    if (this.isDestroyed) return;
+    
+    this.anomalyInterval = setInterval(() => {
+      if (this.isDestroyed) return;
       this.detectAnomalies();
     }, 30000); // Check every 30 seconds
   }
@@ -546,6 +555,28 @@ class PerformanceDashboard {
         this.alerts.filter(a => Date.now() - a.timestamp <= duration) : 
         this.alerts
     };
+  }
+
+  // Cleanup method for proper resource management
+  cleanup(): void {
+    this.isDestroyed = true;
+    
+    if (this.performanceInterval) {
+      clearInterval(this.performanceInterval);
+      this.performanceInterval = undefined;
+    }
+    
+    if (this.anomalyInterval) {
+      clearInterval(this.anomalyInterval);
+      this.anomalyInterval = undefined;
+    }
+    
+    // Clear callbacks and data
+    this.alertCallbacks = [];
+    this.widgets.clear();
+    this.metricsHistory.clear();
+    
+    logger.info('Performance dashboard cleaned up');
   }
 }
 

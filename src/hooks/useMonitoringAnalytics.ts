@@ -43,7 +43,7 @@ export interface ReportConfig {
   };
 }
 
-export const useMonitoringAnalytics = () => {
+export const useMonitoringAnalytics = (refreshInterval: number = 60000) => {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [errorData, setErrorData] = useState<any>(null);
@@ -296,9 +296,9 @@ export const useMonitoringAnalytics = () => {
 
   // Auto-refresh data
   useEffect(() => {
-    const interval = setInterval(refreshData, 60000); // Refresh every minute
+    const interval = setInterval(refreshData, refreshInterval);
     return () => clearInterval(interval);
-  }, [refreshData]);
+  }, [refreshData, refreshInterval]);
 
   return {
     overview,
