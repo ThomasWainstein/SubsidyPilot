@@ -15,6 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useFarmMetrics } from '@/hooks/useFarmMetrics';
 import { formatFundingAmount } from '@/utils/subsidyFormatting';
+import StatusIndicator from '@/components/accessibility/StatusIndicator';
 
 interface Farm {
   id: string;
@@ -76,29 +77,48 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = React.memo(({ farm }) 
   }, [navigate, farm.id]);
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200 relative flex flex-col h-full">
+    <Card 
+      className="hover:shadow-lg transition-shadow duration-200 relative flex flex-col h-full"
+      role="article"
+      aria-labelledby={`farm-title-${farm.id}`}
+      aria-describedby={`farm-summary-${farm.id}`}
+    >
       {urgencyLevel && (
-        <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${
-          urgencyLevel === 'high' ? 'bg-red-500' : 
-          urgencyLevel === 'medium' ? 'bg-orange-500' : 'bg-yellow-500'
-        }`} />
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <StatusIndicator 
+            status={urgencyLevel as 'high' | 'medium' | 'low'} 
+            label={`${urgencyLevel} priority alerts for ${farm.name}`}
+            size="sm"
+          />
+        </div>
       )}
       
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+          <CardTitle 
+            id={`farm-title-${farm.id}`}
+            className="text-lg font-semibold text-gray-900 dark:text-white"
+          >
             {farm.name}
           </CardTitle>
-          <Badge className={statusColor}>
+          <Badge 
+            className={statusColor}
+            role="status"
+            aria-label={`Farm status: ${farm.status || 'Active'}`}
+          >
             {farm.status || 'Active'}
           </Badge>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-4 flex-1 flex flex-col">
-        <div className="space-y-4 flex-1">
+        <div id={`farm-summary-${farm.id}`} className="space-y-4 flex-1">
           <div className="flex items-start gap-2">
-            <MapPin size={16} className="text-gray-400 mt-1 flex-shrink-0" />
+            <MapPin 
+              size={16} 
+              className="text-gray-400 mt-1 flex-shrink-0" 
+              aria-hidden="true"
+            />
             <div className="text-sm text-gray-600 dark:text-gray-300">
               <p>{farm.address}</p>
               {farm.department && (
@@ -130,16 +150,34 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = React.memo(({ farm }) 
             <div className="space-y-2 border-t pt-3">
               {metrics.urgentDeadlines > 0 && (
                 <div className="flex items-center gap-2 text-xs">
-                  <AlertTriangle size={12} className="text-red-500" />
-                  <Badge variant="destructive" className="text-xs">
+                  <AlertTriangle 
+                    size={12} 
+                    className="text-red-500" 
+                    aria-hidden="true"
+                  />
+                  <Badge 
+                    variant="destructive" 
+                    className="text-xs"
+                    role="alert"
+                    aria-label={`${metrics.urgentDeadlines} urgent deadline${metrics.urgentDeadlines > 1 ? 's' : ''} requiring attention`}
+                  >
                     {metrics.urgentDeadlines} urgent deadline{metrics.urgentDeadlines > 1 ? 's' : ''}
                   </Badge>
                 </div>
               )}
               {metrics.missingDocuments > 0 && (
                 <div className="flex items-center gap-2 text-xs">
-                  <FileText size={12} className="text-orange-500" />
-                  <Badge variant="outline" className="text-xs">
+                  <FileText 
+                    size={12} 
+                    className="text-orange-500" 
+                    aria-hidden="true"
+                  />
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs"
+                    role="status"
+                    aria-label={`${metrics.missingDocuments} missing document${metrics.missingDocuments > 1 ? 's' : ''}`}
+                  >
                     {metrics.missingDocuments} missing doc{metrics.missingDocuments > 1 ? 's' : ''}
                   </Badge>
                 </div>
@@ -164,7 +202,7 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = React.memo(({ farm }) 
           )}
 
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Calendar size={14} />
+            <Calendar size={14} aria-hidden="true" />
             <span>Updated {formattedDate}</span>
           </div>
         </div>
@@ -176,8 +214,9 @@ const EnhancedFarmCard: React.FC<EnhancedFarmCardProps> = React.memo(({ farm }) 
             size="sm" 
             onClick={handleViewDetails}
             className="w-full"
+            aria-label={`View details for ${farm.name} farm`}
           >
-            <Eye size={16} className="mr-2" />
+            <Eye size={16} className="mr-2" aria-hidden="true" />
             View Details
           </Button>
         </div>

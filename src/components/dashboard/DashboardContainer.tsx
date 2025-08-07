@@ -15,6 +15,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import EnhancedErrorBoundary from '@/components/error/EnhancedErrorBoundary';
 import { logger } from '@/lib/logger';
 import { prodLogger } from '@/utils/productionLogger';
+import SkipLink from '@/components/accessibility/SkipLink';
 
 interface Farm {
   id: string;
@@ -242,20 +243,38 @@ const DashboardContainer = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SkipLink href="#main-content">Skip to main content</SkipLink>
+      <SkipLink href="#dashboard-filters">Skip to filters</SkipLink>
       <Navbar />
       
-      <main className="flex-grow py-8 bg-gray-50 dark:bg-gray-900">
+      <main 
+        id="main-content"
+        className="flex-grow py-8 bg-gray-50 dark:bg-gray-900"
+        role="main"
+        aria-label="Farm dashboard"
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 
+              className="text-2xl font-bold text-gray-900 dark:text-white"
+              id="dashboard-title"
+            >
               {typeof t === 'function' ? t('dashboard.clientFarmDashboard') : 'Farm Dashboard'}
             </h1>
           </div>
           
-          <div className="grid grid-cols-12 gap-6">
+          <div 
+            className="grid grid-cols-12 gap-6"
+            aria-labelledby="dashboard-title"
+          >
             {/* Main content area - Farm cards prioritized */}
-            <div className="col-span-12 lg:col-span-8 space-y-6">
-              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Dashboard Filters">
+            <div 
+              className="col-span-12 lg:col-span-8 space-y-6"
+              role="region"
+              aria-label="Farm listings and filters"
+            >
+              <div id="dashboard-filters">
+                <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Dashboard Filters">
                 <DashboardFilters 
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
@@ -268,7 +287,8 @@ const DashboardContainer = () => {
                   uniqueRegions={uniqueRegions}
                   onAddFarm={handleAddFarm}
                 />
-              </EnhancedErrorBoundary>
+                </EnhancedErrorBoundary>
+              </div>
               
               {farms.length === 0 ? (
                 <div className="text-center py-12">
@@ -289,7 +309,11 @@ const DashboardContainer = () => {
             </div>
 
             {/* Right sidebar - All metrics and secondary info */}
-            <div className="col-span-12 lg:col-span-4 space-y-6">
+            <aside 
+              className="col-span-12 lg:col-span-4 space-y-6"
+              role="complementary"
+              aria-label="Farm statistics and actions"
+            >
               {/* Simple farm summary */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Farm Summary</h3>
@@ -314,7 +338,7 @@ const DashboardContainer = () => {
               <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Alerts and Actions">
                 <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
               </EnhancedErrorBoundary>
-            </div>
+            </aside>
           </div>
         </div>
       </main>

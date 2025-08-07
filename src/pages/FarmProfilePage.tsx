@@ -166,34 +166,83 @@ const FarmProfilePage = () => {
             
             {/* Mobile-responsive tabs */}
             <Tabs defaultValue="profile" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                <TabsTrigger value="profile" className="text-xs md:text-sm py-2 md:py-3">
+              <TabsList 
+                className="grid w-full grid-cols-2 md:grid-cols-4 h-auto"
+                role="tablist"
+                aria-label="Farm information sections"
+              >
+                <TabsTrigger 
+                  value="profile" 
+                  className="text-xs md:text-sm py-2 md:py-3"
+                  role="tab"
+                  aria-controls="profile-panel"
+                  aria-selected="true"
+                >
                   {t('common.profile')}
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs md:text-sm py-2 md:py-3">
+                <TabsTrigger 
+                  value="documents" 
+                  className="text-xs md:text-sm py-2 md:py-3"
+                  role="tab"
+                  aria-controls="documents-panel"
+                >
                   {t('common.documents')}
                 </TabsTrigger>
-                <TabsTrigger value="subsidies" className="text-xs md:text-sm py-2 md:py-3">
+                <TabsTrigger 
+                  value="subsidies" 
+                  className="text-xs md:text-sm py-2 md:py-3"
+                  role="tab"
+                  aria-controls="subsidies-panel"
+                >
                   {t('common.subsidies')}
                 </TabsTrigger>
-                <TabsTrigger value="applications" className="text-xs md:text-sm py-2 md:py-3">
+                <TabsTrigger 
+                  value="applications" 
+                  className="text-xs md:text-sm py-2 md:py-3"
+                  role="tab"
+                  aria-controls="applications-panel"
+                >
                   {t('common.applications')}
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="profile" className="mt-4">
+              <TabsContent 
+                value="profile" 
+                className="mt-4"
+                role="tabpanel"
+                id="profile-panel"
+                aria-labelledby="profile-tab"
+              >
                 <ProfileTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="documents" className="mt-4">
+              <TabsContent 
+                value="documents" 
+                className="mt-4"
+                role="tabpanel"
+                id="documents-panel"
+                aria-labelledby="documents-tab"
+              >
                 <DocumentsTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="subsidies" className="mt-4">
+              <TabsContent 
+                value="subsidies" 
+                className="mt-4"
+                role="tabpanel"
+                id="subsidies-panel"
+                aria-labelledby="subsidies-tab"
+              >
                 <SubsidiesTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
-              <TabsContent value="applications" className="mt-4">
+              <TabsContent 
+                value="applications" 
+                className="mt-4"
+                role="tabpanel"
+                id="applications-panel"
+                aria-labelledby="applications-tab"
+              >
                 <ApplicationsTabContent farmId={transformedFarm.id} />
               </TabsContent>
             </Tabs>
