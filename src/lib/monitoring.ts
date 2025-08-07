@@ -11,8 +11,13 @@ interface PerformanceMetrics {
   ttfb?: number;
 }
 
+interface EnhancedError extends Error {
+  level?: string;
+  [key: string]: any;
+}
+
 interface ErrorReport {
-  error: Error;
+  error: EnhancedError;
   timestamp: number;
   url: string;
   userAgent: string;
@@ -120,13 +125,33 @@ class ProductionMonitoring {
     }
   }
 
-  captureError(error: Error, context?: Record<string, any>) {
+  captureError(error: EnhancedError | Record<string, any>, context?: Record<string, any>) {
+    // Convert error-like objects to proper Error instances
+    let actualError: EnhancedError;
+    
+    if (error instanceof Error) {
+      actualError = error as EnhancedError;
+    } else if (typeof error === 'object' && error.message) {
+      // Create Error from error-like object
+      actualError = new Error(error.message) as EnhancedError;
+      actualError.name = error.name || 'CustomError';
+      actualError.stack = error.stack;
+      // Copy additional properties
+      Object.keys(error).forEach(key => {
+        if (key !== 'message' && key !== 'stack' && key !== 'name') {
+          actualError[key] = error[key];
+        }
+      });
+    } else {
+      actualError = new Error(String(error)) as EnhancedError;
+    }
+
     const errorReport: ErrorReport = {
-      error,
+      error: actualError,
       timestamp: Date.now(),
       url: window.location.href,
       userAgent: navigator.userAgent,
-      stackTrace: error.stack
+      stackTrace: actualError.stack
     };
 
     this.errors.push(errorReport);
@@ -138,7 +163,7 @@ class ProductionMonitoring {
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Captured error:', error, context);
+      console.error('Captured error:', actualError, context);
     }
 
     // In production, you would send this to your monitoring service
@@ -193,6 +218,24 @@ class ProductionMonitoring {
     // In production, send to analytics service
   }
 
+  // Backward compatibility methods
+  captureMetric(metric: string | Record<string, any>, value?: number, tags?: Record<string, string>) {
+    if (typeof metric === 'string') {
+      this.trackCustomEvent(`metric.${metric}`, { value: value ?? 1, ...tags });
+    } else {
+      // Handle complex metric objects
+      this.trackCustomEvent(`metric.${metric.name || 'unknown'}`, metric);
+    }
+  }
+
+  reportUserAction(action: string, context?: Record<string, any>) {
+    this.trackCustomEvent(`user.${action}`, context);
+  }
+
+  reportFeatureUsage(feature: string, usage?: number, context?: Record<string, any>) {
+    this.trackCustomEvent(`feature.${feature}`, { usage: usage ?? 1, ...context });
+  }
+
   cleanup() {
     this.observers.forEach(observer => observer.disconnect());
     this.observers.clear();
@@ -200,3 +243,6 @@ class ProductionMonitoring {
 }
 
 export const prodMonitoring = new ProductionMonitoring();
+
+// Backward compatibility export
+export const monitoring = prodMonitoring;

@@ -73,6 +73,24 @@ interface ProductionConfig {
   };
 }
 
+// Legacy configuration structure for backward compatibility
+interface LegacyProductionConfig extends ProductionConfig {
+  LIMITS: {
+    rateLimitPerMinute: number;
+    API_RATE_LIMIT: number;
+  };
+  MONITORING: {
+    enableErrorTracking: boolean;
+    enablePerformanceTracking: boolean;
+    enableUserAnalytics: boolean;
+    healthCheckInterval: number;
+    maxErrorsStored: number;
+    USER_ANALYTICS: {
+      enableUserAnalytics: boolean;
+    };
+  };
+}
+
 const baseConfig: ProductionConfig = {
   environment: (process.env.NODE_ENV as any) || 'development',
   
@@ -192,11 +210,11 @@ const environmentConfigs: Record<string, Partial<ProductionConfig>> = {
 };
 
 // Merge base config with environment-specific config
-function createProductionConfig(): ProductionConfig {
+function createProductionConfig(): LegacyProductionConfig {
   const environment = process.env.NODE_ENV || 'development';
   const envConfig = environmentConfigs[environment] || {};
   
-  return {
+  const config = {
     ...baseConfig,
     ...envConfig,
     performance: { ...baseConfig.performance, ...envConfig.performance },
@@ -207,9 +225,27 @@ function createProductionConfig(): ProductionConfig {
     api: { ...baseConfig.api, ...envConfig.api },
     build: { ...baseConfig.build, ...envConfig.build }
   };
+
+  // Add legacy properties for backward compatibility
+  return {
+    ...config,
+    LIMITS: {
+      rateLimitPerMinute: config.api.rateLimitPerMinute,
+      API_RATE_LIMIT: config.api.rateLimitPerMinute
+    },
+    MONITORING: {
+      ...config.monitoring,
+      USER_ANALYTICS: {
+        enableUserAnalytics: config.monitoring.enableUserAnalytics
+      }
+    }
+  };
 }
 
 export const productionConfig = createProductionConfig();
+
+// Backward compatibility export
+export const PRODUCTION_CONFIG = productionConfig;
 
 // Helper functions
 export const isProduction = () => productionConfig.environment === 'production';
