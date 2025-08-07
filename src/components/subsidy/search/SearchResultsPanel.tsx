@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Filter, X, Calendar, MapPin, Euro } from 'lucide-react';
 import EmptySubsidyState from './EmptySubsidyState';
 import SubsidyLoadingCard from './SubsidyLoadingCard';
+import { useNavigate } from 'react-router-dom';
 
 interface Subsidy {
   id: string;
@@ -41,6 +42,7 @@ interface SearchResultsPanelProps {
 import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplayString, formatFilterLabel } from '@/utils/subsidyFormatting';
 
 const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
+  const navigate = useNavigate();
   const deadlineStatus = getDeadlineStatus(subsidy.deadline);
 
   return (
@@ -100,7 +102,7 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
         <Button 
           size="sm" 
           className="flex-1"
-          onClick={() => window.location.href = `/subsidy/${subsidy.id}`}
+          onClick={() => navigate(`/subsidy/${subsidy.id}`)}
         >
           View Details
         </Button>
@@ -122,6 +124,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
   farmId,
   onClearFilters
 }) => {
+  const navigate = useNavigate();
   if (error) {
     return (
       <Card>
@@ -150,7 +153,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
           <EmptySubsidyState 
             type="error"
             error={error}
-            onRetry={() => window.location.reload()}
+            onRetry={() => navigate(0)}
           />
         </CardContent>
       </Card>

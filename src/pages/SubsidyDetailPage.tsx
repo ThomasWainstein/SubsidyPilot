@@ -199,7 +199,7 @@ const SubsidyDetailPage = () => {
               <EnhancedExtractionTrigger 
                 subsidyUrl={subsidy.url}
                 subsidyTitle={subsidy.title}
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => navigate(0)}
               />
             )}
             

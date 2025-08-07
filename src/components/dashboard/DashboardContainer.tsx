@@ -82,14 +82,14 @@ const DashboardContainer = () => {
           ...farm,
           status: 'active' as const,
           region: farm.department || 'Unknown',
-          tags: farm.land_use_types || []
+          tags: Array.isArray(farm.land_use_types) ? farm.land_use_types : []
         }));
 
         prodLogger.debug('DashboardContainer: Transformed farms', transformedFarms);
         setFarms(transformedFarms);
         setError(null);
       } catch (error: any) {
-        console.error('DashboardContainer: Error fetching farms:', error);
+        prodLogger.error('DashboardContainer: Error fetching farms:', error);
         setError(error.message);
         toast({
           title: 'Error',
@@ -207,7 +207,7 @@ const DashboardContainer = () => {
                           ...farm,
                           status: 'active' as const,
                           region: farm.department || 'Unknown',
-                          tags: farm.land_use_types || []
+                          tags: Array.isArray(farm.land_use_types) ? farm.land_use_types : []
                         }));
                         setFarms(transformedFarms);
                         setError(null);

@@ -18,6 +18,7 @@ interface SubsidiesTabContentProps {
 }
 
 const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
+  const navigate = useNavigate();
   const getDescription = () => {
     return subsidy.description || 'No description';
   };
@@ -78,7 +79,7 @@ const SubsidyCard = ({ subsidy }: { subsidy: any }) => {
           <Button 
             size="sm" 
             className="flex-1 min-h-[36px] text-xs md:text-sm"
-            onClick={() => window.location.href = `/subsidy/${subsidy.id}`}
+            onClick={() => navigate(`/subsidy/${subsidy.id}`)}
           >
             View Details
           </Button>

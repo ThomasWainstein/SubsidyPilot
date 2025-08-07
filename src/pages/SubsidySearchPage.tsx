@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import SearchHeader from '@/components/subsidy/search/SearchHeader';
 import SearchFiltersPanel from '@/components/subsidy/search/SearchFiltersPanel';
@@ -20,6 +20,7 @@ import AdminPanelLink from '@/components/admin/AdminPanelLink';
 
 const SubsidySearchPage = () => {
   const { farmId } = useParams<{ farmId: string }>();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false); // Start with filters hidden on mobile
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
@@ -135,7 +136,7 @@ const SubsidySearchPage = () => {
                 title="Error Loading Subsidies"
                 description="Unable to load subsidy data. Please try again or contact support if the problem persists."
                 actionLabel="Retry"
-                onAction={() => window.location.reload()}
+                onAction={() => navigate(0)}
               />
             ) : (
               <div className="space-y-4">

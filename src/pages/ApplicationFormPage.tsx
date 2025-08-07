@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Navbar from '@/components/Navbar';
 import { useFarm } from '@/hooks/useFarms';
@@ -101,6 +101,7 @@ const getApplicationForm = (farmId: string, subsidyId: string): FormSection[] =>
 
 const ApplicationFormPage = () => {
   const { farmId, subsidyId } = useParams<{ farmId: string; subsidyId: string }>();
+  const navigate = useNavigate();
   const { t } = useLanguage();
   
   // Fetch farm and subsidy data from Supabase
@@ -153,7 +154,7 @@ const ApplicationFormPage = () => {
                   {farmError?.message || subsidyError?.message || 'Farm or subsidy not found'}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => window.location.reload()}>
+                  <Button variant="outline" onClick={() => navigate(0)}>
                     Try Again
                   </Button>
                   <Link to={`/farm/${farmId}`}>

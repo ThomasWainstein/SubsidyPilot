@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useApplications } from '@/hooks/useApplications';
 import { Loader2, FileText, Calendar, Euro } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ApplicationsTabContentProps {
   farmId: string;
@@ -13,6 +14,7 @@ interface ApplicationsTabContentProps {
 
 export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ farmId }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const { data: applications, isLoading, error } = useApplications(farmId);
 
   if (isLoading) {
@@ -128,7 +130,7 @@ export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ 
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => window.location.href = `/subsidy/${application.subsidy_id}`}
+                    onClick={() => navigate(`/subsidy/${application.subsidy_id}`)}
                   >
                     View Subsidy Details
                   </Button>
