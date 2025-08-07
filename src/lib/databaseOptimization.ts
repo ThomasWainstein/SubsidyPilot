@@ -177,7 +177,7 @@ class DatabaseOptimizer {
         
         query = (query as any).range(offset, offset + pageSize - 1);
 
-        const { data, error } = await query;
+        const { data, error } = await (query as any);
 
         if (error) {
           logger.error(`Error streaming ${table} at offset ${offset}`, error);
