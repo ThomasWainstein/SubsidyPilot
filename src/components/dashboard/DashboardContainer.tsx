@@ -12,7 +12,9 @@ import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import EnhancedAlertsActions from '@/components/dashboard/EnhancedAlertsActions';
 import { toast } from '@/hooks/use-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import EnhancedErrorBoundary from '@/components/error/EnhancedErrorBoundary';
 import { logger } from '@/lib/logger';
+import { prodLogger } from '@/utils/productionLogger';
 
 interface Farm {
   id: string;
@@ -28,7 +30,7 @@ interface Farm {
 }
 
 const DashboardContainer = () => {
-  logger.debug('DashboardContainer: Rendering');
+  prodLogger.debug('DashboardContainer: Rendering');
   
   // Wrap language context usage in try-catch
   let t: any;
@@ -36,9 +38,12 @@ const DashboardContainer = () => {
     const { t: translation } = useLanguage();
     t = translation;
   } catch (error) {
-    console.error('DashboardContainer: Error getting language context:', error);
-    // Fallback translation function
-    t = (key: string) => key;
+    logger.error('DashboardContainer: Error getting language context:', error);
+    // Fallback translation function with proper error handling
+    t = (key: string) => {
+      logger.warn(`Translation missing for key: ${key}`);
+      return key.split('.').pop() || key;
+    };
   }
 
   const { user } = useAuth();
@@ -55,12 +60,12 @@ const DashboardContainer = () => {
   useEffect(() => {
     const fetchFarms = async () => {
       if (!user) {
-        logger.debug('DashboardContainer: No user, skipping farm fetch');
+        prodLogger.debug('DashboardContainer: No user, skipping farm fetch');
         setLoading(false);
         return;
       }
 
-      logger.debug(`DashboardContainer: Fetching farms for user: ${user.id}`);
+      prodLogger.debug(`DashboardContainer: Fetching farms for user: ${user.id}`);
 
       try {
         const { data, error } = await supabase
@@ -68,7 +73,7 @@ const DashboardContainer = () => {
           .select('*')
           .eq('user_id', user.id);
 
-        logger.debug('DashboardContainer: Farms query result', { data, error });
+        prodLogger.debug('DashboardContainer: Farms query result', { data, error });
 
         if (error) throw error;
 
@@ -80,7 +85,7 @@ const DashboardContainer = () => {
           tags: farm.land_use_types || []
         }));
 
-        logger.debug('DashboardContainer: Transformed farms', transformedFarms);
+        prodLogger.debug('DashboardContainer: Transformed farms', transformedFarms);
         setFarms(transformedFarms);
         setError(null);
       } catch (error: any) {
@@ -157,7 +162,7 @@ const DashboardContainer = () => {
   });
 
   if (loading) {
-    logger.debug('DashboardContainer: Showing loading state');
+    prodLogger.debug('DashboardContainer: Showing loading state');
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -176,7 +181,7 @@ const DashboardContainer = () => {
   }
 
   if (error) {
-    logger.debug('DashboardContainer: Showing error state', { error });
+    prodLogger.debug('DashboardContainer: Showing error state', { error });
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -187,7 +192,33 @@ const DashboardContainer = () => {
                 <div className="text-red-500 text-xl mb-4">⚠️ Error Loading Farms</div>
                 <p className="text-gray-600 mb-4">{error}</p>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    setError(null);
+                    setLoading(true);
+                    // Trigger refetch via state update
+                    const fetchFarms = async () => {
+                      try {
+                        const { data, error } = await supabase
+                          .from('farms')
+                          .select('*')
+                          .eq('user_id', user?.id);
+                        if (error) throw error;
+                        const transformedFarms = data.map(farm => ({
+                          ...farm,
+                          status: 'active' as const,
+                          region: farm.department || 'Unknown',
+                          tags: farm.land_use_types || []
+                        }));
+                        setFarms(transformedFarms);
+                        setError(null);
+                      } catch (error: any) {
+                        setError(error.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    };
+                    fetchFarms();
+                  }}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
                 >
                   Retry
@@ -200,7 +231,7 @@ const DashboardContainer = () => {
     );
   }
 
-  logger.debug('DashboardContainer: Rendering main content', { farmCount: farms.length });
+  prodLogger.debug('DashboardContainer: Rendering main content', { farmCount: farms.length });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -217,7 +248,7 @@ const DashboardContainer = () => {
           <div className="grid grid-cols-12 gap-6">
             {/* Main content area - Farm cards prioritized */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
-              <ErrorBoundary fallback={DashboardErrorFallback}>
+              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Dashboard Filters">
                 <DashboardFilters 
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
@@ -230,7 +261,7 @@ const DashboardContainer = () => {
                   uniqueRegions={uniqueRegions}
                   onAddFarm={() => setIsAddFarmModalOpen(true)}
                 />
-              </ErrorBoundary>
+              </EnhancedErrorBoundary>
               
               {farms.length === 0 ? (
                 <div className="text-center py-12">
@@ -244,9 +275,9 @@ const DashboardContainer = () => {
                   </button>
                 </div>
               ) : (
-                <ErrorBoundary fallback={DashboardErrorFallback}>
-                  <FarmGrid />
-                </ErrorBoundary>
+                <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Farm Grid">
+                  <FarmGrid farms={sortedFarms} />
+                </EnhancedErrorBoundary>
               )}
             </div>
 
@@ -268,25 +299,25 @@ const DashboardContainer = () => {
               </div>
 
               {/* Dashboard Overview in sidebar */}
-              <ErrorBoundary fallback={DashboardErrorFallback}>
+              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Dashboard Overview">
                 <DashboardOverview farmCount={farms.length} />
-              </ErrorBoundary>
+              </EnhancedErrorBoundary>
 
               {/* Alerts and actions */}
-              <ErrorBoundary fallback={DashboardErrorFallback}>
+              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Alerts and Actions">
                 <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
-              </ErrorBoundary>
+              </EnhancedErrorBoundary>
             </div>
           </div>
         </div>
       </main>
       
-      <ErrorBoundary fallback={DashboardErrorFallback}>
+      <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Add Farm Modal">
         <AddFarmModal 
           isOpen={isAddFarmModalOpen}
           onClose={() => setIsAddFarmModalOpen(false)}
         />
-      </ErrorBoundary>
+      </EnhancedErrorBoundary>
     </div>
   );
 };

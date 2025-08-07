@@ -23,12 +23,8 @@ const FarmProfilePage = () => {
   const navigate = useNavigate();
   const { trackUserAction } = usePerformanceMonitoring('Farm Profile');
 
-  console.log('FarmProfilePage: farmId from params:', farmId);
-
   // Get farm from Supabase
   const { data: supabaseFarm, isLoading, error } = useFarm(farmId || '');
-  
-  console.log('FarmProfilePage: Supabase farm data:', supabaseFarm);
 
   // Track page view
   React.useEffect(() => {
@@ -57,7 +53,6 @@ const FarmProfilePage = () => {
   }
 
   if (error || !supabaseFarm) {
-    console.error('FarmProfilePage: Error or no farm found:', error);
     return (
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
@@ -70,7 +65,7 @@ const FarmProfilePage = () => {
               {error ? 'Unable to load farm data. Please try again.' : `The farm with ID "${farmId}" could not be found.`}
             </p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+              <Button onClick={() => navigate(0)} variant="outline" size="sm">
                 Try Again
               </Button>
               <Button onClick={() => navigate('/dashboard')} size="sm">
