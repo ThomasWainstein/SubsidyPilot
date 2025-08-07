@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
 import FarmCreationFormSections from '@/components/farm/FarmCreationFormSections';
 import EnhancedDocumentUpload from '@/components/farm/EnhancedDocumentUpload';
+import { prodLogger } from '@/utils/productionLogger';
 
 const FarmEditPage: React.FC = () => {
   const { farmId } = useParams<{ farmId: string }>();
@@ -51,7 +52,7 @@ const FarmEditPage: React.FC = () => {
     const shouldPrefill = searchParams.get('prefill') === 'true';
     const extractionId = searchParams.get('extractionId');
     
-    console.log('🔍 Prefill check:', {
+    prodLogger.debug('🔍 Prefill check:', {
       shouldPrefill,
       extractionId,
       prefillApplied,
@@ -59,12 +60,12 @@ const FarmEditPage: React.FC = () => {
     });
     
     if (shouldPrefill && extractionId && !prefillApplied && !farmLoading) {
-      console.log('🔄 Starting prefill process for document:', extractionId);
+      prodLogger.debug('🔄 Starting prefill process for document:', extractionId);
       
       // Apply the extraction data
       applyExtractionToForm(extractionId)
         .then(() => {
-          console.log('✅ Prefill completed successfully');
+          prodLogger.debug('✅ Prefill completed successfully');
           setPrefillApplied(true);
           setHasUnsavedChanges(true);
           toast.success('Farm profile prefilled with extracted data');

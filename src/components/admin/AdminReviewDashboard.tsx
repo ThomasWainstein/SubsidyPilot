@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { prodLogger } from '@/utils/productionLogger';
 
 interface QAResult {
   id: string;
@@ -137,7 +138,7 @@ export const AdminReviewDashboard: React.FC = () => {
   const updateAdminStatus = async (id: string, status: string, notes: string) => {
     try {
       // Mock update with realistic behavior
-      console.log('Updating admin status:', { id, status, notes });
+      prodLogger.debug('Updating admin status:', { id, status, notes });
       
       // Update the mock data in state to show immediate feedback
       setQaResults(prevResults => 

@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { useImportJobs } from '@/hooks/useImportJobs';
 import { CANONICAL_SUBSIDY_FIELDS, FieldMapping } from '@/schemas/importValidation';
 import { Upload, FileText, AlertTriangle, CheckCircle, XCircle, Download } from 'lucide-react';
@@ -15,6 +16,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 const ImportManagement = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'subsidies' | 'farms' | 'applications'>('subsidies');
   
@@ -238,7 +240,7 @@ const ImportManagement = () => {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => window.location.reload()}>
+            <Button variant="outline" onClick={() => navigate(0)}>
               Start Over
             </Button>
             {errorCount === 0 && (

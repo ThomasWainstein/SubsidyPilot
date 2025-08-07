@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { prodLogger } from '@/utils/productionLogger';
 
 export type UserRole = 'farmer' | 'consultant' | 'organization' | 'admin';
 
@@ -40,7 +41,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const switchRole = (role: UserRole) => {
     if (!availableRoles.includes(role)) {
-      console.warn(`Role ${role} not available for current user`);
+      prodLogger.warn(`Role ${role} not available for current user`);
       return;
     }
 
@@ -48,7 +49,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     localStorage.setItem('agritool-current-role', role);
     
     // Log role switch for beta/testing
-    console.log(`Role switched to: ${role}`);
+    prodLogger.debug(`Role switched to: ${role}`);
     
     // Trigger any additional role change effects here
     // e.g., analytics tracking, state reset, etc.

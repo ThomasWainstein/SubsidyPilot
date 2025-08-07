@@ -197,7 +197,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
           <ReExtractButton 
             documentId={documentId}
             documentName={documentDetail.file_name}
-            onSuccess={() => window.location.reload()}
+            onSuccess={() => navigate(0)}
           />
           <Button
             onClick={() => setShowFullReview(!showFullReview)}

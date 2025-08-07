@@ -3,6 +3,7 @@ import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { prodLogger } from '@/utils/productionLogger';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -35,7 +36,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    prodLogger.error('ErrorBoundary caught an error:', error, errorInfo);
     
     this.setState({
       error,
@@ -69,7 +70,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   handleReload = () => {
-    window.location.reload();
+    // Use navigate(0) for SPA-friendly refresh instead of window.location.reload()
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
   render() {

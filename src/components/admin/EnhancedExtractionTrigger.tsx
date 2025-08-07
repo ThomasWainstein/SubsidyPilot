@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Zap, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { prodLogger } from '@/utils/productionLogger';
 
 interface EnhancedExtractionTriggerProps {
   subsidyUrl: string;
@@ -31,7 +32,7 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
     setExtractionStatus('processing');
     
     try {
-      console.log('🚀 Triggering enhanced FranceAgriMer extraction for:', subsidyUrl);
+      prodLogger.debug('🚀 Triggering enhanced FranceAgriMer extraction for:', subsidyUrl);
       
       const { data, error } = await supabase.functions.invoke('enhanced-franceagrimer-extraction', {
         body: {
@@ -41,11 +42,11 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
       });
 
       if (error) {
-        console.error('❌ Enhanced extraction error:', error);
+        prodLogger.error('❌ Enhanced extraction error:', error);
         throw new Error(error.message || 'Enhanced extraction failed');
       }
 
-      console.log('✅ Enhanced extraction response:', data);
+      prodLogger.debug('✅ Enhanced extraction response:', data);
       
       if (data.success) {
         setExtractionStatus('success');

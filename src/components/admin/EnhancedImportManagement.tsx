@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { useImportJobs } from '@/hooks/useImportJobs';
 import { CANONICAL_SUBSIDY_FIELDS, FieldMapping } from '@/schemas/importValidation';
 import { Upload, FileText, AlertTriangle, CheckCircle, XCircle, Download, History, Book } from 'lucide-react';
@@ -19,6 +20,7 @@ import { ProgressIndicator } from '@/components/ui/progress-indicator';
 
 const EnhancedImportManagement = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'subsidies' | 'farms' | 'applications'>('subsidies');
   
@@ -335,7 +337,7 @@ const EnhancedImportManagement = () => {
           <div className="flex justify-end gap-2 pt-4 border-t">
             <EnhancedButton 
               variant="outline" 
-              onClick={() => window.location.reload()}
+              onClick={() => navigate(0)}
               tooltip="Start over with a new file"
             >
               Start Over

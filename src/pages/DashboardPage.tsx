@@ -7,9 +7,10 @@ import ProductionReadinessCheck from '@/components/production/ProductionReadines
 import { usePerformanceMonitoring } from '@/hooks/usePerformanceMonitoring';
 import { getIsAdmin } from '@/config/environment';
 import { useAuth } from '@/contexts/AuthContext';
+import { prodLogger } from '@/utils/productionLogger';
 
 const DashboardPage = () => {
-  console.log('DashboardPage: Rendering');
+  prodLogger.debug('DashboardPage: Rendering');
   const { trackUserAction } = usePerformanceMonitoring('Dashboard');
   const { user } = useAuth();
   const isAdmin = getIsAdmin(user);

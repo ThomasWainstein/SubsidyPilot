@@ -25,6 +25,7 @@ import {
   Save,
   RotateCcw
 } from 'lucide-react';
+import { prodLogger } from '@/utils/productionLogger';
 
 interface ScrapingConfig {
   maxPages: number;
@@ -110,12 +111,12 @@ export function AdvancedPipelineConfig() {
 
   const testConfiguration = async () => {
     // Implementation for testing configuration
-    console.log('Testing configuration:', currentConfig);
+    prodLogger.debug('Testing configuration:', currentConfig);
   };
 
   const saveConfiguration = async () => {
     // Implementation for saving configuration
-    console.log('Saving configuration:', { french: frenchConfig, romanian: romanianConfig });
+    prodLogger.debug('Saving configuration:', { french: frenchConfig, romanian: romanianConfig });
   };
 
   return (

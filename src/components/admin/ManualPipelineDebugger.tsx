@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Play, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { prodLogger } from '@/utils/productionLogger';
 
 export const ManualPipelineDebugger = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -11,7 +12,7 @@ export const ManualPipelineDebugger = () => {
   const [results, setResults] = useState<any>(null);
 
   const addLog = (message: string) => {
-    console.log(message);
+    prodLogger.debug(message);
     setLogs(prev => [...prev, `${new Date().toISOString()}: ${message}`]);
   };
 

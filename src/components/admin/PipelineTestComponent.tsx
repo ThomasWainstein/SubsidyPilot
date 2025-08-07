@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Play, Database, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { prodLogger } from '@/utils/productionLogger';
 
 export const PipelineTestComponent = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -31,7 +32,7 @@ export const PipelineTestComponent = () => {
         throw new Error(`Harvest failed: ${harvestError.message}`);
       }
 
-      console.log('✅ FranceAgriMer harvest completed:', harvestData);
+      prodLogger.debug('✅ FranceAgriMer harvest completed:', harvestData);
       setCurrentStep('Harvest completed. Processing extracted data...');
       
       // Step 2: Check what was scraped
@@ -41,7 +42,7 @@ export const PipelineTestComponent = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      console.log('📄 Scraped pages:', scrapedPages);
+      prodLogger.debug('📄 Scraped pages:', scrapedPages);
 
       // Step 3: Trigger enhanced extraction on a sample page
       if (scrapedPages && scrapedPages.length > 0) {
@@ -56,9 +57,9 @@ export const PipelineTestComponent = () => {
         });
 
         if (extractionError) {
-          console.warn('Enhanced extraction warning:', extractionError);
+          prodLogger.warn('Enhanced extraction warning:', extractionError);
         } else {
-          console.log('✅ Enhanced extraction completed:', extractionData);
+          prodLogger.debug('✅ Enhanced extraction completed:', extractionData);
         }
       }
 
