@@ -2375,6 +2375,15 @@ export type Database = {
         }
         Relationships: []
       }
+      review_queue_summary: {
+        Row: {
+          avg_priority: number | null
+          completed_count: number | null
+          in_progress_count: number | null
+          pending_count: number | null
+        }
+        Relationships: []
+      }
       subsidies_public: {
         Row: {
           agency: string | null
