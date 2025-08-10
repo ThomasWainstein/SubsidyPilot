@@ -335,6 +335,53 @@ export type Database = {
           },
         ]
       }
+      crawl_events: {
+        Row: {
+          checksum: string | null
+          created_at: string | null
+          documents_found: number | null
+          error_message: string | null
+          id: string
+          pages_found: number | null
+          response_time_ms: number | null
+          run_id: string | null
+          status: string
+          url: string
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string | null
+          documents_found?: number | null
+          error_message?: string | null
+          id?: string
+          pages_found?: number | null
+          response_time_ms?: number | null
+          run_id?: string | null
+          status: string
+          url: string
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string | null
+          documents_found?: number | null
+          error_message?: string | null
+          id?: string
+          pages_found?: number | null
+          response_time_ms?: number | null
+          run_id?: string | null
+          status?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crawl_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_classification_logs: {
         Row: {
           agrees: boolean
@@ -473,9 +520,15 @@ export type Database = {
           document_id: string
           document_markdown: string | null
           error_message: string | null
+          error_type: string | null
           extracted_data: Json
           extraction_type: string
           id: string
+          latency_ms: number | null
+          model_used: string | null
+          ocr_used: boolean | null
+          pages_processed: number | null
+          run_id: string | null
           session_id: string | null
           status: string
           triggered_by: string | null
@@ -489,9 +542,15 @@ export type Database = {
           document_id: string
           document_markdown?: string | null
           error_message?: string | null
+          error_type?: string | null
           extracted_data: Json
           extraction_type?: string
           id?: string
+          latency_ms?: number | null
+          model_used?: string | null
+          ocr_used?: boolean | null
+          pages_processed?: number | null
+          run_id?: string | null
           session_id?: string | null
           status?: string
           triggered_by?: string | null
@@ -505,9 +564,15 @@ export type Database = {
           document_id?: string
           document_markdown?: string | null
           error_message?: string | null
+          error_type?: string | null
           extracted_data?: Json
           extraction_type?: string
           id?: string
+          latency_ms?: number | null
+          model_used?: string | null
+          ocr_used?: boolean | null
+          pages_processed?: number | null
+          run_id?: string | null
           session_id?: string | null
           status?: string
           triggered_by?: string | null
@@ -515,6 +580,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_extractions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_document_extractions_document_id"
             columns: ["document_id"]
@@ -678,6 +750,62 @@ export type Database = {
           warnings?: string[] | null
         }
         Relationships: []
+      }
+      extraction_queue: {
+        Row: {
+          attempts: number | null
+          completed_at: string | null
+          document_type: string | null
+          document_url: string
+          error_message: string | null
+          id: string
+          max_attempts: number | null
+          metadata: Json | null
+          priority: number | null
+          run_id: string | null
+          scheduled_for: string | null
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          completed_at?: string | null
+          document_type?: string | null
+          document_url: string
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          metadata?: Json | null
+          priority?: number | null
+          run_id?: string | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          completed_at?: string | null
+          document_type?: string | null
+          document_url?: string
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          metadata?: Json | null
+          priority?: number | null
+          run_id?: string | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_queue_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farm_documents: {
         Row: {
@@ -1325,6 +1453,36 @@ export type Database = {
           },
         ]
       }
+      scrape_runs: {
+        Row: {
+          completed_at: string | null
+          created_by: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       scraper_logs: {
         Row: {
           created_at: string
@@ -1468,9 +1626,11 @@ export type Database = {
           application_requirements: Json | null
           application_window_end: string | null
           application_window_start: string | null
+          archived: boolean | null
           audit: Json | null
           audit_notes: string | null
           beneficiary_types: string[] | null
+          checksum: string | null
           co_financing_rate: number | null
           co_financing_rates_by_category: Json | null
           compliance_requirements: string | null
@@ -1520,9 +1680,11 @@ export type Database = {
           reporting_requirements: string | null
           requirements_extraction_status: string | null
           requirements_markdown: string | null
+          run_id: string | null
           scoring_criteria: Json | null
           scrape_date: string | null
           sector: string[] | null
+          source_slug: string | null
           source_url_verified: string | null
           submission_conditions: string | null
           technical_support: string | null
@@ -1541,9 +1703,11 @@ export type Database = {
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
+          archived?: boolean | null
           audit?: Json | null
           audit_notes?: string | null
           beneficiary_types?: string[] | null
+          checksum?: string | null
           co_financing_rate?: number | null
           co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
@@ -1593,9 +1757,11 @@ export type Database = {
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           requirements_markdown?: string | null
+          run_id?: string | null
           scoring_criteria?: Json | null
           scrape_date?: string | null
           sector?: string[] | null
+          source_slug?: string | null
           source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
@@ -1614,9 +1780,11 @@ export type Database = {
           application_requirements?: Json | null
           application_window_end?: string | null
           application_window_start?: string | null
+          archived?: boolean | null
           audit?: Json | null
           audit_notes?: string | null
           beneficiary_types?: string[] | null
+          checksum?: string | null
           co_financing_rate?: number | null
           co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
@@ -1666,9 +1834,11 @@ export type Database = {
           reporting_requirements?: string | null
           requirements_extraction_status?: string | null
           requirements_markdown?: string | null
+          run_id?: string | null
           scoring_criteria?: Json | null
           scrape_date?: string | null
           sector?: string[] | null
+          source_slug?: string | null
           source_url_verified?: string | null
           submission_conditions?: string | null
           technical_support?: string | null
@@ -1683,6 +1853,13 @@ export type Database = {
             columns: ["raw_log_id"]
             isOneToOne: false
             referencedRelation: "raw_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subsidies_structured_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -2045,6 +2222,10 @@ export type Database = {
         Args: { log_id: string }
         Returns: boolean
       }
+      archive_previous_data: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       calculate_match_confidence: {
         Args: {
           farm_tags: string[]
@@ -2083,6 +2264,25 @@ export type Database = {
       release_processing_lock: {
         Args: { log_id: string }
         Returns: boolean
+      }
+      rollback_to_previous: {
+        Args: { p_run_id: string }
+        Returns: boolean
+      }
+      scrape_run_kpis: {
+        Args: { p_run_id: string }
+        Returns: {
+          docs_total: number
+          docs_ok: number
+          docs_fail: number
+          docs_pending: number
+          ocr_rate: number
+          avg_latency: number
+          subsidies_parsed: number
+          pages_crawled: number
+          error_rate: number
+          completion_rate: number
+        }[]
       }
       verify_system_health: {
         Args: Record<PropertyKey, never>
