@@ -68,9 +68,21 @@ serve(async (req) => {
       data
     };
     debugLog.push(logEntry);
-    // Only log in development/debug mode
-    if (Deno.env.get('DEBUG_LOGGING') === '1' || Deno.env.get('ENVIRONMENT') === 'development') {
-      console.log(`🔍 DEBUG [${step}]:`, data);
+    // SECURITY: Only log in development/debug mode - never in production
+    const isDebugMode = Deno.env.get('DEBUG_LOGGING') === '1' && Deno.env.get('ENVIRONMENT') === 'development';
+    if (isDebugMode) {
+      // SECURITY: Sanitize sensitive data before logging
+      const sanitizedData = typeof data === 'object' && data !== null 
+        ? Object.fromEntries(
+            Object.entries(data).map(([key, value]) => [
+              key,
+              key.toLowerCase().includes('key') || key.toLowerCase().includes('token') || key.toLowerCase().includes('password')
+                ? '[REDACTED]'
+                : value
+            ])
+          )
+        : data;
+      console.log(`🔍 DEBUG [${step}]:`, sanitizedData);
     }
   }
   
@@ -143,13 +155,12 @@ serve(async (req) => {
       }
     })();
 
-    // 🔒 SECURITY: Sanitized environment check - only show domain, not full URLs
+    // 🔒 SECURITY: Minimal environment check - no sensitive data logged
     addDebugLog('ENVIRONMENT_CHECK', {
       hasOpenAIKey: !!openAIApiKey,
-      openAIKeyLength: openAIApiKey?.length || 0,
-      supabaseDomain: new URL(supabaseUrl).hostname,
+      hasSupabaseUrl: !!supabaseUrl,
       hasServiceKey: !!supabaseServiceKey,
-      serviceKeyLength: supabaseServiceKey?.length || 0
+      supabaseDomain: new URL(supabaseUrl).hostname
     });
 
     if (!openAIApiKey) {

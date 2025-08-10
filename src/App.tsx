@@ -2,9 +2,11 @@ import React, { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AdminProvider } from '@/contexts/AdminContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { RoleProvider } from '@/contexts/RoleContext';
 import { CalendarProvider } from '@/contexts/CalendarContext';
+import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -70,6 +72,12 @@ const SuspenseWrapper = React.memo(({ children }: { children: React.ReactNode })
   </Suspense>
 ));
 
+// Security monitoring wrapper component
+const SecurityWrapper = React.memo(({ children }: { children: React.ReactNode }) => {
+  useSecurityMonitoring();
+  return <>{children}</>;
+});
+
 function App() {
   console.log('App: Rendering');
   
@@ -85,9 +93,11 @@ function App() {
     >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <RoleProvider>
-            <LanguageProvider>
-              <CalendarProvider>
+          <AdminProvider>
+            <RoleProvider>
+              <LanguageProvider>
+                <CalendarProvider>
+                  <SecurityWrapper>
                 <div className="min-h-screen bg-background font-sans antialiased">
                   <SuspenseWrapper>
                     <Routes>
@@ -184,11 +194,13 @@ function App() {
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </SuspenseWrapper>
-                  <Toaster />
-                </div>
-              </CalendarProvider>
-            </LanguageProvider>
-          </RoleProvider>
+                    <Toaster />
+                  </div>
+                  </SecurityWrapper>
+                </CalendarProvider>
+              </LanguageProvider>
+            </RoleProvider>
+          </AdminProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

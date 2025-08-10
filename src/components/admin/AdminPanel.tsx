@@ -5,7 +5,10 @@ import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
 import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
 import AIPrefillDemo from '@/components/test/AIPrefillDemo';
 import { QuickSchemaTest } from '@/components/test/QuickSchemaTest';
-import { Settings, Database, Bot, FileText } from 'lucide-react';
+import UserRoleManager from '@/components/admin/UserRoleManager';
+import SecurityAuditLog from '@/components/security/SecurityAuditLog';
+import { withAdminAuth } from '@/contexts/AdminContext';
+import { Settings, Database, Bot, FileText, Shield, Users } from 'lucide-react';
 
 const AdminPanel: React.FC = () => {
   return (
@@ -20,8 +23,16 @@ const AdminPanel: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="processing" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="security" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            User Management
+          </TabsTrigger>
           <TabsTrigger value="processing" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Document Processing
@@ -35,6 +46,34 @@ const AdminPanel: React.FC = () => {
             AI Prefill
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="security" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Audit Log</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Monitor security events and potential threats
+              </p>
+            </CardHeader>
+            <CardContent>
+              <SecurityAuditLog />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Role Management</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Manage user roles and permissions securely
+              </p>
+            </CardHeader>
+            <CardContent>
+              <UserRoleManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="processing" className="space-y-4">
           <Card>
@@ -83,4 +122,4 @@ const AdminPanel: React.FC = () => {
   );
 };
 
-export default AdminPanel;
+export default withAdminAuth(AdminPanel);

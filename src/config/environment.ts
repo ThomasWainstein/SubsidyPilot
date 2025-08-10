@@ -13,31 +13,27 @@ export const FEATURES = {
   TESTING_MODE: IS_DEVELOPMENT && typeof window !== 'undefined' && (window as any).__TESTING__,
 } as const;
 
-// Admin configuration
+// SECURITY: Deprecated admin configuration - replaced with database-driven roles
+// This configuration is now only used for development bootstrapping
 export const ADMIN_CONFIG = {
-  ALLOWED_EMAILS: [
-    'admin@agritool.com',
-    'thomas@lovable.dev',
-    // Add more admin emails here
-  ],
-  REQUIRE_ADMIN_ROLE: IS_PRODUCTION, // In production, require explicit admin role
+  // SECURITY: Hardcoded admin emails removed for production security
+  DEVELOPMENT_BOOTSTRAP_EMAILS: IS_DEVELOPMENT ? [
+    'admin@agritool.com', // Only for local development
+  ] : [],
+  REQUIRE_DATABASE_ROLES: true, // Always require database-driven roles
 } as const;
 
+// SECURITY: Secure admin check - only uses database roles
 export const getIsAdmin = (user: any): boolean => {
   if (!user) return false;
   
-  // In development, allow admin emails
-  if (IS_DEVELOPMENT && ADMIN_CONFIG.ALLOWED_EMAILS.includes(user.email)) {
-    return true;
-  }
+  // SECURITY: Remove dangerous email wildcard matching
+  // Only database-driven role checking is allowed in production
   
-  // In production, require explicit admin role
-  if (IS_PRODUCTION && ADMIN_CONFIG.REQUIRE_ADMIN_ROLE) {
-    return user.user_metadata?.role === 'admin' || user.app_metadata?.role === 'admin';
-  }
+  // DEPRECATED: This function should not be used in production
+  // Use AdminContext.isAdmin or database RPC calls instead
+  console.warn('⚠️ SECURITY WARNING: getIsAdmin() is deprecated. Use AdminContext or database RPC calls.');
   
-  // Fallback to email check
-  return ADMIN_CONFIG.ALLOWED_EMAILS.includes(user.email) || 
-         user.email?.includes('admin') || 
-         user.user_metadata?.role === 'admin';
+  // Basic metadata check as fallback (not reliable for security)
+  return user.user_metadata?.role === 'admin' || user.app_metadata?.role === 'admin';
 };
