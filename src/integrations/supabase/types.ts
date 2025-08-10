@@ -121,6 +121,13 @@ export type Database = {
             foreignKeyName: "application_forms_subsidy_id_fkey"
             columns: ["subsidy_id"]
             isOneToOne: false
+            referencedRelation: "subsidies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_forms_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
             referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
@@ -2121,6 +2128,13 @@ export type Database = {
             foreignKeyName: "fk_subsidy_form_schemas_subsidy"
             columns: ["subsidy_id"]
             isOneToOne: false
+            referencedRelation: "subsidies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_subsidy_form_schemas_subsidy"
+            columns: ["subsidy_id"]
+            isOneToOne: false
             referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
@@ -2163,6 +2177,13 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subsidy_matches_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies_public"
             referencedColumns: ["id"]
           },
           {
@@ -2351,6 +2372,39 @@ export type Database = {
           pending_count: number | null
           resource_type: string | null
           urgent_count: number | null
+        }
+        Relationships: []
+      }
+      subsidies_public: {
+        Row: {
+          agency: string | null
+          created_at: string | null
+          deadline: string | null
+          funding_type: string | null
+          id: string | null
+          program: string | null
+          region: string[] | null
+          title: string | null
+        }
+        Insert: {
+          agency?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          funding_type?: string | null
+          id?: string | null
+          program?: string | null
+          region?: string[] | null
+          title?: string | null
+        }
+        Update: {
+          agency?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          funding_type?: string | null
+          id?: string | null
+          program?: string | null
+          region?: string[] | null
+          title?: string | null
         }
         Relationships: []
       }
