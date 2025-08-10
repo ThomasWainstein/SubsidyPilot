@@ -1615,6 +1615,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          risk_level: string | null
+          target_user_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          risk_level?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          risk_level?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subsidies: {
         Row: {
           agency: string | null
@@ -2340,6 +2376,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      assign_user_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _assigned_by?: string
+        }
+        Returns: boolean
+      }
       calculate_match_confidence: {
         Args: {
           farm_tags: string[]
@@ -2375,8 +2419,25 @@ export type Database = {
         Args: { _user_id?: string }
         Returns: boolean
       }
+      log_security_event: {
+        Args: {
+          _event_type: string
+          _target_user_id?: string
+          _event_data?: Json
+          _risk_level?: string
+        }
+        Returns: undefined
+      }
       release_processing_lock: {
         Args: { log_id: string }
+        Returns: boolean
+      }
+      revoke_user_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _revoked_by?: string
+        }
         Returns: boolean
       }
       rollback_to_previous: {
