@@ -2435,6 +2435,22 @@ export type Database = {
         Args: { log_id: string }
         Returns: boolean
       }
+      app_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      app_org_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      app_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      app_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       archive_previous_data: {
         Args: Record<PropertyKey, never>
         Returns: string
