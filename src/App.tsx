@@ -37,6 +37,8 @@ const EmployeeDashboardPage = lazy(() => import('@/pages/EmployeeDashboardPage')
 const ConsultantDashboardPage = lazy(() => import('@/pages/ConsultantDashboardPage'));
 const OrganizationDashboardPage = lazy(() => import('@/pages/OrganizationDashboardPage'));
 const AdminPanel = lazy(() => import('@/components/admin/AdminPanel'));
+const ScrapeRunsList = lazy(() => import('@/components/admin/ScrapeRunsList'));
+const ScrapeReportDashboard = lazy(() => import('@/components/admin/ScrapeReportDashboard'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration

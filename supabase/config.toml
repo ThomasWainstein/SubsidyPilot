@@ -76,3 +76,9 @@ verify_jwt = false
 
 [functions.generate-application-form]
 verify_jwt = false
+
+[functions.scrape-reprocessor]
+verify_jwt = false
+
+[functions.scrape-report]
+verify_jwt = false
