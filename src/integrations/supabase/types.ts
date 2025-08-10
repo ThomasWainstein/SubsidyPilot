@@ -517,6 +517,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           debug_info: Json | null
+          detected_language: string | null
           document_id: string
           document_markdown: string | null
           error_message: string | null
@@ -530,7 +531,13 @@ export type Database = {
           pages_processed: number | null
           run_id: string | null
           session_id: string | null
+          source_template_version: string | null
           status: string
+          table_parser: string | null
+          table_quality: number | null
+          tables_extracted: Json | null
+          translated: boolean | null
+          translation_confidence: number | null
           triggered_by: string | null
           updated_at: string
           user_id: string | null
@@ -539,6 +546,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           debug_info?: Json | null
+          detected_language?: string | null
           document_id: string
           document_markdown?: string | null
           error_message?: string | null
@@ -552,7 +560,13 @@ export type Database = {
           pages_processed?: number | null
           run_id?: string | null
           session_id?: string | null
+          source_template_version?: string | null
           status?: string
+          table_parser?: string | null
+          table_quality?: number | null
+          tables_extracted?: Json | null
+          translated?: boolean | null
+          translation_confidence?: number | null
           triggered_by?: string | null
           updated_at?: string
           user_id?: string | null
@@ -561,6 +575,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           debug_info?: Json | null
+          detected_language?: string | null
           document_id?: string
           document_markdown?: string | null
           error_message?: string | null
@@ -574,7 +589,13 @@ export type Database = {
           pages_processed?: number | null
           run_id?: string | null
           session_id?: string | null
+          source_template_version?: string | null
           status?: string
+          table_parser?: string | null
+          table_quality?: number | null
+          tables_extracted?: Json | null
+          translated?: boolean | null
+          translation_confidence?: number | null
           triggered_by?: string | null
           updated_at?: string
           user_id?: string | null
@@ -679,6 +700,42 @@ export type Database = {
           },
         ]
       }
+      extraction_batches: {
+        Row: {
+          batch_status: string | null
+          completed_at: string | null
+          completed_count: number | null
+          created_at: string | null
+          failed_count: number | null
+          id: string
+          label: string | null
+          owner_id: string | null
+          total_count: number | null
+        }
+        Insert: {
+          batch_status?: string | null
+          completed_at?: string | null
+          completed_count?: number | null
+          created_at?: string | null
+          failed_count?: number | null
+          id?: string
+          label?: string | null
+          owner_id?: string | null
+          total_count?: number | null
+        }
+        Update: {
+          batch_status?: string | null
+          completed_at?: string | null
+          completed_count?: number | null
+          created_at?: string | null
+          failed_count?: number | null
+          id?: string
+          label?: string | null
+          owner_id?: string | null
+          total_count?: number | null
+        }
+        Relationships: []
+      }
       extraction_qa_results: {
         Row: {
           admin_notes: string | null
@@ -754,6 +811,8 @@ export type Database = {
       extraction_queue: {
         Row: {
           attempts: number | null
+          batch_id: string | null
+          batch_label: string | null
           completed_at: string | null
           document_type: string | null
           document_url: string
@@ -769,6 +828,8 @@ export type Database = {
         }
         Insert: {
           attempts?: number | null
+          batch_id?: string | null
+          batch_label?: string | null
           completed_at?: string | null
           document_type?: string | null
           document_url: string
@@ -784,6 +845,8 @@ export type Database = {
         }
         Update: {
           attempts?: number | null
+          batch_id?: string | null
+          batch_label?: string | null
           completed_at?: string | null
           document_type?: string | null
           document_url?: string
@@ -1151,6 +1214,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parsing_profiles: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          prompt: Json | null
+          regex: Json | null
+          source_slug: string
+          table_hints: Json | null
+          version: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          prompt?: Json | null
+          regex?: Json | null
+          source_slug: string
+          table_hints?: Json | null
+          version?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          prompt?: Json | null
+          regex?: Json | null
+          source_slug?: string
+          table_hints?: Json | null
+          version?: string
+        }
+        Relationships: []
       }
       pipeline_executions: {
         Row: {
@@ -1635,6 +1731,7 @@ export type Database = {
           co_financing_rates_by_category: Json | null
           compliance_requirements: string | null
           conditional_eligibility: Json | null
+          content_checksum: string | null
           created_at: string
           deadline: string | null
           deadlines: string | null
@@ -1660,6 +1757,7 @@ export type Database = {
           ineligible_actions: string[] | null
           investment_types: string[] | null
           language: string | null
+          last_seen_at: string | null
           legal_entity_type: string[] | null
           matching_algorithm_score: number | null
           minimum_score: number | null
@@ -1712,6 +1810,7 @@ export type Database = {
           co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
           conditional_eligibility?: Json | null
+          content_checksum?: string | null
           created_at?: string
           deadline?: string | null
           deadlines?: string | null
@@ -1737,6 +1836,7 @@ export type Database = {
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
+          last_seen_at?: string | null
           legal_entity_type?: string[] | null
           matching_algorithm_score?: number | null
           minimum_score?: number | null
@@ -1789,6 +1889,7 @@ export type Database = {
           co_financing_rates_by_category?: Json | null
           compliance_requirements?: string | null
           conditional_eligibility?: Json | null
+          content_checksum?: string | null
           created_at?: string
           deadline?: string | null
           deadlines?: string | null
@@ -1814,6 +1915,7 @@ export type Database = {
           ineligible_actions?: string[] | null
           investment_types?: string[] | null
           language?: string | null
+          last_seen_at?: string | null
           legal_entity_type?: string[] | null
           matching_algorithm_score?: number | null
           minimum_score?: number | null
@@ -2213,6 +2315,18 @@ export type Database = {
           pending_count: number | null
           resource_type: string | null
           urgent_count: number | null
+        }
+        Relationships: []
+      }
+      v_extraction_quality: {
+        Row: {
+          avg_confidence: number | null
+          avg_latency: number | null
+          avg_table_quality: number | null
+          completion_rate: number | null
+          day: string | null
+          docs_total: number | null
+          ocr_rate: number | null
         }
         Relationships: []
       }
