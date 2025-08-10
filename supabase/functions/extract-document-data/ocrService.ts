@@ -177,7 +177,7 @@ async function performTesseractOCR(imageBuffer: ArrayBuffer): Promise<{
     
     // Configure Tesseract parameters for better accuracy
     await worker.setParameters({
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()[]{}\\\"\\\\'-/+=@#$%^&*àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄą',
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?()[]{}"\'-/+=@#$%^&*àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄą',
       preserve_interword_spaces: '1',
       tessedit_pageseg_mode: '1', // Automatic page segmentation with OSD
       tessedit_ocr_engine_mode: '1' // Neural nets LSTM engine only
