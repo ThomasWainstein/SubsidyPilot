@@ -1,7 +1,9 @@
 /**
  * Text Extraction Service for Farm Documents
- * Handles PDF, DOCX, XLSX, TXT, and CSV files
+ * Handles PDF, DOCX, XLSX, TXT, and CSV files with OCR fallback
  */
+
+import { OCRResult, extractTextWithOCR, shouldUseOCR } from './ocrService.ts';
 
 export interface TextExtractionResult {
   text: string;
@@ -10,6 +12,8 @@ export interface TextExtractionResult {
     fileSize: number;
     processingTime: number;
     warnings?: string[];
+    ocrUsed?: boolean;
+    ocrResult?: OCRResult;
   };
 }
 
@@ -63,6 +67,33 @@ export async function extractTextFromFile(
     // Clean up extracted text
     text = cleanExtractedText(text);
 
+    // Check if OCR should be used as fallback
+    let ocrUsed = false;
+    let ocrResult: OCRResult | undefined;
+    
+    if (shouldUseOCR(text, fileSize, fileName)) {
+      console.log('🔍 Text extraction coverage low, attempting OCR...');
+      
+      try {
+        // Convert file to image buffer for OCR
+        const imageBuffer = await convertToImageBuffer(fileResponse, fileExtension);
+        ocrResult = await extractTextWithOCR(imageBuffer);
+        
+        // Use OCR text if it's significantly better
+        if (ocrResult.text.length > text.length * 1.5 || ocrResult.confidence > 0.7) {
+          text = ocrResult.text;
+          extractionMethod = `${extractionMethod}_with_ocr`;
+          ocrUsed = true;
+          console.log(`✅ OCR improved extraction: ${text.length} characters, confidence: ${ocrResult.confidence}`);
+        } else {
+          console.log(`⚠️ OCR didn't improve extraction significantly`);
+        }
+      } catch (ocrError) {
+        console.error('❌ OCR fallback failed:', ocrError);
+        warnings.push(`OCR fallback failed: ${ocrError.message}`);
+      }
+    }
+
     const processingTime = Date.now() - startTime;
     console.log(`✅ Text extraction completed: ${text.length} characters in ${processingTime}ms`);
 
@@ -72,7 +103,9 @@ export async function extractTextFromFile(
         extractionMethod,
         fileSize,
         processingTime,
-        warnings: warnings.length > 0 ? warnings : undefined
+        warnings: warnings.length > 0 ? warnings : undefined,
+        ocrUsed,
+        ocrResult
       }
     };
   } catch (error) {
@@ -282,6 +315,28 @@ async function extractFromXLSX(xlsxBuffer: ArrayBuffer): Promise<string> {
   } catch (error) {
     throw new Error(`XLSX extraction failed: ${error.message}`);
   }
+}
+
+/**
+ * Clean and normalize extracted text
+ */
+/**
+ * Convert file to image buffer for OCR processing
+ */
+async function convertToImageBuffer(fileResponse: Response, fileExtension: string): Promise<ArrayBuffer> {
+  // For PDFs, we need to convert first page to image
+  if (fileExtension === 'pdf') {
+    // For now, use the original buffer - in production, you'd convert PDF to image
+    return await fileResponse.clone().arrayBuffer();
+  }
+  
+  // For image files, return as-is
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'].includes(fileExtension)) {
+    return await fileResponse.clone().arrayBuffer();
+  }
+  
+  // For other files, we can't convert to image
+  throw new Error(`Cannot convert ${fileExtension} to image for OCR`);
 }
 
 /**

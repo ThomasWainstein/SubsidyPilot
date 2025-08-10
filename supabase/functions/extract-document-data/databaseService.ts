@@ -17,7 +17,9 @@ export async function storeExtractionResult(
   documentId: string,
   extractionData: Record<string, unknown>,
   supabaseUrl: string,
-  supabaseServiceKey: string
+  supabaseServiceKey: string,
+  ocrUsed: boolean = false,
+  runId?: string
 ): Promise<StoreExtractionResult> {
   try {
     // 🔒 SECURITY: Safe connection check without exposing sensitive data
@@ -38,7 +40,12 @@ export async function storeExtractionResult(
         confidence_score: extractionData.confidence || 0,
         status: extractionData.error ? 'failed' : 'completed',
         error_message: extractionData.error || null,
-        debug_info: extractionData.debugInfo || {}
+        debug_info: extractionData.debugInfo || {},
+        ocr_used: ocrUsed,
+        run_id: runId,
+        latency_ms: extractionData.debugInfo?.processingTime || null,
+        model_used: extractionData.debugInfo?.model || 'gpt-4o',
+        pages_processed: 1 // Default to 1 for now
       })
       .select('id')
       .single();
@@ -91,7 +98,9 @@ export async function logExtractionError(
         confidence_score: 0,
         status: 'failed',
         error_message: errorMessage,
-        debug_info: additionalData || {}
+        debug_info: additionalData || {},
+        ocr_used: false,
+        error_type: 'extraction_failed'
       });
 
     if (error) {

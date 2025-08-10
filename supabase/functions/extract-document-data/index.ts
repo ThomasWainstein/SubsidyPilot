@@ -275,7 +275,9 @@ serve(async (req) => {
       documentId,
       extractedData,
       supabaseUrl,
-      supabaseServiceKey
+      supabaseServiceKey,
+      extractionResult.debugInfo.ocrUsed || false,
+      undefined // run_id - will be set later when we have batch processing
     );
 
     if (!storeResult.success) {
