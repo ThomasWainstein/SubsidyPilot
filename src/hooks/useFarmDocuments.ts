@@ -13,6 +13,12 @@ export interface FarmDocument {
   mime_type: string | null;
   category: string;
   uploaded_at: string | null;
+  // Enhanced metadata
+  file_hash?: string | null;
+  page_count?: number | null;
+  language_detected?: string | null;
+  processing_status?: string | null;
+  error_details?: any;
 }
 
 export const useFarmDocuments = (farmId: string) => {

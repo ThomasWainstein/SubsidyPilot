@@ -171,20 +171,25 @@ export const useDocumentUpload = ({ farmId, onSuccess, onExtractionCompleted }: 
           category: normalizedCategory,
         });
         
-        // Trigger AI extraction for supported file types - FIXED file extension check
+        // Trigger enhanced AI extraction for supported file types
         const supportedExtensions = ['pdf', 'docx', 'xlsx', 'txt', 'csv'];
         const fileExtension = file.name.toLowerCase().split('.').pop();
         
         if (uploadResult?.document?.id && fileExtension && supportedExtensions.includes(fileExtension)) {
-          logger.debug(`🤖 Triggering AI extraction for document: ${file.name} (${fileExtension})`);
+          logger.debug(`🤖 Triggering enhanced AI extraction for document: ${file.name} (${fileExtension})`);
           
-          // Trigger extraction in background - don't await to avoid blocking upload
-          const extractionPromise = supabase.functions.invoke('extract-document-data', {
+          // Use enhanced extraction pipeline
+          const extractionPromise = supabase.functions.invoke('extract-document-data-enhanced', {
             body: {
               documentId: uploadResult.document.id,
               fileUrl: uploadResult.document.file_url,
               fileName: file.name,
-              documentType: normalizedCategory
+              documentType: normalizedCategory,
+              options: {
+                enableOCR: true,
+                maxChunkSize: 4000,
+                overlapSize: 200
+              }
             }
           });
           
