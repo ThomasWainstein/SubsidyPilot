@@ -108,34 +108,51 @@ export function usePdfViewer(): UsePdfViewerReturn {
 
     // cancel any in-flight render
     lastRenderTaskRef.current?.cancel();
+
+    const intended = pageNumber;                 // race guard
     setState(p => ({ ...p, isLoading: true, error: null }));
 
     const page = await pdfDocumentRef.current.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: state.scale * metrics.dpi });
+
+    // HiDPI: use outputScale + transform for crisper rendering
+    const outputScale = metrics.dpi;             // window.devicePixelRatio already in your metrics
+    const viewport = page.getViewport({ scale: state.scale });
 
     const canvas = canvasRef.current as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true }) as CanvasRenderingContext2D;
     if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-    // physical pixels for crisp HiDPI, CSS size in logical px
-    canvas.width  = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    canvas.style.width  = `${Math.floor(viewport.width / metrics.dpi)}px`;
-    canvas.style.height = `${Math.floor(viewport.height / metrics.dpi)}px`;
+    // Physical backing store in device pixels
+    const w = Math.floor(viewport.width  * outputScale);
+    const h = Math.floor(viewport.height * outputScale);
+    canvas.width = w;
+    canvas.height = h;
+
+    // CSS size in logical pixels
+    canvas.style.width  = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', `Page ${pageNumber} of ${state.totalPages}`);
 
-    const task = page.render({ canvasContext: ctx, viewport });
-    lastRenderTaskRef.current = task;
+    // Use transform instead of scaling the viewport (avoids layout drift)
+    const renderTask = page.render({
+      canvasContext: ctx,
+      viewport,
+      transform: [outputScale, 0, 0, outputScale, 0, 0],
+    });
+    lastRenderTaskRef.current = renderTask;
 
     try {
-      await task.promise;
+      await renderTask.promise;
+      if (intended !== pageNumber) return;       // late completion, ignore
       setState(p => ({ ...p, currentPage: pageNumber, isLoading: false }));
     } catch (e: any) {
-      if (e?.name === 'RenderingCancelledException') return; // benign
+      if (e?.name === 'RenderingCancelledException') return;
       setState(p => ({ ...p, isLoading: false, error: e?.message || 'Failed to render page' }));
     } finally {
-      page.cleanup(); // free glyph/images
+      lastRenderTaskRef.current = null;
+      page.cleanup();
     }
   }, [state.scale, state.totalPages, metrics.dpi]);
 
@@ -244,9 +261,18 @@ export function usePdfViewer(): UsePdfViewerReturn {
   const dispose = useCallback(() => {
     console.log('🧹 Disposing PDF viewer resources');
     
+    // Cancel any in-flight render task
+    lastRenderTaskRef.current?.cancel();
+    lastRenderTaskRef.current = null;
+    
     if (pdfDocumentRef.current) {
-      // TODO: Call pdf.cleanup() when pdfjs-dist is available
-      // pdfDocumentRef.current.cleanup();
+      // Call PDF.js cleanup methods
+      try {
+        pdfDocumentRef.current.cleanup?.();
+        pdfDocumentRef.current.destroy?.();
+      } catch (e) {
+        console.warn('PDF cleanup warning:', e);
+      }
       pdfDocumentRef.current = null;
     }
     
@@ -271,6 +297,18 @@ export function usePdfViewer(): UsePdfViewerReturn {
       evictions: 0,
     });
   }, []);
+
+  // Re-render on DPR changes (moving between monitors)
+  useEffect(() => {
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    const onChange = () => {
+      setMetrics(m => ({ ...m, dpi: window.devicePixelRatio || 1 }));
+      // re-render current page if loaded
+      if (state.isLoaded && state.currentPage) void renderPage(state.currentPage);
+    };
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, [state.isLoaded, state.currentPage, renderPage]);
 
   // Cleanup on unmount
   useEffect(() => {
