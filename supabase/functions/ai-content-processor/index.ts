@@ -161,10 +161,12 @@ serve(async (req) => {
 
     // Process each eligible page
     console.log(`🔄 Starting to process ${eligiblePages.length} eligible pages...`);
-    for (const page of eligiblePages.slice(0, 50)) { // Safety limit
-      try {
-        console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
-        logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
+    
+    try {
+      for (const page of eligiblePages.slice(0, 50)) { // Safety limit
+        try {
+          console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
+          logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
         const content = page.text_markdown || page.raw_text || page.raw_html || '';
         console.log(`📄 Page ${page.id} content length: ${content.length} chars`);
@@ -288,11 +290,15 @@ Return only valid JSON array, no other text.`;
         pagesProcessed++;
         logEvent('ai.page.done', run_id, { page_id: page.id, chunks: chunks.length });
         
-      } catch (pageError) {
-        errorsCount++;
-        await logAiError(run_id, page.id, page.source_url, 'processing', (pageError as Error).message);
-        logEvent('ai.page.error', run_id, { page_id: page.id, error: (pageError as Error).message });
+        } catch (pageError) {
+          errorsCount++;
+          await logAiError(run_id, page.id, page.source_url, 'processing', (pageError as Error).message);
+          logEvent('ai.page.error', run_id, { page_id: page.id, error: (pageError as Error).message });
+        }
       }
+    } catch (outerError) {
+      console.error(`❌ Critical error in processing loop: ${(outerError as Error).message}`);
+      errorsCount++;
     }
 
     console.log(`AI_RUN_END {run_id: ${run_id}, pages_processed: ${pagesProcessed}, subs_created: ${subsidiesCreated}, failed: ${errorsCount}}`);
