@@ -1,65 +1,123 @@
 # Phase D Production Shakedown
 
-## 🚀 10-Minute Validation Checklist
+## 🚀 Production Preflight (60-90 seconds)
 
-### 1. Golden + Edge Fixtures Testing
+### 1. Function Secrets Verification
 ```bash
-# Generate all test fixtures
+# Check current secrets
+supabase secrets list --project-ref <your-ref> | grep -E 'ENABLE_PHASE_D|OPENAI_|MAX_TABLES|MAX_CELLS'
+
+# Set missing secrets (staging first, then production)
+supabase secrets set ENABLE_PHASE_D=true OPENAI_API_KEY=sk-... OPENAI_TABLES_MODEL=gpt-4o-mini --project-ref <your-ref>
+```
+
+### 2. Repository Secrets Check
+Verify in GitHub → Settings → Secrets and variables → Actions:
+- `SUPABASE_URL` ✓
+- `SUPABASE_ANON_KEY` ✓  
+- `SUPABASE_SERVICE_ROLE_KEY` ✓
+- `SLACK_WEBHOOK_URL` ✓
+
+### 3. Deploy Edge Function
+```bash
+supabase functions deploy extract-document-data --project-ref <your-ref>
+```
+
+## 🧪 Production Shakedown (8-10 minutes)
+
+### 1. Core Fixtures + Harness
+```bash
+# Generate and test golden fixtures
 deno run -A scripts/make_golden_fixtures.ts
-deno run -A scripts/make_golden_fixtures_ext.ts
-
-# Run comprehensive harness (expect 21/21 core + extended results)
-deno run -A scripts/phase_d_harness.ts
-
-# Extended validation (optional)
-deno run -A scripts/phase_d_harness_ext.ts  # See implementation below
+deno run -A scripts/phase_d_harness.ts      # expect 21/21 pass
 ```
 
-### 2. Backfill Validation
+### 2. Extended Edge Cases
 ```bash
-# Set environment
-export SUPABASE_URL="https://gvfgvbztagafjykncwto.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="your-service-key"
-
-# DRY RUN - Preview what would be processed
-BACKFILL_DAYS=2 DRY_RUN=true deno run -A scripts/backfill_phase_d.ts
-
-# LIVE RUN - Actually process documents  
-BACKFILL_DAYS=2 DRY_RUN=false deno run -A scripts/backfill_phase_d.ts
+# Generate and test edge case fixtures
+deno run -A scripts/make_golden_fixtures_ext.ts
+deno run -A scripts/phase_d_harness_ext.ts  # expect 0 critical errors; scanned PDF may warn
 ```
 
-### 3. SQL Spot-Check
+### 3. Backfill Dry Run
+```bash
+# Test backfill logic without processing
+BACKFILL_DAYS=1 DRY_RUN=true deno run -A scripts/backfill_phase_d.ts
+```
+
+### 4. Health Spot-Check (SQL Console)
 ```sql
 -- Recent extraction outcomes
-SELECT 
-  extraction_outcome, 
-  quality_tier,
-  COUNT(*) as count,
-  ROUND(AVG(total_processing_time_ms)::numeric, 0) as avg_time_ms,
-  SUM(total_tokens_used) as tokens_used
+SELECT extraction_outcome, quality_tier, COUNT(*)
 FROM phase_d_extractions
 WHERE created_at > NOW() - INTERVAL '2 hours'
-GROUP BY extraction_outcome, quality_tier 
-ORDER BY count DESC;
+GROUP BY extraction_outcome, quality_tier
+ORDER BY COUNT(*) DESC;
 
--- Health check
-SELECT 
-  CASE 
+-- Health status
+SELECT
+  CASE
     WHEN COUNT(*) = 0 THEN '⚪ No extractions yet'
-    WHEN AVG(CASE WHEN extraction_outcome = 'success' THEN 1.0 ELSE 0.0 END) > 0.95 THEN '✅ Healthy'
-    WHEN AVG(CASE WHEN extraction_outcome = 'success' THEN 1.0 ELSE 0.0 END) > 0.85 THEN '⚠️ Degraded' 
+    WHEN AVG((extraction_outcome='success')::int) > 0.95 THEN '✅ Healthy'
+    WHEN AVG((extraction_outcome='success')::int) > 0.85 THEN '⚠️ Degraded'
     ELSE '🚨 Critical'
-  END as health_status,
-  COUNT(*) as total_extractions,
-  ROUND(AVG(CASE WHEN extraction_outcome = 'success' THEN 1.0 ELSE 0.0 END)::numeric, 3) as success_rate
+  END AS health_status,
+  COUNT(*) AS total_extractions,
+  ROUND(AVG((extraction_outcome='success')::int)::numeric, 3) AS success_rate
 FROM phase_d_extractions
 WHERE created_at > NOW() - INTERVAL '2 hours';
 ```
 
-### 4. Slack + Workflow Testing
+### 5. Slack + Workflow Testing
 - [ ] **Success path**: Run "Nightly Phase D Backfill" manually → confirm Slack success message
 - [ ] **Failure path**: Temporarily set `ENABLE_PHASE_D=false` → run → confirm failure message → revert
 - [ ] **E2E workflow**: Run "Phase D E2E Testing" manually → confirm 21/21 results
+
+## 🚦 Deployment Gating
+
+### Branch Protection Setup
+1. GitHub → Settings → Branches → main → **Require status checks to pass**
+2. Add required checks:
+   - `Phase D E2E Testing` (core harness - required)
+   - `Phase D Extended E2E` (edge cases - optional but recommended)
+
+### Automated Deploy Gates
+Deploy jobs automatically depend on harness success (already implemented in workflows).
+
+## 🟢 Go Live
+
+### Production Backfill
+```bash
+# Start with small window
+BACKFILL_DAYS=1 DRY_RUN=false deno run -A scripts/backfill_phase_d.ts
+
+# Monitor for 24h, then expand if healthy
+BACKFILL_DAYS=7 DRY_RUN=false deno run -A scripts/backfill_phase_d.ts
+```
+
+### Success Targets (24h monitoring)
+- Success rate > 95%
+- Avg processing < 30s  
+- Table quality ~0.7+ on clean documents
+- No unexpected token cost spikes
+
+## 🔴 Emergency Rollback (90 seconds max)
+
+### Immediate Disable
+```bash
+# Kill the feature
+supabase secrets set ENABLE_PHASE_D=false --project-ref <your-ref>
+
+# Redeploy function to ensure rollback
+supabase functions deploy extract-document-data --project-ref <your-ref>
+```
+
+### Verification
+```sql
+-- Confirm no new Phase D extractions
+SELECT COUNT(*) FROM phase_d_extractions 
+WHERE created_at > NOW() - INTERVAL '5 minutes';
+```
 
 ## ⚙️ Production Guardrails
 
