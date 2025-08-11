@@ -29,16 +29,19 @@ serve(async (req) => {
 
     const supabase = createClient(config.supabase_url, config.supabase_service_key);
     
-    const { source = 'all', force_reprocess = false } = await req.json();
+    const { source = 'all', force_reprocess = false, run_id = null } = await req.json();
 
-    console.log('🧪 Manual AI Processing Trigger:', { source, force_reprocess });
+    console.log('🧪 Manual AI Processing Trigger:', { source, force_reprocess, run_id });
 
-    // Get pages to process
+    // Get pages to process - either specific run or recent pages
     let query = supabase
       .from('raw_scraped_pages')
       .select('*');
     
-    if (force_reprocess) {
+    if (run_id) {
+      // First try to get pages for specific run
+      query = query.eq('run_id', run_id);
+    } else if (force_reprocess) {
       query = query.eq('status', 'scraped');
     } else {
       query = query.eq('status', 'scraped');
@@ -48,8 +51,24 @@ serve(async (req) => {
       query = query.eq('source_site', source);
     }
 
-    const { data: pages, error } = await query;
+    let { data: pages, error } = await query;
     if (error) throw error;
+
+    // If no pages for specific run_id, get recent substantial content
+    if (run_id && (!pages || pages.length === 0)) {
+      console.log(`⚠️ No pages for run ${run_id}, fetching recent content`);
+      const { data: recentPages, error: recentError } = await supabase
+        .from('raw_scraped_pages')
+        .select('*')
+        .like('source_url', '%franceagrimer%')
+        .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
+        .limit(10);
+      
+      if (!recentError && recentPages?.length > 0) {
+        pages = recentPages;
+        console.log(`📄 Using ${recentPages.length} recent FranceAgriMer pages`);
+      }
+    }
 
     console.log(`📊 Found ${pages?.length || 0} pages to process`);
 
@@ -67,9 +86,9 @@ serve(async (req) => {
     const aiResult = await supabase.functions.invoke('ai-content-processor', {
       body: {
         source: source,
+        run_id: run_id,
         session_id: `manual-trigger-${Date.now()}`,
-        page_ids: pages.map(p => p.id),
-        quality_threshold: 0.6
+        quality_threshold: 0.3
       }
     });
 

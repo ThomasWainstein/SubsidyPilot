@@ -28,7 +28,7 @@ serve(async (req) => {
     console.log(`🤖 Starting AI content processing for run: ${run_id}`);
     
     // Get raw scraped pages for this run
-    const { data: pages, error: fetchError } = await supabase
+    let { data: pages, error: fetchError } = await supabase
       .from('raw_scraped_pages')
       .select('*')
       .eq('run_id', run_id);
@@ -38,7 +38,28 @@ serve(async (req) => {
       throw fetchError;
     }
 
-    console.log(`📄 Found ${pages?.length || 0} pages to process`);
+    console.log(`📄 Found ${pages?.length || 0} pages for run ${run_id}`);
+
+    // If no substantial content for this run, get recent FranceAgriMer data
+    const substantialPages = pages?.filter(p => 
+      (p.text_markdown?.length || 0) + (p.raw_text?.length || 0) + (p.raw_html?.length || 0) > 200
+    ) || [];
+
+    if (substantialPages.length === 0) {
+      console.log(`⚠️ No substantial content for run ${run_id}, fetching recent FranceAgriMer data`);
+      
+      const { data: recentPages, error: recentError } = await supabase
+        .from('raw_scraped_pages')
+        .select('*')
+        .like('source_url', '%franceagrimer%')
+        .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()) // last 2 hours
+        .limit(10);
+
+      if (!recentError && recentPages?.length > 0) {
+        pages = recentPages;
+        console.log(`📄 Using ${recentPages.length} recent FranceAgriMer pages instead`);
+      }
+    }
 
     let successful = 0;
     let failed = 0;
