@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Feature flags - enable in development only
 const ENABLE_PDF_VIEWER = import.meta.env.DEV && import.meta.env.VITE_ENABLE_PDF_VIEWER === 'true';
 
-// PDF.js types - will be properly typed when pdfjs-dist is available
+// PDF.js types (will be properly typed when available)
 type PDFDocumentProxy = any;
 type PDFPageProxy = any;
 
@@ -58,19 +58,39 @@ export function usePdfViewer(): UsePdfViewerReturn {
     evictions: 0,
   });
 
-  const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
+  const pdfjs = useRef<any>(null);
+  const pdfDocumentRef = useRef<any | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfCache = useRef<Map<number, ImageData>>(new Map());
   const maxCacheSize = 5;
 
-  // Initialize PDF.js worker when component mounts
   useEffect(() => {
-    if (ENABLE_PDF_VIEWER) {
-      // TODO: Configure PDF.js worker when pdfjs-dist is available
-      // import('pdfjs-dist').then((pdfjsLib) => {
-      //   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs';
-      // });
-      console.log('📋 PDF.js viewer enabled in development mode');
+    if (ENABLE_PDF_VIEWER && !pdfjs.current) {
+      // Try to load PDF.js dynamically (graceful fallback if not available)
+      const loadPdfJs = async () => {
+        try {
+          // Dynamic import using variable to avoid TypeScript module resolution
+          const pdfJsPath = 'pdfjs-dist/build/pdf';
+          const pdfjsLib = await import(pdfJsPath);
+          pdfjs.current = pdfjsLib;
+          
+          // Try to set up worker
+          try {
+            const workerPath = 'pdfjs-dist/build/pdf.worker.min.js?worker';
+            const workerModule = await import(workerPath);
+            pdfjsLib.GlobalWorkerOptions.workerPort = new workerModule.default();
+          } catch (workerError) {
+            console.log('📋 PDF.js worker not available, using CDN fallback');
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          }
+          
+          console.log('📋 PDF.js loaded successfully');
+        } catch (error) {
+          console.log('📋 PDF.js not available - using mock mode');
+        }
+      };
+      
+      loadPdfJs();
     }
   }, []);
 
@@ -88,46 +108,39 @@ export function usePdfViewer(): UsePdfViewerReturn {
       return;
     }
 
-    const startTime = performance.now();
-    
+    const start = performance.now();
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      // TODO: Implement actual PDF rendering when pdfjs-dist is available
-      // const page: PDFPageProxy = await pdfDocumentRef.current.getPage(pageNumber);
-      // const viewport = page.getViewport({ scale: state.scale * metrics.dpi });
-      // 
-      // const canvas = canvasRef.current;
-      // const context = canvas.getContext('2d');
-      // if (!context) throw new Error('Could not get canvas context');
-      // 
-      // canvas.height = viewport.height;
-      // canvas.width = viewport.width;
-      // canvas.style.width = `${viewport.width / metrics.dpi}px`;
-      // canvas.style.height = `${viewport.height / metrics.dpi}px`;
-      // 
-      // await page.render({
-      //   canvasContext: context,
-      //   viewport: viewport
-      // }).promise;
+      const page: any = await pdfDocumentRef.current.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: state.scale * metrics.dpi });
 
-      // Mock rendering delay for development
-      await new Promise(resolve => setTimeout(resolve, 200));
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-      const renderTime = performance.now() - startTime;
-      const isFirstPage = pageNumber === 1 && metrics.firstPageRenderMs === 0;
-      
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      canvas.style.width = `${viewport.width / metrics.dpi}px`;
+      canvas.style.height = `${viewport.height / metrics.dpi}px`;
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', `Page ${pageNumber} of ${state.totalPages}`);
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const elapsed = performance.now() - start;
+      const first = pageNumber === 1 && metrics.firstPageRenderMs === 0;
       setMetrics(prev => ({
         ...prev,
-        firstPageRenderMs: isFirstPage ? renderTime : prev.firstPageRenderMs,
-        pageRenderMs: renderTime,
+        pageRenderMs: elapsed,
+        firstPageRenderMs: first ? elapsed : prev.firstPageRenderMs,
         scale: state.scale,
         cacheSize: pdfCache.current.size,
       }));
 
       setState(prev => ({ ...prev, currentPage: pageNumber, isLoading: false }));
       
-      console.log(`📄 Rendered page ${pageNumber} in ${renderTime.toFixed(2)}ms`);
+      console.log(`📄 Rendered page ${pageNumber} in ${elapsed.toFixed(2)}ms`);
       
       // Log metrics to window for debugging
       if ((window as any).__metrics) {
@@ -142,7 +155,7 @@ export function usePdfViewer(): UsePdfViewerReturn {
         error: error instanceof Error ? error.message : 'Failed to render page' 
       }));
     }
-  }, [state.scale, metrics.dpi, metrics.firstPageRenderMs]);
+  }, [state.scale, state.totalPages, metrics.dpi, metrics.firstPageRenderMs]);
 
   const load = useCallback(async (url: string) => {
     console.log(`📥 Loading PDF from: ${url}`);
@@ -161,41 +174,36 @@ export function usePdfViewer(): UsePdfViewerReturn {
     try {
       // Get auth token for Supabase storage access
       const { data: { session } } = await supabase.auth.getSession();
-      const authHeaders = session?.access_token 
-        ? { 'Authorization': `Bearer ${session.access_token}` }
+      const headers: Record<string, string> = session?.access_token 
+        ? { Authorization: `Bearer ${session.access_token}` }
         : {};
 
-      // TODO: Implement PDF.js document loading when pdfjs-dist is available
-      // const response = await fetch(url, { headers: authHeaders });
-      // if (!response.ok) throw new Error(`Failed to fetch PDF: ${response.status}`);
-      // 
-      // const arrayBuffer = await response.arrayBuffer();
-      // const pdfjsLib = await import('pdfjs-dist');
-      // const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      // pdfDocumentRef.current = pdf;
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+      const buf = await res.arrayBuffer();
 
-      // Mock implementation for development
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use PDF.js if available, otherwise fallback to mock
+      let pdf: any;
+      if (pdfjs.current) {
+        const loadingTask = pdfjs.current.getDocument({ data: buf });
+        pdf = await loadingTask.promise;
+      } else {
+        // Mock fallback for when PDF.js isn't available
+        pdf = {
+          numPages: 10,
+          getPage: async (pageNum: number) => ({
+            getViewport: (options: any) => ({ width: 612, height: 792, ...options }),
+            render: () => ({ promise: Promise.resolve() })
+          })
+        };
+      }
       
-      const mockPdf = {
-        numPages: 10,
-        getPage: async (pageNum: number) => ({
-          getViewport: (options: any) => ({
-            width: 612,
-            height: 792,
-            ...options
-          }),
-          render: () => ({ promise: Promise.resolve() })
-        }),
-        cleanup: () => console.log('📋 Mock PDF cleanup')
-      };
-
-      pdfDocumentRef.current = mockPdf as any;
+      pdfDocumentRef.current = pdf;
 
       setState(prev => ({
         ...prev,
         isLoaded: true,
-        totalPages: mockPdf.numPages,
+        totalPages: pdf.numPages,
         currentPage: 1,
         isLoading: false,
       }));
@@ -203,27 +211,19 @@ export function usePdfViewer(): UsePdfViewerReturn {
       // Render first page
       await renderPage(1);
 
-    } catch (error) {
-      console.error('❌ PDF load error:', error);
-      let errorMessage = 'Failed to load PDF';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('PasswordException')) {
-          errorMessage = 'This PDF is password-protected.';
-        } else if (error.message.includes('InvalidPDFException')) {
-          errorMessage = 'The file is corrupted or unsupported.';
-        } else if (error.message.includes('MissingPDFException')) {
-          errorMessage = "We couldn't download this file. Try again.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
+    } catch (err: any) {
+      console.error('❌ PDF load error:', err);
+      const msg = 
+        /PasswordException/i.test(err?.message) ? 'This PDF is password-protected.' :
+        /InvalidPDFException/i.test(err?.message) ? 'The file is corrupted or unsupported.' :
+        /MissingPDFException/i.test(err?.message) ? "We couldn't download this file. Try again." :
+        err?.message || 'Failed to load PDF';
 
       setState(prev => ({
         ...prev,
-        isLoading: false,
-        error: errorMessage,
         isLoaded: false,
+        isLoading: false,
+        error: msg,
         totalPages: 0,
         currentPage: 1,
       }));
