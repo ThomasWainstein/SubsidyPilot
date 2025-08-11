@@ -72,12 +72,9 @@ export const ObservabilityDashboard: React.FC = () => {
   const fetchObservabilityData = async () => {
     setLoading(true);
     try {
-      const [healthData, qualityData, yieldData, orphanData, errorData] = await Promise.all([
-        supabase.from('v_pipeline_health_24h').select('*').order('started_at', { ascending: false }).limit(24),
-        supabase.from('v_harvest_quality_by_source_24h').select('*'),
-        supabase.from('v_ai_yield_by_run').select('*').limit(20),
-        supabase.from('v_orphan_pages_recent').select('*'),
-        supabase.from('v_ai_errors_last_24h').select('*')
+      const [healthData, errorData] = await Promise.all([
+        supabase.rpc('get_pipeline_health_24h'),
+        supabase.rpc('get_ai_errors_last_24h')
       ]);
 
       // Transform data to match expected TypeScript interfaces
@@ -92,31 +89,10 @@ export const ObservabilityDashboard: React.FC = () => {
         runs_no_content: (h.total_pages || 0) === 0 ? 1 : 0
       })) || []);
       
-      setHarvestQuality(qualityData.data?.map((q: any) => ({
-        source_site: q.source_site || 'unknown',
-        pages: q.pages_harvested || 0,
-        avg_len: q.avg_content_length || 0,
-        ge_1k: q.quality_pages || 0,
-        pct_ge_1k: Math.round(((q.quality_pages || 0) / Math.max(q.pages_harvested || 1, 1)) * 100),
-        pct_with_markdown: 50 // Default value since not available in view
-      })) || []);
-      
-      setAIYield(yieldData.data?.map((y: any) => ({
-        run_id: y.run_id || 'unknown',
-        model: y.model || 'unknown',
-        last_ended: y.ended_at || new Date().toISOString(),
-        pages_seen: y.pages_processed || 0,
-        pages_eligible: y.pages_processed || 0,
-        pages_processed: y.pages_processed || 0,
-        subsidies_created: y.subs_created || 0,
-        errors_count: 0 // Default value since not available in view
-      })) || []);
-      
-      setOrphanPages(orphanData.data?.map((o: any) => ({
-        source_site: o.source_site || 'unknown',
-        orphan_pages: 1, // Each record represents one orphan page
-        last_seen: o.created_at || new Date().toISOString()
-      })) || []);
+      // Set empty arrays for now - these views were removed
+      setHarvestQuality([]);
+      setAIYield([]);
+      setOrphanPages([]);
       
       setAIErrors(errorData.data?.map((e: any) => ({
         error_type: e.stage || 'unknown',

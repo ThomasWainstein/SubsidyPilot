@@ -21,21 +21,19 @@ export const useActiveRun = () => {
   const fetchActiveRun = async () => {
     try {
       const { data, error } = await supabase
-        .from('v_active_run_status')
-        .select('*')
-        .maybeSingle();
+        .rpc('get_active_run_status');
 
       if (error) throw error;
       
-      // Map the view data to our interface (v_active_run_status columns)
-      const mappedData = data ? {
-        id: data.id, // View returns 'id', not 'run_id'
-        status: data.status,
-        stage: data.stage,
-        progress: data.progress,
-        created_at: data.started_at, // Use started_at as created_at fallback
-        updated_at: new Date().toISOString(), // Current time as fallback
-        stats: data.config || {} // Use config as stats fallback
+      // Map the function data to our interface
+      const mappedData = data && data.length > 0 ? {
+        id: data[0].id,
+        status: data[0].status,
+        stage: data[0].stage,
+        progress: data[0].progress,
+        created_at: data[0].started_at,
+        updated_at: new Date().toISOString(),
+        stats: data[0].config || {}
       } : null;
       
       setActiveRun(mappedData);

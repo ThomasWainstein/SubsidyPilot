@@ -20,14 +20,8 @@ function logEvent(scope: string, run_id?: string | null, extra: Record<string, a
   if (ENABLE_STRUCTURED_LOGS) console.log(JSON.stringify(payload));
 }
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-if (!openAIApiKey) {
-  throw new Error('OpenAI API key not found');
-}
-
 const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 serve(async (req) => {
@@ -54,6 +48,37 @@ serve(async (req) => {
     runId = run_id;
     const sessionId = `ai-${Date.now()}`;
     
+    // Check for OpenAI API key with fallback
+    const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API') ?? Deno.env.get('OPENAI_API_KEY');
+    
+    if (!openAIApiKey) {
+      console.log(`AI_RUN_ERROR {run_id: ${run_id}, reason: "MISSING_OPENAI_KEY"}`);
+      logEvent('ai.run.error', run_id, { reason: 'MISSING_OPENAI_KEY' });
+      
+      // Insert ai_content_runs row with error status
+      await supabase.from('ai_content_runs').insert({
+        run_id,
+        model: 'unknown',
+        pages_seen: 0,
+        pages_eligible: 0,
+        pages_processed: 0,
+        subs_created: 0,
+        status: 'error',
+        reason: 'MISSING_OPENAI_KEY',
+        started_at: new Date().toISOString(),
+        ended_at: new Date().toISOString()
+      });
+      
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'MISSING_OPENAI_KEY'
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.log(`AI_RUN_START {run_id: ${run_id}, pages_seen: 0, pages_eligible: 0}`);
     logEvent('ai.run.start', run_id, { 
       page_ids_count: page_ids?.length || 0, 
       quality_threshold, 
@@ -67,10 +92,13 @@ serve(async (req) => {
       .from('ai_content_runs')
       .insert({
         run_id,
-        session_id: sessionId,
         model,
         started_at: new Date().toISOString(),
-        params: { quality_threshold, min_len, allow_recent_fallback, recent_window_minutes }
+        pages_seen: 0,
+        pages_eligible: 0,
+        pages_processed: 0,
+        subs_created: 0,
+        status: 'running'
       })
       .select()
       .single();
@@ -134,9 +162,12 @@ serve(async (req) => {
     let subsidiesCreated = 0;
     let errorsCount = 0;
 
+    console.log(`AI_RUN_START {run_id: ${run_id}, pages_seen: ${pagesSeen}, pages_eligible: ${pagesEligible}}`);
+
     // Process each eligible page
     for (const page of eligiblePages.slice(0, 50)) { // Safety limit
       try {
+        console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
         logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
         const content = page.text_markdown || page.raw_text || '';
@@ -227,14 +258,14 @@ Return only valid JSON array, no other text.`;
                   ignoreDuplicates: false
                 });
               
-              if (upsertError) {
-                errorsCount++;
-                await logAiError(run_id, page.id, page.source_url, 'db_insert', upsertError.message, extractedText.slice(0, 500));
-                logEvent('ai.page.insert.error', run_id, { page_id: page.id, error: upsertError.message });
-              } else {
-                subsidiesCreated++;
-                logEvent('ai.page.insert.success', run_id, { page_id: page.id, fingerprint });
-              }
+                if (upsertError) {
+                  errorsCount++;
+                  await logAiError(run_id, page.id, page.source_url, 'db_insert', upsertError.message, extractedText.slice(0, 500));
+                  logEvent('ai.page.insert.error', run_id, { page_id: page.id, error: upsertError.message });
+                } else {
+                  subsidiesCreated++;
+                  logEvent('ai.page.insert.success', run_id, { page_id: page.id, fingerprint });
+                }
             }
             
           } catch (chunkError) {
@@ -254,6 +285,8 @@ Return only valid JSON array, no other text.`;
       }
     }
 
+    console.log(`AI_RUN_END {run_id: ${run_id}, pages_processed: ${pagesProcessed}, subs_created: ${subsidiesCreated}, failed: ${errorsCount}}`);
+
     const endTime = Date.now();
     const durationMs = endTime - startTime;
 
@@ -265,9 +298,8 @@ Return only valid JSON array, no other text.`;
         pages_eligible: pagesEligible,
         pages_processed: pagesProcessed,
         subs_created: subsidiesCreated,
-        errors_count: errorsCount,
+        status: 'completed',
         ended_at: new Date().toISOString(),
-        duration_ms: durationMs,
         notes: subsidiesCreated > 0 ? 'Success' : 'No subsidies found'
       })
       .eq('id', aiRunId);
@@ -327,8 +359,8 @@ Return only valid JSON array, no other text.`;
   
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    errorsCount = 1;
     
+    console.log(`AI_RUN_ERROR {run_id: ${runId}, reason: "${(error as Error).message}"}`);
     logEvent('ai.run.error', runId, { error: (error as Error).message, duration_ms: durationMs });
     
     // Finish envelope on error
@@ -336,12 +368,25 @@ Return only valid JSON array, no other text.`;
       await supabase
         .from('ai_content_runs')
         .update({
-          errors_count: 1,
+          status: 'error',
           ended_at: new Date().toISOString(),
-          duration_ms: durationMs,
           notes: `Error: ${(error as Error).message}`
         })
         .eq('id', aiRunId);
+    } else if (runId) {
+      // Create error record even if aiRunId wasn't set
+      await supabase.from('ai_content_runs').insert({
+        run_id: runId,
+        model: 'unknown',
+        pages_seen: 0,
+        pages_eligible: 0,
+        pages_processed: 0,
+        subs_created: 0,
+        status: 'error',
+        started_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
+        notes: `Error: ${(error as Error).message}`
+      });
     }
     
     // Update pipeline_runs on error

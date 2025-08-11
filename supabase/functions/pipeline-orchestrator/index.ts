@@ -201,7 +201,45 @@ async function orchestratePipeline(supabase: any, runId: string) {
         const aiResults = await processWithAI(supabase, runId, run.config);
         console.log(`✅ AI processing completed: ${aiResults.subsidies_created} subsidies created`);
         
+        // Check for AI run record to verify execution
+        const { data: aiRunRecord } = await supabase
+          .from('ai_content_runs')
+          .select('*')
+          .eq('run_id', runId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
         const hasResults = aiResults.subsidies_created > 0;
+        const hasEligiblePages = aiResults.stats?.pages_eligible > 0;
+        const aiDidExecute = !!aiRunRecord;
+        
+        // If we had eligible pages but no output and no AI execution, this is a failure
+        if (hasEligiblePages && !hasResults && !aiDidExecute) {
+          await updateRun({ 
+            stage: 'done', 
+            status: 'completed', 
+            progress: 100,
+            ended_at: new Date().toISOString(),
+            reason: 'ai_no_execution',
+            stats: { ...(newStats || {}), ai: aiResults?.stats || {} }
+          });
+          return;
+        }
+        
+        // If we had eligible pages and AI executed but produced no output, this is also concerning
+        if (hasEligiblePages && !hasResults && aiDidExecute) {
+          await updateRun({ 
+            stage: 'done', 
+            status: 'completed', 
+            progress: 100,
+            ended_at: new Date().toISOString(),
+            reason: 'ai_no_output',
+            stats: { ...(newStats || {}), ai: { ...(aiResults?.stats || {}), ai_invoked_at: aiInvokeAt } }
+          });
+          return;
+        }
+        
         const shouldGenerateForms = hasResults && run.config.enable_form_generation !== false;
         const statsAfterAI = { ...(newStats || {}), ai: { ...(aiResults?.stats || {}), ai_invoked_at: aiInvokeAt } };
         

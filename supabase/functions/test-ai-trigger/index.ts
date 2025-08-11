@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,55 +20,60 @@ serve(async (req) => {
 
     const { run_id } = await req.json();
     
-    console.log(`🧪 Test AI processing for run ${run_id}`);
+    console.log(`🧪 Testing AI processor for run: ${run_id}`);
     
-    // Directly trigger AI content processor
+    // Invoke AI content processor
     const { data, error } = await supabase.functions.invoke('ai-content-processor', {
       body: {
-        run_id: run_id,
-        source: 'run',
+        run_id,
         quality_threshold: 0.3
       }
     });
 
     if (error) {
-      console.error('❌ AI processing failed:', error);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        details: error
+      console.error('AI processor error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: error.message
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log('✅ AI processing completed:', data);
-    
-    // Query results
-    const { data: aiRuns } = await supabase
+    console.log('AI processor response:', data);
+
+    // Check results
+    const { data: aiRun } = await supabase
       .from('ai_content_runs')
       .select('*')
       .eq('run_id', run_id)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(1)
+      .maybeSingle();
 
-    const { data: subsidies } = await supabase
+    const { data: subsidyCount } = await supabase
       .from('subsidies_structured')
       .select('count')
       .eq('run_id', run_id);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      ai_result: data,
-      ai_runs: aiRuns,
-      subsidies_count: subsidies?.length || 0
+    const { data: errorCount } = await supabase
+      .from('ai_content_errors')
+      .select('count')
+      .eq('run_id', run_id);
+
+    return new Response(JSON.stringify({
+      success: true,
+      ai_response: data,
+      ai_run_record: aiRun,
+      subsidies_created: subsidyCount?.[0]?.count || 0,
+      errors_logged: errorCount?.[0]?.count || 0
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Test trigger error:', error);
+    console.error('Test error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message
