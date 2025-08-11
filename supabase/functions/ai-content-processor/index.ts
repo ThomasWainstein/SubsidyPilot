@@ -160,19 +160,28 @@ serve(async (req) => {
     console.log(`AI_RUN_START {run_id: ${run_id}, pages_seen: ${pagesSeen}, pages_eligible: ${pagesEligible}}`);
 
     // Process each eligible page
+    console.log(`🔄 Starting to process ${eligiblePages.length} eligible pages...`);
     for (const page of eligiblePages.slice(0, 50)) { // Safety limit
       try {
         console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
         logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
         const content = page.text_markdown || page.raw_text || page.raw_html || '';
-        if (content.length < min_len) continue;
+        console.log(`📄 Page ${page.id} content length: ${content.length} chars`);
+        
+        if (content.length < min_len) {
+          console.log(`⚠️ Page ${page.id} content too short (${content.length} < ${min_len}), skipping`);
+          continue;
+        }
 
         // Chunk content if needed
         const chunks = chunkText(content, AI_CHUNK_SIZE);
+        console.log(`📝 Page ${page.id} split into ${chunks.length} chunks`);
         
-        for (const chunk of chunks) {
+        for (const [chunkIndex, chunk] of chunks.entries()) {
           try {
+            console.log(`🧠 Processing chunk ${chunkIndex + 1}/${chunks.length} for page ${page.id}`);
+            
             const prompt = `Extract agricultural subsidy information from this text. Return a JSON array of subsidies found.
 
 For each subsidy, extract:
@@ -190,6 +199,7 @@ ${chunk}
 
 Return only valid JSON array, no other text.`;
 
+            console.log(`🔄 Making OpenAI API call with model: ${model}`);
             const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -207,12 +217,17 @@ Return only valid JSON array, no other text.`;
               }),
             });
 
+            console.log(`📡 OpenAI API response status: ${aiResponse.status}`);
+            
             if (!aiResponse.ok) {
-              throw new Error(`OpenAI API error: ${aiResponse.status}`);
+              const errorText = await aiResponse.text();
+              console.error(`❌ OpenAI API error: ${aiResponse.status} - ${errorText}`);
+              throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
             }
 
             const aiData = await aiResponse.json();
             const extractedText = aiData.choices[0].message.content;
+            console.log(`✅ OpenAI response received, length: ${extractedText?.length || 0} chars`);
             
             // Parse with robustJsonArray, map each using coerceSubsidy
             const rawSubsidies = robustJsonArray(extractedText);
