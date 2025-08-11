@@ -31,7 +31,7 @@ interface DocumentViewerProps {
 }
 
 // Feature flag check
-const ENABLE_PDF_VIEWER = process.env.NODE_ENV === 'development' || false;
+const ENABLE_PDF_VIEWER = import.meta.env.DEV && import.meta.env.VITE_ENABLE_PDF_VIEWER === 'true';
 
 export function DocumentViewer({ 
   documentUrl, 
@@ -44,8 +44,7 @@ export function DocumentViewer({
     thumbnails: true
   }
 }: DocumentViewerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { state, load, goToPage, setScale, toggleLayer, dispose } = usePdfViewer();
+  const { state, metrics, canvasRef, load, goToPage, setScale, toggleLayer, dispose } = usePdfViewer();
 
   // Early return if feature is disabled
   if (!ENABLE_PDF_VIEWER) {
@@ -280,6 +279,8 @@ export function DocumentViewer({
                     transform: `scale(${state.scale})`,
                     transformOrigin: 'top center'
                   }}
+                  role="img"
+                  aria-label={`Page ${state.currentPage} of ${state.totalPages}`}
                 />
               </div>
             </div>
