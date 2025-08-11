@@ -7,7 +7,7 @@ import { extractTextFromFile } from './textExtraction.ts';
 import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 import { tryLocalExtraction } from './lib/localExtraction.ts';
-import { integrateTableExtraction, detectAndMergeMultiPageTables, validateTableQuality } from '../extract-document-data-enhanced/tableIntegration.ts';
+import { integrateTableExtraction, detectAndMergeMultiPageTables, validateTableQuality } from './tableIntegration.ts';
 
 // Enhanced environment diagnostics and validation
 function validateEnvironment() {
@@ -212,41 +212,50 @@ serve(async (req) => {
     }
 
     // ===== PHASE D: ADVANCED TABLE EXTRACTION =====
-    // Get file buffer for table extraction
-    addDebugLog('PHASE_D_TABLE_EXTRACTION_START', { fileName });
-    const fileBuffer = await fileResponse.clone().arrayBuffer();
+    // Check if Phase D is enabled
+    const ENABLE_PHASE_D = Deno.env.get('ENABLE_PHASE_D') === 'true';
+    addDebugLog('PHASE_D_CHECK', { enabled: ENABLE_PHASE_D });
     
     let tableIntegrationResult;
     let detectedLanguage = 'en'; // Default language
     
-    try {
-      // Initial language detection from any available text
-      const tempExtractionResult = await extractTextFromFile(fileResponse.clone(), fileName, openAIApiKey);
-      detectedLanguage = detectDocumentLanguage(tempExtractionResult.text);
+    if (ENABLE_PHASE_D) {
+      // Get file buffer for table extraction
+      addDebugLog('PHASE_D_TABLE_EXTRACTION_START', { fileName });
+      const fileBuffer = await fileResponse.clone().arrayBuffer();
       
-      // Run Phase D table extraction with AI post-processing
-      tableIntegrationResult = await integrateTableExtraction(
-        fileBuffer,
-        fileName, 
-        detectedLanguage,
-        openAIApiKey
-      );
-      
-      addDebugLog('PHASE_D_TABLE_EXTRACTION_SUCCESS', {
-        tablesFound: tableIntegrationResult.tableMetrics.totalTables,
-        tableQuality: tableIntegrationResult.tableMetrics.tableQualityScore,
-        subsidyFieldsFound: tableIntegrationResult.tableMetrics.subsidyFieldsFound,
-        processingTime: tableIntegrationResult.tableMetrics.extractionTime + tableIntegrationResult.tableMetrics.postProcessingTime
-      });
-      
-    } catch (tableError) {
-      console.warn('⚠️ Phase D table extraction failed:', tableError);
-      addDebugLog('PHASE_D_TABLE_EXTRACTION_FAILED', {
-        error: tableError.message,
-        fallbackToTextOnly: true
-      });
-      
-      // Continue with text-only extraction
+      try {
+        // Initial language detection from any available text
+        const tempExtractionResult = await extractTextFromFile(fileResponse.clone(), fileName, openAIApiKey);
+        detectedLanguage = detectDocumentLanguage(tempExtractionResult.text);
+        
+        // Run Phase D table extraction with AI post-processing
+        tableIntegrationResult = await integrateTableExtraction(
+          fileBuffer,
+          fileName, 
+          detectedLanguage,
+          openAIApiKey
+        );
+        
+        addDebugLog('PHASE_D_TABLE_EXTRACTION_SUCCESS', {
+          tablesFound: tableIntegrationResult.tableMetrics.totalTables,
+          tableQuality: tableIntegrationResult.tableMetrics.tableQualityScore,
+          subsidyFieldsFound: tableIntegrationResult.tableMetrics.subsidyFieldsFound,
+          processingTime: tableIntegrationResult.tableMetrics.extractionTime + tableIntegrationResult.tableMetrics.postProcessingTime
+        });
+        
+      } catch (tableError) {
+        console.warn('⚠️ Phase D table extraction failed:', tableError);
+        addDebugLog('PHASE_D_TABLE_EXTRACTION_FAILED', {
+          error: tableError.message,
+          fallbackToTextOnly: true
+        });
+        
+        // Continue with text-only extraction
+        tableIntegrationResult = null;
+      }
+    } else {
+      addDebugLog('PHASE_D_DISABLED', { reason: 'ENABLE_PHASE_D not set to true' });
       tableIntegrationResult = null;
     }
 
