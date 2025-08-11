@@ -118,3 +118,6 @@ verify_jwt = false
 
 [functions.test-ai-processing]
 verify_jwt = false
+
+[functions.ai-test-single-page]
+verify_jwt = false
