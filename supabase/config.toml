@@ -94,3 +94,6 @@ verify_jwt = false
 
 [functions.afir-harvester]
 verify_jwt = false
+
+[functions.ai-content-processor]
+verify_jwt = false
