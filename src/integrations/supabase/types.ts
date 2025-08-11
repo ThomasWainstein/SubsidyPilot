@@ -2347,6 +2347,30 @@ export type Database = {
           },
         ]
       }
+      system_config: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       system_health_metrics: {
         Row: {
           created_at: string | null
@@ -2630,6 +2654,14 @@ export type Database = {
       }
       compute_content_hash: {
         Args: { content_data: Json }
+        Returns: string
+      }
+      create_extraction_if_not_exists: {
+        Args: {
+          p_document_id: string
+          p_idempotency_key: string
+          p_user_id?: string
+        }
         Returns: string
       }
       get_data_summary: {

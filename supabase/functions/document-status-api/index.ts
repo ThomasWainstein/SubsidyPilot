@@ -5,11 +5,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Max-Age': '86400', // 24 hours
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -19,48 +25,90 @@ serve(async (req) => {
     );
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const documentId = pathParts[pathParts.length - 2]; // /api/documents/:id/retry
+    const pathParts = url.pathname.split('/').filter(part => part);
+    const documentId = pathParts[pathParts.length - 2]; // documents/:id/action
     const action = pathParts[pathParts.length - 1];
 
-    if (!documentId) {
-      return new Response(JSON.stringify({ error: 'Document ID required' }), {
+    console.log(`📡 Document Status API: ${req.method} ${url.pathname}`);
+    console.log(`📋 Document ID: ${documentId}, Action: ${action}`);
+
+    if (!documentId || !['retry', 'status'].includes(action)) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid endpoint',
+        expected: '/documents/:id/retry or /documents/:id/status' 
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Get authorization header for user context
+    // Enhanced auth handling with better error messages
     const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ Missing or invalid authorization header');
+      return new Response(JSON.stringify({ 
+        error: 'Authorization required',
+        details: 'Please provide a valid Bearer token' 
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Set auth for user context
-    supabaseClient.auth.setSession({
-      access_token: authHeader.replace('Bearer ', ''),
-      refresh_token: ''
-    });
-
-    if (req.method === 'POST' && action === 'retry') {
-      return await handleRetry(supabaseClient, documentId);
-    } else if (req.method === 'GET' && action === 'status') {
-      return await handleGetStatus(supabaseClient, documentId);
+    // Set auth context safely
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid token format' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(JSON.stringify({ error: 'Invalid endpoint' }), {
-      status: 404,
+    // Create authenticated supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Set user context for RLS
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return new Response(JSON.stringify({ 
+        error: 'Invalid or expired token' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`👤 Authenticated user: ${user.id}`);
+
+    // Route to appropriate handler
+    if (req.method === 'POST' && action === 'retry') {
+      return await handleRetry(supabaseClient, documentId, user.id);
+    } else if (req.method === 'GET' && action === 'status') {
+      return await handleGetStatus(supabaseClient, documentId, user.id);
+    }
+
+    return new Response(JSON.stringify({ 
+      error: 'Invalid endpoint',
+      method: req.method,
+      action: action,
+      allowed: 'POST /retry or GET /status'
+    }), {
+      status: 405,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('🚨 API Error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error.message,
+      timestamp: new Date().toISOString()
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -68,38 +116,47 @@ serve(async (req) => {
   }
 });
 
-async function handleRetry(supabaseClient: any, documentId: string) {
-  console.log(`🔄 Processing retry request for document: ${documentId}`);
+async function handleRetry(supabaseClient: any, documentId: string, userId: string) {
+  console.log(`🔄 Processing retry request for document: ${documentId} by user: ${userId}`);
 
-  // Get document and current extraction status
-  const { data: document, error: docError } = await supabaseClient
-    .from('farm_documents')
-    .select('*')
-    .eq('id', documentId)
-    .single();
+  try {
+    // Get document with user validation via RLS
+    const { data: document, error: docError } = await supabaseClient
+      .from('farm_documents')
+      .select('*')
+      .eq('id', documentId)
+      .single();
 
-  if (docError || !document) {
-    return new Response(JSON.stringify({ error: 'Document not found' }), {
-      status: 404,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
+    if (docError || !document) {
+      console.error('❌ Document not found or access denied:', docError);
+      return new Response(JSON.stringify({ 
+        error: 'Document not found or access denied',
+        documentId 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-  const { data: extraction, error: extractionError } = await supabaseClient
-    .from('document_extractions')
-    .select('*')
-    .eq('document_id', documentId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    // Get latest extraction or create if doesn't exist
+    let { data: extraction, error: extractionError } = await supabaseClient
+      .from('document_extractions')
+      .select('*')
+      .eq('document_id', documentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (extractionError) {
-    console.error('Error fetching extraction:', extractionError);
-    return new Response(JSON.stringify({ error: 'Failed to fetch extraction status' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
+    if (extractionError) {
+      console.error('❌ Error fetching extraction:', extractionError);
+      return new Response(JSON.stringify({ 
+        error: 'Failed to fetch extraction status',
+        details: extractionError.message 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
   // Check if retry is allowed
   if (extraction && extraction.current_retry >= extraction.max_retries) {
