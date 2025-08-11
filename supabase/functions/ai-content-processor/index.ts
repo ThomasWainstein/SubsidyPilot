@@ -59,6 +59,31 @@ serve(async (req) => {
       allow_recent_fallback 
     });
     
+    // Ensure scrape_runs row exists for FK on subsidies_structured.run_id
+    if (run_id) {
+      try {
+        const { data: existingScrapeRun } = await supabase
+          .from('scrape_runs')
+          .select('id')
+          .eq('id', run_id)
+          .maybeSingle();
+        if (!existingScrapeRun) {
+          const { error: insertScrapeRunErr } = await supabase
+            .from('scrape_runs')
+            .insert({
+              id: run_id,
+              status: 'running',
+              notes: 'ai-content-processor auto-created run'
+            });
+          if (insertScrapeRunErr) {
+            console.warn('⚠️ Failed to create scrape_runs row:', insertScrapeRunErr.message);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ scrape_runs check failed:', (e as Error).message);
+      }
+    }
+
     // Start envelope: insert ai_content_runs FIRST to track all attempts
     const { data: aiRun, error: aiRunError } = await supabase
       .from('ai_content_runs')
@@ -437,6 +462,17 @@ Return only valid JSON array, no explanation:`;
       })
       .eq('id', aiRunId);
 
+    // Finalize scrape_runs if run_id present
+    if (run_id) {
+      await supabase
+        .from('scrape_runs')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', run_id);
+    }
+
     // Update pipeline_runs if run_id present
     if (run_id) {
       const nextStage = subsidiesCreated > 0 ? 'forms' : 'done';
@@ -535,6 +571,15 @@ Return only valid JSON array, no explanation:`;
             timestamp: new Date().toISOString()
           },
           updated_at: new Date().toISOString()
+        })
+        .eq('id', runId);
+
+      // Mark scrape_runs failed as well for traceability
+      await supabase
+        .from('scrape_runs')
+        .update({
+          status: 'failed',
+          completed_at: new Date().toISOString()
         })
         .eq('id', runId);
     }
