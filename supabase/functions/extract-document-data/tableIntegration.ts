@@ -40,6 +40,10 @@ export async function integrateTableExtraction(
   const startTime = Date.now();
   console.log(`🔧 Phase D: Starting advanced table integration for ${fileName}`);
   
+  // Guards: prevent runaway processing
+  const MAX_TABLES = parseInt(Deno.env.get('MAX_TABLES_PER_DOC') || '50');
+  const MAX_CELLS = parseInt(Deno.env.get('MAX_CELLS_PER_DOC') || '50000');
+  
   // Step 1: Extract tables based on file type
   const extractionStart = Date.now();
   const extractedTables = await extractTablesFromDocument(fileBuffer, fileName);
@@ -47,9 +51,35 @@ export async function integrateTableExtraction(
   
   console.log(`📊 Extracted ${extractedTables.length} tables in ${extractionTime}ms`);
   
+  // Apply guards
+  if (extractedTables.length > MAX_TABLES) {
+    console.warn(`⚠️ Too many tables (${extractedTables.length} > ${MAX_TABLES}), limiting to first ${MAX_TABLES}`);
+    extractedTables.splice(MAX_TABLES);
+  }
+  
+  const totalCells = extractedTables.reduce((sum, table) => sum + table.headers.length * table.rows.length, 0);
+  if (totalCells > MAX_CELLS) {
+    console.warn(`⚠️ Too many cells (${totalCells} > ${MAX_CELLS}), limiting processing`);
+    // Truncate tables to stay under limit
+    let cellCount = 0;
+    const limitedTables = [];
+    for (const table of extractedTables) {
+      const tableCells = table.headers.length * table.rows.length;
+      if (cellCount + tableCells <= MAX_CELLS) {
+        limitedTables.push(table);
+        cellCount += tableCells;
+      } else {
+        break;
+      }
+    }
+    extractedTables.splice(0, extractedTables.length, ...limitedTables);
+  }
+  
   // Step 2: AI post-processing
   const postProcessingStart = Date.now();
-  const processedTables = await processTablesWithAI(extractedTables, documentLanguage, openAIApiKey);
+  const modelName = Deno.env.get('OPENAI_TABLES_MODEL') || 'gpt-4o-mini';
+  console.log(`🤖 Using AI model: ${modelName} for table post-processing`);
+  const processedTables = await processTablesWithAI(extractedTables, documentLanguage, openAIApiKey, modelName);
   const postProcessingTime = Date.now() - postProcessingStart;
   
   console.log(`🤖 AI post-processing completed in ${postProcessingTime}ms`);
@@ -65,6 +95,13 @@ export async function integrateTableExtraction(
     metadata: {
       extractionMethod: 'phase-d-advanced',
       version: '1.0.0',
+      aiModel: modelName,
+      guardsApplied: {
+        maxTables: MAX_TABLES,
+        maxCells: MAX_CELLS,
+        tablesLimited: extractedTables.length === MAX_TABLES,
+        cellsLimited: totalCells > MAX_CELLS
+      },
       ...tableMetrics
     }
   };
