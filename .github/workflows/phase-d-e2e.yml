@@ -45,18 +45,60 @@ jobs:
           name: phase-d-test-artifacts
           path: |
             fixtures/
+            fixtures_ext/
             *.log
           retention-days: 7
 
-      - name: Notify on failure (optional)
-        if: failure()
+      - name: Slack notify success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          echo "Phase D E2E tests failed!"
-          echo "Check the logs and artifacts for details."
-          # Add Slack/email notification here if needed
-          # curl -X POST -H 'Content-type: application/json' \
-          #   --data '{"text":"Phase D E2E tests failed in ${{ github.repository }}"}' \
-          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"🎉 Phase D harness: 21/21 passed\",
+                \"blocks\": [
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Phase D E2E Tests Passed* ✅\\n• Repository: $GITHUB_REPOSITORY\\n• Branch: $GITHUB_REF\\n• Commit: \`${GITHUB_SHA:0:8}\`\\n• All golden fixtures validated successfully\"
+                    }
+                  }
+                ]
+              }" \
+              "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Slack notify failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"🚨 Phase D harness FAILED\",
+                \"blocks\": [
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Phase D E2E Tests Failed* 🚨\\n• Repository: $GITHUB_REPOSITORY\\n• Branch: $GITHUB_REF\\n• Commit: \`${GITHUB_SHA:0:8}\`\\n• <$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID|View Logs>\"
+                    }
+                  },
+                  {
+                    \"type\": \"section\",
+                    \"text\": {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"Phase D table extraction pipeline requires immediate attention. Check logs for detailed error information.\"
+                    }
+                  }
+                ]
+              }" \
+              "$SLACK_WEBHOOK_URL"
+          fi
 
   health-check:
     runs-on: ubuntu-latest

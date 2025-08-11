@@ -1,0 +1,108 @@
+name: Nightly Phase D Backfill
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: 'Number of days to look back'
+        required: false
+        default: '7'
+        type: string
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '7' }}
+      TARGET_PHASE_D_VERSION: "1.0.0"
+      EDGE_FUNCTION: "extract-document-data"
+      CONCURRENCY: "2"
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with: 
+          deno-version: v1.x
+
+      - name: Run backfill
+        id: backfill
+        run: |
+          echo "Starting Phase D backfill..."
+          deno run -A scripts/backfill_phase_d.ts
+          echo "Backfill completed successfully"
+
+      - name: Check Phase D health
+        id: health
+        run: |
+          echo "Running Phase D health check..."
+          deno run --allow-net --allow-env supabase/functions/extract-document-data/phase-d-test.ts
+          echo "Health check completed"
+
+      - name: Create summary
+        run: |
+          echo "## Nightly Phase D Backfill Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backfill Days**: ${{ env.BACKFILL_DAYS }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Version**: ${{ env.TARGET_PHASE_D_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ env.DRY_RUN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Slack notify success
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{
+              \"text\": \"✅ Nightly Phase D backfill succeeded\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Phase D Backfill Complete* ✅\\n• Repository: $GITHUB_REPOSITORY\\n• Days scanned: ${{ env.BACKFILL_DAYS }}\\n• Version: ${{ env.TARGET_PHASE_D_VERSION }}\\n• Mode: ${{ env.DRY_RUN == 'true' && 'DRY RUN' || 'LIVE' }}\"
+                  }
+                }
+              ]
+            }" \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Slack notify failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{
+              \"text\": \"🚨 Phase D backfill FAILED\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Phase D Backfill Failed* 🚨\\n• Repository: $GITHUB_REPOSITORY\\n• Commit: $GITHUB_SHA\\n• <$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID|View Logs>\"
+                  }
+                },
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"Please investigate the failure and fix any issues with Phase D processing.\"
+                  }
+                }
+              ]
+            }" \
+            "$SLACK_WEBHOOK_URL"
