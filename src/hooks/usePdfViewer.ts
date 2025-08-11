@@ -61,6 +61,7 @@ export function usePdfViewer(): UsePdfViewerReturn {
   const pdfjs = useRef<any>(null);
   const pdfDocumentRef = useRef<any | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastRenderTaskRef = useRef<any | null>(null);
   const pdfCache = useRef<Map<number, ImageData>>(new Map());
   const maxCacheSize = 5;
 
@@ -103,59 +104,40 @@ export function usePdfViewer(): UsePdfViewerReturn {
   }, []);
 
   const renderPage = useCallback(async (pageNumber: number) => {
-    if (!pdfDocumentRef.current || !canvasRef.current || !ENABLE_PDF_VIEWER) {
-      console.log('📋 PDF rendering skipped - viewer disabled or document not loaded');
-      return;
-    }
+    if (!pdfDocumentRef.current || !canvasRef.current || !ENABLE_PDF_VIEWER) return;
 
-    const start = performance.now();
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    // cancel any in-flight render
+    lastRenderTaskRef.current?.cancel();
+    setState(p => ({ ...p, isLoading: true, error: null }));
+
+    const page = await pdfDocumentRef.current.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: state.scale * metrics.dpi });
+
+    const canvas = canvasRef.current as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context unavailable');
+
+    // physical pixels for crisp HiDPI, CSS size in logical px
+    canvas.width  = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    canvas.style.width  = `${Math.floor(viewport.width / metrics.dpi)}px`;
+    canvas.style.height = `${Math.floor(viewport.height / metrics.dpi)}px`;
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', `Page ${pageNumber} of ${state.totalPages}`);
+
+    const task = page.render({ canvasContext: ctx, viewport });
+    lastRenderTaskRef.current = task;
 
     try {
-      const page: any = await pdfDocumentRef.current.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: state.scale * metrics.dpi });
-
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D context unavailable');
-
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      canvas.style.width = `${viewport.width / metrics.dpi}px`;
-      canvas.style.height = `${viewport.height / metrics.dpi}px`;
-      canvas.setAttribute('role', 'img');
-      canvas.setAttribute('aria-label', `Page ${pageNumber} of ${state.totalPages}`);
-
-      await page.render({ canvasContext: ctx, viewport }).promise;
-
-      const elapsed = performance.now() - start;
-      const first = pageNumber === 1 && metrics.firstPageRenderMs === 0;
-      setMetrics(prev => ({
-        ...prev,
-        pageRenderMs: elapsed,
-        firstPageRenderMs: first ? elapsed : prev.firstPageRenderMs,
-        scale: state.scale,
-        cacheSize: pdfCache.current.size,
-      }));
-
-      setState(prev => ({ ...prev, currentPage: pageNumber, isLoading: false }));
-      
-      console.log(`📄 Rendered page ${pageNumber} in ${elapsed.toFixed(2)}ms`);
-      
-      // Log metrics to window for debugging
-      if ((window as any).__metrics) {
-        (window as any).__metrics.pdf = metrics;
-      }
-      
-    } catch (error) {
-      console.error('❌ PDF render error:', error);
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: error instanceof Error ? error.message : 'Failed to render page' 
-      }));
+      await task.promise;
+      setState(p => ({ ...p, currentPage: pageNumber, isLoading: false }));
+    } catch (e: any) {
+      if (e?.name === 'RenderingCancelledException') return; // benign
+      setState(p => ({ ...p, isLoading: false, error: e?.message || 'Failed to render page' }));
+    } finally {
+      page.cleanup(); // free glyph/images
     }
-  }, [state.scale, state.totalPages, metrics.dpi, metrics.firstPageRenderMs]);
+  }, [state.scale, state.totalPages, metrics.dpi]);
 
   const load = useCallback(async (url: string) => {
     console.log(`📥 Loading PDF from: ${url}`);
