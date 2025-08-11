@@ -163,7 +163,7 @@ async function discoverAndScrapeSamplePages(session: ScrapingSession, supabase: 
       attachment_count: 0,
       status: 'scraped',
       scrape_date: new Date().toISOString(),
-      run_id: run_id
+      run_id: run_id || null  // CRITICAL FIX: Associate with pipeline run
     };
     
     const { data: insertedPage, error } = await supabase

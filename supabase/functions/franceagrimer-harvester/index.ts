@@ -396,7 +396,8 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
         attachment_paths: pageContent.documents || [],
         attachment_count: (pageContent.documents || []).length,
         status: 'scraped',
-        scrape_date: new Date().toISOString()
+        scrape_date: new Date().toISOString(),
+        run_id: requestBody.run_id || null  // CRITICAL FIX: Associate with pipeline run
       };
       
       const { data: insertedPage, error } = await supabase

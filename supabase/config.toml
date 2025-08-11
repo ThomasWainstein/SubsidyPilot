@@ -100,3 +100,6 @@ verify_jwt = false
 
 [functions.ai-content-processor.env]
 ALLOW_RECENT_FALLBACK = "false"
+
+[functions.manual-pipeline-trigger]
+verify_jwt = false
