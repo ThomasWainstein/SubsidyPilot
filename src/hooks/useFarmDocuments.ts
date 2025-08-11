@@ -19,6 +19,15 @@ export interface FarmDocument {
   language_detected?: string | null;
   processing_status?: string | null;
   error_details?: any;
+  scan_results?: {
+    scan_vendor?: string;
+    scan_time?: string;
+    threats_detected?: string[];
+    clean?: boolean;
+    scan_id?: string;
+    confidence?: number;
+    metadata?: any;
+  } | null | any; // Allow any for JSONB compatibility
 }
 
 export const useFarmDocuments = (farmId: string) => {

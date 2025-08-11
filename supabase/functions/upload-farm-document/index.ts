@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { scanFileForThreats, shouldScanFile } from "../lib/virusScanning.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -244,6 +245,123 @@ serve(async (req) => {
 
     console.log('Uploading file:', { filePath, size: file.size, type: file.type });
 
+    // Phase C: Virus scanning before storage
+    const shouldScan = shouldScanFile(file.name, file.type, file.size);
+    let scanResults = null;
+    
+    if (shouldScan) {
+      console.log(`🔒 Starting virus scan for: ${file.name}`);
+      const scanStart = Date.now();
+      
+      try {
+        const fileBuffer = await file.arrayBuffer();
+        const scanResult = await scanFileForThreats(fileBuffer, file.name, {
+          vendor: Deno.env.get('VIRUS_SCAN_VENDOR') as any || 'virustotal',
+          timeout: 30000
+        });
+        
+        scanResults = {
+          scan_vendor: scanResult.scanVendor,
+          scan_time: scanResult.scanTime,
+          threats_detected: scanResult.threats,
+          clean: scanResult.clean,
+          scan_id: scanResult.scanId,
+          confidence: scanResult.confidence,
+          metadata: scanResult.metadata
+        };
+        
+        // Log scan metrics
+        try {
+          await supabase
+            .from('extraction_metrics')
+            .insert({
+              operation_type: 'virus_scan',
+              start_time: new Date(scanStart).toISOString(),
+              end_time: new Date().toISOString(),
+              duration_ms: Date.now() - scanStart,
+              success: true,
+              metadata: {
+                vendor: scanResult.scanVendor,
+                threats_found: scanResult.threats.length,
+                confidence: scanResult.confidence
+              }
+            });
+        } catch (metricsError) {
+          console.warn('⚠️ Failed to log scan metrics:', metricsError);
+        }
+        
+        // Reject infected files
+        if (!scanResult.clean) {
+          console.error(`🚨 INFECTED FILE DETECTED: ${file.name}`, scanResult.threats);
+          
+          return new Response(JSON.stringify({ 
+            error: 'File rejected - security threat detected',
+            details: `Threats found: ${scanResult.threats.join(', ')}`,
+            scanId: scanResult.scanId
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        console.log(`✅ File scan passed: ${file.name} (${scanResult.scanVendor})`);
+        
+      } catch (scanError) {
+        console.error('❌ Virus scan failed:', scanError);
+        
+        // Log scan failure
+        try {
+          await supabase
+            .from('extraction_metrics')
+            .insert({
+              operation_type: 'virus_scan',
+              start_time: new Date(scanStart).toISOString(),
+              end_time: new Date().toISOString(),
+              duration_ms: Date.now() - scanStart,
+              success: false,
+              error_message: scanError.message,
+              metadata: { vendor: 'virustotal', error: true }
+            });
+        } catch (metricsError) {
+          console.warn('⚠️ Failed to log scan error metrics:', metricsError);
+        }
+        
+        // Decide whether to proceed or reject based on security policy
+        const strictMode = Deno.env.get('VIRUS_SCAN_STRICT') === 'true';
+        if (strictMode) {
+          return new Response(JSON.stringify({ 
+            error: 'File rejected - unable to complete security scan',
+            details: scanError.message
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          console.warn('⚠️ Proceeding with upload despite scan failure (non-strict mode)');
+          scanResults = {
+            scan_vendor: 'failed',
+            scan_time: new Date().toISOString(),
+            threats_detected: [],
+            clean: null, // Unknown status
+            scan_id: `failed-${Date.now()}`,
+            confidence: 0.0,
+            metadata: { error: scanError.message, strict_mode: false }
+          };
+        }
+      }
+    } else {
+      console.log(`⏭️ Skipping virus scan for: ${file.name} (file type or size)`);
+      scanResults = {
+        scan_vendor: 'skipped',
+        scan_time: new Date().toISOString(),
+        threats_detected: [],
+        clean: true,
+        scan_id: `skipped-${Date.now()}`,
+        confidence: 1.0,
+        metadata: { reason: 'file_type_or_size_exclusion' }
+      };
+    }
+
     // Upload file to storage with proper path structure
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('farm-documents')
@@ -268,7 +386,7 @@ serve(async (req) => {
       .from('farm-documents')
       .getPublicUrl(filePath);
 
-    // Store document record in database with validated category
+    // Store document record in database with scan results
     const { data: documentData, error: dbError } = await supabase
       .from('farm_documents')
       .insert({
@@ -278,6 +396,8 @@ serve(async (req) => {
         file_size: file.size,
         mime_type: file.type,
         category: category, // Using normalized category
+        scan_results: scanResults,
+        processing_status: scanResults?.clean === false ? 'rejected_infected' : 'pending'
       })
       .select()
       .single();
@@ -306,7 +426,8 @@ serve(async (req) => {
       category: documentData.category,
       fileName: documentData.file_name,
       filePath: filePath,
-      userId: user.id
+      userId: user.id,
+      scanStatus: scanResults?.clean ? 'clean' : scanResults?.clean === false ? 'infected' : 'unknown'
     });
 
     return new Response(JSON.stringify({ 

@@ -961,6 +961,7 @@ export type Database = {
           predicted_category: string | null
           prediction_confidence: number | null
           processing_status: string | null
+          scan_results: Json | null
           uploaded_at: string | null
         }
         Insert: {
@@ -981,6 +982,7 @@ export type Database = {
           predicted_category?: string | null
           prediction_confidence?: number | null
           processing_status?: string | null
+          scan_results?: Json | null
           uploaded_at?: string | null
         }
         Update: {
@@ -1001,6 +1003,7 @@ export type Database = {
           predicted_category?: string | null
           prediction_confidence?: number | null
           processing_status?: string | null
+          scan_results?: Json | null
           uploaded_at?: string | null
         }
         Relationships: [
