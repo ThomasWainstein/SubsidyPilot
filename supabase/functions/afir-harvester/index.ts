@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchHTML, stripToText, canonicalize, looksLikeSubsidyUrl, looksLikeAdminUrl, logEvent, type FetchStat } from '../lib/harvest.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,18 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 };
 
-interface ScrapingSession {
-  session_id: string;
-  run_id?: string;
-  target_sources: string[];
-  extraction_config: {
-    preserve_formatting: boolean;
-    extract_documents: boolean;
-    max_pages_per_source: number;
-    include_sector_specific: boolean;
-  };
-  processing_status: 'discovering' | 'scraping' | 'processing' | 'complete';
-}
+// Feature flags from Group 1
+const ENFORCE_DB_INSERT_SUCCESS = Deno.env.get('ENFORCE_DB_INSERT_SUCCESS') !== 'false';
+const ENABLE_STRUCTURED_LOGS = Deno.env.get('ENABLE_STRUCTURED_LOGS') !== 'false';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -66,54 +58,184 @@ serve(async (req) => {
       });
     }
     
-    const { action = 'scrape', max_pages = 5, run_id } = requestBody;
+    const { action = 'scrape', max_pages = 12, run_id, sources = ['apia', 'afir'] } = requestBody;
 
-    console.log('🇷🇴 AFIR Romania Harvester starting:', { action, max_pages, run_id });
+    if (ENABLE_STRUCTURED_LOGS) {
+      logEvent('harvester.ro.start', run_id, { action, max_pages, sources });
+    }
 
     if (action === 'scrape') {
-      const session_id = `afir-${Date.now()}`;
-      const session: ScrapingSession = {
-        session_id,
-        run_id: run_id,
-        target_sources: [
-          'https://apia.org.ro/informatii-de-interes-public',
-          'https://apia.org.ro/masuri-de-sprijin-si-iacs'
-        ],
-        extraction_config: {
-          preserve_formatting: true,
-          extract_documents: true,
-          max_pages_per_source: max_pages,
-          include_sector_specific: true
-        },
-        processing_status: 'discovering'
-      };
+      const session_id = `romania-${Date.now()}`;
+      
+      // Seed discovery pages (not final targets)
+      const apiaSeedUrls = [
+        'https://apia.org.ro',
+        'https://apia.org.ro/scheme-de-sprijin',
+        'https://apia.org.ro/plati-directe'
+      ];
+      
+      const afirSeedUrls = [
+        'https://portal.afir.info/pndr-2014-2020-situatia-masurilor',
+        'https://portal.afir.info/pnrr-componenta-1-solutii-moderne-pentru-digitalizarea-si-cresterea-competitivitatii-economiei',
+        'https://www.madr.ro/afir'
+      ];
+      
+      const allFetches: FetchStat[] = [];
+      const candidateUrls = new Set<string>();
+      
+      // Step 1: Discover candidates from seed pages
+      const seedUrls = [
+        ...(sources.includes('apia') ? apiaSeedUrls : []),
+        ...(sources.includes('afir') ? afirSeedUrls : [])
+      ];
+      
+      for (const seedUrl of seedUrls) {
+        logEvent('harvester.ro.discover.fetch.start', run_id, { url: seedUrl });
+        const { html, stat } = await fetchHTML(seedUrl);
+        allFetches.push(stat);
+        logEvent('harvester.ro.discover.fetch.done', run_id, stat);
+        
+        if (stat.ok) {
+          // Extract links with anchor text containing subsidy keywords
+          const linkPattern = /<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g;
+          let match;
+          while ((match = linkPattern.exec(html)) !== null) {
+            const href = match[1];
+            const anchorText = match[2] || '';
+            const fullUrl = canonicalize(seedUrl, href);
+            
+            if (fullUrl && 
+                looksLikeSubsidyUrl(fullUrl, 'ro') && 
+                !looksLikeAdminUrl(fullUrl, 'ro') &&
+                fullUrl.includes('.ro') &&
+                (anchorText.toLowerCase().includes('sprijin') || 
+                 anchorText.toLowerCase().includes('măsur') ||
+                 anchorText.toLowerCase().includes('apel') ||
+                 anchorText.toLowerCase().includes('ghid'))) {
+              candidateUrls.add(fullUrl);
+              logEvent('harvester.ro.candidate.link', run_id, { url: fullUrl, anchor_text: anchorText });
+            }
+          }
+        }
+      }
+      
+      // Step 2: Add some known good subsidy URLs
+      const knownSubsidyUrls = [
+        'https://apia.org.ro/scheme-de-sprijin-cuplat',
+        'https://apia.org.ro/schema-de-plati-pe-suprafata-saps',
+        'https://portal.afir.info/submeasure/19.2',
+        'https://portal.afir.info/submeasure/4.1'
+      ];
+      
+      knownSubsidyUrls.forEach(url => {
+        candidateUrls.add(url);
+        logEvent('harvester.ro.candidate.link', run_id, { url, source: 'known_subsidy' });
+      });
 
-      // Log session start with error handling
-      try {
-        await supabase.from('scraper_logs').insert({
-          session_id,
-          status: 'started',
-          message: 'AFIR Romania harvesting session initiated',
-          details: { session, target_sources: session.target_sources, run_id }
-        });
-        console.log('✅ AFIR Session logged successfully');
-      } catch (logError) {
-        console.warn('⚠️ Failed to log session start:', logError);
-        // Continue execution even if logging fails
+      // Step 3: Fetch and filter candidates
+      const insertedIds: string[] = [];
+      let pagesInsertedDb = 0;
+      
+      for (const candidateUrl of Array.from(candidateUrls).slice(0, max_pages)) {
+        logEvent('harvester.ro.page.fetch.start', run_id, { url: candidateUrl });
+        const { html, stat } = await fetchHTML(candidateUrl);
+        allFetches.push(stat);
+        logEvent('harvester.ro.page.fetch.done', run_id, stat);
+        
+        if (!stat.ok) continue;
+        
+        const textMarkdown = stripToText(html);
+        
+        // Eligibility gate
+        if (textMarkdown.length < 1000) {
+          logEvent('harvester.ro.page.skip.reason', run_id, { url: candidateUrl, reason: 'too_short', length: textMarkdown.length });
+          continue;
+        }
+        
+        if (looksLikeAdminUrl(candidateUrl, 'ro')) {
+          logEvent('harvester.ro.page.skip.reason', run_id, { url: candidateUrl, reason: 'admin_like' });
+          continue;
+        }
+        
+        // Check for subsidy content signals in text
+        const subsidySignals = /(sprijin|m[ăa]sur[ăa]|apel|grant|eligibilitate|ghidul|subm[ăa]sur[ăa]|PNDR|PNRR)/i;
+        if (!subsidySignals.test(textMarkdown)) {
+          logEvent('harvester.ro.page.skip.reason', run_id, { url: candidateUrl, reason: 'no_subsidy_signals' });
+          continue;
+        }
+        
+        // Determine source site based on URL
+        const sourceSite = candidateUrl.includes('apia.org.ro') ? 'apia-romania' : 'afir-romania';
+        
+        // Insert into raw_scraped_pages
+        const pageData = {
+          run_id,
+          source_site: sourceSite,
+          source_url: candidateUrl,
+          raw_html: html,
+          raw_text: textMarkdown,
+          text_markdown: textMarkdown,
+          status: 'scraped'
+        };
+        
+        try {
+          const { data, error } = await supabase
+            .from('raw_scraped_pages')
+            .insert(pageData)
+            .select('id')
+            .single();
+          
+          if (error) {
+            if (error.code === '23505') {
+              logEvent('harvester.ro.page.skip.reason', run_id, { url: candidateUrl, reason: 'duplicate' });
+            } else {
+              logEvent('harvester.ro.insert.error', run_id, { url: candidateUrl, error: error.message });
+            }
+          } else {
+            insertedIds.push(data.id);
+            pagesInsertedDb++;
+            logEvent('harvester.ro.insert.success', run_id, { url: candidateUrl, id: data.id, source_site: sourceSite });
+          }
+        } catch (insertErr) {
+          logEvent('harvester.ro.insert.error', run_id, { url: candidateUrl, error: (insertErr as Error).message });
+        }
+        
+        // Respectful delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // Use real Romanian procurement data from APIA
-      const scrapedPages = await discoverAndScrapeRealPages(session, supabase, run_id);
-      
-      console.log(`📊 Scraped ${scrapedPages.length} pages from AFIR Romania`);
+      // Orphan sweep
+      let patchedCount = 0;
+      try {
+        const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        const { data: patchedRows } = await supabase
+          .from('raw_scraped_pages')
+          .update({ run_id })
+          .is('run_id', null)
+          .in('source_site', ['apia-romania', 'afir-romania'])
+          .gte('created_at', windowStart)
+          .select('id');
+        patchedCount = patchedRows?.length || 0;
+        if (patchedCount > 0) logEvent('harvester.ro.orphans.patched', run_id, { patchedCount });
+      } catch (patchErr) {
+        logEvent('harvester.ro.orphans.error', run_id, { error: (patchErr as Error).message });
+      }
+
+      const finalInsertedDb = pagesInsertedDb + patchedCount;
+      logEvent('harvester.ro.insert', run_id, { 
+        pages_scraped_returned: candidateUrls.size, 
+        pages_inserted_db: finalInsertedDb, 
+        inserted_ids: insertedIds 
+      });
 
       return new Response(JSON.stringify({
         success: true,
         session_id,
-        pages_scraped: scrapedPages.length,
-        pages_discovered: scrapedPages.length,
-        message: 'AFIR Romania harvesting completed',
-        scraped_pages: scrapedPages
+        pages_scraped_returned: candidateUrls.size,
+        pages_inserted_db: finalInsertedDb,
+        inserted_ids: insertedIds,
+        source_site: sources.includes('apia') && sources.includes('afir') ? 'romania-combined' : (sources.includes('apia') ? 'apia-romania' : 'afir-romania'),
+        probe: { fetches: allFetches }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -136,169 +258,4 @@ serve(async (req) => {
   }
 });
 
-async function discoverAndScrapeRealPages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
-  const scrapedPages: any[] = [];
-  
-  console.log(`🚀 Starting APIA Romania subsidy data collection`);
-
-  // Target the real APIA subsidy/support pages  
-  const targetUrls = [
-    'https://apia.org.ro/informatii-de-interes-public',
-    'https://apia.org.ro/masuri-de-sprijin-si-iacs',
-    'https://www.madr.ro/afir'
-  ];
-
-  for (const url of targetUrls) {
-    try {
-      console.log(`🔍 Scraping APIA subsidy page: ${url}`);
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
-          'Cache-Control': 'no-cache'
-        }
-      });
-
-      if (!response.ok) {
-        console.warn(`⚠️ Failed to fetch ${url}: ${response.status}`);
-        continue;
-      }
-
-      const html = await response.text();
-      console.log(`📦 Retrieved ${html.length} characters from ${url}`);
-      
-      // Extract clean text content
-      const textContent = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      // Convert to markdown format
-      const markdown = convertHtmlToMarkdown(html);
-      
-      // Extract document links (look for PDF, DOC, etc.)
-      const documents = extractDocumentLinks(html, url);
-      console.log(`📎 Found ${documents.length} document links`);
-      
-      const pageData = {
-        source_url: url,
-        source_site: 'apia-romania-subsidies',
-        raw_html: html,
-        raw_text: textContent,
-        raw_markdown: markdown,
-        text_markdown: markdown,
-        combined_content_markdown: markdown,
-        attachment_paths: documents,
-        attachment_count: documents.length,
-        status: 'scraped',
-        scrape_date: new Date().toISOString(),
-        run_id: run_id || null
-      };
-      
-      const { data: insertedPage, error } = await supabase
-        .from('raw_scraped_pages')
-        .insert(pageData)
-        .select()
-        .single();
-      
-      if (error) {
-        if (error.code === '23505') {
-          console.warn(`⚠️ URL already exists, skipping: ${url}`);
-          
-          const { data: existingPage } = await supabase
-            .from('raw_scraped_pages')
-            .select('*')
-            .eq('source_url', url)
-            .single();
-          
-          if (existingPage) {
-            scrapedPages.push(existingPage);
-            console.log(`✅ Using existing page: ${url}`);
-          }
-        } else {
-          console.error('❌ Failed to store page:', error);
-        }
-      } else {
-        scrapedPages.push(insertedPage);
-        console.log(`✅ Scraped and stored: ${url}`);
-      }
-      
-      // Rate limiting to be respectful
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-    } catch (pageError) {
-      console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
-    }
-  }
-  
-  return scrapedPages;
-}
-
-function convertHtmlToMarkdown(html: string): string {
-  let markdown = html;
-  
-  // Headers
-  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
-  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
-  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
-  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
-  
-  // Paragraphs
-  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
-  
-  // Lists
-  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
-    return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n') + '\n';
-  });
-  
-  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
-    let counter = 1;
-    return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => `${counter++}. $1\n`) + '\n';
-  });
-  
-  // Links
-  markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-  
-  // Strong/Bold
-  markdown = markdown.replace(/<(strong|b)[^>]*>(.*?)<\/\1>/gi, '**$2**');
-  
-  // Emphasis/Italic
-  markdown = markdown.replace(/<(em|i)[^>]*>(.*?)<\/\1>/gi, '*$2*');
-  
-  // Remove remaining HTML tags
-  markdown = markdown.replace(/<[^>]+>/g, '');
-  
-  // Clean up whitespace
-  markdown = markdown.replace(/\n\s*\n\s*\n/g, '\n\n');
-  markdown = markdown.replace(/^\s+|\s+$/g, '');
-  
-  return markdown;
-}
-
-function extractDocumentLinks(html: string, baseUrl: string): string[] {
-  const documents: string[] = [];
-  const docPatterns = [
-    /href="([^"]*\.pdf[^"]*)"/gi,
-    /href="([^"]*\.docx?[^"]*)"/gi,
-    /href="([^"]*\.xlsx?[^"]*)"/gi,
-    /href="([^"]*\.zip[^"]*)"/gi,
-    /href="([^"]*\.rar[^"]*)"/gi
-  ];
-  
-  for (const pattern of docPatterns) {
-    let match;
-    while ((match = pattern.exec(html)) !== null) {
-      const href = match[1];
-      if (href && !href.startsWith('javascript:') && !href.startsWith('mailto:')) {
-        const fullUrl = href.startsWith('http') ? href : new URL(href, baseUrl).toString();
-        documents.push(fullUrl);
-      }
-    }
-  }
-  
-  return Array.from(new Set(documents)); // Remove duplicates
-}
+// All functions removed and replaced by Group 2 streamlined implementation
