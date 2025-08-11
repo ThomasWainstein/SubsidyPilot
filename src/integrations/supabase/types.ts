@@ -545,6 +545,8 @@ export type Database = {
           session_id: string | null
           source_template_version: string | null
           status: string
+          table_count: number | null
+          table_data: Json | null
           table_parser: string | null
           table_quality: number | null
           tables_extracted: Json | null
@@ -580,6 +582,8 @@ export type Database = {
           session_id?: string | null
           source_template_version?: string | null
           status?: string
+          table_count?: number | null
+          table_data?: Json | null
           table_parser?: string | null
           table_quality?: number | null
           tables_extracted?: Json | null
@@ -615,6 +619,8 @@ export type Database = {
           session_id?: string | null
           source_template_version?: string | null
           status?: string
+          table_count?: number | null
+          table_data?: Json | null
           table_parser?: string | null
           table_quality?: number | null
           tables_extracted?: Json | null

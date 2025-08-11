@@ -13,18 +13,19 @@ export interface OpenAIExtractionResult {
 }
 
 /**
- * Extract farm data using OpenAI GPT models
+ * Extract farm data using OpenAI GPT models with table support
  */
 export async function extractFarmDataWithOpenAI(
   documentText: string,
   apiKey: string,
   textDebugInfo: any,
-  model: string = 'gpt-4.1-2025-04-14'
+  model: string = 'gpt-4.1-2025-04-14',
+  tableData?: any[]
 ): Promise<OpenAIExtractionResult> {
   console.log(`🤖 Starting OpenAI extraction with model: ${model}`);
   
   try {
-    const prompt = buildFarmExtractionPrompt(documentText);
+    const prompt = buildFarmExtractionPrompt(documentText, tableData);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -111,14 +112,29 @@ export async function extractFarmDataWithOpenAI(
 }
 
 /**
- * Build extraction prompt for farm documents
+ * Build extraction prompt for farm documents with table support
  */
-function buildFarmExtractionPrompt(documentText: string): string {
+function buildFarmExtractionPrompt(documentText: string, tableData?: any[]): string {
   // Limit text to avoid token limits
-  const maxTextLength = 8000;
+  const maxTextLength = 6000; // Reduced to make room for table data
   const truncatedText = documentText.length > maxTextLength 
     ? documentText.substring(0, maxTextLength) + '\n... [text truncated]'
     : documentText;
+
+  let tableSection = '';
+  if (tableData && tableData.length > 0) {
+    tableSection = `
+
+STRUCTURED TABLES FOUND:
+${tableData.map((table, index) => `
+Table ${index + 1}:
+Headers: ${table.headers.join(' | ')}
+Sample Rows (first 5):
+${table.rows.slice(0, 5).map((row: string[]) => row.join(' | ')).join('\n')}
+${table.rows.length > 5 ? `... and ${table.rows.length - 5} more rows` : ''}
+`).join('\n')}
+`;
+  }
 
   return `
 Extract farm information from this document and return a JSON object with the following structure:
@@ -145,10 +161,12 @@ Extract farm information from this document and return a JSON object with the fo
     "staffCount": "Number of employees (number)",
     "certifications": ["Array of certifications"],
     "revenue": "Revenue information if mentioned",
-    "softwareUsed": ["Array of software/systems used"]
+    "softwareUsed": ["Array of software/systems used"],
+    "tableData": "Summary of key information found in tables"
   },
   "confidence": "Confidence score 0-1",
-  "detectedLanguage": "Language of the document (en/fr/ro/etc)"
+  "detectedLanguage": "Language of the document (en/fr/ro/etc)",
+  "tablesProcessed": "Number of tables analyzed"
 }
 
 IMPORTANT RULES:
@@ -157,10 +175,12 @@ IMPORTANT RULES:
 3. For booleans, use true/false or null
 4. For numbers, provide actual numeric values
 5. For arrays, provide actual arrays even if single item
-6. Return ONLY valid JSON, no additional text
+6. Extract key information from both narrative text AND tables
+7. When tables contain farm data, prioritize table information over text
+8. Return ONLY valid JSON, no additional text
 
 Document text:
-${truncatedText}
+${truncatedText}${tableSection}
 `;
 }
 

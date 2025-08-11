@@ -4,10 +4,18 @@
  */
 
 import { crypto } from "https://deno.land/std@0.195.0/crypto/mod.ts";
+import { 
+  extractTablesFromPdf, 
+  extractTablesFromDocx, 
+  extractTablesFromXlsx,
+  type TableExtractionResult,
+  type ExtractedTable,
+  type TextChunk
+} from './tableExtraction.ts';
 
 export interface ParsedDocument {
   text: string;
-  chunks: string[];
+  chunks: TextChunk[];
   metadata: {
     pages?: number;
     language?: string;
@@ -18,11 +26,32 @@ export interface ParsedDocument {
     confidence: number;
     hash: string;
   };
-  tables?: Array<{
-    headers: string[];
-    rows: string[][];
-    confidence: number;
-  }>;
+  tables?: ExtractedTable[];
+  tableCount?: number;
+}
+
+export interface TextChunk {
+  content: string;
+  type: 'text' | 'table';
+  pageNumber?: number;
+  metadata?: {
+    tableIndex?: number;
+    position?: { x: number; y: number; width: number; height: number };
+  };
+}
+
+export interface ExtractedTable {
+  headers: string[];
+  rows: string[][];
+  confidence: number;
+  pageNumber?: number;
+  tableIndex?: number;
+  sourceFormat?: 'pdf' | 'docx' | 'xlsx';
+  metadata?: {
+    sheetName?: string; // For XLSX
+    position?: { x: number; y: number; width: number; height: number }; // For PDF
+    merged_cells?: Array<{ start: [number, number]; end: [number, number] }>; // For XLSX
+  };
 }
 
 export interface ParseOptions {
@@ -73,75 +102,53 @@ export async function detectMimeType(buffer: ArrayBuffer): Promise<string> {
 }
 
 /**
- * Parse PDF using PDF.js server-side
+ * Parse PDF using PDF.js with table extraction
  */
 export async function parsePdfNative(buffer: ArrayBuffer, options: ParseOptions = {}): Promise<ParsedDocument> {
   const startTime = Date.now();
   const opts = { ...DEFAULT_OPTIONS, ...options };
   
   try {
-    console.log('🔍 Starting native PDF parsing...');
+    console.log('🔍 Starting native PDF parsing with table extraction...');
     
-    // Import PDF.js for Deno
+    // Extract tables first
+    const tableResult = await extractTablesFromPdf(buffer);
+    
+    // Import PDF.js for text extraction
     const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs');
-    
-    // Configure PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.mjs';
     
-    // Load PDF document
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(buffer),
-      verbosity: 0 // Reduce console noise
+      verbosity: 0
     });
     
     const pdfDoc = await loadingTask.promise;
     const numPages = pdfDoc.numPages;
-    console.log(`📄 PDF loaded: ${numPages} pages`);
+    console.log(`📄 PDF loaded: ${numPages} pages, ${tableResult.tableCount} tables`);
     
-    let fullText = '';
-    const pageTexts: string[] = [];
+    // Combine table chunks with any remaining text
+    const processedChunks = combineTextAndTableChunks(tableResult.textChunks, opts.maxChunkSize);
+    const fullText = tableResult.textChunks.map(chunk => chunk.content).join('\n\n');
     
-    // Extract text from each page
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        
-        const pageText = textContent.items
-          .filter((item: any) => item.str)
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        pageTexts.push(pageText);
-        fullText += pageText + '\n\n';
-        
-        // Cleanup page resources
-        page.cleanup();
-      } catch (pageError) {
-        console.warn(`⚠️ Failed to extract text from page ${pageNum}:`, pageError);
-        pageTexts.push('');
-      }
-    }
-    
-    // Cleanup PDF document
     pdfDoc.cleanup();
     
     const confidence = calculateTextConfidence(fullText, buffer.byteLength);
-    const processedText = normalizeText(fullText);
-    const chunks = chunkText(processedText, opts.maxChunkSize, opts.overlapSize);
     
-    console.log(`✅ PDF parsing completed: ${processedText.length} chars, ${chunks.length} chunks`);
+    console.log(`✅ PDF parsing completed: ${fullText.length} chars, ${processedChunks.length} chunks, ${tableResult.tableCount} tables`);
     
     return {
-      text: processedText,
-      chunks,
+      text: fullText,
+      chunks: processedChunks,
+      tables: tableResult.tables,
+      tableCount: tableResult.tableCount,
       metadata: {
         pages: numPages,
-        language: detectLanguage(processedText),
+        language: detectLanguage(fullText),
         fileSize: buffer.byteLength,
         mimeType: 'application/pdf',
         processingTime: Date.now() - startTime,
-        extractionMethod: 'pdf-native',
+        extractionMethod: 'pdf-native-with-tables',
         confidence,
         hash: await calculateHash(buffer)
       }
@@ -204,34 +211,36 @@ export async function runOcrFallback(buffer: ArrayBuffer, mimeType: string): Pro
 }
 
 /**
- * Parse DOCX using mammoth
+ * Parse DOCX using mammoth with table extraction
  */
 export async function parseDocx(buffer: ArrayBuffer): Promise<ParsedDocument> {
   const startTime = Date.now();
   
   try {
-    console.log('🔍 Starting DOCX parsing...');
+    console.log('🔍 Starting DOCX parsing with table extraction...');
     
-    // Import mammoth for Deno
-    const mammoth = await import('https://esm.sh/mammoth@1.6.0');
+    // Extract tables first
+    const tableResult = await extractTablesFromDocx(buffer);
     
-    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-    const processedText = normalizeText(result.value);
-    const chunks = chunkText(processedText, 4000, 200);
+    // Combine chunks
+    const processedChunks = combineTextAndTableChunks(tableResult.textChunks, 4000);
+    const fullText = tableResult.textChunks.map(chunk => chunk.content).join('\n\n');
     
-    console.log(`✅ DOCX parsing completed: ${processedText.length} chars`);
+    console.log(`✅ DOCX parsing completed: ${fullText.length} chars, ${tableResult.tableCount} tables`);
     
     return {
-      text: processedText,
-      chunks,
+      text: fullText,
+      chunks: processedChunks,
+      tables: tableResult.tables,
+      tableCount: tableResult.tableCount,
       metadata: {
         fileSize: buffer.byteLength,
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         processingTime: Date.now() - startTime,
-        extractionMethod: 'docx-mammoth',
+        extractionMethod: 'docx-mammoth-with-tables',
         confidence: 0.95,
         hash: await calculateHash(buffer),
-        language: detectLanguage(processedText)
+        language: detectLanguage(fullText)
       }
     };
   } catch (error) {
@@ -241,67 +250,36 @@ export async function parseDocx(buffer: ArrayBuffer): Promise<ParsedDocument> {
 }
 
 /**
- * Parse XLSX with table structure
+ * Parse XLSX with enhanced table structure
  */
 export async function parseXlsx(buffer: ArrayBuffer): Promise<ParsedDocument> {
   const startTime = Date.now();
   
   try {
-    console.log('🔍 Starting XLSX parsing...');
+    console.log('🔍 Starting XLSX parsing with enhanced table extraction...');
     
-    // Import xlsx for Deno
-    const XLSX = await import('https://esm.sh/xlsx@0.18.5');
+    // Use enhanced XLSX table extraction
+    const tableResult = await extractTablesFromXlsx(buffer);
     
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    let fullText = '';
-    const tables: Array<{ headers: string[]; rows: string[][]; confidence: number; }> = [];
+    // Combine chunks
+    const processedChunks = combineTextAndTableChunks(tableResult.textChunks, 4000);
+    const fullText = tableResult.textChunks.map(chunk => chunk.content).join('\n\n');
     
-    // Process each worksheet
-    for (const sheetName of workbook.SheetNames) {
-      const worksheet = workbook.Sheets[sheetName];
-      
-      // Convert to JSON for structured data
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
-      if (jsonData.length > 0) {
-        const headers = (jsonData[0] as string[]) || [];
-        const rows = jsonData.slice(1) as string[][];
-        
-        tables.push({
-          headers,
-          rows,
-          confidence: 0.9
-        });
-        
-        // Add to text content
-        fullText += `Sheet: ${sheetName}\n`;
-        fullText += `Headers: ${headers.join(', ')}\n`;
-        rows.forEach((row, index) => {
-          if (index < 10) { // Limit preview
-            fullText += `Row ${index + 1}: ${row.join(' | ')}\n`;
-          }
-        });
-        fullText += '\n';
-      }
-    }
-    
-    const processedText = normalizeText(fullText);
-    const chunks = chunkText(processedText, 4000, 200);
-    
-    console.log(`✅ XLSX parsing completed: ${tables.length} sheets, ${processedText.length} chars`);
+    console.log(`✅ XLSX parsing completed: ${tableResult.tableCount} sheets, ${fullText.length} chars`);
     
     return {
-      text: processedText,
-      chunks,
-      tables,
+      text: fullText,
+      chunks: processedChunks,
+      tables: tableResult.tables,
+      tableCount: tableResult.tableCount,
       metadata: {
         fileSize: buffer.byteLength,
         mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         processingTime: Date.now() - startTime,
-        extractionMethod: 'xlsx-native',
+        extractionMethod: 'xlsx-enhanced',
         confidence: 0.95,
         hash: await calculateHash(buffer),
-        language: detectLanguage(processedText)
+        language: detectLanguage(fullText)
       }
     };
   } catch (error) {
@@ -358,6 +336,57 @@ export function chunkText(text: string, maxSize: number = 4000, overlap: number 
   }
   
   return chunks.filter(chunk => chunk.length > 0);
+}
+
+/**
+ * Combine text and table chunks while respecting size limits
+ */
+function combineTextAndTableChunks(textChunks: TextChunk[], maxSize: number): TextChunk[] {
+  const result: TextChunk[] = [];
+  let currentTextChunk = '';
+  let currentPageNumber: number | undefined;
+  
+  for (const chunk of textChunks) {
+    if (chunk.type === 'table') {
+      // Tables get their own chunk always
+      if (currentTextChunk.trim()) {
+        result.push({
+          content: currentTextChunk.trim(),
+          type: 'text',
+          pageNumber: currentPageNumber
+        });
+        currentTextChunk = '';
+      }
+      result.push(chunk);
+    } else {
+      // Accumulate text chunks
+      if (currentTextChunk.length + chunk.content.length > maxSize) {
+        if (currentTextChunk.trim()) {
+          result.push({
+            content: currentTextChunk.trim(),
+            type: 'text',
+            pageNumber: currentPageNumber
+          });
+        }
+        currentTextChunk = chunk.content;
+        currentPageNumber = chunk.pageNumber;
+      } else {
+        currentTextChunk += (currentTextChunk ? '\n\n' : '') + chunk.content;
+        currentPageNumber = currentPageNumber || chunk.pageNumber;
+      }
+    }
+  }
+  
+  // Add final text chunk
+  if (currentTextChunk.trim()) {
+    result.push({
+      content: currentTextChunk.trim(),
+      type: 'text',
+      pageNumber: currentPageNumber
+    });
+  }
+  
+  return result;
 }
 
 /**
