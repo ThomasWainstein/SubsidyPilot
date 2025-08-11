@@ -148,11 +148,16 @@ export default function EnhancedDualPipelineManager() {
     try {
       toast.info('🤖 Starting AI processing of scraped pages...');
       
+      // Generate a unique run_id for this manual trigger
+      const manualRunId = crypto.randomUUID();
+      
       const { data, error } = await supabase.functions.invoke('ai-content-processor', {
         body: {
-          source: 'all',
-          session_id: `manual-trigger-${Date.now()}`,
-          quality_threshold: 0.6
+          run_id: manualRunId,
+          quality_threshold: 0.6,
+          min_len: 200,
+          model: 'gpt-4o-mini',
+          allow_recent_fallback: true
         }
       });
 
