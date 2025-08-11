@@ -77,7 +77,7 @@ serve(async (req) => {
     aiRunId = aiRun.id;
 
     // Check for OpenAI API key with fallback AFTER creating envelope
-    const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API') ?? Deno.env.get('OPENAI_API_KEY');
+    const openAIApiKey = Deno.env.get('SCRAPPER_RAW_GPT_API') ?? Deno.env.get('OPENAI_API_KEY');
     
     if (!openAIApiKey) {
       console.log(`AI_RUN_ERROR {run_id: ${run_id}, reason: "MISSING_OPENAI_KEY"}`);
