@@ -67,6 +67,13 @@ export type Database = {
             referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_content_runs: {
@@ -1342,6 +1349,13 @@ export type Database = {
             referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "harvest_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       integration_audit_log: {
@@ -1821,6 +1835,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_pipeline_health_24h"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_status"
             referencedColumns: ["id"]
           },
         ]
@@ -2817,6 +2838,13 @@ export type Database = {
             referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_ai_yield_by_run: {
@@ -2925,6 +2953,17 @@ export type Database = {
           stats?: Json | null
           status?: string | null
           total_pages?: never
+        }
+        Relationships: []
+      }
+      v_pipeline_status: {
+        Row: {
+          config: Json | null
+          id: string | null
+          progress: number | null
+          stage: string | null
+          started_at: string | null
+          status: string | null
         }
         Relationships: []
       }
