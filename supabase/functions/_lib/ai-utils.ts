@@ -37,6 +37,17 @@ export function coerceSubsidy(obj: any) {
     return m ? m[0] : null;
   };
   
+  // Convert to array if string, keep as array if already array, null if empty
+  const toArray = (s?: any) => {
+    if (!s) return null;
+    if (Array.isArray(s)) return s.length > 0 ? s : null;
+    if (typeof s === 'string') {
+      const trimmed = s.trim();
+      return trimmed ? [trimmed] : null;
+    }
+    return null;
+  };
+  
   return {
     title: norm(obj?.title),
     description: norm(obj?.description),
@@ -44,8 +55,8 @@ export function coerceSubsidy(obj: any) {
     deadline: toDate(obj?.deadline),
     funding_type: norm(obj?.funding_type),
     agency: norm(obj?.agency),
-    sector: norm(obj?.sector),
-    region: norm(obj?.region)
+    sector: toArray(obj?.sector),
+    region: toArray(obj?.region)
   };
 }
 
