@@ -218,13 +218,6 @@ export type Database = {
             foreignKeyName: "application_forms_subsidy_id_fkey"
             columns: ["subsidy_id"]
             isOneToOne: false
-            referencedRelation: "subsidies_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "application_forms_subsidy_id_fkey"
-            columns: ["subsidy_id"]
-            isOneToOne: false
             referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
@@ -2508,13 +2501,6 @@ export type Database = {
             foreignKeyName: "fk_subsidy_form_schemas_subsidy"
             columns: ["subsidy_id"]
             isOneToOne: false
-            referencedRelation: "subsidies_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_subsidy_form_schemas_subsidy"
-            columns: ["subsidy_id"]
-            isOneToOne: false
             referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
@@ -2557,13 +2543,6 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subsidy_matches_subsidy_id_fkey"
-            columns: ["subsidy_id"]
-            isOneToOne: false
-            referencedRelation: "subsidies_public"
             referencedColumns: ["id"]
           },
           {
@@ -2779,48 +2758,6 @@ export type Database = {
         }
         Relationships: []
       }
-      review_queue_summary: {
-        Row: {
-          avg_priority: number | null
-          completed_count: number | null
-          in_progress_count: number | null
-          pending_count: number | null
-        }
-        Relationships: []
-      }
-      subsidies_public: {
-        Row: {
-          agency: string | null
-          created_at: string | null
-          deadline: string | null
-          funding_type: string | null
-          id: string | null
-          program: string | null
-          region: string[] | null
-          title: string | null
-        }
-        Insert: {
-          agency?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          funding_type?: string | null
-          id?: string | null
-          program?: string | null
-          region?: string[] | null
-          title?: string | null
-        }
-        Update: {
-          agency?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          funding_type?: string | null
-          id?: string | null
-          program?: string | null
-          region?: string[] | null
-          title?: string | null
-        }
-        Relationships: []
-      }
       v_active_run_status: {
         Row: {
           config: Json | null
@@ -2900,38 +2837,6 @@ export type Database = {
           },
         ]
       }
-      v_ai_run_summary: {
-        Row: {
-          avg_content_length: number | null
-          pages: number | null
-          pages_failed: number | null
-          pages_ok: number | null
-          run_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_active_run_status"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["run_id"]
-          },
-        ]
-      }
       v_ai_yield_by_run: {
         Row: {
           ended_at: string | null
@@ -2962,18 +2867,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_extraction_quality: {
-        Row: {
-          avg_confidence: number | null
-          avg_latency: number | null
-          avg_table_quality: number | null
-          completion_rate: number | null
-          day: string | null
-          docs_total: number | null
-          ocr_rate: number | null
-        }
-        Relationships: []
-      }
       v_harvest_quality_by_source_24h: {
         Row: {
           avg_content_length: number | null
@@ -2981,15 +2874,6 @@ export type Database = {
           quality_pages: number | null
           recent_pages: number | null
           source_site: string | null
-        }
-        Relationships: []
-      }
-      v_last_ai_runs: {
-        Row: {
-          last_ended: string | null
-          run_count: number | null
-          run_id: string | null
-          subs_created: number | null
         }
         Relationships: []
       }
