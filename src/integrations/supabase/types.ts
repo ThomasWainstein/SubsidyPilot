@@ -65,8 +65,10 @@ export type Database = {
           pages_eligible: number | null
           pages_processed: number | null
           pages_seen: number | null
+          reason: string | null
           run_id: string
           started_at: string | null
+          status: string | null
           subs_created: number | null
         }
         Insert: {
@@ -78,8 +80,10 @@ export type Database = {
           pages_eligible?: number | null
           pages_processed?: number | null
           pages_seen?: number | null
+          reason?: string | null
           run_id: string
           started_at?: string | null
+          status?: string | null
           subs_created?: number | null
         }
         Update: {
@@ -91,8 +95,10 @@ export type Database = {
           pages_eligible?: number | null
           pages_processed?: number | null
           pages_seen?: number | null
+          reason?: string | null
           run_id?: string
           started_at?: string | null
+          status?: string | null
           subs_created?: number | null
         }
         Relationships: []
