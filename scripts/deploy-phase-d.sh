@@ -73,14 +73,14 @@ echo ""
 
 # Generate fixtures
 echo "📁 Generating test fixtures..."
-deno run -A scripts/make_golden_fixtures.ts
-deno run -A scripts/make_golden_fixtures_ext.ts
+deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures.ts
+deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures_ext.ts
 echo -e "${GREEN}✅ Fixtures generated${NC}"
 echo ""
 
 # Run harness
 echo "🧪 Running Phase D harness..."
-if deno run -A scripts/phase_d_harness.ts; then
+if deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness.ts; then
     echo -e "${GREEN}✅ Core harness passed${NC}"
 else
     echo -e "${RED}❌ Core harness failed${NC}"
@@ -88,7 +88,7 @@ else
 fi
 
 echo "🧪 Running extended harness..."
-if deno run -A scripts/phase_d_harness_ext.ts; then
+if deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness_ext.ts; then
     echo -e "${GREEN}✅ Extended harness passed${NC}"
 else
     echo -e "${YELLOW}⚠️  Extended harness had issues (check output)${NC}"
@@ -97,7 +97,7 @@ echo ""
 
 # Backfill dry run
 echo "🔄 Testing backfill (dry run)..."
-BACKFILL_DAYS=1 DRY_RUN=true deno run -A scripts/backfill_phase_d.ts
+BACKFILL_DAYS=1 DRY_RUN=true deno run --allow-read --allow-write --allow-net --allow-env scripts/backfill_phase_d.ts
 echo -e "${GREEN}✅ Backfill test complete${NC}"
 echo ""
 
@@ -105,7 +105,7 @@ echo -e "${GREEN}🎉 Phase D deployment validation complete!${NC}"
 echo ""
 echo "Next steps:"
 echo "1. Monitor health queries in production"
-echo "2. Run actual backfill: BACKFILL_DAYS=1 DRY_RUN=false deno run -A scripts/backfill_phase_d.ts"
+echo "2. Run actual backfill: BACKFILL_DAYS=1 DRY_RUN=false deno run --allow-read --allow-write --allow-net --allow-env scripts/backfill_phase_d.ts"
 echo "3. Set up monitoring alerts per docs/PHASE_D_MONITORING.md"
 echo ""
 echo "Emergency rollback: supabase secrets set ENABLE_PHASE_D=false --project-ref $PROJECT_REF"
