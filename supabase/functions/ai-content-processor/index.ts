@@ -10,6 +10,7 @@ const corsHeaders = {
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const allowRecentFallback = Deno.env.get('ALLOW_RECENT_FALLBACK') === 'true';
 
 if (!openAIApiKey) {
   throw new Error('OpenAI API key not found');
@@ -22,54 +23,138 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { source, run_id, quality_threshold = 0.4 } = await req.json();
-    
-    console.log(`🤖 Starting AI content processing for run: ${run_id}`);
-    
-    // Get raw scraped pages for this run
-    let { data: pages, error: fetchError } = await supabase
-      .from('raw_scraped_pages')
-      .select('*')
-      .eq('run_id', run_id);
+  const startTime = Date.now();
+  let runId: string | null = null;
 
-    if (fetchError) {
-      console.error('Error fetching pages:', fetchError);
-      throw fetchError;
+  try {
+    const { source, run_id, page_ids, quality_threshold = 0.4 } = await req.json();
+    runId = run_id;
+    
+    console.log(`🤖 Starting AI content processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}, Allow fallback: ${allowRecentFallback}`);
+    
+    // Update pipeline run to AI stage
+    if (run_id) {
+      await updatePipelineRun(run_id, {
+        status: 'running',
+        stage: 'ai',
+        progress: 50
+      });
     }
 
-    console.log(`📄 Found ${pages?.length || 0} pages for run ${run_id}`);
+    let pages: any[] = [];
 
-    // If no substantial content for this run, get recent FranceAgriMer data
-    const substantialPages = pages?.filter(p => 
-      (p.text_markdown?.length || 0) + (p.raw_text?.length || 0) + (p.raw_html?.length || 0) > 200
-    ) || [];
-
-    if (substantialPages.length === 0) {
-      console.log(`⚠️ No substantial content for run ${run_id}, fetching recent FranceAgriMer data`);
-      
-      const { data: recentPages, error: recentError } = await supabase
+    // Get pages to process
+    if (page_ids && page_ids.length > 0) {
+      // Process specific page IDs
+      const { data: pageData, error: fetchError } = await supabase
         .from('raw_scraped_pages')
         .select('*')
-        .like('source_url', '%franceagrimer%')
-        .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()) // last 2 hours
-        .limit(10);
+        .in('id', page_ids);
 
-      if (!recentError && recentPages?.length > 0) {
-        pages = recentPages;
-        console.log(`📄 Using ${recentPages.length} recent FranceAgriMer pages instead`);
+      if (fetchError) throw fetchError;
+      pages = pageData || [];
+    } else if (run_id) {
+      // Process pages for specific run
+      const { data: pageData, error: fetchError } = await supabase
+        .from('raw_scraped_pages')
+        .select('*')
+        .eq('run_id', run_id);
+
+      if (fetchError) throw fetchError;
+      pages = pageData || [];
+
+      // Filter pages with sufficient content (200+ chars guard)
+      const substantialPages = pages.filter(p => {
+        const contentLength = (p.text_markdown?.length || 0) + 
+                            (p.raw_text?.length || 0) + 
+                            (p.raw_html?.length || 0);
+        return contentLength >= 200;
+      });
+
+      // Log insufficient content pages to harvest_issues
+      const insufficientPages = pages.filter(p => {
+        const contentLength = (p.text_markdown?.length || 0) + 
+                            (p.raw_text?.length || 0) + 
+                            (p.raw_html?.length || 0);
+        return contentLength < 200;
+      });
+
+      for (const page of insufficientPages) {
+        const contentLength = (page.text_markdown?.length || 0) + 
+                            (page.raw_text?.length || 0) + 
+                            (page.raw_html?.length || 0);
+        
+        await supabase.from('harvest_issues').insert({
+          run_id,
+          page_id: page.id,
+          source_url: page.source_url,
+          reason: 'Insufficient content for AI processing',
+          content_length: contentLength
+        });
       }
+
+      pages = substantialPages;
+
+      // Fallback to recent content only if enabled and no substantial pages
+      if (pages.length === 0 && allowRecentFallback) {
+        console.log(`⚠️ No substantial content for run ${run_id}, using recent fallback (ALLOW_RECENT_FALLBACK=true)`);
+        
+        const { data: recentPages, error: recentError } = await supabase
+          .from('raw_scraped_pages')
+          .select('*')
+          .like('source_url', '%franceagrimer%')
+          .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
+          .limit(10);
+
+        if (!recentError && recentPages?.length > 0) {
+          pages = recentPages.filter(p => {
+            const contentLength = (p.text_markdown?.length || 0) + 
+                                (p.raw_text?.length || 0) + 
+                                (p.raw_html?.length || 0);
+            return contentLength >= 200;
+          });
+          console.log(`📄 Using ${pages.length} recent FranceAgriMer pages (fallback mode)`);
+        }
+      }
+    }
+
+    console.log(`📄 Processing ${pages.length} pages with sufficient content`);
+
+    if (pages.length === 0) {
+      const message = `No pages found for processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}`;
+      console.log(`⚠️ ${message}`);
+      
+      if (run_id) {
+        await updatePipelineRun(run_id, {
+          stage: 'done',
+          progress: 100,
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+          stats: { ai: { pages_processed: 0, successful: 0, failed: 0 } }
+        });
+      }
+
+      return new Response(JSON.stringify({
+        pages_processed: 0,
+        successful: 0,
+        failed: 0,
+        message
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     let successful = 0;
     let failed = 0;
 
-    for (const page of pages || []) {
+    // Process each page
+    for (const page of pages) {
+      const pageStartTime = Date.now();
       try {
-        console.log(`🔍 Processing page: ${page.source_url}`);
+        console.log(`🔍 Processing page: ${page.source_url} (${page.id})`);
         
-        // Extract subsidy information using OpenAI
         const extractedData = await extractSubsidyData(page);
+        const pageProcessingTime = Date.now() - pageStartTime;
         
         if (extractedData && extractedData.length > 0) {
           // Store in subsidies_structured table
@@ -84,44 +169,123 @@ serve(async (req) => {
             })));
 
           if (insertError) {
-            console.error(`Error inserting subsidies for ${page.source_url}:`, insertError);
+            console.error(`❌ Error inserting subsidies for ${page.source_url}:`, insertError);
+            await logError(run_id, page.id, page.source_url, 'insert', insertError.message);
             failed++;
           } else {
-            console.log(`✅ Extracted ${extractedData.length} subsidies from ${page.source_url}`);
+            console.log(`✅ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, success, 0 tokens, ${pageProcessingTime}ms`);
             successful += extractedData.length;
           }
         } else {
-          console.log(`⚠️ No subsidies found in ${page.source_url}`);
+          console.log(`⚠️ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, no_data, 0 tokens, ${pageProcessingTime}ms`);
+          await logError(run_id, page.id, page.source_url, 'extraction', 'No subsidies found in content');
         }
 
       } catch (error) {
-        console.error(`Error processing page ${page.source_url}:`, error);
+        const pageProcessingTime = Date.now() - pageStartTime;
+        console.error(`❌ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, error, 0 tokens, ${pageProcessingTime}ms:`, error);
+        await logError(run_id, page.id, page.source_url, 'processing', error.message);
         failed++;
       }
     }
 
-    console.log(`🎯 AI processing completed: ${successful} subsidies created, ${failed} errors`);
+    const totalProcessingTime = Date.now() - startTime;
+    console.log(`🎯 AI processing completed in ${totalProcessingTime}ms: ${successful} subsidies created, ${failed} errors`);
+
+    // Update pipeline run with results
+    if (run_id) {
+      const nextStage = successful > 0 ? 'forms' : 'done';
+      const nextProgress = successful > 0 ? 75 : 100;
+      const runStatus = nextStage === 'done' ? 'completed' : 'running';
+      
+      await updatePipelineRun(run_id, {
+        stage: nextStage,
+        progress: nextProgress,
+        status: runStatus,
+        ended_at: nextStage === 'done' ? new Date().toISOString() : undefined,
+        stats: {
+          ai: {
+            pages_processed: pages.length,
+            successful,
+            failed,
+            processing_time_ms: totalProcessingTime
+          }
+        }
+      });
+    }
 
     return new Response(JSON.stringify({
+      pages_processed: pages.length,
       successful,
       failed,
-      pages_processed: pages?.length || 0
+      processing_time_ms: totalProcessingTime
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('AI content processing error:', error);
+    const totalProcessingTime = Date.now() - startTime;
+    console.error('❌ AI content processing error:', error);
+    
+    if (runId) {
+      await updatePipelineRun(runId, {
+        status: 'failed',
+        ended_at: new Date().toISOString(),
+        error: {
+          stage: 'ai',
+          message: error.message,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: error.message,
+      pages_processed: 0,
       successful: 0,
-      failed: 1 
+      failed: 1,
+      processing_time_ms: totalProcessingTime
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
+
+async function updatePipelineRun(runId: string, updates: any) {
+  try {
+    const { error } = await supabase
+      .from('pipeline_runs')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', runId);
+
+    if (error) {
+      console.error('Error updating pipeline run:', error);
+    }
+  } catch (error) {
+    console.error('Error in updatePipelineRun:', error);
+  }
+}
+
+async function logError(runId: string | null, pageId: string, sourceUrl: string, stage: string, message: string) {
+  if (!runId) return;
+  
+  try {
+    await supabase.from('ai_content_errors').insert({
+      run_id: runId,
+      page_id: pageId,
+      source_url: sourceUrl,
+      stage,
+      message,
+      snippet: message.slice(0, 500)
+    });
+  } catch (error) {
+    console.error('Error logging AI content error:', error);
+  }
+}
 
 async function extractSubsidyData(page: any) {
   try {

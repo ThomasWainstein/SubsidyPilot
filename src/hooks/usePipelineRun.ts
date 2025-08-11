@@ -229,6 +229,10 @@ export function usePipelineRun() {
     cancel,
     rehydrate,
     isActive: run && ['queued', 'running'].includes(run.status),
-    isStarting: run?.id === 'starting'
+    isStarting: run?.id === 'starting',
+    isCompleted: run?.status === 'completed',
+    isFailed: run?.status === 'failed',
+    currentStage: run?.stage || 'init',
+    progress: run?.progress || 0
   };
 }

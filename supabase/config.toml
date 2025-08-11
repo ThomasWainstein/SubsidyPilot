@@ -97,3 +97,6 @@ verify_jwt = false
 
 [functions.ai-content-processor]
 verify_jwt = false
+
+[functions.ai-content-processor.env]
+ALLOW_RECENT_FALLBACK = "false"

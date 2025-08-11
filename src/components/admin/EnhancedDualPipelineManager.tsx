@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { StatusBadge, StatusType } from '@/components/ui/status-badge';
 import { ProgressIndicator } from '@/components/ui/progress-indicator';
@@ -7,6 +8,7 @@ import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PipelineResultsDashboard } from '@/components/admin/PipelineResultsDashboard';
+import { PipelineStatusBadges } from '@/components/admin/PipelineStatusBadges';
 import { supabase } from '@/integrations/supabase/client';
 import { usePipelineRun } from '@/hooks/usePipelineRun';
 import { toast } from 'sonner';
@@ -214,16 +216,37 @@ export default function EnhancedDualPipelineManager() {
                 Start Full Pipeline
               </EnhancedButton>
             ) : (
-              <div className="space-y-2">
-                <EnhancedButton 
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={isStarting || run?.status === 'completed'}
-                  className="w-full h-12 text-lg"
-                  icon={<X className="h-5 w-5" />}
-                >
-                  {isStarting ? 'Starting...' : run?.status === 'completed' ? 'Completed' : 'Cancel Pipeline'}
-                </EnhancedButton>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-lg">
+                    {isStarting ? 'Starting Pipeline...' : 'Running Pipeline...'}
+                  </span>
+                  <EnhancedButton 
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isStarting || run?.status === 'completed'}
+                    icon={<X className="h-4 w-4" />}
+                  >
+                    {isStarting ? 'Starting...' : run?.status === 'completed' ? 'Completed' : 'Cancel'}
+                  </EnhancedButton>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>{run?.progress || 0}%</span>
+                  </div>
+                  <Progress value={run?.progress || 0} className="w-full" />
+                </div>
+
+                {/* Stage Badges */}
+                <PipelineStatusBadges 
+                  currentStage={run?.stage || 'init'}
+                  progress={run?.progress || 0}
+                  status={run?.status || 'queued'}
+                />
                 
                 {run && (
                   <div className="flex justify-between text-sm text-muted-foreground">
