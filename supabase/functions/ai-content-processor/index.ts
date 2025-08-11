@@ -286,11 +286,13 @@ Return only valid JSON array, no other text.`;
 
           const aiData = await aiResponse.json();
           const extractedText = aiData.choices[0].message.content;
-          console.log(`✅ OpenAI response for page ${page.id}: ${extractedText?.length || 0} chars`);
+          console.log(`✅ OpenAI raw response for page ${page.id}:`);
+          console.log(`📝 Raw AI output: ${extractedText}`);
           
           // Parse with robustJsonArray
           const rawSubsidies = robustJsonArray(extractedText);
-          console.log(`📊 Found ${rawSubsidies.length} potential subsidies in page ${page.id}`);
+          console.log(`📊 Parsed ${rawSubsidies.length} potential subsidies from raw response`);
+          console.log(`🔍 Raw subsidies array:`, JSON.stringify(rawSubsidies, null, 2));
           
           let pageSubsidiesCreated = 0;
           for (const rawSub of rawSubsidies) {
