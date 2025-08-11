@@ -1,469 +1,308 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface PipelineRequest {
-  action: 'start_scraping' | 'start_ai_processing' | 'generate_forms' | 'health_check' | 'get_status'
-  config?: {
-    countries?: string[]
-    batch_size?: number
-    priority?: 'high' | 'medium' | 'low'
-    force_extraction?: boolean
-  }
-  execution_id?: string
-}
+};
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    const { action, config = {}, execution_id } = await req.json() as PipelineRequest
+    const { action, runId } = await req.json();
 
-    console.log(`Pipeline orchestrator action: ${action}`, { config, execution_id })
-
-    // Log the audit entry
-    await supabase
-      .from('integration_audit_log')
-      .insert({
-        operation_type: action,
-        component_from: 'pipeline_orchestrator',
-        component_to: 'system',
-        operation_data: { config, execution_id },
-        success: true
-      })
-
-    switch (action) {
-      case 'start_scraping':
-        return await handleScrapingExecution(supabase, config)
-        
-      case 'start_ai_processing':
-        return await handleAIProcessing(supabase, config)
-        
-      case 'generate_forms':
-        return await handleFormGeneration(supabase, config)
-        
-      case 'health_check':
-        return await handleHealthCheck(supabase)
-        
-      case 'get_status':
-        return await handleStatusCheck(supabase, execution_id)
-        
-      default:
-        throw new Error(`Unknown action: ${action}`)
+    if (action === 'orchestrate') {
+      await orchestratePipeline(supabase, runId);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
+    throw new Error(`Unknown action: ${action}`);
   } catch (error) {
-    console.error('Pipeline orchestrator error:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
+    console.error('Pipeline orchestrator error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+async function orchestratePipeline(supabase: any, runId: string) {
+  console.log(`🔄 Starting orchestration for run ${runId}`);
+  
+  const updateRun = async (patch: any) => {
+    const { error } = await supabase
+      .from('pipeline_runs')
+      .update(patch)
+      .eq('id', runId);
+    if (error) throw error;
+  };
+
+  const failRun = async (stage: string, message: string, details?: any) => {
+    console.error(`❌ Pipeline failed at ${stage}: ${message}`, details);
+    await updateRun({ 
+      status: 'failed', 
+      stage,
+      ended_at: new Date().toISOString(),
+      error: { 
+        message,
+        stage,
+        details,
         timestamp: new Date().toISOString()
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
-  }
-})
+    });
+    throw new Error(`Pipeline failed at ${stage}: ${message}`);
+  };
 
-async function handleScrapingExecution(supabase: any, config: any) {
-  const countries = config.countries || ['romania', 'france']
-  const batch_size = config.batch_size || 100
-  
-  // Create pipeline execution record
-  const { data: execution, error } = await supabase
-    .from('pipeline_executions')
-    .insert({
-      execution_type: 'scraping',
-      status: 'running',
-      config: { countries, batch_size, priority: config.priority },
-      batch_size,
-      country: countries.join(',')
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create execution record: ${error.message}`)
-  }
-
-  // Log system health metric
-  await supabase
-    .from('system_health_metrics')
-    .insert({
-      metric_type: 'pipeline',
-      metric_name: 'scraping_started',
-      value: 1,
-      tags: { countries, batch_size, execution_id: execution.id }
-    })
-
-  // In production, this would trigger GitHub Actions workflow
-  // For now, we'll simulate the process
-  console.log(`Starting scraping for countries: ${countries.join(', ')}`)
-  
-  // Update execution status (simulate processing)
-  setTimeout(async () => {
-    await supabase
-      .from('pipeline_executions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        processed_count: batch_size,
-        success_count: Math.floor(batch_size * 0.95), // 95% success rate
-        failure_count: Math.floor(batch_size * 0.05),
-        metrics: {
-          processing_time_minutes: 45,
-          pages_processed: batch_size,
-          documents_extracted: Math.floor(batch_size * 0.7)
-        }
-      })
-      .eq('id', execution.id)
-  }, 5000) // Simulate 5 second processing
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      execution_id: execution.id,
-      status: 'started',
-      estimated_completion: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-      countries,
-      batch_size
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-async function handleAIProcessing(supabase: any, config: any) {
-  // Get pending subsidies for AI processing
-  const { data: subsidies, error: subsidiesError } = await supabase
-    .from('subsidies')
-    .select('id, title, description, url')
-    .limit(config.batch_size || 50)
-
-  if (subsidiesError) {
-    throw new Error(`Failed to fetch subsidies: ${subsidiesError.message}`)
-  }
-
-  // Create AI processing execution
-  const { data: execution, error } = await supabase
-    .from('pipeline_executions')
-    .insert({
-      execution_type: 'ai_processing',
-      status: 'running',
-      config: { 
-        batch_size: subsidies.length, 
-        force_extraction: config.force_extraction 
-      },
-      batch_size: subsidies.length
-    })
-    .select()
-    .single()
-
-  if (error) {
-    throw new Error(`Failed to create AI processing execution: ${error.message}`)
-  }
-
-  // Process subsidies through AI pipeline (simulate)
-  let processed = 0
-  let success = 0
-
-  for (const subsidy of subsidies) {
-    try {
-      // Call AI processing for each subsidy
-      const aiResult = await processSubsidyWithAI(subsidy)
-      
-      // Record quality metrics
-      await supabase
-        .from('quality_metrics')
-        .insert({
-          execution_id: execution.id,
-          component: 'ai_processing',
-          quality_type: 'extraction_confidence',
-          score: aiResult.confidence,
-          confidence: aiResult.confidence,
-          details: { subsidy_id: subsidy.id, processing_time: aiResult.processing_time }
-        })
-
-      success++
-    } catch (error) {
-      console.error(`Failed to process subsidy ${subsidy.id}:`, error)
-    }
-    processed++
-  }
-
-  // Update execution with results
-  await supabase
-    .from('pipeline_executions')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      processed_count: processed,
-      success_count: success,
-      failure_count: processed - success,
-      metrics: {
-        average_confidence: success > 0 ? 0.92 : 0,
-        processing_time_minutes: Math.ceil(processed * 0.5)
-      }
-    })
-    .eq('id', execution.id)
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      execution_id: execution.id,
-      processed_count: processed,
-      success_count: success,
-      failure_count: processed - success
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-async function handleFormGeneration(supabase: any, config: any) {
-  // Get subsidies that need form generation
-  const { data: subsidies, error } = await supabase
-    .from('subsidies')
-    .select(`
-      id, title, url,
-      subsidy_form_schemas (id, schema)
-    `)
-    .is('subsidy_form_schemas.id', null)
-    .limit(config.batch_size || 20)
-
-  if (error) {
-    throw new Error(`Failed to fetch subsidies for form generation: ${error.message}`)
-  }
-
-  // Create form generation execution
-  const { data: execution, error: execError } = await supabase
-    .from('pipeline_executions')
-    .insert({
-      execution_type: 'form_generation',
-      status: 'running',
-      config: { batch_size: subsidies.length },
-      batch_size: subsidies.length
-    })
-    .select()
-    .single()
-
-  if (execError) {
-    throw new Error(`Failed to create form generation execution: ${execError.message}`)
-  }
-
-  let generated = 0
-  for (const subsidy of subsidies) {
-    try {
-      // Generate form schema (simulate)
-      const formSchema = await generateFormSchema(subsidy)
-      
-      // Save form schema
-      const { data: schema, error: schemaError } = await supabase
-        .from('subsidy_form_schemas')
-        .insert({
-          subsidy_id: subsidy.id,
-          schema: formSchema,
-          version: '1.0'
-        })
-        .select()
-        .single()
-
-      if (!schemaError) {
-        // Create form instance
-        await supabase
-          .from('application_form_instances')
-          .insert({
-            subsidy_id: subsidy.id,
-            form_schema_id: schema.id,
-            generated_config: {
-              auto_population: true,
-              validation_enabled: true,
-              multi_step: formSchema.sections?.length > 3
-            },
-            generation_metrics: {
-              confidence: 0.9,
-              field_count: formSchema.sections?.reduce((sum: number, s: any) => sum + (s.fields?.length || 0), 0) || 0
-            }
-          })
-        
-        generated++
-      }
-    } catch (error) {
-      console.error(`Failed to generate form for subsidy ${subsidy.id}:`, error)
-    }
-  }
-
-  // Update execution
-  await supabase
-    .from('pipeline_executions')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      processed_count: subsidies.length,
-      success_count: generated,
-      failure_count: subsidies.length - generated
-    })
-    .eq('id', execution.id)
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      execution_id: execution.id,
-      forms_generated: generated,
-      total_subsidies: subsidies.length
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-async function handleHealthCheck(supabase: any) {
-  const checks = []
-  
-  // Database connectivity
   try {
-    const { error } = await supabase.from('pipeline_executions').select('count').single()
-    checks.push({ component: 'database', status: error ? 'error' : 'healthy', message: error?.message })
-  } catch (error) {
-    checks.push({ component: 'database', status: 'error', message: error.message })
-  }
-
-  // Recent execution status
-  try {
-    const { data: recentExecutions } = await supabase
-      .from('pipeline_executions')
-      .select('status, execution_type')
-      .gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-      .order('started_at', { ascending: false })
-      .limit(10)
-
-    const failedCount = recentExecutions?.filter(e => e.status === 'failed').length || 0
-    const totalCount = recentExecutions?.length || 0
-    
-    checks.push({
-      component: 'pipeline_executions',
-      status: failedCount / Math.max(totalCount, 1) > 0.2 ? 'warning' : 'healthy',
-      message: `${failedCount}/${totalCount} failed in last 24h`
-    })
-  } catch (error) {
-    checks.push({ component: 'pipeline_executions', status: 'error', message: error.message })
-  }
-
-  // System metrics
-  await supabase
-    .from('system_health_metrics')
-    .insert({
-      metric_type: 'system',
-      metric_name: 'health_check_performed',
-      value: 1,
-      tags: { timestamp: new Date().toISOString() }
-    })
-
-  const overallStatus = checks.some(c => c.status === 'error') ? 'error' : 
-                       checks.some(c => c.status === 'warning') ? 'warning' : 'healthy'
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      overall_status: overallStatus,
-      checks,
-      timestamp: new Date().toISOString()
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-async function handleStatusCheck(supabase: any, execution_id?: string) {
-  if (!execution_id) {
-    // Get overall system status
-    const { data: recentExecutions } = await supabase
-      .from('pipeline_executions')
+    // Get run configuration
+    const { data: run, error: fetchError } = await supabase
+      .from('pipeline_runs')
       .select('*')
-      .order('started_at', { ascending: false })
-      .limit(10)
+      .eq('id', runId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    if (!run) throw new Error(`Run ${runId} not found`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        recent_executions: recentExecutions
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
+    // Check if run was canceled
+    if (run.status === 'canceled') {
+      console.log(`Run ${runId} was canceled, stopping orchestration`);
+      return;
+    }
 
-  // Get specific execution status
-  const { data: execution, error } = await supabase
-    .from('pipeline_executions')
-    .select(`
-      *,
-      quality_metrics (*)
-    `)
-    .eq('id', execution_id)
-    .single()
-
-  if (error) {
-    throw new Error(`Execution not found: ${error.message}`)
-  }
-
-  return new Response(
-    JSON.stringify({
-      success: true,
-      execution
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-// Helper functions
-async function processSubsidyWithAI(subsidy: any) {
-  // Simulate AI processing
-  await new Promise(resolve => setTimeout(resolve, 100))
-  return {
-    confidence: 0.85 + Math.random() * 0.15,
-    processing_time: 50 + Math.random() * 100
-  }
-}
-
-async function generateFormSchema(subsidy: any) {
-  // Simulate form schema generation
-  return {
-    id: `form_${subsidy.id}`,
-    title: `Application for ${subsidy.title?.en || subsidy.title}`,
-    description: "Complete application form for subsidy",
-    estimatedTime: 15,
-    sections: [
-      {
-        id: 'personal_info',
-        title: 'Personal Information',
-        fields: [
-          { id: 'name', type: 'text', label: 'Full Name', required: true },
-          { id: 'email', type: 'email', label: 'Email Address', required: true }
-        ]
-      },
-      {
-        id: 'farm_details',
-        title: 'Farm Details',
-        fields: [
-          { id: 'farm_name', type: 'text', label: 'Farm Name', required: true },
-          { id: 'size', type: 'number', label: 'Farm Size (hectares)', required: true }
-        ]
+    // Stage 1: Harvesting with validation
+    await updateRun({ 
+      status: 'running', 
+      stage: 'harvest', 
+      progress: 10,
+      started_at: new Date().toISOString()
+    });
+    
+    console.log(`📡 Stage 1: Harvesting content for run ${runId}`);
+    const harvestResults = await harvestContent(supabase, runId, run.config);
+    
+    // Validate harvest results - fail fast if no data
+    if (!harvestResults.pages_scraped || harvestResults.pages_scraped === 0) {
+      await failRun('harvest', 'No pages were successfully harvested', harvestResults);
+    }
+    
+    // Update with harvest results
+    const harvestStats = {
+      harvest: {
+        pages_total: harvestResults.pages_total || 0,
+        pages_scraped: harvestResults.pages_scraped,
+        pages_ok: harvestResults.pages_ok || 0,
+        countries: harvestResults.countries || []
       }
-    ],
-    documents: [
-      { id: 'identity', title: 'Identity Document', required: true, type: 'pdf' },
-      { id: 'ownership', title: 'Land Ownership Certificate', required: true, type: 'pdf' }
-    ]
+    };
+    
+    await updateRun({ 
+      stage: 'harvest', 
+      progress: 40,
+      stats: harvestStats
+    });
+
+    // Stage 2: AI Processing with validation
+    if (run.config.enable_ai_processing !== false) {
+      await updateRun({ stage: 'ai', progress: 50 });
+      
+      console.log(`🤖 Stage 2: AI processing for run ${runId}`);
+      const aiResults = await processWithAI(supabase, runId, run.config);
+      
+      // Validate AI results
+      if (!aiResults.subsidies_created || aiResults.subsidies_created === 0) {
+        await failRun('ai', 'No subsidies were extracted from harvested pages', { 
+          pages_processed: harvestResults.pages_scraped,
+          ai_errors: aiResults.errors || 0
+        });
+      }
+      
+      const aiStats = {
+        ...harvestStats,
+        ai: {
+          pages_processed: harvestResults.pages_scraped,
+          subsidies_created: aiResults.subsidies_created,
+          processing_errors: aiResults.errors || 0
+        }
+      };
+      
+      await updateRun({ 
+        stage: 'ai', 
+        progress: 80,
+        stats: aiStats
+      });
+    }
+
+    // Stage 3: Form Generation (optional)
+    if (run.config.enable_form_generation !== false) {
+      await updateRun({ stage: 'forms', progress: 90 });
+      
+      console.log(`📝 Stage 3: Form generation for run ${runId}`);
+      const formResults = await generateForms(supabase, runId, run.config);
+      
+      const finalStats = {
+        ...((await supabase.from('pipeline_runs').select('stats').eq('id', runId).single()).data?.stats || {}),
+        forms: {
+          forms_generated: formResults.forms_generated || 0,
+          generation_errors: formResults.errors || 0
+        }
+      };
+      
+      await updateRun({ 
+        stage: 'forms', 
+        progress: 95,
+        stats: finalStats
+      });
+    }
+
+    // Final completion with summary
+    const finalData = await supabase.from('pipeline_runs').select('stats').eq('id', runId).single();
+    const finalStats = finalData.data?.stats || {};
+    
+    await updateRun({ 
+      status: 'completed', 
+      stage: 'done', 
+      progress: 100,
+      ended_at: new Date().toISOString(),
+      stats: {
+        ...finalStats,
+        completion_time: new Date().toISOString(),
+        total_subsidies: finalStats.ai?.subsidies_created || 0
+      }
+    });
+
+    console.log(`✅ Pipeline run ${runId} completed successfully`);
+
+  } catch (error) {
+    console.error(`❌ Pipeline run ${runId} failed:`, error);
+    
+    // Only update if not already failed
+    const currentRun = await supabase.from('pipeline_runs').select('status').eq('id', runId).single();
+    if (currentRun.data?.status !== 'failed') {
+      await updateRun({ 
+        status: 'failed', 
+        ended_at: new Date().toISOString(),
+        error: { 
+          message: error.message,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+  }
+}
+
+async function harvestContent(supabase: any, runId: string, config: any) {
+  const countries = config.countries || ['france', 'romania'];
+  let totalPagesScraped = 0;
+  let totalPagesOk = 0;
+  const results = [];
+
+  for (const country of countries) {
+    try {
+      console.log(`🌍 Harvesting ${country} for run ${runId}`);
+      
+      const functionName = country === 'france' ? 'franceagrimer-harvester' : 'afir-harvester';
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: {
+          action: 'scrape',
+          max_pages: config.max_pages_per_country || 10,
+          run_id: runId  // CRITICAL: Pass runId to ensure data is tagged
+        }
+      });
+
+      if (error) {
+        console.warn(`Harvesting ${country} failed:`, error);
+        results.push({ country, success: false, error: error.message });
+        continue;
+      }
+
+      const pagesScraped = data?.pages_scraped || 0;
+      const pagesOk = data?.pages_ok || pagesScraped; // Assume OK if not specified
+      
+      totalPagesScraped += pagesScraped;
+      totalPagesOk += pagesOk;
+      results.push({ country, success: true, pages_scraped: pagesScraped, pages_ok: pagesOk });
+      
+      console.log(`✅ ${country} harvesting completed: ${pagesScraped} pages (${pagesOk} OK)`);
+      
+    } catch (error) {
+      console.warn(`Error harvesting ${country}:`, error);
+      results.push({ country, success: false, error: error.message });
+    }
+  }
+
+  return { 
+    pages_total: totalPagesScraped,
+    pages_scraped: totalPagesScraped,
+    pages_ok: totalPagesOk,
+    countries: results
+  };
+}
+
+async function processWithAI(supabase: any, runId: string, config: any) {
+  try {
+    console.log(`🤖 Starting AI processing for run ${runId}`);
+    
+    const { data, error } = await supabase.functions.invoke('ai-content-processor', {
+      body: {
+        source: 'all',
+        run_id: runId,  // CRITICAL: Filter by runId
+        quality_threshold: config.quality_threshold || 0.4
+      }
+    });
+
+    if (error) {
+      console.error('AI processing failed:', error);
+      return { subsidies_created: 0, errors: 1, error_details: error };
+    }
+
+    const subsidiesCreated = data?.successful || 0;
+    const errors = data?.failed || 0;
+
+    console.log(`✅ AI processing completed: ${subsidiesCreated} subsidies created, ${errors} errors`);
+    return { subsidies_created: subsidiesCreated, errors };
+    
+  } catch (error) {
+    console.error('AI processing failed:', error);
+    return { subsidies_created: 0, errors: 1, error_details: error.message };
+  }
+}
+
+async function generateForms(supabase: any, runId: string, config: any) {
+  try {
+    console.log(`📝 Starting form generation for run ${runId}`);
+    
+    const { data, error } = await supabase.functions.invoke('pdf-form-detector', {
+      body: {
+        action: 'batch_detect',
+        run_id: runId
+      }
+    });
+
+    if (error) {
+      console.error('Form generation failed:', error);
+      return { forms_generated: 0, errors: 1 };
+    }
+
+    console.log(`✅ Form generation completed: ${data?.successful || 0} forms created`);
+    return { forms_generated: data?.successful || 0, errors: data?.failed || 0 };
+    
+  } catch (error) {
+    console.error('Form generation failed:', error);
+    return { forms_generated: 0, errors: 1 };
   }
 }
