@@ -2769,11 +2769,29 @@ export type Database = {
         }
         Returns: string
       }
+      get_admin_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_users: number
+          total_farms: number
+          total_documents: number
+          total_extractions: number
+        }[]
+      }
       get_data_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
           table_name: string
           count: number
+        }[]
+      }
+      get_extraction_summary: {
+        Args: { p_user_id?: string }
+        Returns: {
+          document_id: string
+          extraction_count: number
+          latest_status: string
+          confidence_avg: number
         }[]
       }
       has_role: {

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRole } from '@/contexts/RoleContext';
-import { getIsAdmin } from '@/config/environment';
+import { useAdmin } from '@/contexts/AdminContext';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ const SettingsPage = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { currentRole } = useRole();
-  const isAdmin = getIsAdmin(user);
+  const { isAdmin } = useAdmin();
 
   const personalSettings = [
     {

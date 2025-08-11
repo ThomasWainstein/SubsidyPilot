@@ -5,15 +5,13 @@ import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import DashboardErrorFallback from '@/components/dashboard/DashboardErrorFallback';
 import ProductionReadinessCheck from '@/components/production/ProductionReadinessCheck';
 import { usePerformanceMonitoring } from '@/hooks/usePerformanceMonitoring';
-import { getIsAdmin } from '@/config/environment';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { prodLogger } from '@/utils/productionLogger';
 
 const DashboardPage = () => {
   prodLogger.debug('DashboardPage: Rendering');
   const { trackUserAction } = usePerformanceMonitoring('Dashboard');
-  const { user } = useAuth();
-  const isAdmin = getIsAdmin(user);
+  const { isAdmin } = useAdmin();
 
   React.useEffect(() => {
     trackUserAction('dashboard_viewed');

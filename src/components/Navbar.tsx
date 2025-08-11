@@ -29,7 +29,7 @@ import {
   Search,
   Shield
 } from 'lucide-react';
-import { getIsAdmin } from '@/config/environment';
+import { useAdmin } from '@/contexts/AdminContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -37,8 +37,7 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const { language, setLanguage } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
-  
-  const isAdmin = getIsAdmin(user);
+  const { isAdmin } = useAdmin();
 
   const handleSignOut = async () => {
     setIsLoading(true);
