@@ -130,12 +130,30 @@ class SecurityManager {
   }
 
   sanitizeInput(input: string): string {
-    // Basic XSS prevention
+    // Enhanced XSS prevention
     return input
       .replace(/[<>]/g, '') // Remove angle brackets
       .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
       .replace(/on\w+=/gi, '') // Remove event handlers
       .replace(/data:/gi, '') // Remove data: protocol
+      .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+      .replace(/eval\s*\(/gi, '') // Remove eval calls
+      .replace(/script/gi, 'removed') // Replace script tag references
+      .trim();
+  }
+
+  createSafeHTML(htmlString: string): string {
+    // Enhanced HTML sanitization for dangerouslySetInnerHTML usage
+    return htmlString
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+      .replace(/<iframe\b[^>]*>/gi, '') // Remove iframe tags
+      .replace(/<object\b[^>]*>/gi, '') // Remove object tags
+      .replace(/<embed\b[^>]*>/gi, '') // Remove embed tags
+      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '') // Remove event handlers
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+      .replace(/data:text\/html/gi, '') // Remove data:text/html
       .trim();
   }
 
