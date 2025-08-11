@@ -107,5 +107,8 @@ verify_jwt = false
 [functions.ai-self-test]
 verify_jwt = false
 
-[functions.emergency-ai-trigger]  
+[functions.emergency-ai-trigger]
+verify_jwt = false
+
+[functions.pipeline-post-harvest-patch]
 verify_jwt = false

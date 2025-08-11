@@ -32,6 +32,7 @@ interface HarvesterConfig {
 
 interface ScrapingSession {
   session_id: string;
+  run_id?: string;
   target_sources: string[];
   extraction_config: {
     preserve_formatting: boolean;
@@ -279,11 +280,12 @@ serve(async (req) => {
     if (action === 'scrape') {
       const session_id = `franceagrimer-${Date.now()}`;
       const session: ScrapingSession = {
-        session_id,
-        target_sources: [
-          'https://www.franceagrimer.fr/aides-et-soutiens',
-          'https://www.franceagrimer.fr/rechercher-une-aide'
-        ],
+      session_id,
+      run_id: requestBody.run_id || null,
+      target_sources: [
+        'https://www.franceagrimer.fr/aides-et-soutiens',
+        'https://www.franceagrimer.fr/rechercher-une-aide'
+      ],
         extraction_config: {
           preserve_formatting: true,
           extract_documents: true,
@@ -397,7 +399,7 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
         attachment_count: (pageContent.documents || []).length,
         status: 'scraped',
         scrape_date: new Date().toISOString(),
-        run_id: requestBody.run_id || null  // CRITICAL FIX: Associate with pipeline run
+        run_id: requestBody.run_id || session.run_id || null  // CRITICAL FIX: Associate with pipeline run
       };
       
       const { data: insertedPage, error } = await supabase

@@ -346,7 +346,7 @@ Return only valid JSON array, no other text.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',  // Use latest Claude model
+        model: Deno.env.get('OPENAI_TABLES_MODEL') || 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: 'You are an expert at extracting agricultural subsidy information from French government documents. Return only valid JSON.' },
           { role: 'user', content: prompt }

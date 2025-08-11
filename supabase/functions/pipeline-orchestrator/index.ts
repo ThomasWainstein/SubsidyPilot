@@ -123,59 +123,67 @@ async function orchestratePipeline(supabase: any, runId: string) {
       console.log(`🤖 Stage 2: AI processing for run ${runId}`);
       
       // Post-harvest patch: Ensure pages are wired to this run
-      console.log(`🔧 Post-harvest patch: wiring pages to run ${runId}`);
-      const { data: patchedPages } = await supabase
-        .from('raw_scraped_pages')
-        .update({ run_id: runId })
-        .gte('created_at', run.started_at)
-        .lte('created_at', new Date().toISOString())
-        .in('source_site', ['franceagrimer', 'afir-romania'])
-        .gte('length(coalesce(text_markdown,raw_text,raw_html))', 200)
-        .is('run_id', null)
-        .select('id');
-      
-      if (patchedPages?.length > 0) {
-        console.log(`✅ Patched ${patchedPages.length} orphaned pages to run ${runId}`);
+      try {
+        await supabase.functions.invoke('pipeline-post-harvest-patch', {
+          body: { run_id: runId, session_id: `harvest-${runId}` },
+          headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` }
+        });
+        console.log(`🔧 Post-harvest patch completed for run ${runId}`);
+      } catch (patchError) {
+        console.warn(`⚠️ Post-harvest patch failed: ${patchError.message}`);
+        // Continue execution - this is not critical
       }
       
-      const aiResults = await processWithAI(supabase, runId, run.config);
-      
-      // Handle AI results gracefully - don't fail on zero subsidies
-      if (!aiResults.subsidies_created || aiResults.subsidies_created === 0) {
-        if (aiResults.pages_processed === 0) {
-          console.log(`⚠️ No pages with sufficient content for AI processing (run ${runId})`);
+      try {
+        const aiResults = await processWithAI(supabase, runId, run.config);
+        console.log(`✅ AI processing completed: ${aiResults.subsidies_created} subsidies created`);
+        
+        const hasResults = aiResults.subsidies_created > 0;
+        const shouldGenerateForms = hasResults && run.config.enable_form_generation !== false;
+        
+        // Forms Stage (optional)
+        if (shouldGenerateForms) {
           await updateRun({ 
-            status: 'completed', 
+            stage: 'forms', 
+            progress: 75, 
+            stats: { ...harvestStats, ai: aiResults.stats }
+          });
+          console.log(`📋 Forms Stage: Generating forms for run ${runId}`);
+          
+          const formResults = await generateForms(supabase, runId, run.config);
+          console.log(`✅ Form generation completed: ${formResults.forms_generated} forms generated`);
+          
+          // Complete with forms
+          await updateRun({ 
             stage: 'done', 
+            status: 'completed', 
             progress: 100,
             ended_at: new Date().toISOString(),
-            stats: {
-              ...harvestStats,
-              ai: { pages_processed: 0, subsidies_created: 0, reason: 'no_content' }
-            }
+            stats: { ...harvestStats, ai: aiResults.stats, forms: formResults }
           });
-          console.log(`✅ Pipeline run ${runId} completed with reason: no_content`);
-          return; // Exit gracefully
         } else {
-          console.log(`⚠️ AI processing completed but extracted 0 subsidies from ${aiResults.pages_processed} pages`);
-          // Continue - this is valid (pages may contain no subsidies)
+          // Complete without forms
+          await updateRun({ 
+            stage: 'done', 
+            status: 'completed', 
+            progress: 100,
+            ended_at: new Date().toISOString(),
+            reason: hasResults ? 'completed_without_forms' : 'no_content_processed',
+            stats: { ...harvestStats, ai: aiResults.stats }
+          });
         }
+      } catch (aiError) {
+        console.error(`❌ AI processing failed: ${aiError.message}`);
+        await updateRun({ 
+          stage: 'ai', 
+          status: 'failed', 
+          progress: 50,
+          reason: 'ai_invoke_error',
+          error_details: aiError.message,
+          stats: harvestStats
+        });
+        throw aiError;
       }
-      
-      const aiStats = {
-        ...harvestStats,
-        ai: {
-          pages_processed: harvestResults.pages_scraped,
-          subsidies_created: aiResults.subsidies_created,
-          processing_errors: aiResults.errors || 0
-        }
-      };
-      
-      await updateRun({ 
-        stage: 'ai', 
-        progress: 80,
-        stats: aiStats
-      });
     }
 
     // Stage 3: Form Generation (optional)
@@ -285,30 +293,54 @@ async function harvestContent(supabase: any, runId: string, config: any) {
 }
 
 async function processWithAI(supabase: any, runId: string, config: any) {
-  try {
-    console.log(`🤖 Starting AI processing for run ${runId}`);
-    
-    const { data, error } = await supabase.functions.invoke('ai-content-processor', {
-      body: {
-        source: 'all',
-        run_id: runId,  // CRITICAL: Filter by runId
-        quality_threshold: config.quality_threshold || 0.4
+  console.log(`🤖 Starting AI processing for run ${runId}`);
+  
+  const retryWithBackoff = async (attempt: number = 1): Promise<any> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-content-processor', {
+        body: {
+          run_id: runId,
+          source: 'run',
+          quality_threshold: config.quality_threshold || 0.3
+        },
+        headers: { 
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` 
+        }
+      });
+
+      if (error) {
+        // Check if it's a transient error worth retrying
+        if ((error.status === 429 || error.status >= 500) && attempt < 3) {
+          const backoffMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+          console.log(`⏳ AI processing attempt ${attempt} failed with ${error.status}, retrying in ${backoffMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          return retryWithBackoff(attempt + 1);
+        }
+        throw new Error(`AI processing failed: ${error.message}`);
       }
-    });
 
-    if (error) {
-      console.error('AI processing failed:', error);
-      return { subsidies_created: 0, errors: 1, error_details: error };
+      return data;
+    } catch (err) {
+      if (attempt < 3 && (err.message.includes('429') || err.message.includes('500'))) {
+        const backoffMs = Math.pow(2, attempt - 1) * 1000;
+        console.log(`⏳ AI processing attempt ${attempt} failed, retrying in ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        return retryWithBackoff(attempt + 1);
+      }
+      throw err;
     }
+  };
 
-    const subsidiesCreated = data?.successful || 0;
-    const errors = data?.failed || 0;
-
-    console.log(`✅ AI processing completed: ${subsidiesCreated} subsidies created, ${errors} errors`);
-    return { subsidies_created: subsidiesCreated, errors };
+  try {
+    const result = await retryWithBackoff();
     
+    return {
+      subsidies_created: result?.successful || result?.subs_created || 0,
+      errors: result?.failed || result?.errors || 0,
+      stats: result
+    };
   } catch (error) {
-    console.error('AI processing failed:', error);
+    console.error('AI processing failed after retries:', error);
     return { subsidies_created: 0, errors: 1, error_details: error.message };
   }
 }

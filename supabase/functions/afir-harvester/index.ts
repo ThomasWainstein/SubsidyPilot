@@ -10,6 +10,7 @@ const corsHeaders = {
 
 interface ScrapingSession {
   session_id: string;
+  run_id?: string;
   target_sources: string[];
   extraction_config: {
     preserve_formatting: boolean;
@@ -73,6 +74,7 @@ serve(async (req) => {
       const session_id = `afir-${Date.now()}`;
       const session: ScrapingSession = {
         session_id,
+        run_id: run_id,
         target_sources: [
           'https://portal.afir.info/afir2020',
           'https://www.madr.ro/afir'
