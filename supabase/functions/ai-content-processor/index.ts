@@ -7,6 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Feature flags + structured logging helper
+const FLAG_ENABLE_STRUCTURED_LOGS = (Deno.env.get('ENABLE_STRUCTURED_LOGS') ?? 'true') === 'true';
+function logEvent(scope: string, run_id?: string | null, extra: Record<string, any> = {}) {
+  const payload = { ts: new Date().toISOString(), scope, run_id: run_id ?? null, ...extra };
+  if (FLAG_ENABLE_STRUCTURED_LOGS) console.log(JSON.stringify(payload));
+  else console.log(`[${scope}]`, payload);
+}
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -29,6 +37,7 @@ serve(async (req) => {
   try {
     const { source, run_id, page_ids, quality_threshold = 0.4 } = await req.json();
     runId = run_id;
+    logEvent('ai.run.start', run_id, { source, page_ids_count: page_ids?.length || 0, quality_threshold });
     
     console.log(`🤖 Starting AI content processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}, Allow fallback: ${allowRecentFallback}`);
     
@@ -248,9 +257,10 @@ serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-
+  
   } catch (error) {
     const totalProcessingTime = Date.now() - startTime;
+    logEvent('ai.run.done', runId, { error: (error as Error).message, pages_processed: 0, successful: 0, failed: 1, ms: totalProcessingTime });
     console.error('❌ AI content processing error:', error);
     
     if (runId) {

@@ -310,33 +310,58 @@ serve(async (req) => {
       }
 
       // Discover and scrape subsidy pages using smart collector
-      const scrapedPages = await discoverAndScrapePages(session, supabase, run_id);
+      const { pages, insertedIds } = await discoverAndScrapePages(session, supabase, run_id);
       
-      console.log(`📊 Scraped ${scrapedPages.length} pages from FranceAgriMer`);
+      console.log(`📊 Scraped ${pages.length} pages from FranceAgriMer`);
+      logEvent('harvester.fr.summary', run_id, { pages_returned: pages.length, inserted_ids_count: insertedIds.length });
+
+      // Orphan sweep: attach recent pages missing run_id
+      let patchedCount = 0;
+      try {
+        const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        const { data: patchedRows } = await supabase
+          .from('raw_scraped_pages')
+          .update({ run_id })
+          .is('run_id', null)
+          .eq('source_site', 'franceagrimer')
+          .gte('created_at', windowStart)
+          .select('id');
+        patchedCount = patchedRows?.length || 0;
+        if (patchedCount > 0) logEvent('harvester.fr.orphans.patched', run_id, { patchedCount });
+      } catch (patchErr) {
+        console.warn('⚠️ Orphan sweep failed:', (patchErr as Error).message);
+        logEvent('harvester.fr.orphans.error', run_id, { error: (patchErr as Error).message });
+      }
 
       // Trigger AI processing pipeline for scraped content
-      if (scrapedPages.length > 0) {
+      if (pages.length > 0) {
         try {
           await supabase.functions.invoke('ai-content-processor', {
             body: {
               source: 'franceagrimer',
               session_id,
-              page_ids: scrapedPages.map(p => p.id)
+              page_ids: pages.map(p => p.id)
             }
           });
           console.log('🤖 AI processing pipeline triggered');
+          logEvent('harvester.fr.ai.trigger', run_id, { page_count: pages.length });
         } catch (aiError) {
           console.warn('⚠️ AI processing trigger failed:', aiError);
+          logEvent('harvester.fr.ai.error', run_id, { error: (aiError as Error).message });
         }
       }
+
+      const pages_scraped_returned = pages.length;
+      const pages_inserted_db = insertedIds.length + patchedCount;
+      logEvent('harvester.fr.insert', run_id, { pages_scraped_returned, pages_inserted_db, inserted_ids: insertedIds });
 
       return new Response(JSON.stringify({
         success: true,
         session_id,
-        pages_scraped: scrapedPages.length,
-        pages_discovered: scrapedPages.length,
-        message: 'FranceAgriMer harvesting completed',
-        scraped_pages: scrapedPages
+        pages_scraped_returned,
+        pages_inserted_db,
+        inserted_ids: insertedIds,
+        source_site: 'franceagrimer'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -359,8 +384,9 @@ serve(async (req) => {
   }
 });
 
-async function discoverAndScrapePages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
+async function discoverAndScrapePages(session: ScrapingSession, supabase: any, run_id?: string): Promise<{ pages: any[]; insertedIds: string[] }> {
   const scrapedPages: any[] = [];
+  const insertedIds: string[] = [];
   
   // Use smart URL collection inspired by GitHub scraper
   const config = SITE_CONFIGS['franceagrimer'];
@@ -392,7 +418,7 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any, r
   for (const url of directUrls) {
     try {
       console.log(`🔍 Scraping: ${url}`);
-      const pageContent = await scrapeSubsidyPage(url);
+      const pageContent = await scrapeSubsidyPage(url, run_id);
       
       const pageData = {
         source_url: url,
@@ -436,6 +462,7 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any, r
         }
       } else {
         scrapedPages.push(insertedPage);
+        if (insertedPage?.id) insertedIds.push(insertedPage.id);
         console.log(`✅ Scraped and stored: ${url}`);
       }
       
@@ -445,15 +472,16 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any, r
       }
       
     } catch (pageError) {
-      console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
+      console.warn(`⚠️ Failed to scrape ${url}:`, (pageError as Error).message);
     }
   }
   
-  return scrapedPages;
+  return { pages: scrapedPages, insertedIds };
 }
 
-async function scrapeSubsidyPage(url: string): Promise<{html: string, text: string, markdown: string, documents: string[]}> {
+async function scrapeSubsidyPage(url: string, run_id?: string): Promise<{html: string, text: string, markdown: string, documents: string[]}> {
   try {
+    logEvent('harvester.fr.fetch.start', run_id, { url });
     console.log(`📄 [DEBUG] Starting fetch for: ${url}`);
     
     const response = await fetch(url, {
@@ -470,10 +498,12 @@ async function scrapeSubsidyPage(url: string): Promise<{html: string, text: stri
     
     if (!response.ok) {
       console.error(`❌ [DEBUG] HTTP error: ${response.status} - ${response.statusText}`);
+      logEvent('harvester.fr.fetch.error', run_id, { url, status: response.status });
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
     const html = await response.text();
+    logEvent('harvester.fr.fetch.done', run_id, { url, status: response.status, bytes: html.length });
     console.log(`📦 [DEBUG] Retrieved ${html.length} characters from ${url}`);
     
     if (html.length < 1000) {

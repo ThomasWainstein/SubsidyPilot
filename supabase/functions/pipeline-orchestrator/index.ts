@@ -7,6 +7,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Feature flags with safe defaults (staging ON by default)
+const FLAG_ENFORCE_DB_INSERT_SUCCESS = (Deno.env.get('ENFORCE_DB_INSERT_SUCCESS') ?? 'true') === 'true';
+const FLAG_ENABLE_STRUCTURED_LOGS = (Deno.env.get('ENABLE_STRUCTURED_LOGS') ?? 'true') === 'true';
+const AI_RETRY_IF_STALLED_MIN = parseInt(Deno.env.get('AI_RETRY_IF_STALLED_MIN') ?? '5', 10);
+
+// Structured logging helper
+function logEvent(scope: string, run_id?: string, extra: Record<string, any> = {}) {
+  const payload = {
+    ts: new Date().toISOString(),
+    scope,
+    run_id: run_id || null,
+    ...extra,
+  };
+  if (FLAG_ENABLE_STRUCTURED_LOGS) {
+    console.log(JSON.stringify(payload));
+  } else {
+    console.log(`[${scope}]`, payload);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -84,6 +104,34 @@ async function orchestratePipeline(supabase: any, runId: string) {
       return;
     }
 
+    // Stalled AI retry (deterministic, single retry)
+    try {
+      if (run.stage === 'ai') {
+        const { data: aiRows } = await supabase
+          .from('ai_content_runs')
+          .select('id, started_at')
+          .eq('run_id', runId)
+          .order('started_at', { ascending: false })
+          .limit(1);
+
+        const lastInvokedAtStr = run.stats?.ai?.ai_invoked_at as string | undefined;
+        const lastInvokedAt = lastInvokedAtStr ? Date.parse(lastInvokedAtStr) : 0;
+        const minutesSinceInvoke = lastInvokedAt ? (Date.now() - lastInvokedAt) / 60000 : Infinity;
+        const alreadyRetried = run.stats?.ai?.ai_retry === true;
+
+        if (minutesSinceInvoke >= AI_RETRY_IF_STALLED_MIN && (!aiRows || aiRows.length === 0) && !alreadyRetried) {
+          logEvent('orchestrator.ai.retry', runId, { minutesSinceInvoke });
+          await processWithAI(supabase, runId, run.config);
+          const newStats = { ...(run.stats || {}), ai: { ...(run.stats?.ai || {}), ai_retry: true, ai_invoked_at: new Date().toISOString() } };
+          await updateRun({ stats: newStats });
+          // Retry kicked; exit early
+          return;
+        }
+      }
+    } catch (retryCheckErr) {
+      console.warn('⚠️ AI stalled retry check failed:', (retryCheckErr as Error).message);
+    }
+
     // Stage 1: Harvesting with validation
     await updateRun({ 
       status: 'running', 
@@ -100,26 +148,41 @@ async function orchestratePipeline(supabase: any, runId: string) {
       await failRun('harvest', 'No pages were successfully harvested', harvestResults);
     }
     
-    // Update with harvest results
-    const harvestStats = {
+    // Update with harvest results and enforce "inserts = success"
+    const perCountry = harvestResults.countries || [];
+    const harvest_total_inserted = harvestResults.harvest_total_inserted || harvestResults.pages_ok || 0;
+
+    logEvent('orchestrator.harvest.summary', runId, { per_country: perCountry, harvest_total_inserted });
+
+    const newStats = {
+      ...(run.stats || {}),
       harvest: {
         pages_total: harvestResults.pages_total || 0,
-        pages_scraped: harvestResults.pages_scraped,
-        pages_ok: harvestResults.pages_ok || 0,
-        countries: harvestResults.countries || []
-      }
+        harvest_total_inserted,
+        per_country: perCountry,
+      },
     };
-    
-    await updateRun({ 
-      stage: 'harvest', 
-      progress: 40,
-      stats: harvestStats
-    });
+
+    await updateRun({ stage: 'harvest', progress: 40, stats: newStats });
+
+    if (FLAG_ENFORCE_DB_INSERT_SUCCESS && harvest_total_inserted === 0) {
+      await updateRun({
+        stage: 'done',
+        status: 'completed',
+        progress: 100,
+        ended_at: new Date().toISOString(),
+        reason: 'no_content_processed',
+        stats: newStats,
+      });
+      logEvent('orchestrator.done.no_content', runId, { harvest_total_inserted });
+      return;
+    }
 
     // Stage 2: AI Processing with validation
     if (run.config.enable_ai_processing !== false) {
-      await updateRun({ stage: 'ai', progress: 50 });
-      
+      const aiInvokeAt = new Date().toISOString();
+      await updateRun({ stage: 'ai', progress: 50, stats: { ...(newStats || {}), ai: { ...((newStats as any)?.ai || {}), ai_invoked_at: aiInvokeAt, ai_invocation_attempts: (((newStats as any)?.ai?.ai_invocation_attempts) || 0) + 1 } } });
+      logEvent('orchestrator.ai.invoke', runId, { invoked: true });
       console.log(`🤖 Stage 2: AI processing for run ${runId}`);
       
       // Post-harvest patch: Ensure pages are wired to this run
@@ -130,7 +193,7 @@ async function orchestratePipeline(supabase: any, runId: string) {
         });
         console.log(`🔧 Post-harvest patch completed for run ${runId}`);
       } catch (patchError) {
-        console.warn(`⚠️ Post-harvest patch failed: ${patchError.message}`);
+        console.warn(`⚠️ Post-harvest patch failed: ${ (patchError as Error).message }`);
         // Continue execution - this is not critical
       }
       
@@ -140,13 +203,14 @@ async function orchestratePipeline(supabase: any, runId: string) {
         
         const hasResults = aiResults.subsidies_created > 0;
         const shouldGenerateForms = hasResults && run.config.enable_form_generation !== false;
+        const statsAfterAI = { ...(newStats || {}), ai: { ...(aiResults?.stats || {}), ai_invoked_at: aiInvokeAt } };
         
         // Forms Stage (optional)
         if (shouldGenerateForms) {
           await updateRun({ 
             stage: 'forms', 
             progress: 75, 
-            stats: { ...harvestStats, ai: aiResults.stats }
+            stats: statsAfterAI
           });
           console.log(`📋 Forms Stage: Generating forms for run ${runId}`);
           
@@ -159,7 +223,7 @@ async function orchestratePipeline(supabase: any, runId: string) {
             status: 'completed', 
             progress: 100,
             ended_at: new Date().toISOString(),
-            stats: { ...harvestStats, ai: aiResults.stats, forms: formResults }
+            stats: { ...statsAfterAI, forms: formResults }
           });
         } else {
           // Complete without forms
@@ -169,18 +233,18 @@ async function orchestratePipeline(supabase: any, runId: string) {
             progress: 100,
             ended_at: new Date().toISOString(),
             reason: hasResults ? 'completed_without_forms' : 'no_content_processed',
-            stats: { ...harvestStats, ai: aiResults.stats }
+            stats: statsAfterAI
           });
         }
       } catch (aiError) {
-        console.error(`❌ AI processing failed: ${aiError.message}`);
+        console.error(`❌ AI processing failed: ${(aiError as Error).message}`);
         await updateRun({ 
           stage: 'ai', 
           status: 'failed', 
           progress: 50,
           reason: 'ai_invoke_error',
-          error_details: aiError.message,
-          stats: harvestStats
+          error_details: (aiError as Error).message,
+          stats: newStats
         });
         throw aiError;
       }
@@ -246,49 +310,51 @@ async function orchestratePipeline(supabase: any, runId: string) {
 
 async function harvestContent(supabase: any, runId: string, config: any) {
   const countries = config.countries || ['france', 'romania'];
-  let totalPagesScraped = 0;
-  let totalPagesOk = 0;
-  const results = [];
+  let totalPagesReturned = 0;
+  let totalInserted = 0;
+  const results: any[] = [];
 
   for (const country of countries) {
     try {
-      console.log(`🌍 Harvesting ${country} for run ${runId}`);
-      
       const functionName = country === 'france' ? 'franceagrimer-harvester' : 'afir-harvester';
+      logEvent('orchestrator.harvest.invoke', runId, { country, function: functionName });
+
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           action: 'scrape',
           max_pages: config.max_pages_per_country || 10,
-          run_id: runId  // CRITICAL: Pass runId to ensure data is tagged
-        }
+          run_id: runId,
+        },
       });
 
       if (error) {
-        console.warn(`Harvesting ${country} failed:`, error);
+        logEvent('orchestrator.harvest.error', runId, { country, error: error.message });
         results.push({ country, success: false, error: error.message });
         continue;
       }
 
-      const pagesScraped = data?.pages_scraped || 0;
-      const pagesOk = data?.pages_ok || pagesScraped; // Assume OK if not specified
-      
-      totalPagesScraped += pagesScraped;
-      totalPagesOk += pagesOk;
-      results.push({ country, success: true, pages_scraped: pagesScraped, pages_ok: pagesOk });
-      
-      console.log(`✅ ${country} harvesting completed: ${pagesScraped} pages (${pagesOk} OK)`);
-      
-    } catch (error) {
-      console.warn(`Error harvesting ${country}:`, error);
-      results.push({ country, success: false, error: error.message });
+      const returned = data?.pages_scraped_returned || data?.pages_scraped || 0;
+      const inserted = data?.pages_inserted_db ?? 0;
+      const inserted_ids = data?.inserted_ids || [];
+
+      totalPagesReturned += returned;
+      totalInserted += inserted;
+
+      const res = { country, success: data?.success === true, pages_scraped_returned: returned, pages_inserted_db: inserted, inserted_ids };
+      results.push(res);
+      logEvent('orchestrator.harvest.result', runId, res);
+    } catch (err) {
+      logEvent('orchestrator.harvest.exception', runId, { country, error: (err as Error).message });
+      results.push({ country, success: false, error: (err as Error).message });
     }
   }
 
-  return { 
-    pages_total: totalPagesScraped,
-    pages_scraped: totalPagesScraped,
-    pages_ok: totalPagesOk,
-    countries: results
+  return {
+    pages_total: totalPagesReturned,
+    pages_scraped: totalPagesReturned,
+    pages_ok: totalInserted,
+    harvest_total_inserted: totalInserted,
+    countries: results,
   };
 }
 
