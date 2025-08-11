@@ -23,9 +23,5 @@ export const ADMIN_CONFIG = {
   REQUIRE_DATABASE_ROLES: true, // Always require database-driven roles
 } as const;
 
-// SECURITY: Deprecated admin check - DO NOT USE
-// Use AdminContext.isAdmin or supabase RPC calls instead
-export const getIsAdmin = (user: any): boolean => {
-  console.error('🚨 SECURITY ERROR: getIsAdmin() is deprecated and unsafe. Use AdminContext.isAdmin instead.');
-  return false; // Always return false to prevent unauthorized access
-};
+// SECURITY: Deprecated admin function removed for security
+// All admin checks must now use AdminContext.isAdmin or database-driven role checking
