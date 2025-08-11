@@ -201,8 +201,8 @@ export default function EnhancedDualPipelineManager() {
               </Alert>
             )}
 
-            {/* Pipeline Control Button */}
-            {!isActive && !isStarting ? (
+            {/* Pipeline Control Button - Only show Start if NO active run */}
+            {!isActive && !isStarting && (!run || run.status === 'completed' || run.status === 'failed' || run.status === 'canceled') ? (
               <EnhancedButton 
                 onClick={startFullPipeline} 
                 loading={loading}

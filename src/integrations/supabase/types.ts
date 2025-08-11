@@ -55,6 +55,48 @@ export type Database = {
           },
         ]
       }
+      ai_content_runs: {
+        Row: {
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          model: string | null
+          notes: string | null
+          pages_eligible: number | null
+          pages_processed: number | null
+          pages_seen: number | null
+          run_id: string
+          started_at: string | null
+          subs_created: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          model?: string | null
+          notes?: string | null
+          pages_eligible?: number | null
+          pages_processed?: number | null
+          pages_seen?: number | null
+          run_id: string
+          started_at?: string | null
+          subs_created?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          model?: string | null
+          notes?: string | null
+          pages_eligible?: number | null
+          pages_processed?: number | null
+          pages_seen?: number | null
+          run_id?: string
+          started_at?: string | null
+          subs_created?: number | null
+        }
+        Relationships: []
+      }
       application_form_instances: {
         Row: {
           auto_population_config: Json | null

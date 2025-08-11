@@ -203,6 +203,21 @@ serve(async (req) => {
     const totalProcessingTime = Date.now() - startTime;
     console.log(`🎯 AI processing completed in ${totalProcessingTime}ms: ${successful} subsidies created, ${failed} errors`);
 
+    // Update AI content run tracking
+    if (aiContentRun?.id) {
+      await supabase
+        .from('ai_content_runs')
+        .update({
+          pages_seen: pages.length,
+          pages_eligible: pages.length,
+          pages_processed: pages.length,
+          subs_created: successful,
+          ended_at: new Date().toISOString(),
+          notes: `Processed ${pages.length} pages, created ${successful} subsidies, ${failed} errors`
+        })
+        .eq('id', aiContentRun.id);
+    }
+
     // Update pipeline run with results
     if (run_id) {
       const nextStage = successful > 0 ? 'forms' : 'done';
@@ -331,7 +346,7 @@ Return only valid JSON array, no other text.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',  // Use latest Claude model
         messages: [
           { role: 'system', content: 'You are an expert at extracting agricultural subsidy information from French government documents. Return only valid JSON.' },
           { role: 'user', content: prompt }
