@@ -94,9 +94,10 @@ serve(async (req) => {
       const session_id = `franceagrimer-${Date.now()}`;
       
       // Discovery set: List pages + optional direct seeds
-const listUrls = Array.from({length: Math.max(1, max_pages)}, (_, i) => 
+let listUrls = Array.from({ length: Math.max(1, Math.min(10, max_pages)) }, (_, i) =>
         `https://www.franceagrimer.fr/rechercher-une-aide?page=${i}`
       );
+const seenListUrls = new Set<string>(listUrls);
       
       const directSeeds = [
         'https://www.franceagrimer.fr/aides/dispositif-dassurance-recolte-fruits-2024',
@@ -104,34 +105,68 @@ const listUrls = Array.from({length: Math.max(1, max_pages)}, (_, i) =>
         'https://www.franceagrimer.fr/aides/aide-exceptionnelle-aux-apiculteurs-2024'
       ];
 
-      const allFetches: FetchStat[] = [];
-      const candidateUrls = new Set<string>();
-      
-      // Step 1: Discover candidates from list pages 
-      for (const listUrl of listUrls) {
-        logEvent('harvester.fr.list.fetch.start', run_id, { url: listUrl });
-        const { html, stat } = await fetchHTML(listUrl);
-        allFetches.push(stat);
-        logEvent('harvester.fr.list.fetch.done', run_id, stat);
-        
-        if (stat.ok) {
-// Extract links and keep only "fiche aide" detail pages
-          const linkPattern = /href="([^"]*\/aides?\/[^"]*)"/gi;
-          let match;
-          while ((match = linkPattern.exec(html)) !== null) {
-            const full = canonicalAidUrl(listUrl, match[1]);
-            if (!full) continue; // drops hubs/listings and non-detail
-            candidateUrls.add(full);
-            logEvent('harvester.fr.candidate.link', run_id, { url: full });
-          }
-        }
-      }
+const allFetches: FetchStat[] = [];
+const candidateUrls = new Set<string>();
+// Preload recent existing URLs to avoid re-scraping duplicates
+let existingSet = new Set<string>();
+try {
+  const { data: existing } = await supabase
+    .from('raw_scraped_pages')
+    .select('source_url')
+    .eq('source_site', 'franceagrimer')
+    .gte('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
+  existingSet = new Set((existing ?? []).map((r: { source_url: string }) => r.source_url));
+} catch (_) {
+  // non-fatal
+}
 
-      // Add direct seeds to candidates
-      directSeeds.forEach(url => {
-        candidateUrls.add(url);
-        logEvent('harvester.fr.candidate.link', run_id, { url, source: 'direct_seed' });
-      });
+// Step 1: Discover candidates from list pages (with in-run pagination)
+for (let idx = 0; idx < listUrls.length && idx < max_pages; idx++) {
+  const listUrl = listUrls[idx];
+  logEvent('harvester.fr.list.fetch.start', run_id, { url: listUrl });
+  const { html, stat } = await fetchHTML(listUrl);
+  allFetches.push(stat);
+  logEvent('harvester.fr.list.fetch.done', run_id, stat);
+  
+  if (stat.ok) {
+    // Extract links and keep only fiche detail pages
+    const linkPattern = /href="([^"]*\/aides?\/[^\
+    let match;
+    while ((match = linkPattern.exec(html)) !== null) {
+      const full = canonicalAidUrl(listUrl, match[1]);
+      if (!full) continue; // drops hubs/listings and non-detail
+      if (!existingSet.has(full)) {
+        candidateUrls.add(full);
+        logEvent('harvester.fr.candidate.link', run_id, { url: full });
+      } else {
+        logEvent('harvester.fr.candidate.skip', run_id, { url: full, reason: 'duplicate_existing' });
+      }
+    }
+
+    // Simple pagination discovery for /rechercher-une-aide
+    const nextRel = html.match(/<a[^>]+rel=["']next["'][^>]+href=["']([^"']+)["']/i)
+      || html.match(/<a[^>]+aria-label=["']Page suivante["'][^>]+href=["']([^"']+)["']/i)
+      || html.match(/href=["']([^"']*rechercher-une-aide[^"']*page=\d+[^"']*)["']/i);
+    if (nextRel) {
+      const nextUrl = canonicalize(listUrl, nextRel[1]);
+      if (nextUrl && !seenListUrls.has(nextUrl) && listUrls.length < max_pages) {
+        listUrls.push(nextUrl);
+        seenListUrls.add(nextUrl);
+        logEvent('harvester.fr.pagination', run_id, { next: nextUrl });
+      }
+    }
+  }
+}
+
+// Add direct seeds to candidates (skip if seen)
+for (const url of directSeeds) {
+  if (!existingSet.has(url)) {
+    candidateUrls.add(url);
+    logEvent('harvester.fr.candidate.link', run_id, { url, source: 'direct_seed' });
+  } else {
+    logEvent('harvester.fr.candidate.skip', run_id, { url, source: 'direct_seed', reason: 'duplicate_existing' });
+  }
+}
 
       // Step 2: Fetch and filter candidates
       const insertedIds: string[] = [];
