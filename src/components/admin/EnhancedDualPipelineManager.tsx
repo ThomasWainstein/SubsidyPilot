@@ -156,14 +156,17 @@ export default function EnhancedDualPipelineManager() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
       
-      if (data.successful > 0) {
-        toast.success(`✅ AI processing completed: ${data.successful} subsidies processed successfully!`);
-      } else if (data.failed > 0) {
-        toast.warning(`⚠️ AI processing completed with issues: ${data.failed} pages failed to process`);
+      console.log('AI processing response:', data);
+      
+      if (data?.success) {
+        toast.success(`✅ AI processing completed! Created ${data.subsidies_created || 0} subsidies from ${data.pages_processed || 0} pages`);
       } else {
-        toast.info(`ℹ️ AI processing completed: ${data.message || 'No new pages to process'}`);
+        toast.error(`❌ AI processing failed: ${data?.error || 'Unknown error'}`);
       }
       
     } catch (error: any) {
@@ -171,6 +174,25 @@ export default function EnhancedDualPipelineManager() {
       toast.error(`❌ AI processing failed: ${error.message}`);
     } finally {
       setAiProcessing(false);
+    }
+  };
+
+  const testAISetup = async () => {
+    try {
+      toast.info('🧪 Testing AI setup...');
+      
+      const { data, error } = await supabase.functions.invoke('test-direct-ai', {});
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast.success(`✅ AI setup test passed! Found ${data.test_results.pages_found} pages, ${data.test_results.pages_eligible} eligible. API key: ${data.test_results.api_key_present ? 'present' : 'missing'}`);
+      } else {
+        toast.error(`❌ AI setup test failed: ${data?.error}`);
+      }
+    } catch (error: any) {
+      console.error('AI test error:', error);
+      toast.error(`❌ AI test failed: ${error.message}`);
     }
   };
 
@@ -354,6 +376,17 @@ export default function EnhancedDualPipelineManager() {
               icon={<Database className="h-4 w-4" />}
             >
               Process Scraped Pages with AI
+            </EnhancedButton>
+            
+            <EnhancedButton 
+              variant="ghost" 
+              onClick={testAISetup} 
+              size="sm"
+              tooltip="Test if AI processing setup is working correctly - checks database, API key, and content availability"
+              className="mt-2"
+              icon={<FileText className="h-4 w-4" />}
+            >
+              🧪 Test AI Setup
             </EnhancedButton>
             
             <p className="text-sm text-muted-foreground mt-2">
