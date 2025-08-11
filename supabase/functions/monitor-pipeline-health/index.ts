@@ -52,7 +52,7 @@ serve(async (req) => {
       .select('*')
       .eq('source_site', 'franceagrimer');
 
-    if (!harvestQuality || harvestQuality.length === 0 || harvestQuality[0].pages === 0) {
+    if (!harvestQuality || harvestQuality.length === 0 || harvestQuality[0].pages_harvested === 0) {
       flags.push({
         flag: 'fr_harvest_zero',
         severity: 'critical',
@@ -66,7 +66,7 @@ serve(async (req) => {
       .from('v_orphan_pages_recent')
       .select('*');
 
-    const totalOrphans = orphanPages?.reduce((sum, o) => sum + o.orphan_pages, 0) || 0;
+    const totalOrphans = orphanPages?.length || 0;
     if (totalOrphans > slo.max_orphans) {
       flags.push({
         flag: 'orphans_present',
@@ -81,7 +81,7 @@ serve(async (req) => {
       .from('v_ai_errors_last_24h')
       .select('*');
 
-    const totalAIErrors = aiErrors?.reduce((sum, e) => sum + e.errors, 0) || 0;
+    const totalAIErrors = aiErrors?.length || 0;
     if (totalAIErrors > slo.max_ai_errors_24h) {
       flags.push({
         flag: 'ai_error_spike',
@@ -101,13 +101,13 @@ serve(async (req) => {
       const { data: lastAIActivity } = await supabase
         .from('v_ai_yield_by_run')
         .select('*')
-        .eq('run_id', activeRun.run_id)
-        .order('last_ended', { ascending: false })
+        .eq('run_id', activeRun.id)
+        .order('ended_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (lastAIActivity?.last_ended) {
-        const stallMinutes = (Date.now() - new Date(lastAIActivity.last_ended).getTime()) / (1000 * 60);
+      if (lastAIActivity?.ended_at) {
+        const stallMinutes = (Date.now() - new Date(lastAIActivity.ended_at).getTime()) / (1000 * 60);
         if (stallMinutes > slo.ai_stall_minutes) {
           flags.push({
             flag: 'ai_stalled',

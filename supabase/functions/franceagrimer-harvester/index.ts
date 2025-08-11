@@ -202,19 +202,52 @@ serve(async (req) => {
       }
 
       const finalInsertedDb = pagesInsertedDb + patchedCount;
+      
+      // Determine success based on actual pages inserted
+      const harvestSuccess = finalInsertedDb > 0;
+      let failureReason = null;
+      
+      if (!harvestSuccess) {
+        // Analyze failure reason for better observability
+        const totalFetches = allFetches.length;
+        const successfulFetches = allFetches.filter(f => f.ok).length;
+        const totalCandidates = candidateUrls.size;
+        
+        if (successfulFetches === 0) {
+          failureReason = 'NETWORK_FAILURE';
+        } else if (totalCandidates === 0) {
+          failureReason = 'SELECTOR_MISS';
+        } else if (candidateUrls.size > 0 && finalInsertedDb === 0) {
+          failureReason = 'CONTENT_TOO_SMALL_OR_DB_FAIL';
+        } else {
+          failureReason = 'UNKNOWN';
+        }
+        
+        logEvent('harvester.fr.failure', run_id, { 
+          reason: failureReason,
+          total_fetches: totalFetches,
+          successful_fetches: successfulFetches,
+          candidates_found: totalCandidates,
+          pages_inserted: finalInsertedDb
+        });
+      }
+      
       logEvent('harvester.fr.insert', run_id, { 
         pages_scraped_returned: candidateUrls.size, 
         pages_inserted_db: finalInsertedDb, 
-        inserted_ids: insertedIds 
+        inserted_ids: insertedIds,
+        success: harvestSuccess,
+        failure_reason: failureReason
       });
 
       return new Response(JSON.stringify({
-        success: true,
+        success: harvestSuccess,
         session_id,
         pages_scraped_returned: candidateUrls.size,
         pages_inserted_db: finalInsertedDb,
         inserted_ids: insertedIds,
         source_site: 'franceagrimer',
+        failure_reason: failureReason,
         probe: { fetches: allFetches }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
