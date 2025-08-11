@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_active_run_status"
+            referencedColumns: ["run_id"]
+          },
         ]
       }
       ai_content_runs: {
@@ -1321,6 +1328,13 @@ export type Database = {
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "harvest_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_active_run_status"
+            referencedColumns: ["run_id"]
+          },
         ]
       }
       integration_audit_log: {
@@ -1787,6 +1801,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_active_run_status"
+            referencedColumns: ["run_id"]
           },
         ]
       }
@@ -2779,6 +2800,27 @@ export type Database = {
         }
         Relationships: []
       }
+      v_active_run_status: {
+        Row: {
+          created_at: string | null
+          progress: number | null
+          run_id: string | null
+          stage: string | null
+          stats: Json | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      v_ai_errors_last_24h: {
+        Row: {
+          error_type: string | null
+          errors: number | null
+          first_seen: string | null
+          last_seen: string | null
+        }
+        Relationships: []
+      }
       v_ai_run_summary: {
         Row: {
           avg_content_length: number | null
@@ -2795,7 +2837,27 @@ export type Database = {
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_active_run_status"
+            referencedColumns: ["run_id"]
+          },
         ]
+      }
+      v_ai_yield_by_run: {
+        Row: {
+          errors_count: number | null
+          last_ended: string | null
+          model: string | null
+          pages_eligible: number | null
+          pages_processed: number | null
+          pages_seen: number | null
+          run_id: string | null
+          subsidies_created: number | null
+        }
+        Relationships: []
       }
       v_extraction_quality: {
         Row: {
@@ -2809,12 +2871,44 @@ export type Database = {
         }
         Relationships: []
       }
+      v_harvest_quality_by_source_24h: {
+        Row: {
+          avg_len: number | null
+          ge_1k: number | null
+          pages: number | null
+          pct_ge_1k: number | null
+          pct_with_markdown: number | null
+          source_site: string | null
+        }
+        Relationships: []
+      }
       v_last_ai_runs: {
         Row: {
           last_ended: string | null
           run_count: number | null
           run_id: string | null
           subs_created: number | null
+        }
+        Relationships: []
+      }
+      v_orphan_pages_recent: {
+        Row: {
+          last_seen: string | null
+          orphan_pages: number | null
+          source_site: string | null
+        }
+        Relationships: []
+      }
+      v_pipeline_health_24h: {
+        Row: {
+          ai_failed: number | null
+          ai_pages_processed: number | null
+          ai_successful: number | null
+          hour: string | null
+          pages_scraped: number | null
+          runs: number | null
+          runs_completed: number | null
+          runs_no_content: number | null
         }
         Relationships: []
       }
