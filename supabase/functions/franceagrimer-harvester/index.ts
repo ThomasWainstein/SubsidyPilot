@@ -310,7 +310,7 @@ serve(async (req) => {
       }
 
       // Discover and scrape subsidy pages using smart collector
-      const scrapedPages = await discoverAndScrapePages(session, supabase);
+      const scrapedPages = await discoverAndScrapePages(session, supabase, run_id);
       
       console.log(`📊 Scraped ${scrapedPages.length} pages from FranceAgriMer`);
 
@@ -359,7 +359,7 @@ serve(async (req) => {
   }
 });
 
-async function discoverAndScrapePages(session: ScrapingSession, supabase: any): Promise<any[]> {
+async function discoverAndScrapePages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
   const scrapedPages: any[] = [];
   
   // Use smart URL collection inspired by GitHub scraper
@@ -454,7 +454,7 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
 
 async function scrapeSubsidyPage(url: string): Promise<{html: string, text: string, markdown: string, documents: string[]}> {
   try {
-    console.log(`📄 Fetching content from: ${url}`);
+    console.log(`📄 [DEBUG] Starting fetch for: ${url}`);
     
     const response = await fetch(url, {
       headers: {
@@ -466,12 +466,15 @@ async function scrapeSubsidyPage(url: string): Promise<{html: string, text: stri
       method: 'GET'
     });
     
+    console.log(`📄 [DEBUG] Fetch response: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
+      console.error(`❌ [DEBUG] HTTP error: ${response.status} - ${response.statusText}`);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
     const html = await response.text();
-    console.log(`📦 Retrieved ${html.length} characters`);
+    console.log(`📦 [DEBUG] Retrieved ${html.length} characters from ${url}`);
     
     // Extract clean text content
     const textContent = html
