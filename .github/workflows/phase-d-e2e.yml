@@ -1,0 +1,90 @@
+name: Phase D E2E Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Test environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+  schedule:
+    - cron: "17 2 * * *"   # nightly 02:17 UTC
+
+jobs:
+  run-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with: 
+          deno-version: v1.x
+
+      - name: Generate golden fixtures
+        run: deno run -A scripts/make_golden_fixtures.ts
+
+      - name: Run Phase D harness
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HARNESS_BUCKET: farm-documents
+          HARNESS_USE_SERVICE_ROLE: "true"   # Use service role for function calls
+        run: deno run -A scripts/phase_d_harness.ts
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-d-test-artifacts
+          path: |
+            fixtures/
+            *.log
+          retention-days: 7
+
+      - name: Notify on failure (optional)
+        if: failure()
+        run: |
+          echo "Phase D E2E tests failed!"
+          echo "Check the logs and artifacts for details."
+          # Add Slack/email notification here if needed
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Phase D E2E tests failed in ${{ github.repository }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: run-harness
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with: 
+          deno-version: v1.x
+
+      - name: Run Phase D validation script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: deno run --allow-net --allow-env supabase/functions/extract-document-data/phase-d-test.ts
+
+      - name: Create summary report
+        run: |
+          echo "## Phase D E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.test_environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.run-harness.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the job logs for detailed test results and metrics." >> $GITHUB_STEP_SUMMARY
