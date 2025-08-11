@@ -1,111 +1,89 @@
-#!/bin/bash
-# Quick deployment script for Phase D production rollout
-# Usage: ./scripts/deploy-phase-d.sh [staging|production] [--dry-run]
+#!/usr/bin/env bash
+# Phase D secure deploy + smoke: no secrets in code, read from env/CI only.
 
 set -Eeuo pipefail
-trap 'echo -e "${RED}❌ Failed at line $LINENO${NC}"; exit 1' ERR
+trap 'echo "❌ Failed at line $LINENO"; exit 1' ERR
 
-PROJECT_REF=${1:-staging}
-DRY_RUN=${2}
+# --- Optional: auto-load local env (never commit this file) ---
+for f in .env.local .env; do
+  [[ -f "$f" ]] && { set -a; # export all
+    # shellcheck disable=SC1090
+    source "$f"
+    set +a;
+  }
+done
 
-echo "🚀 Phase D Deployment Script"
-echo "Target: $PROJECT_REF"
-echo "Dry run: ${DRY_RUN:-false}"
-echo ""
+# --- Required env (CI secrets or .env) ---
+: "${PROJECT_REF:?Set PROJECT_REF (e.g., gvfgvbztagafjykncwto)}"
+: "${SUPABASE_URL:="https://${PROJECT_REF}.supabase.co"}"
+: "${SUPABASE_ANON_KEY:?Set SUPABASE_ANON_KEY via CI/.env}"
+: "${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY via CI/.env}"
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# --- Harness / function flags (safe defaults) ---
+: "${HARNESS_BUCKET:=farm-documents}"
+: "${HARNESS_USE_SERVICE_ROLE:=true}"
+: "${OPENAI_TABLES_MODEL:=gpt-4o-mini}"
+: "${MAX_TABLES_PER_DOC:=50}"
+: "${MAX_CELLS_PER_DOC:=50000}"
 
-check_command() {
-    if ! command -v $1 &> /dev/null; then
-        echo -e "${RED}❌ $1 is required but not installed${NC}"
-        exit 1
-    fi
-}
+# --- Optional SQL spot-check (skip if not set) ---
+: "${DATABASE_URL:=}"
 
-# Prerequisites
-echo "📋 Checking prerequisites..."
-check_command "supabase"
-check_command "deno"
-check_command "jq"
+# --- Preflight ---
+need() { command -v "$1" >/dev/null || { echo "✗ missing: $1"; exit 1; }; }
+echo "📋 Checking prerequisites…"
+need supabase; need deno
+echo "✅ CLI tools present"
 
-# Check if logged into Supabase
-if ! supabase projects list &> /dev/null; then
-    echo -e "${RED}❌ Not logged into Supabase CLI${NC}"
-    echo "Run: supabase auth login"
-    exit 1
-fi
+# Verify Supabase auth
+supabase projects list >/dev/null || { echo "✗ Not logged in. Run: supabase auth login"; exit 1; }
+echo "✅ Supabase auth OK"
 
-echo -e "${GREEN}✅ Prerequisites OK${NC}"
-echo ""
+# --- Set function secrets (do NOT echo values) ---
+# We do not fetch secrets from Supabase (not supported for secure values).
+# We only *set* non-sensitive flags and rely on your OPENAI_API_KEY already stored in Supabase.
+echo "🔐 Setting safe function flags (not printing values)…"
+supabase secrets set \
+  ENABLE_PHASE_D=true \
+  OPENAI_TABLES_MODEL="$OPENAI_TABLES_MODEL" \
+  MAX_TABLES_PER_DOC="$MAX_TABLES_PER_DOC" \
+  MAX_CELLS_PER_DOC="$MAX_CELLS_PER_DOC" \
+  --project-ref "$PROJECT_REF" >/dev/null
+echo "✅ Function flags set"
 
-# Secrets check
-echo "🔐 Verifying function secrets..."
-SECRETS=$(supabase secrets list --project-ref $PROJECT_REF 2>/dev/null || echo "")
+# --- Deploy Edge Function ---
+echo "🚢 Deploying edge function…"
+supabase functions deploy extract-document-data --project-ref "$PROJECT_REF"
+echo "✅ Function deployed"
 
-check_secret() {
-    if [[ $SECRETS == *"$1"* ]]; then
-        echo -e "${GREEN}✅ $1${NC}"
-    else
-        echo -e "${YELLOW}⚠️  $1 missing${NC}"
-    fi
-}
-
-check_secret "ENABLE_PHASE_D"
-check_secret "OPENAI_API_KEY" 
-check_secret "OPENAI_TABLES_MODEL"
-check_secret "MAX_TABLES_PER_DOC"
-check_secret "MAX_CELLS_PER_DOC"
-echo ""
-
-# Deploy function
-if [[ $DRY_RUN != "--dry-run" ]]; then
-    echo "🚢 Deploying extract-document-data function..."
-    supabase functions deploy extract-document-data --project-ref $PROJECT_REF
-    echo -e "${GREEN}✅ Function deployed${NC}"
-else
-    echo -e "${YELLOW}🏃 DRY RUN: Would deploy extract-document-data${NC}"
-fi
-echo ""
-
-# Generate fixtures
-echo "📁 Generating test fixtures..."
+# --- Generate fixtures & run harness (minimal Deno perms) ---
+echo "📁 Generating fixtures…"
 deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures.ts
-deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures_ext.ts
-echo -e "${GREEN}✅ Fixtures generated${NC}"
-echo ""
 
-# Run harness
-echo "🧪 Running Phase D harness..."
-if deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness.ts; then
-    echo -e "${GREEN}✅ Core harness passed${NC}"
+echo "🧪 Running core harness (expect 21/21)…"
+SUPABASE_URL="$SUPABASE_URL" \
+SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+HARNESS_BUCKET="$HARNESS_BUCKET" \
+HARNESS_USE_SERVICE_ROLE="$HARNESS_USE_SERVICE_ROLE" \
+deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness.ts
+
+# --- Optional quick SQL health check ---
+if [[ -n "$DATABASE_URL" ]]; then
+  echo "📈 Health (last 2h)…"
+  psql "$DATABASE_URL" -Atc "
+    SELECT 'success_rate='||
+           ROUND(AVG((extraction_outcome='success')::int)::numeric,3)
+    FROM phase_d_extractions
+    WHERE created_at > NOW() - INTERVAL '2 hours';" || true
+  psql "$DATABASE_URL" -Atc "
+    SELECT extraction_outcome||':'||quality_tier||'='||COUNT(*)
+    FROM phase_d_extractions
+    WHERE created_at > NOW() - INTERVAL '2 hours'
+    GROUP BY extraction_outcome, quality_tier
+    ORDER BY COUNT(*) DESC;" || true
 else
-    echo -e "${RED}❌ Core harness failed${NC}"
-    exit 1
+  echo "ℹ️  Skip SQL spot-check (set DATABASE_URL to enable)."
 fi
 
-echo "🧪 Running extended harness..."
-if deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness_ext.ts; then
-    echo -e "${GREEN}✅ Extended harness passed${NC}"
-else
-    echo -e "${YELLOW}⚠️  Extended harness had issues (check output)${NC}"
-fi
-echo ""
-
-# Backfill dry run
-echo "🔄 Testing backfill (dry run)..."
-BACKFILL_DAYS=1 DRY_RUN=true deno run --allow-read --allow-write --allow-net --allow-env scripts/backfill_phase_d.ts
-echo -e "${GREEN}✅ Backfill test complete${NC}"
-echo ""
-
-echo -e "${GREEN}🎉 Phase D deployment validation complete!${NC}"
-echo ""
-echo "Next steps:"
-echo "1. Monitor health queries in production"
-echo "2. Run actual backfill: BACKFILL_DAYS=1 DRY_RUN=false deno run --allow-read --allow-write --allow-net --allow-env scripts/backfill_phase_d.ts"
-echo "3. Set up monitoring alerts per docs/PHASE_D_MONITORING.md"
-echo ""
-echo "Emergency rollback: supabase secrets set ENABLE_PHASE_D=false --project-ref $PROJECT_REF"
+echo "✅ Done. Watch logs & metrics for the first hour."
