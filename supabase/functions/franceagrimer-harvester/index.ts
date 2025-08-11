@@ -476,6 +476,10 @@ async function scrapeSubsidyPage(url: string): Promise<{html: string, text: stri
     const html = await response.text();
     console.log(`📦 [DEBUG] Retrieved ${html.length} characters from ${url}`);
     
+    if (html.length < 1000) {
+      console.warn(`⚠️ [DEBUG] Suspiciously short content for ${url} - only ${html.length} chars`);
+    }
+    
     // Extract clean text content
     const textContent = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -484,12 +488,15 @@ async function scrapeSubsidyPage(url: string): Promise<{html: string, text: stri
       .replace(/\s+/g, ' ')
       .trim();
     
+    console.log(`📝 [DEBUG] Extracted ${textContent.length} chars of text content`);
+    
     // Convert to markdown-like format for better AI processing
     const markdown = convertHtmlToMarkdown(html);
+    console.log(`📋 [DEBUG] Generated ${markdown.length} chars of markdown`);
     
     // Extract document links
     const documents = extractDocumentLinks(html, url);
-    console.log(`📎 Found ${documents.length} document links`);
+    console.log(`📎 [DEBUG] Found ${documents.length} document links`);
     
     return {
       html,
@@ -499,7 +506,8 @@ async function scrapeSubsidyPage(url: string): Promise<{html: string, text: stri
     };
     
   } catch (error) {
-    console.error(`❌ Error scraping ${url}:`, error);
+    console.error(`❌ [DEBUG] Critical error scraping ${url}:`, error.message);
+    console.error(`❌ [DEBUG] Error stack:`, error.stack);
     throw error;
   }
 }
