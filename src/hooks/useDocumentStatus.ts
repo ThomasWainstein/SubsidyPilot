@@ -106,9 +106,9 @@ export function useDocumentStatus(
     enabled: !!documentId,
     refetchInterval: (data) => {
       // Stop polling if completed, failed, or realtime is connected
-      if (!data?.data?.extraction || 
-          data.data.extraction.status === 'completed' || 
-          data.data.extraction.status === 'failed' ||
+      if (!data?.extraction || 
+          data.extraction.status === 'completed' || 
+          data.extraction.status === 'failed' ||
           realtimeConnected) {
         return false;
       }
