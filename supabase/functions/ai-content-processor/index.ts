@@ -331,6 +331,22 @@ Return only valid JSON array, no explanation:`;
           const rawSubsidies = robustJsonArray(extractedText);
           console.log(`📊 Parsed ${rawSubsidies.length} potential subsidies from raw response`);
           console.log(`🔍 Raw subsidies array:`, JSON.stringify(rawSubsidies, null, 2));
+
+          // Persist raw AI output for forensic analysis
+          try {
+            await supabase.from('ai_raw_extractions').insert({
+              run_id,
+              page_id: page.id,
+              model,
+              raw_output: extractedText,
+              parsed_count: rawSubsidies.length,
+              prompt: prompt.slice(0, 2000),
+              content_preview: firstChunk.slice(0, 500)
+            });
+          } catch (persistErr) {
+            console.warn('⚠️ Failed to persist raw AI output:', (persistErr as Error).message);
+          }
+          
           
           let pageSubsidiesCreated = 0;
           for (const rawSub of rawSubsidies) {

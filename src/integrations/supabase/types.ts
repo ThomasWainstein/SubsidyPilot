@@ -103,6 +103,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_raw_extractions: {
+        Row: {
+          content_preview: string | null
+          created_at: string
+          id: string
+          model: string | null
+          page_id: string
+          parsed_count: number | null
+          prompt: string | null
+          raw_output: string
+          run_id: string
+        }
+        Insert: {
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          page_id: string
+          parsed_count?: number | null
+          prompt?: string | null
+          raw_output: string
+          run_id: string
+        }
+        Update: {
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          page_id?: string
+          parsed_count?: number | null
+          prompt?: string | null
+          raw_output?: string
+          run_id?: string
+        }
+        Relationships: []
+      }
       application_form_instances: {
         Row: {
           auto_population_config: Json | null
