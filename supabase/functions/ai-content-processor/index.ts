@@ -252,45 +252,46 @@ serve(async (req) => {
             };
           }
 
-          const prompt = `${agencyConfig.systemPrompt}
+          const prompt = `You are an expert at extracting Romanian agricultural subsidy information from APIA content.
 
-AGENCY CONTEXT: ${agencyConfig.agency} - ${agencyConfig.language.toUpperCase()}
+AGENCY: ${agencyConfig.agency} (Romanian Agriculture Payment Agency)
 SOURCE: ${page.source_url}
 
-TASK: Extract ALL subsidy, grant, funding scheme, or financial support information from this ${agencyConfig.agency} content.
+EXTRACTION MISSION: Find ALL financial support, payments, grants, or funding mentioned in this content.
 
-KEY TERMS TO RECOGNIZE (${agencyConfig.language}):
-${agencyConfig.terms.map(term => `- "${term}"`).join('\n')}
+LOOK FOR THESE PATTERNS:
+- Amounts in LEI or EUR (e.g., "2.8 milioane lei", "suma de X lei")
+- Payment announcements ("efectuează plata", "se acordă", "sprijin financiar")
+- Support schemes ("ajutor de stat", "măsuri de sprijin", "finanțare")
+- Funding programs ("program de", "schemă de", "subvenție")
+- Agricultural payments ("plăți agricole", "despăgubiri", "compensații")
 
-EXPECTED SUBSIDIES (examples):
-${agencyConfig.examples.map(ex => `- "${ex}"`).join('\n')}
+BE VERY LIBERAL: Extract ANY mention of financial support for farmers, even from news articles or announcements.
 
-OUTPUT FORMAT: Valid JSON array where each item has:
-- title: Name of the subsidy/grant (in original language)
-- description: What the funding covers (be descriptive, include context from content)
-- eligibility: Who can apply and basic requirements (if mentioned)
-- deadline: Application deadline (YYYY-MM-DD format if found, null if unclear)
-- funding_type: "grant" | "subsidy" | "loan" | "tax_credit" | "support_measure"
-- agency: "${agencyConfig.agency}"
-- sector: ONE of ["livestock", "crops", "equipment", "rural_development", "modernization", "young_farmers"]
-- region: Geographic area if specified (null if national/unclear)
+ROMANIAN CONTEXT CLUES:
+- "solicitanți" = applicants
+- "beneficiari" = beneficiaries  
+- "cereri de plată" = payment requests
+- "crescători de animale" = animal breeders
+- "fermieri" = farmers
+- "bugetul de stat" = state budget
 
-EXTRACTION STRATEGY:
-1. Look for ANY mention of financial support, funding programs, or subsidies
-2. Extract information even if mentioned in news articles or press releases
-3. Include general programs that farmers might be eligible for
-4. Be liberal in interpretation - capture anything that could help farmers
-5. For Romanian content, look for amounts in LEI or EUR
-6. Include programs for digital transformation, modernization, young farmers
+OUTPUT: JSON array with subsidies found. For each subsidy:
+- title: Name/description of the financial support (in Romanian)
+- description: Full details about what it covers and amounts
+- eligibility: Who can apply (farmers, animal breeders, etc.)
+- deadline: Date if mentioned (YYYY-MM-DD format) or null
+- funding_type: "support_measure" | "grant" | "subsidy" | "payment"
+- agency: "APIA"
+- sector: "livestock" | "crops" | "rural_development" | "modernization"
+- region: Geographic area or null
 
-IMPORTANT: Be more permissive in extraction. Include anything mentioning agricultural financial support, even if details are limited. For news articles about funding programs, extract the program being discussed.
-
-If ABSOLUTELY NO funding information found, return: []
+CRITICAL: If you see ANY financial amounts or support programs mentioned, extract them! Return [] only if absolutely no funding is mentioned.
 
 Content to analyze:
 ${firstChunk}
 
-Return only valid JSON array, no other text.`;
+Return only valid JSON array, no explanation:`;
 
           const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
