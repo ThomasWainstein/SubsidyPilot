@@ -37,84 +37,289 @@ export async function integrateTableExtraction(
   documentLanguage: string,
   openAIApiKey: string
 ): Promise<TableIntegrationResult> {
-  const startTime = Date.now();
+  const extractionStartTime = Date.now();
   console.log(`🔧 Phase D: Starting advanced table integration for ${fileName}`);
   
-  // Guards: prevent runaway processing
-  const MAX_TABLES = parseInt(Deno.env.get('MAX_TABLES_PER_DOC') || '50');
-  const MAX_CELLS = parseInt(Deno.env.get('MAX_CELLS_PER_DOC') || '50000');
+  // Environment-based configuration
+  const AI_MODEL = Deno.env.get('OPENAI_TABLES_MODEL') || 'gpt-4o-mini';
+  const MAX_TABLES_PER_DOC = parseInt(Deno.env.get('MAX_TABLES_PER_DOC') || '50');
+  const MAX_CELLS_PER_DOC = parseInt(Deno.env.get('MAX_CELLS_PER_DOC') || '50000');
+  
+  console.log(`🤖 Using AI model: ${AI_MODEL} for table post-processing`);
+  
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key is required for Phase D table processing');
+  }
   
   // Step 1: Extract tables based on file type
   const extractionStart = Date.now();
-  const extractedTables = await extractTablesFromDocument(fileBuffer, fileName);
-  const extractionTime = Date.now() - extractionStart;
+  let extractedTables = await extractTablesFromDocument(fileBuffer, fileName);
+  const extractionEndTime = Date.now();
   
-  console.log(`📊 Extracted ${extractedTables.length} tables in ${extractionTime}ms`);
+  console.log(`📊 Extracted ${extractedTables.length} tables in ${extractionEndTime - extractionStart}ms`);
   
-  // Apply guards
-  if (extractedTables.length > MAX_TABLES) {
-    console.warn(`⚠️ Too many tables (${extractedTables.length} > ${MAX_TABLES}), limiting to first ${MAX_TABLES}`);
-    extractedTables.splice(MAX_TABLES);
+  // Apply resource guards
+  if (extractedTables.length > MAX_TABLES_PER_DOC) {
+    console.warn(`⚠️ Too many tables (${extractedTables.length} > ${MAX_TABLES_PER_DOC}), limiting to first ${MAX_TABLES_PER_DOC}`);
+    extractedTables = extractedTables.slice(0, MAX_TABLES_PER_DOC);
   }
   
   const totalCells = extractedTables.reduce((sum, table) => sum + table.headers.length * table.rows.length, 0);
-  if (totalCells > MAX_CELLS) {
-    console.warn(`⚠️ Too many cells (${totalCells} > ${MAX_CELLS}), limiting processing`);
-    // Truncate tables to stay under limit
+  if (totalCells > MAX_CELLS_PER_DOC) {
+    console.warn(`⚠️ Too many cells (${totalCells} > ${MAX_CELLS_PER_DOC}), limiting processing`);
     let cellCount = 0;
-    const limitedTables = [];
-    for (const table of extractedTables) {
+    extractedTables = extractedTables.filter(table => {
       const tableCells = table.headers.length * table.rows.length;
-      if (cellCount + tableCells <= MAX_CELLS) {
-        limitedTables.push(table);
+      if (cellCount + tableCells <= MAX_CELLS_PER_DOC) {
         cellCount += tableCells;
-      } else {
-        break;
+        return true;
       }
-    }
-    extractedTables.splice(0, extractedTables.length, ...limitedTables);
+      return false;
+    });
   }
   
-  // Step 2: AI post-processing
-  const postProcessingStart = Date.now();
-  const modelName = Deno.env.get('OPENAI_TABLES_MODEL') || 'gpt-4o-mini';
-  console.log(`🤖 Using AI model: ${modelName} for table post-processing`);
-  const processedTables = await processTablesWithAI(extractedTables, documentLanguage, openAIApiKey, modelName);
-  const postProcessingTime = Date.now() - postProcessingStart;
+  // Step 2: Multi-page table detection and merging
+  const mergedTables = detectAndMergeMultiPageTables(extractedTables);
+  console.log(`🔗 Multi-page detection: ${extractedTables.length} → ${mergedTables.length} tables`);
   
-  console.log(`🤖 AI post-processing completed in ${postProcessingTime}ms`);
+  // Step 3: AI post-processing with improved error handling and rate limiting
+  const postProcessingStartTime = Date.now();
   
-  // Step 3: Generate metrics and enriched content
-  const tableMetrics = generateTableMetrics(extractedTables, processedTables, extractionTime, postProcessingTime);
-  const enrichedText = generateEnrichedText(processedTables);
+  if (mergedTables.length === 0) {
+    console.log('⚪ No tables to process with AI');
+    return {
+      extractedTables: [],
+      processedTables: [],
+      tableMetrics: {
+        extractionTime: extractionEndTime - extractionStart,
+        postProcessingTime: 0,
+        totalTables: 0,
+        successfulTables: 0,
+        failedTables: 0,
+        tableQualityScore: 0,
+        detectedLanguages: [],
+        subsidyFieldsFound: 0
+      },
+      enrichedText: '',
+      tableData: {
+        raw: [],
+        processed: [],
+        metadata: {
+          extractionMethod: 'phase-d-advanced',
+          version: '1.0.0',
+          aiModel: AI_MODEL,
+          extractionTime: extractionEndTime - extractionStart,
+          postProcessingTime: 0,
+          totalTables: 0,
+          successfulTables: 0,
+          subsidyFieldsFound: 0
+        }
+      }
+    };
+  }
+
+  // Processing budget limits
+  const BATCH_SIZE = 2; // Reduced concurrency to avoid 429s
+  const MAX_PROCESSING_TIME = 12000; // 12 seconds max
+  const MAX_TOTAL_ROWS = 500; // Cap total rows processed
   
-  // Step 4: Prepare table data for database storage
-  const tableData = {
+  // Early abort if too many rows
+  const totalRows = extractedTables.reduce((sum, table) => sum + (table.rows?.length || 0), 0);
+  if (totalRows > MAX_TOTAL_ROWS) {
+    console.log(`⚠️ Phase D: Too many rows (${totalRows}), processing first ${MAX_TOTAL_ROWS}`);
+    // Truncate tables to stay within budget
+    let processedRows = 0;
+    extractedTables = extractedTables.filter(table => {
+      if (processedRows + (table.rows?.length || 0) <= MAX_TOTAL_ROWS) {
+        processedRows += table.rows?.length || 0;
+        return true;
+      }
+      return false;
+    });
+  }
+
+  const processedTables: ProcessedTable[] = [];
+  
+  for (let i = 0; i < mergedTables.length; i += BATCH_SIZE) {
+    // Check time budget
+    if (Date.now() - extractionStartTime > MAX_PROCESSING_TIME) {
+      console.log(`⚠️ Phase D: Time budget exceeded, stopping at ${i}/${mergedTables.length} tables`);
+      break;
+    }
+
+    const batch = mergedTables.slice(i, i + BATCH_SIZE);
+    
+    const batchPromises = batch.map(async (table) => {
+      const retryWithBackoff = async (attempt = 1): Promise<any> => {
+        try {
+          const tableText = formatTableForAI(table);
+          
+          const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: AI_MODEL,
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are an expert at extracting subsidy and funding information from tables. 
+                  
+Analyze the table data and extract any subsidy, grant, or funding program information. Return ONLY a valid JSON object with this structure:
+{
+  "programs": [
+    {
+      "name": "Program name",
+      "description": "Brief description",
+      "minAmount": "Minimum amount (with currency)",
+      "maxAmount": "Maximum amount (with currency)", 
+      "coFinancingRate": "Percentage or description",
+      "deadline": "Application deadline",
+      "eligibility": "Eligibility criteria",
+      "contactInfo": "Contact information if available"
+    }
+  ],
+  "subsidyFieldsFound": number,
+  "confidence": number
+}
+
+If no subsidy information is found, return: {"programs": [], "subsidyFieldsFound": 0, "confidence": 0}
+
+Important: Return ONLY the JSON object, no additional text.`
+                },
+                {
+                  role: 'user',
+                  content: tableText
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 1000
+            }),
+          });
+
+          // Handle rate limits with retry
+          if (completion.status === 429 && attempt <= 3) {
+            const backoffMs = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 8000);
+            console.log(`Rate limited, retrying in ${backoffMs}ms (attempt ${attempt})`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            return retryWithBackoff(attempt + 1);
+          }
+
+          if (!completion.ok) {
+            const errorText = await completion.text();
+            console.error(`OpenAI API error for table ${table.id}:`, completion.status, errorText);
+            throw new Error(`OpenAI API error: ${completion.status}`);
+          }
+
+          const result = await completion.json();
+          const content = result.choices?.[0]?.message?.content;
+          
+          if (!content) {
+            throw new Error('No content in OpenAI response');
+          }
+
+          // Strict JSON validation
+          let aiData;
+          try {
+            aiData = JSON.parse(content.trim());
+            
+            // Validate structure
+            if (typeof aiData !== 'object' || aiData === null) {
+              throw new Error('Response is not a valid object');
+            }
+            
+            if (!Array.isArray(aiData.programs)) {
+              throw new Error('Missing or invalid programs array');
+            }
+            
+            if (typeof aiData.subsidyFieldsFound !== 'number') {
+              aiData.subsidyFieldsFound = aiData.programs.length;
+            }
+            
+            if (typeof aiData.confidence !== 'number') {
+              aiData.confidence = 0.5;
+            }
+            
+          } catch (parseError) {
+            console.error('Failed to parse/validate AI response:', content, parseError);
+            // Fallback to empty result
+            aiData = { programs: [], subsidyFieldsFound: 0, confidence: 0 };
+          }
+
+          return {
+            ...table,
+            aiExtracted: aiData,
+            extractionConfidence: aiData.confidence || 0.5,
+            tokensUsed: result.usage?.total_tokens || 0
+          };
+        } catch (error) {
+          if (attempt <= 3 && (error.message.includes('5') || error.message.includes('timeout'))) {
+            const backoffMs = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 8000);
+            console.log(`Retrying after error: ${error.message} (attempt ${attempt})`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            return retryWithBackoff(attempt + 1);
+          }
+          
+          console.error(`Error processing table ${table.id}:`, error);
+          return {
+            ...table,
+            aiExtracted: { programs: [], subsidyFieldsFound: 0, confidence: 0 },
+            extractionConfidence: 0,
+            error: error.message,
+            tokensUsed: 0
+          };
+        }
+      };
+
+      return retryWithBackoff();
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    processedTables.push(...batchResults);
+    
+    // Jittered delay between batches
+    if (i + BATCH_SIZE < mergedTables.length) {
+      const delay = 300 + Math.random() * 400; // 300-700ms
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  const postProcessingEndTime = Date.now();
+  const totalSubsidyFields = processedTables.reduce((sum, table) => 
+    sum + (table.aiExtracted?.subsidyFieldsFound || 0), 0
+  );
+  const totalTokens = processedTables.reduce((sum, table) => 
+    sum + (table.tokensUsed || 0), 0
+  );
+  const totalProcessingTime = postProcessingEndTime - extractionStartTime;
+
+  console.log(`🤖 AI post-processing completed in ${postProcessingEndTime - postProcessingStartTime}ms`);
+  console.log(`💰 Found ${totalSubsidyFields} subsidy fields across ${processedTables.length} tables`);
+  console.log(`🔢 Used ${totalTokens} tokens total, ${totalProcessingTime}ms elapsed`);
+
+  return {
     raw: extractedTables,
     processed: processedTables,
     metadata: {
       extractionMethod: 'phase-d-advanced',
       version: '1.0.0',
-      aiModel: modelName,
-      guardsApplied: {
-        maxTables: MAX_TABLES,
-        maxCells: MAX_CELLS,
-        tablesLimited: extractedTables.length === MAX_TABLES,
-        cellsLimited: totalCells > MAX_CELLS
-      },
-      ...tableMetrics
+      aiModel: AI_MODEL,
+      extractionTime: extractionEndTime - extractionStart,
+      postProcessingTime: postProcessingEndTime - postProcessingStartTime,
+      totalProcessingTime,
+      totalTables: extractedTables.length,
+      successfulTables: processedTables.filter(t => !t.error).length,
+      subsidyFieldsFound: totalSubsidyFields,
+      totalTokensUsed: totalTokens,
+      budgetLimits: {
+        maxTables: MAX_TABLES_PER_DOC,
+        maxCells: MAX_CELLS_PER_DOC,
+        maxProcessingTime: MAX_PROCESSING_TIME,
+        maxTotalRows: MAX_TOTAL_ROWS
+      }
     }
-  };
-  
-  const totalTime = Date.now() - startTime;
-  console.log(`✅ Phase D table integration completed in ${totalTime}ms`);
-  
-  return {
-    extractedTables,
-    processedTables,
-    tableMetrics,
-    enrichedText,
-    tableData
   };
 }
 
@@ -402,4 +607,36 @@ export function handleTableExtractionErrors(
       fallbackUsed: fallbackTables.length > 0
     }
   };
+}
+
+/**
+ * Format table for AI processing
+ */
+function formatTableForAI(table: ExtractedTable): string {
+  let formatted = '';
+  
+  // Add table metadata
+  if (table.pageNumber) {
+    formatted += `Table from page ${table.pageNumber}\n`;
+  }
+  
+  // Add headers
+  if (table.headers.length > 0) {
+    formatted += `Headers: ${table.headers.join(' | ')}\n`;
+    formatted += '-'.repeat(table.headers.join(' | ').length) + '\n';
+  }
+  
+  // Add rows (limit for API efficiency)
+  const maxRows = 20;
+  const rowsToProcess = table.rows.slice(0, maxRows);
+  
+  rowsToProcess.forEach((row, index) => {
+    formatted += `${row.join(' | ')}\n`;
+  });
+  
+  if (table.rows.length > maxRows) {
+    formatted += `... and ${table.rows.length - maxRows} more rows\n`;
+  }
+  
+  return formatted;
 }
