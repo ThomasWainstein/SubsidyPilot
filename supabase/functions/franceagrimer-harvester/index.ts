@@ -273,19 +273,19 @@ serve(async (req) => {
       });
     }
     
-    const { action = 'scrape', target_urls, max_pages = 10 } = requestBody;
+    const { action = 'scrape', target_urls, max_pages = 10, run_id } = requestBody;
 
-    console.log('🇫🇷 FranceAgriMer Harvester starting:', { action, max_pages });
+    console.log('🇫🇷 FranceAgriMer Harvester starting:', { action, max_pages, run_id });
 
     if (action === 'scrape') {
       const session_id = `franceagrimer-${Date.now()}`;
       const session: ScrapingSession = {
-      session_id,
-      run_id: requestBody.run_id || null,
-      target_sources: [
-        'https://www.franceagrimer.fr/aides-et-soutiens',
-        'https://www.franceagrimer.fr/rechercher-une-aide'
-      ],
+        session_id,
+        run_id: run_id || null,
+        target_sources: [
+          'https://www.franceagrimer.fr/rechercher-une-aide',
+          'https://www.franceagrimer.fr/aides/par-programme/aides-de-crises'
+        ],
         extraction_config: {
           preserve_formatting: true,
           extract_documents: true,
@@ -399,7 +399,7 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
         attachment_count: (pageContent.documents || []).length,
         status: 'scraped',
         scrape_date: new Date().toISOString(),
-        run_id: requestBody.run_id || session.run_id || null  // CRITICAL FIX: Associate with pipeline run
+        run_id: run_id || session.run_id || null  // CRITICAL FIX: Associate with pipeline run
       };
       
       const { data: insertedPage, error } = await supabase

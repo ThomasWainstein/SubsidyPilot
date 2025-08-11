@@ -76,8 +76,8 @@ serve(async (req) => {
         session_id,
         run_id: run_id,
         target_sources: [
-          'https://portal.afir.info/afir2020',
-          'https://www.madr.ro/afir'
+          'https://apia.org.ro/achizitii-publice/',
+          'https://www.madr.ro/'
         ],
         extraction_config: {
           preserve_formatting: true,
@@ -102,8 +102,8 @@ serve(async (req) => {
         // Continue execution even if logging fails
       }
 
-      // For now, use the sample data from the Python scraper
-      const scrapedPages = await discoverAndScrapeSamplePages(session, supabase, run_id);
+      // Use real Romanian procurement data from APIA
+      const scrapedPages = await discoverAndScrapeRealPages(session, supabase, run_id);
       
       console.log(`📊 Scraped ${scrapedPages.length} pages from AFIR Romania`);
 
@@ -136,71 +136,169 @@ serve(async (req) => {
   }
 });
 
-async function discoverAndScrapeSamplePages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
+async function discoverAndScrapeRealPages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
   const scrapedPages: any[] = [];
   
-  console.log(`🚀 Starting AFIR sample data collection`);
+  console.log(`🚀 Starting APIA Romania procurement data collection`);
 
-  // Use the sample data structure from the Python scraper
-  const sampleSubsidy = {
-    title: "AFIR Sample Grant",
-    agency: "AFIR", 
-    link: "https://portal.afir.info/sample-grant",
-    description: "Demonstration grant used for pipeline testing.",
-    country: "romania"
-  };
+  // Target the real APIA procurement page
+  const targetUrls = [
+    'https://apia.org.ro/achizitii-publice/',
+    'https://apia.org.ro/achizitii-publice/page/2/',
+    'https://apia.org.ro/achizitii-publice/page/3/'
+  ];
 
-  try {
-    console.log(`🔍 Processing sample AFIR subsidy: ${sampleSubsidy.link}`);
-    
-    const pageData = {
-      source_url: sampleSubsidy.link,
-      source_site: 'afir-romania',
-      raw_html: `<html><body><h1>${sampleSubsidy.title}</h1><p>${sampleSubsidy.description}</p><div class="agency">${sampleSubsidy.agency}</div></body></html>`,
-      raw_text: `${sampleSubsidy.title}\n\n${sampleSubsidy.description}\n\nAgency: ${sampleSubsidy.agency}`,
-      raw_markdown: `# ${sampleSubsidy.title}\n\n${sampleSubsidy.description}\n\n**Agency:** ${sampleSubsidy.agency}`,
-      text_markdown: `# ${sampleSubsidy.title}\n\n${sampleSubsidy.description}\n\n**Agency:** ${sampleSubsidy.agency}`,
-      combined_content_markdown: `# ${sampleSubsidy.title}\n\n${sampleSubsidy.description}\n\n**Agency:** ${sampleSubsidy.agency}\n\n**Country:** ${sampleSubsidy.country}`,
-      attachment_paths: [],
-      attachment_count: 0,
-      status: 'scraped',
-      scrape_date: new Date().toISOString(),
-      run_id: run_id || null  // CRITICAL FIX: Associate with pipeline run
-    };
-    
-    const { data: insertedPage, error } = await supabase
-      .from('raw_scraped_pages')
-      .insert(pageData)
-      .select()
-      .single();
-    
-    if (error) {
-      if (error.code === '23505') {
-        // URL already exists, skip with warning
-        console.warn(`⚠️ URL already exists, skipping: ${sampleSubsidy.link}`);
-        
-        // Get existing page for AI processing
-        const { data: existingPage } = await supabase
-          .from('raw_scraped_pages')
-          .select('*')
-          .eq('source_url', sampleSubsidy.link)
-          .single();
-        
-        if (existingPage) {
-          scrapedPages.push(existingPage);
-          console.log(`✅ Using existing AFIR page: ${sampleSubsidy.link}`);
+  for (const url of targetUrls) {
+    try {
+      console.log(`🔍 Scraping APIA page: ${url}`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to fetch ${url}: ${response.status}`);
+        continue;
+      }
+
+      const html = await response.text();
+      console.log(`📦 Retrieved ${html.length} characters from ${url}`);
+      
+      // Extract clean text content
+      const textContent = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Convert to markdown format
+      const markdown = convertHtmlToMarkdown(html);
+      
+      // Extract document links (look for PDF, DOC, etc.)
+      const documents = extractDocumentLinks(html, url);
+      console.log(`📎 Found ${documents.length} document links`);
+      
+      const pageData = {
+        source_url: url,
+        source_site: 'apia-romania',
+        raw_html: html,
+        raw_text: textContent,
+        raw_markdown: markdown,
+        text_markdown: markdown,
+        combined_content_markdown: markdown,
+        attachment_paths: documents,
+        attachment_count: documents.length,
+        status: 'scraped',
+        scrape_date: new Date().toISOString(),
+        run_id: run_id || null
+      };
+      
+      const { data: insertedPage, error } = await supabase
+        .from('raw_scraped_pages')
+        .insert(pageData)
+        .select()
+        .single();
+      
+      if (error) {
+        if (error.code === '23505') {
+          console.warn(`⚠️ URL already exists, skipping: ${url}`);
+          
+          const { data: existingPage } = await supabase
+            .from('raw_scraped_pages')
+            .select('*')
+            .eq('source_url', url)
+            .single();
+          
+          if (existingPage) {
+            scrapedPages.push(existingPage);
+            console.log(`✅ Using existing page: ${url}`);
+          }
+        } else {
+          console.error('❌ Failed to store page:', error);
         }
       } else {
-        console.error('❌ Failed to store AFIR page:', error);
+        scrapedPages.push(insertedPage);
+        console.log(`✅ Scraped and stored: ${url}`);
       }
-    } else {
-      scrapedPages.push(insertedPage);
-      console.log(`✅ Scraped and stored AFIR page: ${sampleSubsidy.link}`);
+      
+      // Rate limiting to be respectful
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+    } catch (pageError) {
+      console.warn(`⚠️ Failed to scrape ${url}:`, pageError.message);
     }
-    
-  } catch (pageError) {
-    console.warn(`⚠️ Failed to scrape AFIR sample:`, pageError.message);
   }
   
   return scrapedPages;
+}
+
+function convertHtmlToMarkdown(html: string): string {
+  let markdown = html;
+  
+  // Headers
+  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
+  
+  // Paragraphs
+  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+  
+  // Lists
+  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+    return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n') + '\n';
+  });
+  
+  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+    let counter = 1;
+    return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => `${counter++}. $1\n`) + '\n';
+  });
+  
+  // Links
+  markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+  
+  // Strong/Bold
+  markdown = markdown.replace(/<(strong|b)[^>]*>(.*?)<\/\1>/gi, '**$2**');
+  
+  // Emphasis/Italic
+  markdown = markdown.replace(/<(em|i)[^>]*>(.*?)<\/\1>/gi, '*$2*');
+  
+  // Remove remaining HTML tags
+  markdown = markdown.replace(/<[^>]+>/g, '');
+  
+  // Clean up whitespace
+  markdown = markdown.replace(/\n\s*\n\s*\n/g, '\n\n');
+  markdown = markdown.replace(/^\s+|\s+$/g, '');
+  
+  return markdown;
+}
+
+function extractDocumentLinks(html: string, baseUrl: string): string[] {
+  const documents: string[] = [];
+  const docPatterns = [
+    /href="([^"]*\.pdf[^"]*)"/gi,
+    /href="([^"]*\.docx?[^"]*)"/gi,
+    /href="([^"]*\.xlsx?[^"]*)"/gi,
+    /href="([^"]*\.zip[^"]*)"/gi,
+    /href="([^"]*\.rar[^"]*)"/gi
+  ];
+  
+  for (const pattern of docPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const href = match[1];
+      if (href && !href.startsWith('javascript:') && !href.startsWith('mailto:')) {
+        const fullUrl = href.startsWith('http') ? href : new URL(href, baseUrl).toString();
+        documents.push(fullUrl);
+      }
+    }
+  }
+  
+  return Array.from(new Set(documents)); // Remove duplicates
 }
