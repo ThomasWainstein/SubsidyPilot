@@ -58,6 +58,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_active_run_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["run_id"]
           },
         ]
@@ -1333,6 +1340,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_active_run_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harvest_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["run_id"]
           },
         ]
@@ -1807,6 +1821,13 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_active_run_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["run_id"]
           },
         ]
@@ -2802,24 +2823,82 @@ export type Database = {
       }
       v_active_run_status: {
         Row: {
-          created_at: string | null
+          config: Json | null
+          id: string | null
           progress: number | null
-          run_id: string | null
+          runtime_seconds: number | null
           stage: string | null
-          stats: Json | null
+          started_at: string | null
           status: string | null
-          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          id?: string | null
+          progress?: number | null
+          runtime_seconds?: never
+          stage?: string | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          config?: Json | null
+          id?: string | null
+          progress?: number | null
+          runtime_seconds?: never
+          stage?: string | null
+          started_at?: string | null
+          status?: string | null
         }
         Relationships: []
       }
       v_ai_errors_last_24h: {
         Row: {
-          error_type: string | null
-          errors: number | null
-          first_seen: string | null
-          last_seen: string | null
+          created_at: string | null
+          id: string | null
+          message: string | null
+          run_id: string | null
+          source_url: string | null
+          stage: string | null
         }
-        Relationships: []
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+          run_id?: string | null
+          source_url?: string | null
+          stage?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          message?: string | null
+          run_id?: string | null
+          source_url?: string | null
+          stage?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_active_run_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_health_24h"
+            referencedColumns: ["run_id"]
+          },
+        ]
       }
       v_ai_run_summary: {
         Row: {
@@ -2842,20 +2921,44 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_active_run_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "v_pipeline_health_24h"
             referencedColumns: ["run_id"]
           },
         ]
       }
       v_ai_yield_by_run: {
         Row: {
-          errors_count: number | null
-          last_ended: string | null
+          ended_at: string | null
           model: string | null
-          pages_eligible: number | null
           pages_processed: number | null
-          pages_seen: number | null
           run_id: string | null
-          subsidies_created: number | null
+          started_at: string | null
+          subs_created: number | null
+          yield_percentage: number | null
+        }
+        Insert: {
+          ended_at?: string | null
+          model?: string | null
+          pages_processed?: number | null
+          run_id?: string | null
+          started_at?: string | null
+          subs_created?: number | null
+          yield_percentage?: never
+        }
+        Update: {
+          ended_at?: string | null
+          model?: string | null
+          pages_processed?: number | null
+          run_id?: string | null
+          started_at?: string | null
+          subs_created?: number | null
+          yield_percentage?: never
         }
         Relationships: []
       }
@@ -2873,11 +2976,10 @@ export type Database = {
       }
       v_harvest_quality_by_source_24h: {
         Row: {
-          avg_len: number | null
-          ge_1k: number | null
-          pages: number | null
-          pct_ge_1k: number | null
-          pct_with_markdown: number | null
+          avg_content_length: number | null
+          pages_harvested: number | null
+          quality_pages: number | null
+          recent_pages: number | null
           source_site: string | null
         }
         Relationships: []
@@ -2893,22 +2995,58 @@ export type Database = {
       }
       v_orphan_pages_recent: {
         Row: {
-          last_seen: string | null
-          orphan_pages: number | null
+          content_length: number | null
+          created_at: string | null
+          id: string | null
           source_site: string | null
+          source_url: string | null
+        }
+        Insert: {
+          content_length?: never
+          created_at?: string | null
+          id?: string | null
+          source_site?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          content_length?: never
+          created_at?: string | null
+          id?: string | null
+          source_site?: string | null
+          source_url?: string | null
         }
         Relationships: []
       }
       v_pipeline_health_24h: {
         Row: {
-          ai_failed: number | null
-          ai_pages_processed: number | null
-          ai_successful: number | null
-          hour: string | null
-          pages_scraped: number | null
-          runs: number | null
-          runs_completed: number | null
-          runs_no_content: number | null
+          duration_seconds: number | null
+          ended_at: string | null
+          failed_pages: number | null
+          processed_pages: number | null
+          run_id: string | null
+          started_at: string | null
+          status: string | null
+          total_pages: number | null
+        }
+        Insert: {
+          duration_seconds?: never
+          ended_at?: string | null
+          failed_pages?: never
+          processed_pages?: never
+          run_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_pages?: never
+        }
+        Update: {
+          duration_seconds?: never
+          ended_at?: string | null
+          failed_pages?: never
+          processed_pages?: never
+          run_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_pages?: never
         }
         Relationships: []
       }
