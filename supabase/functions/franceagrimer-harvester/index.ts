@@ -130,7 +130,7 @@ for (let idx = 0; idx < listUrls.length && idx < max_pages; idx++) {
   
   if (stat.ok) {
     // Extract links and keep only fiche detail pages
-    const linkPattern = /href="([^"]*\/aides?\/[^\
+    const linkPattern = /href="([^"]*\/aides?\/[^"#]*)"/gi;
     let match;
     while ((match = linkPattern.exec(html)) !== null) {
       const full = canonicalAidUrl(listUrl, match[1]);
