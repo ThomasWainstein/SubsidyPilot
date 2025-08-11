@@ -2125,6 +2125,7 @@ export type Database = {
           evaluation_criteria: string | null
           extracted_documents: Json | null
           extraction_batch_id: string | null
+          fingerprint: string | null
           funding_markdown: string | null
           funding_source: string | null
           funding_tranches: Json | null
@@ -2204,6 +2205,7 @@ export type Database = {
           evaluation_criteria?: string | null
           extracted_documents?: Json | null
           extraction_batch_id?: string | null
+          fingerprint?: string | null
           funding_markdown?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
@@ -2283,6 +2285,7 @@ export type Database = {
           evaluation_criteria?: string | null
           extracted_documents?: Json | null
           extraction_batch_id?: string | null
+          fingerprint?: string | null
           funding_markdown?: string | null
           funding_source?: string | null
           funding_tranches?: Json | null
@@ -2803,6 +2806,15 @@ export type Database = {
           day: string | null
           docs_total: number | null
           ocr_rate: number | null
+        }
+        Relationships: []
+      }
+      v_last_ai_runs: {
+        Row: {
+          last_ended: string | null
+          run_count: number | null
+          run_id: string | null
+          subs_created: number | null
         }
         Relationships: []
       }

@@ -1,24 +1,28 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+import { robustJsonArray, coerceSubsidy, makeFingerprint, chunkText } from '../_lib/ai-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Feature flags + structured logging helper
-const FLAG_ENABLE_STRUCTURED_LOGS = (Deno.env.get('ENABLE_STRUCTURED_LOGS') ?? 'true') === 'true';
+// Feature flags with safe defaults
+const AI_MODEL = Deno.env.get('AI_MODEL') || 'gpt-4.1-2025-04-14';
+const AI_MIN_LEN = parseInt(Deno.env.get('AI_MIN_LEN') || '200');
+const AI_CHUNK_SIZE = parseInt(Deno.env.get('AI_CHUNK_SIZE') || '8000');
+const AI_ALLOW_RECENT_FALLBACK = Deno.env.get('AI_ALLOW_RECENT_FALLBACK') === 'true';
+const ENABLE_STRUCTURED_LOGS = Deno.env.get('ENABLE_STRUCTURED_LOGS') !== 'false';
+
 function logEvent(scope: string, run_id?: string | null, extra: Record<string, any> = {}) {
   const payload = { ts: new Date().toISOString(), scope, run_id: run_id ?? null, ...extra };
-  if (FLAG_ENABLE_STRUCTURED_LOGS) console.log(JSON.stringify(payload));
-  else console.log(`[${scope}]`, payload);
+  if (ENABLE_STRUCTURED_LOGS) console.log(JSON.stringify(payload));
 }
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const allowRecentFallback = Deno.env.get('ALLOW_RECENT_FALLBACK') === 'true';
 
 if (!openAIApiKey) {
   throw new Error('OpenAI API key not found');
@@ -33,39 +37,52 @@ serve(async (req) => {
 
   const startTime = Date.now();
   let runId: string | null = null;
+  let aiRunId: string | null = null;
 
   try {
-    const { source, run_id, page_ids, quality_threshold = 0.4 } = await req.json();
+    const body = await req.json();
+    const { 
+      run_id, 
+      page_ids, 
+      quality_threshold = 0.3, 
+      min_len = AI_MIN_LEN,
+      model = AI_MODEL,
+      allow_recent_fallback = AI_ALLOW_RECENT_FALLBACK,
+      recent_window_minutes = 120 
+    } = body;
+    
     runId = run_id;
-    logEvent('ai.run.start', run_id, { source, page_ids_count: page_ids?.length || 0, quality_threshold });
+    const sessionId = `ai-${Date.now()}`;
     
-    console.log(`🤖 Starting AI content processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}, Allow fallback: ${allowRecentFallback}`);
+    logEvent('ai.run.start', run_id, { 
+      page_ids_count: page_ids?.length || 0, 
+      quality_threshold, 
+      min_len, 
+      model, 
+      allow_recent_fallback 
+    });
     
-    // Create AI content run tracking
-    const { data: aiContentRun } = await supabase
+    // Start envelope: insert ai_content_runs
+    const { data: aiRun, error: aiRunError } = await supabase
       .from('ai_content_runs')
       .insert({
-        run_id: run_id,
+        run_id,
+        session_id: sessionId,
+        model,
         started_at: new Date().toISOString(),
-        model: 'gpt-4.1-2025-04-14'
+        params: { quality_threshold, min_len, allow_recent_fallback, recent_window_minutes }
       })
       .select()
       .single();
     
-    // Update pipeline run to AI stage
-    if (run_id) {
-      await updatePipelineRun(run_id, {
-        status: 'running',
-        stage: 'ai',
-        progress: 50
-      });
-    }
+    if (aiRunError) throw aiRunError;
+    aiRunId = aiRun.id;
 
     let pages: any[] = [];
+    let pagesEligible = 0;
 
-    // Get pages to process
+    // Select pages: by page_ids OR by run_id; filter eligible content
     if (page_ids && page_ids.length > 0) {
-      // Process specific page IDs
       const { data: pageData, error: fetchError } = await supabase
         .from('raw_scraped_pages')
         .select('*')
@@ -74,7 +91,6 @@ serve(async (req) => {
       if (fetchError) throw fetchError;
       pages = pageData || [];
     } else if (run_id) {
-      // Process pages for specific run
       const { data: pageData, error: fetchError } = await supabase
         .from('raw_scraped_pages')
         .select('*')
@@ -82,205 +98,278 @@ serve(async (req) => {
 
       if (fetchError) throw fetchError;
       pages = pageData || [];
-
-      // Filter pages with sufficient content (200+ chars guard)
-      const substantialPages = pages.filter(p => {
-        const contentLength = (p.text_markdown?.length || 0) + 
-                            (p.raw_text?.length || 0) + 
-                            (p.raw_html?.length || 0);
-        return contentLength >= 200;
-      });
-
-      // Log insufficient content pages to harvest_issues
-      const insufficientPages = pages.filter(p => {
-        const contentLength = (p.text_markdown?.length || 0) + 
-                            (p.raw_text?.length || 0) + 
-                            (p.raw_html?.length || 0);
-        return contentLength < 200;
-      });
-
-      for (const page of insufficientPages) {
-        const contentLength = (page.text_markdown?.length || 0) + 
-                            (page.raw_text?.length || 0) + 
-                            (page.raw_html?.length || 0);
-        
-        await supabase.from('harvest_issues').insert({
-          run_id,
-          page_id: page.id,
-          source_url: page.source_url,
-          reason: 'Insufficient content for AI processing',
-          content_length: contentLength
-        });
-      }
-
-      pages = substantialPages;
-
-      // Fallback to recent content only if enabled and no substantial pages
-      if (pages.length === 0 && allowRecentFallback) {
-        console.log(`⚠️ No substantial content for run ${run_id}, using recent fallback (ALLOW_RECENT_FALLBACK=true)`);
-        
-        const { data: recentPages, error: recentError } = await supabase
-          .from('raw_scraped_pages')
-          .select('*')
-          .like('source_url', '%franceagrimer%')
-          .gte('created_at', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
-          .limit(10);
-
-        if (!recentError && recentPages?.length > 0) {
-          pages = recentPages.filter(p => {
-            const contentLength = (p.text_markdown?.length || 0) + 
-                                (p.raw_text?.length || 0) + 
-                                (p.raw_html?.length || 0);
-            return contentLength >= 200;
-          });
-          console.log(`📄 Using ${pages.length} recent FranceAgriMer pages (fallback mode)`);
-        }
-      }
     }
 
-    console.log(`📄 Processing ${pages.length} pages with sufficient content`);
+    // Filter eligible content (length >= min_len)
+    const eligiblePages = pages.filter(p => {
+      const content = p.text_markdown || p.raw_text || '';
+      return content.length >= min_len;
+    });
+    pagesEligible = eligiblePages.length;
 
-    if (pages.length === 0) {
-      const message = `No pages found for processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}`;
-      console.log(`⚠️ ${message}`);
+    // If none and allow_recent_fallback → pull recent pages
+    if (eligiblePages.length === 0 && allow_recent_fallback) {
+      logEvent('ai.fallback.start', run_id, { recent_window_minutes });
       
-      if (run_id) {
-        await updatePipelineRun(run_id, {
-          stage: 'done',
-          progress: 100,
-          status: 'completed',
-          ended_at: new Date().toISOString(),
-          stats: { ai: { pages_processed: 0, successful: 0, failed: 0 } }
-        });
-      }
+      const recentCutoff = new Date(Date.now() - recent_window_minutes * 60 * 1000).toISOString();
+      const { data: recentPages, error: recentError } = await supabase
+        .from('raw_scraped_pages')
+        .select('*')
+        .gte('created_at', recentCutoff)
+        .limit(10);
 
-      return new Response(JSON.stringify({
-        pages_processed: 0,
-        successful: 0,
-        failed: 0,
-        message
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      if (!recentError && recentPages?.length > 0) {
+        const recentEligible = recentPages.filter(p => {
+          const content = p.text_markdown || p.raw_text || '';
+          return content.length >= min_len;
+        });
+        pages.push(...recentEligible);
+        pagesEligible = recentEligible.length;
+        logEvent('ai.fallback.used', run_id, { recent_pages: recentEligible.length });
+      }
     }
 
-    let successful = 0;
-    let failed = 0;
+    const pagesSeen = pages.length;
+    let pagesProcessed = 0;
+    let subsidiesCreated = 0;
+    let errorsCount = 0;
 
-    // Process each page
-    for (const page of pages) {
-      const pageStartTime = Date.now();
+    // Process each eligible page
+    for (const page of eligiblePages.slice(0, 50)) { // Safety limit
       try {
-        console.log(`🔍 Processing page: ${page.source_url} (${page.id})`);
+        logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
-        const extractedData = await extractSubsidyData(page);
-        const pageProcessingTime = Date.now() - pageStartTime;
-        
-        if (extractedData && extractedData.length > 0) {
-          // Store in subsidies_structured table
-          const { error: insertError } = await supabase
-            .from('subsidies_structured')
-            .insert(extractedData.map(subsidy => ({
-              ...subsidy,
-              url: page.source_url,
-              run_id: run_id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })));
+        const content = page.text_markdown || page.raw_text || '';
+        if (content.length < min_len) continue;
 
-          if (insertError) {
-            console.error(`❌ Error inserting subsidies for ${page.source_url}:`, insertError);
-            await logError(run_id, page.id, page.source_url, 'insert', insertError.message);
-            failed++;
-          } else {
-            console.log(`✅ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, success, 0 tokens, ${pageProcessingTime}ms`);
-            successful += extractedData.length;
+        // Chunk content if needed
+        const chunks = chunkText(content, AI_CHUNK_SIZE);
+        
+        for (const chunk of chunks) {
+          try {
+            const prompt = `Extract agricultural subsidy information from this text. Return a JSON array of subsidies found.
+
+For each subsidy, extract:
+- title: The name/title of the subsidy program  
+- description: A detailed description
+- eligibility: Who is eligible and requirements
+- deadline: Application deadline (format: YYYY-MM-DD)
+- funding_type: Type of funding
+- agency: The agency providing the subsidy
+- sector: Agricultural sector
+- region: Geographic region if specified
+
+Text to analyze:
+${chunk}
+
+Return only valid JSON array, no other text.`;
+
+            const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openAIApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: 'system', content: 'You are an expert at extracting agricultural subsidy information. Return only valid JSON.' },
+                  { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 2000
+              }),
+            });
+
+            if (!aiResponse.ok) {
+              throw new Error(`OpenAI API error: ${aiResponse.status}`);
+            }
+
+            const aiData = await aiResponse.json();
+            const extractedText = aiData.choices[0].message.content;
+            
+            // Parse with robustJsonArray, map each using coerceSubsidy
+            const rawSubsidies = robustJsonArray(extractedText);
+            
+            for (const rawSub of rawSubsidies) {
+              const subsidy = coerceSubsidy(rawSub);
+              
+              // Skip empty subsidies
+              if (!subsidy.title && !subsidy.description) continue;
+              
+              // Compute fingerprint for idempotent inserts
+              const fingerprint = makeFingerprint({
+                title: subsidy.title,
+                agency: subsidy.agency,
+                deadline: subsidy.deadline,
+                url: page.source_url
+              });
+              
+              // Upsert into subsidies_structured on fingerprint
+              const { error: upsertError } = await supabase
+                .from('subsidies_structured')
+                .upsert({
+                  fingerprint,
+                  url: page.source_url,
+                  run_id,
+                  title: subsidy.title,
+                  description: subsidy.description,
+                  eligibility: subsidy.eligibility,
+                  deadline: subsidy.deadline,
+                  funding_type: subsidy.funding_type,
+                  agency: subsidy.agency,
+                  sector: subsidy.sector,
+                  region: subsidy.region,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, { 
+                  onConflict: 'fingerprint',
+                  ignoreDuplicates: false
+                });
+              
+              if (upsertError) {
+                errorsCount++;
+                await logAiError(run_id, page.id, page.source_url, 'db_insert', upsertError.message, extractedText.slice(0, 500));
+                logEvent('ai.page.insert.error', run_id, { page_id: page.id, error: upsertError.message });
+              } else {
+                subsidiesCreated++;
+                logEvent('ai.page.insert.success', run_id, { page_id: page.id, fingerprint });
+              }
+            }
+            
+          } catch (chunkError) {
+            errorsCount++;
+            await logAiError(run_id, page.id, page.source_url, 'ai_api', (chunkError as Error).message);
+            logEvent('ai.page.chunk.error', run_id, { page_id: page.id, error: (chunkError as Error).message });
           }
-        } else {
-          console.log(`⚠️ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, no_data, 0 tokens, ${pageProcessingTime}ms`);
-          await logError(run_id, page.id, page.source_url, 'extraction', 'No subsidies found in content');
         }
-
-      } catch (error) {
-        const pageProcessingTime = Date.now() - pageStartTime;
-        console.error(`❌ ${page.id}, ${page.source_url}, ${(page.text_markdown?.length || 0) + (page.raw_text?.length || 0) + (page.raw_html?.length || 0)} chars, error, 0 tokens, ${pageProcessingTime}ms:`, error);
-        await logError(run_id, page.id, page.source_url, 'processing', error.message);
-        failed++;
+        
+        pagesProcessed++;
+        logEvent('ai.page.done', run_id, { page_id: page.id, chunks: chunks.length });
+        
+      } catch (pageError) {
+        errorsCount++;
+        await logAiError(run_id, page.id, page.source_url, 'processing', (pageError as Error).message);
+        logEvent('ai.page.error', run_id, { page_id: page.id, error: (pageError as Error).message });
       }
     }
 
-    const totalProcessingTime = Date.now() - startTime;
-    console.log(`🎯 AI processing completed in ${totalProcessingTime}ms: ${successful} subsidies created, ${failed} errors`);
+    const endTime = Date.now();
+    const durationMs = endTime - startTime;
 
-    // Update AI content run tracking
-    if (aiContentRun?.id) {
-      await supabase
-        .from('ai_content_runs')
-        .update({
-          pages_seen: pages.length,
-          pages_eligible: pages.length,
-          pages_processed: pages.length,
-          subs_created: successful,
-          ended_at: new Date().toISOString(),
-          notes: `Processed ${pages.length} pages, created ${successful} subsidies, ${failed} errors`
-        })
-        .eq('id', aiContentRun.id);
-    }
+    // Finish envelope: update ai_content_runs with metrics
+    await supabase
+      .from('ai_content_runs')
+      .update({
+        pages_seen: pagesSeen,
+        pages_eligible: pagesEligible,
+        pages_processed: pagesProcessed,
+        subs_created: subsidiesCreated,
+        errors_count: errorsCount,
+        ended_at: new Date().toISOString(),
+        duration_ms: durationMs,
+        notes: subsidiesCreated > 0 ? 'Success' : 'No subsidies found'
+      })
+      .eq('id', aiRunId);
 
-    // Update pipeline run with results
+    // Update pipeline_runs if run_id present
     if (run_id) {
-      const nextStage = successful > 0 ? 'forms' : 'done';
-      const nextProgress = successful > 0 ? 75 : 100;
-      const runStatus = nextStage === 'done' ? 'completed' : 'running';
+      const nextStage = subsidiesCreated > 0 ? 'forms' : 'done';
+      const nextProgress = subsidiesCreated > 0 ? 75 : 100;
+      const nextStatus = nextStage === 'done' ? 'completed' : 'running';
+      const reason = subsidiesCreated === 0 ? 'no_subsidies_found' : undefined;
       
-      await updatePipelineRun(run_id, {
-        stage: nextStage,
-        progress: nextProgress,
-        status: runStatus,
-        ended_at: nextStage === 'done' ? new Date().toISOString() : undefined,
-        stats: {
-          ai: {
-            pages_processed: pages.length,
-            successful,
-            failed,
-            processing_time_ms: totalProcessingTime
-          }
-        }
-      });
+      await supabase
+        .from('pipeline_runs')
+        .update({
+          stage: nextStage,
+          progress: nextProgress,
+          status: nextStatus,
+          reason,
+          ended_at: nextStage === 'done' ? new Date().toISOString() : undefined,
+          stats: {
+            ai: {
+              pages_seen: pagesSeen,
+              pages_eligible: pagesEligible,
+              pages_processed: pagesProcessed,
+              subs_created: subsidiesCreated,
+              errors_count: errorsCount,
+              duration_ms: durationMs
+            }
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', run_id);
     }
+
+    logEvent('ai.run.done', run_id, { 
+      pages_seen: pagesSeen,
+      pages_eligible: pagesEligible, 
+      pages_processed: pagesProcessed, 
+      subs_created: subsidiesCreated,
+      errors_count: errorsCount,
+      duration_ms: durationMs 
+    });
 
     return new Response(JSON.stringify({
-      pages_processed: pages.length,
-      successful,
-      failed,
-      processing_time_ms: totalProcessingTime
+      success: true,
+      run_id,
+      session_id: sessionId,
+      model,
+      pages_seen: pagesSeen,
+      pages_eligible: pagesEligible,
+      pages_processed: pagesProcessed,
+      subsidies_created: subsidiesCreated,
+      errors_count: errorsCount
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   
   } catch (error) {
-    const totalProcessingTime = Date.now() - startTime;
-    logEvent('ai.run.done', runId, { error: (error as Error).message, pages_processed: 0, successful: 0, failed: 1, ms: totalProcessingTime });
-    console.error('❌ AI content processing error:', error);
+    const durationMs = Date.now() - startTime;
+    errorsCount = 1;
     
+    logEvent('ai.run.error', runId, { error: (error as Error).message, duration_ms: durationMs });
+    
+    // Finish envelope on error
+    if (aiRunId) {
+      await supabase
+        .from('ai_content_runs')
+        .update({
+          errors_count: 1,
+          ended_at: new Date().toISOString(),
+          duration_ms: durationMs,
+          notes: `Error: ${(error as Error).message}`
+        })
+        .eq('id', aiRunId);
+    }
+    
+    // Update pipeline_runs on error
     if (runId) {
-      await updatePipelineRun(runId, {
-        status: 'failed',
-        ended_at: new Date().toISOString(),
-        error: {
-          stage: 'ai',
-          message: error.message,
-          timestamp: new Date().toISOString()
-        }
-      });
+      await supabase
+        .from('pipeline_runs')
+        .update({
+          status: 'failed',
+          ended_at: new Date().toISOString(),
+          error: {
+            stage: 'ai',
+            message: (error as Error).message,
+            timestamp: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', runId);
     }
 
     return new Response(JSON.stringify({ 
-      error: error.message,
+      success: false,
+      error: (error as Error).message,
+      run_id: runId,
+      pages_seen: 0,
+      pages_eligible: 0,
       pages_processed: 0,
-      successful: 0,
-      failed: 1,
-      processing_time_ms: totalProcessingTime
+      subsidies_created: 0,
+      errors_count: 1
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -288,25 +377,7 @@ serve(async (req) => {
   }
 });
 
-async function updatePipelineRun(runId: string, updates: any) {
-  try {
-    const { error } = await supabase
-      .from('pipeline_runs')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', runId);
-
-    if (error) {
-      console.error('Error updating pipeline run:', error);
-    }
-  } catch (error) {
-    console.error('Error in updatePipelineRun:', error);
-  }
-}
-
-async function logError(runId: string | null, pageId: string, sourceUrl: string, stage: string, message: string) {
+async function logAiError(runId: string | null, pageId: string, sourceUrl: string, errorType: string, message: string, snippet?: string) {
   if (!runId) return;
   
   try {
@@ -314,76 +385,13 @@ async function logError(runId: string | null, pageId: string, sourceUrl: string,
       run_id: runId,
       page_id: pageId,
       source_url: sourceUrl,
-      stage,
+      error_type: errorType,
       message,
-      snippet: message.slice(0, 500)
+      snippet: snippet?.slice(0, 2000),
+      stage: 'processing',
+      created_at: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error logging AI content error:', error);
-  }
-}
-
-async function extractSubsidyData(page: any) {
-  try {
-    const content = page.text_markdown || page.raw_text || page.raw_html;
-    
-    if (!content || content.length < 100) {
-      console.log(`⚠️ Insufficient content in ${page.source_url}`);
-      return [];
-    }
-
-    const prompt = `Extract agricultural subsidy information from this French text. Return a JSON array of subsidies found.
-
-For each subsidy, extract:
-- title: The name/title of the subsidy program
-- description: A detailed description of what the subsidy covers
-- eligibility: Who is eligible and requirements
-- deadline: Application deadline if mentioned (format: YYYY-MM-DD)
-- funding_type: Type of funding (grant, loan, etc.)
-- agency: The agency providing the subsidy
-- sector: Agricultural sector (fruits, vegetables, livestock, etc.)
-- region: Geographic region if specified
-
-Text to analyze:
-${content.slice(0, 8000)}
-
-Return only valid JSON array, no other text.`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: Deno.env.get('OPENAI_TABLES_MODEL') || 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: 'You are an expert at extracting agricultural subsidy information from French government documents. Return only valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const aiResponse = await response.json();
-    const extractedText = aiResponse.choices[0].message.content;
-    
-    try {
-      const subsidies = JSON.parse(extractedText);
-      return Array.isArray(subsidies) ? subsidies : [subsidies];
-    } catch (parseError) {
-      console.error('Error parsing AI response:', parseError);
-      console.log('Raw AI response:', extractedText);
-      return [];
-    }
-
-  } catch (error) {
-    console.error('Error in extractSubsidyData:', error);
-    return [];
   }
 }
