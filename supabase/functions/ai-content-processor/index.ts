@@ -190,7 +190,37 @@ serve(async (req) => {
         try {
           console.log(`🧠 Making OpenAI API call for page ${page.id}...`);
           
-          const prompt = `You are an expert at extracting agricultural subsidy and funding information from web content.
+          // Detect language and create appropriate prompt
+          const isRomanian = content.includes('APIA') || content.includes('măsuri') || content.includes('sprijin') || content.includes('agricultură');
+          const isFrench = content.includes('FranceAgrimer') || content.includes('subvention') || content.includes('agriculture');
+          
+          let systemPrompt = 'You are an expert at extracting agricultural subsidy and funding information from web content in multiple languages.';
+          let examples = '';
+          
+          if (isRomanian) {
+            systemPrompt += ' You understand Romanian agricultural terminology.';
+            examples = `
+ROMANIAN TERMS TO LOOK FOR:
+- "măsuri de sprijin" (support measures)
+- "scheme de plată" (payment schemes) 
+- "subvenții agricole" (agricultural subsidies)
+- "fonduri europene" (European funds)
+- "sprijin financiar" (financial support)
+- "dezvoltare rurală" (rural development)
+- "crescători de animale" (animal breeders)
+- "fermieri" (farmers)`;
+          } else if (isFrench) {
+            systemPrompt += ' You understand French agricultural terminology.';
+            examples = `
+FRENCH TERMS TO LOOK FOR:
+- "subventions agricoles" (agricultural subsidies)
+- "aides financières" (financial aid)
+- "développement rural" (rural development)
+- "fonds européens" (European funds)
+- "mesures de soutien" (support measures)`;
+          }
+
+          const prompt = `${systemPrompt}
 
 TASK: Extract ALL subsidy, grant, funding scheme, or financial support information from the following text.
 
@@ -202,6 +232,7 @@ WHAT TO EXTRACT:
 - Rural development funds
 - Environmental payment schemes
 - Any monetary support for agriculture, livestock, or rural activities
+${examples}
 
 REQUIRED OUTPUT: Valid JSON array where each item has these fields:
 - title: Name of the subsidy/grant (required)
@@ -209,17 +240,15 @@ REQUIRED OUTPUT: Valid JSON array where each item has these fields:
 - eligibility: Who can apply and requirements
 - deadline: Application deadline (YYYY-MM-DD format if found)
 - funding_type: Type like "grant", "subsidy", "loan", "tax_credit"
-- agency: Organization providing the funding
+- agency: Organization providing the funding (e.g., APIA, FranceAgrimer)
 - sector: Agricultural area like "livestock", "crops", "equipment", "land"
 - region: Geographic area if specified
 
 EXAMPLES of what to look for:
-- "Support for young farmers"
-- "Livestock modernization grant"
-- "Organic certification subsidy"
-- "Rural development fund"
-- "Agricultural equipment financing"
-- "Environmental farming payments"
+- "Support for young farmers" / "Sprijin pentru tinerii fermieri"
+- "Livestock modernization grant" / "Grant pentru modernizarea creșterii animalelor"
+- "Organic certification subsidy" / "Subvenție pentru certificarea bio"
+- "Rural development fund" / "Fond pentru dezvoltare rurală"
 
 If NO subsidy information is found, return empty array: []
 
