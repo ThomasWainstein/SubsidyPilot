@@ -2,7 +2,8 @@
 # Quick deployment script for Phase D production rollout
 # Usage: ./scripts/deploy-phase-d.sh [staging|production] [--dry-run]
 
-set -e
+set -Eeuo pipefail
+trap 'echo -e "${RED}❌ Failed at line $LINENO${NC}"; exit 1' ERR
 
 PROJECT_REF=${1:-staging}
 DRY_RUN=${2}

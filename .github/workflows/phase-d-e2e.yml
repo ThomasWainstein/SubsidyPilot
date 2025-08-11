@@ -29,9 +29,14 @@ on:
         type: string
         default: 'staging'
 
+concurrency:
+  group: phase-d-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-harness:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       harness-result: ${{ steps.harness.outcome }}
     steps:
@@ -44,11 +49,11 @@ jobs:
           deno-version: v1.x
 
       - name: Generate golden fixtures
-        run: deno run -A scripts/make_golden_fixtures.ts
+        run: deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures.ts
 
       - name: Generate extended fixtures
         if: ${{ github.event.inputs.include_extended_tests != 'false' }}
-        run: deno run -A scripts/make_golden_fixtures_ext.ts
+        run: deno run --allow-read --allow-write --allow-net scripts/make_golden_fixtures_ext.ts
 
       - name: Run Phase D harness (core)
         id: harness
@@ -58,7 +63,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           HARNESS_BUCKET: farm-documents
           HARNESS_USE_SERVICE_ROLE: "true"
-        run: deno run -A scripts/phase_d_harness.ts
+        run: deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness.ts
 
       - name: Run Phase D harness (extended)
         if: ${{ github.event.inputs.include_extended_tests != 'false' }}
@@ -68,7 +73,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           HARNESS_BUCKET: farm-documents
           HARNESS_USE_SERVICE_ROLE: "true"
-        run: deno run -A scripts/phase_d_harness_ext.ts
+        run: deno run --allow-read --allow-write --allow-net --allow-env scripts/phase_d_harness_ext.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -134,6 +139,7 @@ jobs:
 
   health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: run-harness
     if: always()
     steps:
@@ -149,7 +155,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: deno run --allow-net --allow-env supabase/functions/extract-document-data/phase-d-test.ts
+        run: deno run --allow-net --allow-env --allow-read supabase/functions/extract-document-data/phase-d-test.ts
 
       - name: Create summary report
         run: |
