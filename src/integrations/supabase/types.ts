@@ -1318,6 +1318,39 @@ export type Database = {
         }
         Relationships: []
       }
+      policy_backup: {
+        Row: {
+          backup_time: string | null
+          polcmd: unknown | null
+          policy_name: unknown | null
+          polpermissive: boolean | null
+          roles: unknown[] | null
+          table_name: unknown | null
+          using_expr: string | null
+          with_check_expr: string | null
+        }
+        Insert: {
+          backup_time?: string | null
+          polcmd?: unknown | null
+          policy_name?: unknown | null
+          polpermissive?: boolean | null
+          roles?: unknown[] | null
+          table_name?: unknown | null
+          using_expr?: string | null
+          with_check_expr?: string | null
+        }
+        Update: {
+          backup_time?: string | null
+          polcmd?: unknown | null
+          policy_name?: unknown | null
+          polpermissive?: boolean | null
+          roles?: unknown[] | null
+          table_name?: unknown | null
+          using_expr?: string | null
+          with_check_expr?: string | null
+        }
+        Relationships: []
+      }
       quality_metrics: {
         Row: {
           benchmark_comparison: Json | null
