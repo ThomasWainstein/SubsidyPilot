@@ -1437,6 +1437,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_runs: {
+        Row: {
+          config: Json
+          created_at: string | null
+          ended_at: string | null
+          error: Json | null
+          id: string
+          progress: number
+          stage: string
+          started_at: string | null
+          stats: Json | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          ended_at?: string | null
+          error?: Json | null
+          id?: string
+          progress?: number
+          stage?: string
+          started_at?: string | null
+          stats?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          ended_at?: string | null
+          error?: Json | null
+          id?: string
+          progress?: number
+          stage?: string
+          started_at?: string | null
+          stats?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       policy_backup: {
         Row: {
           backup_time: string | null
