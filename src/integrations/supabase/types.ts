@@ -53,27 +53,6 @@ export type Database = {
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_active_run_status"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_status"
-            referencedColumns: ["id"]
-          },
         ]
       }
       ai_content_runs: {
@@ -1335,27 +1314,6 @@ export type Database = {
             referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "harvest_issues_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_active_run_status"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "harvest_issues_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "harvest_issues_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_status"
-            referencedColumns: ["id"]
-          },
         ]
       }
       integration_audit_log: {
@@ -1821,27 +1779,6 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "pipeline_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_active_run_status"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "raw_scraped_pages_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_status"
             referencedColumns: ["id"]
           },
         ]
@@ -2779,194 +2716,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_active_run_status: {
-        Row: {
-          config: Json | null
-          id: string | null
-          progress: number | null
-          runtime_seconds: number | null
-          stage: string | null
-          started_at: string | null
-          status: string | null
-        }
-        Relationships: []
-      }
-      v_ai_errors_last_24h: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          message: string | null
-          run_id: string | null
-          source_url: string | null
-          stage: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          message?: string | null
-          run_id?: string | null
-          source_url?: string | null
-          stage?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          message?: string | null
-          run_id?: string | null
-          source_url?: string | null
-          stage?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_active_run_status"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_content_errors_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "v_pipeline_status"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_ai_yield_by_run: {
-        Row: {
-          ended_at: string | null
-          model: string | null
-          pages_processed: number | null
-          run_id: string | null
-          started_at: string | null
-          subs_created: number | null
-          yield_percentage: number | null
-        }
-        Insert: {
-          ended_at?: string | null
-          model?: string | null
-          pages_processed?: number | null
-          run_id?: string | null
-          started_at?: string | null
-          subs_created?: number | null
-          yield_percentage?: never
-        }
-        Update: {
-          ended_at?: string | null
-          model?: string | null
-          pages_processed?: number | null
-          run_id?: string | null
-          started_at?: string | null
-          subs_created?: number | null
-          yield_percentage?: never
-        }
-        Relationships: []
-      }
-      v_harvest_quality_by_source_24h: {
-        Row: {
-          avg_content_length: number | null
-          pages_harvested: number | null
-          quality_pages: number | null
-          recent_pages: number | null
-          source_site: string | null
-        }
-        Relationships: []
-      }
-      v_orphan_pages_recent: {
-        Row: {
-          content_length: number | null
-          created_at: string | null
-          id: string | null
-          source_site: string | null
-          source_url: string | null
-        }
-        Insert: {
-          content_length?: never
-          created_at?: string | null
-          id?: string | null
-          source_site?: string | null
-          source_url?: string | null
-        }
-        Update: {
-          content_length?: never
-          created_at?: string | null
-          id?: string | null
-          source_site?: string | null
-          source_url?: string | null
-        }
-        Relationships: []
-      }
-      v_pipeline_health_24h: {
-        Row: {
-          config: Json | null
-          duration_seconds: number | null
-          ended_at: string | null
-          failed_pages: number | null
-          id: string | null
-          processed_pages: number | null
-          progress: number | null
-          stage: string | null
-          started_at: string | null
-          stats: Json | null
-          status: string | null
-          total_pages: number | null
-        }
-        Insert: {
-          config?: Json | null
-          duration_seconds?: never
-          ended_at?: string | null
-          failed_pages?: never
-          id?: string | null
-          processed_pages?: never
-          progress?: number | null
-          stage?: string | null
-          started_at?: string | null
-          stats?: Json | null
-          status?: string | null
-          total_pages?: never
-        }
-        Update: {
-          config?: Json | null
-          duration_seconds?: never
-          ended_at?: string | null
-          failed_pages?: never
-          id?: string | null
-          processed_pages?: never
-          progress?: number | null
-          stage?: string | null
-          started_at?: string | null
-          stats?: Json | null
-          status?: string | null
-          total_pages?: never
-        }
-        Relationships: []
-      }
-      v_pipeline_status: {
-        Row: {
-          config: Json | null
-          id: string | null
-          progress: number | null
-          stage: string | null
-          started_at: string | null
-          status: string | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
       acquire_processing_lock: {
@@ -3026,6 +2775,18 @@ export type Database = {
         }
         Returns: string
       }
+      get_active_run_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          status: string
+          stage: string
+          progress: number
+          started_at: string
+          config: Json
+          runtime_seconds: number
+        }[]
+      }
       get_admin_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3033,6 +2794,17 @@ export type Database = {
           total_farms: number
           total_documents: number
           total_extractions: number
+        }[]
+      }
+      get_ai_errors_last_24h: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          run_id: string
+          stage: string
+          message: string
+          source_url: string
+          created_at: string
         }[]
       }
       get_data_summary: {
@@ -3076,6 +2848,23 @@ export type Database = {
           quality_tier: string
           has_subsidy_data: boolean
           extraction_outcome: string
+        }[]
+      }
+      get_pipeline_health_24h: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          status: string
+          stage: string
+          progress: number
+          started_at: string
+          ended_at: string
+          config: Json
+          stats: Json
+          total_pages: number
+          processed_pages: number
+          failed_pages: number
+          duration_seconds: number
         }[]
       }
       has_role: {
