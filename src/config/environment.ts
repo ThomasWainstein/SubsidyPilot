@@ -23,17 +23,9 @@ export const ADMIN_CONFIG = {
   REQUIRE_DATABASE_ROLES: true, // Always require database-driven roles
 } as const;
 
-// SECURITY: Secure admin check - only uses database roles
+// SECURITY: Deprecated admin check - DO NOT USE
+// Use AdminContext.isAdmin or supabase RPC calls instead
 export const getIsAdmin = (user: any): boolean => {
-  if (!user) return false;
-  
-  // SECURITY: Remove dangerous email wildcard matching
-  // Only database-driven role checking is allowed in production
-  
-  // DEPRECATED: This function should not be used in production
-  // Use AdminContext.isAdmin or database RPC calls instead
-  console.warn('⚠️ SECURITY WARNING: getIsAdmin() is deprecated. Use AdminContext or database RPC calls.');
-  
-  // Basic metadata check as fallback (not reliable for security)
-  return user.user_metadata?.role === 'admin' || user.app_metadata?.role === 'admin';
+  console.error('🚨 SECURITY ERROR: getIsAdmin() is deprecated and unsafe. Use AdminContext.isAdmin instead.');
+  return false; // Always return false to prevent unauthorized access
 };

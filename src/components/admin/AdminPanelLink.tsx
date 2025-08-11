@@ -1,14 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { Settings } from 'lucide-react';
 
 const AdminPanelLink: React.FC = () => {
   const navigate = useNavigate();
-  const { currentRole } = useRole();
+  const { isAdmin, loading } = useAdmin();
 
-  if (currentRole !== 'admin') {
+  if (loading || !isAdmin) {
     return null;
   }
 
