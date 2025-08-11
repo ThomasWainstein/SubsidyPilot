@@ -2939,6 +2939,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_pipeline_data: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       release_processing_lock: {
         Args: { log_id: string }
         Returns: boolean
