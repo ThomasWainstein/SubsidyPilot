@@ -153,91 +153,103 @@ async function handleRetry(supabaseClient: any, documentId: string, userId: stri
       });
     }
 
-  // Check if retry is allowed
-  if (extraction && extraction.current_retry >= extraction.max_retries) {
-    return new Response(JSON.stringify({ 
-      error: 'Maximum retries exceeded',
-      maxRetries: extraction.max_retries,
-      currentRetries: extraction.current_retry
-    }), {
-      status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Check if retry is allowed
+    if (extraction && extraction.current_retry >= extraction.max_retries) {
+      return new Response(JSON.stringify({ 
+        error: 'Maximum retries exceeded',
+        maxRetries: extraction.max_retries,
+        currentRetries: extraction.current_retry
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check if extraction is already in progress
+    if (extraction && ['uploading', 'virus_scan', 'extracting', 'ocr', 'ai'].includes(extraction.status_v2)) {
+      return new Response(JSON.stringify({ 
+        error: 'Extraction already in progress',
+        status: extraction.status_v2
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Calculate backoff delay with jitter
+    const baseDelay = Math.min(300 * Math.pow(2, extraction?.current_retry || 0), 3600); // Max 1 hour
+    const jitter = Math.random() * 30; // Add up to 30 seconds jitter
+    const delaySeconds = Math.floor(baseDelay + jitter);
+
+    // Increment retry count and update status
+    const { error: retryError } = await supabaseClient.rpc('increment_retry_count', {
+      p_extraction_id: extraction?.id,
+      p_backoff_seconds: delaySeconds
     });
-  }
 
-  // Check if extraction is already in progress
-  if (extraction && ['uploading', 'virus_scan', 'extracting', 'ocr', 'ai'].includes(extraction.status_v2)) {
-    return new Response(JSON.stringify({ 
-      error: 'Extraction already in progress',
-      status: extraction.status_v2
-    }), {
-      status: 409,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    if (retryError) {
+      console.error('Error incrementing retry count:', retryError);
+      return new Response(JSON.stringify({ error: 'Failed to schedule retry' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Reset extraction status to start fresh
+    const { error: statusError } = await supabaseClient.rpc('update_extraction_status', {
+      p_extraction_id: extraction?.id,
+      p_status: 'uploading',
+      p_failure_code: null,
+      p_failure_detail: null,
+      p_progress_metadata: { retry_initiated_at: new Date().toISOString() }
     });
-  }
 
-  // Calculate backoff delay with jitter
-  const baseDelay = Math.min(300 * Math.pow(2, extraction?.current_retry || 0), 3600); // Max 1 hour
-  const jitter = Math.random() * 30; // Add up to 30 seconds jitter
-  const delaySeconds = Math.floor(baseDelay + jitter);
+    if (statusError) {
+      console.error('Error updating status:', statusError);
+    }
 
-  // Increment retry count and update status
-  const { error: retryError } = await supabaseClient.rpc('increment_retry_count', {
-    p_extraction_id: extraction?.id,
-    p_backoff_seconds: delaySeconds
-  });
-
-  if (retryError) {
-    console.error('Error incrementing retry count:', retryError);
-    return new Response(JSON.stringify({ error: 'Failed to schedule retry' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Trigger extraction with same idempotency key
+    const { error: triggerError } = await supabaseClient.functions.invoke('extract-document-data', {
+      body: {
+        documentId,
+        retryAttempt: (extraction?.current_retry || 0) + 1,
+        idempotencyKey: extraction?.idempotency_key || `retry-${documentId}-${Date.now()}`
+      }
     });
-  }
 
-  // Reset extraction status to start fresh
-  const { error: statusError } = await supabaseClient.rpc('update_extraction_status', {
-    p_extraction_id: extraction?.id,
-    p_status: 'uploading',
-    p_failure_code: null,
-    p_failure_detail: null,
-    p_progress_metadata: { retry_initiated_at: new Date().toISOString() }
-  });
+    if (triggerError) {
+      console.error('Error triggering extraction:', triggerError);
+      return new Response(JSON.stringify({ error: 'Failed to trigger extraction retry' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-  if (statusError) {
-    console.error('Error updating status:', statusError);
-  }
+    console.log(`✅ Retry scheduled for document ${documentId} with ${delaySeconds}s delay`);
 
-  // Trigger extraction with same idempotency key
-  const { error: triggerError } = await supabaseClient.functions.invoke('extract-document-data', {
-    body: {
+    return new Response(JSON.stringify({
+      success: true,
       documentId,
       retryAttempt: (extraction?.current_retry || 0) + 1,
-      idempotencyKey: extraction?.idempotency_key || `retry-${documentId}-${Date.now()}`
-    }
-  });
+      maxRetries: extraction?.max_retries || 3,
+      nextRetryAt: new Date(Date.now() + delaySeconds * 1000).toISOString(),
+      delaySeconds
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
-  if (triggerError) {
-    console.error('Error triggering extraction:', triggerError);
-    return new Response(JSON.stringify({ error: 'Failed to trigger extraction retry' }), {
+  } catch (error) {
+    console.error('🚨 Retry Error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-
-  console.log(`✅ Retry scheduled for document ${documentId} with ${delaySeconds}s delay`);
-
-  return new Response(JSON.stringify({
-    success: true,
-    documentId,
-    retryAttempt: (extraction?.current_retry || 0) + 1,
-    maxRetries: extraction?.max_retries || 3,
-    nextRetryAt: new Date(Date.now() + delaySeconds * 1000).toISOString(),
-    delaySeconds
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
 }
 
 async function handleGetStatus(supabaseClient: any, documentId: string) {
