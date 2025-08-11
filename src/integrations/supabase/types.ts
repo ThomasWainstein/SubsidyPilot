@@ -1564,8 +1564,10 @@ export type Database = {
           created_at: string | null
           ended_at: string | null
           error: Json | null
+          error_details: Json | null
           id: string
           progress: number
+          reason: string | null
           stage: string
           started_at: string | null
           stats: Json | null
@@ -1578,8 +1580,10 @@ export type Database = {
           created_at?: string | null
           ended_at?: string | null
           error?: Json | null
+          error_details?: Json | null
           id?: string
           progress?: number
+          reason?: string | null
           stage?: string
           started_at?: string | null
           stats?: Json | null
@@ -1592,8 +1596,10 @@ export type Database = {
           created_at?: string | null
           ended_at?: string | null
           error?: Json | null
+          error_details?: Json | null
           id?: string
           progress?: number
+          reason?: string | null
           stage?: string
           started_at?: string | null
           stats?: Json | null
