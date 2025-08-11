@@ -524,6 +524,7 @@ export type Database = {
           chunk_count: number | null
           confidence_score: number | null
           created_at: string
+          current_retry: number | null
           debug_info: Json | null
           detected_language: string | null
           document_id: string
@@ -532,19 +533,28 @@ export type Database = {
           error_type: string | null
           extracted_data: Json
           extraction_type: string
+          failure_code: string | null
+          failure_detail: string | null
           id: string
           idempotency_key: string | null
+          last_event_at: string | null
           latency_ms: number | null
+          max_retries: number | null
           model_used: string | null
           model_version: string | null
+          next_retry_at: string | null
           ocr_used: boolean | null
           pages_processed: number | null
           processing_time_ms: number | null
+          progress_metadata: Json | null
           retry_count: number | null
           run_id: string | null
           session_id: string | null
           source_template_version: string | null
           status: string
+          status_v2:
+            | Database["public"]["Enums"]["extraction_status_enum"]
+            | null
           table_count: number | null
           table_data: Json | null
           table_parser: string | null
@@ -561,6 +571,7 @@ export type Database = {
           chunk_count?: number | null
           confidence_score?: number | null
           created_at?: string
+          current_retry?: number | null
           debug_info?: Json | null
           detected_language?: string | null
           document_id: string
@@ -569,19 +580,28 @@ export type Database = {
           error_type?: string | null
           extracted_data: Json
           extraction_type?: string
+          failure_code?: string | null
+          failure_detail?: string | null
           id?: string
           idempotency_key?: string | null
+          last_event_at?: string | null
           latency_ms?: number | null
+          max_retries?: number | null
           model_used?: string | null
           model_version?: string | null
+          next_retry_at?: string | null
           ocr_used?: boolean | null
           pages_processed?: number | null
           processing_time_ms?: number | null
+          progress_metadata?: Json | null
           retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
           source_template_version?: string | null
           status?: string
+          status_v2?:
+            | Database["public"]["Enums"]["extraction_status_enum"]
+            | null
           table_count?: number | null
           table_data?: Json | null
           table_parser?: string | null
@@ -598,6 +618,7 @@ export type Database = {
           chunk_count?: number | null
           confidence_score?: number | null
           created_at?: string
+          current_retry?: number | null
           debug_info?: Json | null
           detected_language?: string | null
           document_id?: string
@@ -606,19 +627,28 @@ export type Database = {
           error_type?: string | null
           extracted_data?: Json
           extraction_type?: string
+          failure_code?: string | null
+          failure_detail?: string | null
           id?: string
           idempotency_key?: string | null
+          last_event_at?: string | null
           latency_ms?: number | null
+          max_retries?: number | null
           model_used?: string | null
           model_version?: string | null
+          next_retry_at?: string | null
           ocr_used?: boolean | null
           pages_processed?: number | null
           processing_time_ms?: number | null
+          progress_metadata?: Json | null
           retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
           source_template_version?: string | null
           status?: string
+          status_v2?:
+            | Database["public"]["Enums"]["extraction_status_enum"]
+            | null
           table_count?: number | null
           table_data?: Json | null
           table_parser?: string | null
@@ -2616,6 +2646,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_retry_count: {
+        Args: { p_extraction_id: string; p_backoff_seconds?: number }
+        Returns: boolean
+      }
       is_admin: {
         Args: { _user_id?: string }
         Returns: boolean
@@ -2660,6 +2694,16 @@ export type Database = {
           completion_rate: number
         }[]
       }
+      update_extraction_status: {
+        Args: {
+          p_extraction_id: string
+          p_status: Database["public"]["Enums"]["extraction_status_enum"]
+          p_failure_code?: string
+          p_failure_detail?: string
+          p_progress_metadata?: Json
+        }
+        Returns: boolean
+      }
       verify_system_health: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -2688,6 +2732,14 @@ export type Database = {
         | "technical"
         | "certification"
         | "other"
+      extraction_status_enum:
+        | "uploading"
+        | "virus_scan"
+        | "extracting"
+        | "ocr"
+        | "ai"
+        | "completed"
+        | "failed"
       user_type: "farmer" | "consultant" | "organization"
     }
     CompositeTypes: {
@@ -2839,6 +2891,15 @@ export const Constants = {
         "technical",
         "certification",
         "other",
+      ],
+      extraction_status_enum: [
+        "uploading",
+        "virus_scan",
+        "extracting",
+        "ocr",
+        "ai",
+        "completed",
+        "failed",
       ],
       user_type: ["farmer", "consultant", "organization"],
     },
