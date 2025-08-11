@@ -475,6 +475,13 @@ export type Database = {
             referencedRelation: "document_extractions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "document_extraction_reviews_extraction_id_fkey"
+            columns: ["extraction_id"]
+            isOneToOne: false
+            referencedRelation: "phase_d_extractions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       document_extraction_status: {
@@ -2535,6 +2542,104 @@ export type Database = {
       }
     }
     Views: {
+      phase_d_extractions: {
+        Row: {
+          ai_model: string | null
+          confidence_score: number | null
+          created_at: string | null
+          document_id: string | null
+          extraction_method: string | null
+          extraction_outcome: string | null
+          extraction_time_ms: number | null
+          has_subsidy_data: boolean | null
+          id: string | null
+          post_processing_time_ms: number | null
+          quality_tier: string | null
+          status: string | null
+          subsidy_fields_found: number | null
+          successful_tables: number | null
+          table_count: number | null
+          table_quality: number | null
+          tables_extracted: Json | null
+          total_processing_time_ms: number | null
+          total_tables: number | null
+          total_tokens_used: number | null
+          updated_at: string | null
+          version: string | null
+        }
+        Insert: {
+          ai_model?: never
+          confidence_score?: number | null
+          created_at?: string | null
+          document_id?: string | null
+          extraction_method?: never
+          extraction_outcome?: never
+          extraction_time_ms?: never
+          has_subsidy_data?: never
+          id?: string | null
+          post_processing_time_ms?: never
+          quality_tier?: never
+          status?: string | null
+          subsidy_fields_found?: never
+          successful_tables?: never
+          table_count?: number | null
+          table_quality?: number | null
+          tables_extracted?: Json | null
+          total_processing_time_ms?: never
+          total_tables?: never
+          total_tokens_used?: never
+          updated_at?: string | null
+          version?: never
+        }
+        Update: {
+          ai_model?: never
+          confidence_score?: number | null
+          created_at?: string | null
+          document_id?: string | null
+          extraction_method?: never
+          extraction_outcome?: never
+          extraction_time_ms?: never
+          has_subsidy_data?: never
+          id?: string | null
+          post_processing_time_ms?: never
+          quality_tier?: never
+          status?: string | null
+          subsidy_fields_found?: never
+          successful_tables?: never
+          table_count?: number | null
+          table_quality?: number | null
+          tables_extracted?: Json | null
+          total_processing_time_ms?: never
+          total_tables?: never
+          total_tokens_used?: never
+          updated_at?: string | null
+          version?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_document_extractions_document_id"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "farm_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phase_d_stats_daily: {
+        Row: {
+          avg_processing_time_ms: number | null
+          avg_subsidy_fields_per_doc: number | null
+          avg_table_quality: number | null
+          avg_tables_per_doc: number | null
+          extraction_date: string | null
+          extractions_with_subsidies: number | null
+          failed_extractions: number | null
+          successful_extractions: number | null
+          total_extractions: number | null
+          total_tokens_consumed: number | null
+        }
+        Relationships: []
+      }
       review_queue_stats: {
         Row: {
           active_reviewers: number | null
