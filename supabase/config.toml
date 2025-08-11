@@ -88,3 +88,9 @@ verify_jwt = false
 
 [functions.pipeline-orchestrator]
 verify_jwt = false
+
+[functions.franceagrimer-harvester]
+verify_jwt = false
+
+[functions.afir-harvester]
+verify_jwt = false
