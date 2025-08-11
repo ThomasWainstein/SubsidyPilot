@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Feature flags with safe defaults
-const AI_MODEL = Deno.env.get('AI_MODEL') || 'gpt-4.1-2025-04-14';
+const AI_MODEL = Deno.env.get('AI_MODEL') || 'gpt-4o-mini';
 const AI_MIN_LEN = parseInt(Deno.env.get('AI_MIN_LEN') || '200');
 const AI_CHUNK_SIZE = parseInt(Deno.env.get('AI_CHUNK_SIZE') || '8000');
 const AI_ALLOW_RECENT_FALLBACK = Deno.env.get('AI_ALLOW_RECENT_FALLBACK') === 'true';
@@ -190,17 +190,38 @@ serve(async (req) => {
         try {
           console.log(`🧠 Making OpenAI API call for page ${page.id}...`);
           
-          const prompt = `Extract agricultural subsidy information from this text. Return a JSON array of subsidies found.
+          const prompt = `You are an expert at extracting agricultural subsidy and funding information from web content.
 
-For each subsidy, extract:
-- title: The name/title of the subsidy program  
-- description: A detailed description
-- eligibility: Who is eligible and requirements
-- deadline: Application deadline (format: YYYY-MM-DD)
-- funding_type: Type of funding
-- agency: The agency providing the subsidy
-- sector: Agricultural sector
-- region: Geographic region if specified
+TASK: Extract ALL subsidy, grant, funding scheme, or financial support information from the following text.
+
+WHAT TO EXTRACT:
+- Agricultural subsidies and grants
+- Funding schemes for farmers
+- Financial support programs
+- Agricultural investment schemes  
+- Rural development funds
+- Environmental payment schemes
+- Any monetary support for agriculture, livestock, or rural activities
+
+REQUIRED OUTPUT: Valid JSON array where each item has these fields:
+- title: Name of the subsidy/grant (required)
+- description: What the funding covers
+- eligibility: Who can apply and requirements
+- deadline: Application deadline (YYYY-MM-DD format if found)
+- funding_type: Type like "grant", "subsidy", "loan", "tax_credit"
+- agency: Organization providing the funding
+- sector: Agricultural area like "livestock", "crops", "equipment", "land"
+- region: Geographic area if specified
+
+EXAMPLES of what to look for:
+- "Support for young farmers"
+- "Livestock modernization grant"
+- "Organic certification subsidy"
+- "Rural development fund"
+- "Agricultural equipment financing"
+- "Environmental farming payments"
+
+If NO subsidy information is found, return empty array: []
 
 Text to analyze:
 ${firstChunk}
