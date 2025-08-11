@@ -159,32 +159,31 @@ serve(async (req) => {
 
     console.log(`AI_RUN_START {run_id: ${run_id}, pages_seen: ${pagesSeen}, pages_eligible: ${pagesEligible}}`);
 
-    // Process each eligible page
-    console.log(`🔄 Starting to process ${eligiblePages.length} eligible pages...`);
+    // Process each eligible page ONE AT A TIME to avoid timeouts
+    console.log(`🔄 Starting to process ${eligiblePages.length} eligible pages ONE BY ONE...`);
     
-    try {
-      for (const page of eligiblePages.slice(0, 50)) { // Safety limit
-        try {
-          console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
-          logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
+    for (const page of eligiblePages.slice(0, 5)) { // Limit to 5 pages max for stability
+      try {
+        console.log(`\n📄 === PROCESSING PAGE ${page.id} ===`);
+        console.log(`URL: ${page.source_url}`);
+        logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
         const content = page.text_markdown || page.raw_text || page.raw_html || '';
-        console.log(`📄 Page ${page.id} content length: ${content.length} chars`);
+        console.log(`📝 Content length: ${content.length} chars`);
         
         if (content.length < min_len) {
-          console.log(`⚠️ Page ${page.id} content too short (${content.length} < ${min_len}), skipping`);
+          console.log(`⚠️ Skipping page ${page.id} - content too short (${content.length} < ${min_len})`);
           continue;
         }
 
-        // Chunk content if needed
-        const chunks = chunkText(content, AI_CHUNK_SIZE);
-        console.log(`📝 Page ${page.id} split into ${chunks.length} chunks`);
+        // Use only the first chunk for each page to avoid complexity
+        const firstChunk = content.slice(0, AI_CHUNK_SIZE);
+        console.log(`📝 Using first ${firstChunk.length} chars of content`);
         
-        for (const [chunkIndex, chunk] of chunks.entries()) {
-          try {
-            console.log(`🧠 Processing chunk ${chunkIndex + 1}/${chunks.length} for page ${page.id}`);
-            
-            const prompt = `Extract agricultural subsidy information from this text. Return a JSON array of subsidies found.
+        try {
+          console.log(`🧠 Making OpenAI API call for page ${page.id}...`);
+          
+          const prompt = `Extract agricultural subsidy information from this text. Return a JSON array of subsidies found.
 
 For each subsidy, extract:
 - title: The name/title of the subsidy program  
@@ -197,111 +196,115 @@ For each subsidy, extract:
 - region: Geographic region if specified
 
 Text to analyze:
-${chunk}
+${firstChunk}
 
 Return only valid JSON array, no other text.`;
 
-            console.log(`🔄 Making OpenAI API call with model: ${model}`);
-            const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${openAIApiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model,
-                messages: [
-                  { role: 'system', content: 'You are an expert at extracting agricultural subsidy information. Return only valid JSON.' },
-                  { role: 'user', content: prompt }
-                ],
-                temperature: 0.1,
-                max_tokens: 2000
-              }),
-            });
+          const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: 'system', content: 'You are an expert at extracting agricultural subsidy information. Return only valid JSON.' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.1,
+              max_tokens: 1000
+            }),
+          });
 
-            console.log(`📡 OpenAI API response status: ${aiResponse.status}`);
-            
-            if (!aiResponse.ok) {
-              const errorText = await aiResponse.text();
-              console.error(`❌ OpenAI API error: ${aiResponse.status} - ${errorText}`);
-              throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
-            }
-
-            const aiData = await aiResponse.json();
-            const extractedText = aiData.choices[0].message.content;
-            console.log(`✅ OpenAI response received, length: ${extractedText?.length || 0} chars`);
-            
-            // Parse with robustJsonArray, map each using coerceSubsidy
-            const rawSubsidies = robustJsonArray(extractedText);
-            
-            for (const rawSub of rawSubsidies) {
-              const subsidy = coerceSubsidy(rawSub);
-              
-              // Skip empty subsidies
-              if (!subsidy.title && !subsidy.description) continue;
-              
-              // Compute fingerprint for idempotent inserts
-              const fingerprint = makeFingerprint({
-                title: subsidy.title,
-                agency: subsidy.agency,
-                deadline: subsidy.deadline,
-                url: page.source_url
-              });
-              
-              // Upsert into subsidies_structured on fingerprint
-              const { error: upsertError } = await supabase
-                .from('subsidies_structured')
-                .upsert({
-                  fingerprint,
-                  url: page.source_url,
-                  run_id,
-                  title: subsidy.title,
-                  description: subsidy.description,
-                  eligibility: subsidy.eligibility,
-                  deadline: subsidy.deadline,
-                  funding_type: subsidy.funding_type,
-                  agency: subsidy.agency,
-                  sector: subsidy.sector,
-                  region: subsidy.region,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }, { 
-                  onConflict: 'fingerprint',
-                  ignoreDuplicates: false
-                });
-              
-                if (upsertError) {
-                  errorsCount++;
-                  await logAiError(run_id, page.id, page.source_url, 'db_insert', upsertError.message, extractedText.slice(0, 500));
-                  logEvent('ai.page.insert.error', run_id, { page_id: page.id, error: upsertError.message });
-                } else {
-                  subsidiesCreated++;
-                  logEvent('ai.page.insert.success', run_id, { page_id: page.id, fingerprint });
-                }
-            }
-            
-          } catch (chunkError) {
+          console.log(`📡 OpenAI API response status: ${aiResponse.status}`);
+          
+          if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error(`❌ OpenAI API error for page ${page.id}: ${aiResponse.status} - ${errorText}`);
             errorsCount++;
-            await logAiError(run_id, page.id, page.source_url, 'ai_api', (chunkError as Error).message);
-            logEvent('ai.page.chunk.error', run_id, { page_id: page.id, error: (chunkError as Error).message });
+            await logAiError(run_id, page.id, page.source_url, 'ai_api', `OpenAI API error: ${aiResponse.status} - ${errorText}`);
+            continue;
           }
-        }
-        
-        pagesProcessed++;
-        logEvent('ai.page.done', run_id, { page_id: page.id, chunks: chunks.length });
-        
-        } catch (pageError) {
+
+          const aiData = await aiResponse.json();
+          const extractedText = aiData.choices[0].message.content;
+          console.log(`✅ OpenAI response for page ${page.id}: ${extractedText?.length || 0} chars`);
+          
+          // Parse with robustJsonArray
+          const rawSubsidies = robustJsonArray(extractedText);
+          console.log(`📊 Found ${rawSubsidies.length} potential subsidies in page ${page.id}`);
+          
+          let pageSubsidiesCreated = 0;
+          for (const rawSub of rawSubsidies) {
+            const subsidy = coerceSubsidy(rawSub);
+            
+            // Skip empty subsidies
+            if (!subsidy.title && !subsidy.description) {
+              console.log(`⚠️ Skipping empty subsidy from page ${page.id}`);
+              continue;
+            }
+            
+            // Compute fingerprint for idempotent inserts
+            const fingerprint = makeFingerprint({
+              title: subsidy.title,
+              agency: subsidy.agency,
+              deadline: subsidy.deadline,
+              url: page.source_url
+            });
+            
+            console.log(`💾 Inserting subsidy: ${subsidy.title || 'Untitled'} (${fingerprint})`);
+            
+            // Upsert into subsidies_structured
+            const { error: upsertError } = await supabase
+              .from('subsidies_structured')
+              .upsert({
+                fingerprint,
+                url: page.source_url,
+                run_id,
+                title: subsidy.title,
+                description: subsidy.description,
+                eligibility: subsidy.eligibility,
+                deadline: subsidy.deadline,
+                funding_type: subsidy.funding_type,
+                agency: subsidy.agency,
+                sector: subsidy.sector,
+                region: subsidy.region,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, { 
+                onConflict: 'fingerprint',
+                ignoreDuplicates: false
+              });
+            
+            if (upsertError) {
+              console.error(`❌ DB error for subsidy ${fingerprint}:`, upsertError.message);
+              errorsCount++;
+              await logAiError(run_id, page.id, page.source_url, 'db_insert', upsertError.message, extractedText.slice(0, 500));
+            } else {
+              console.log(`✅ Successfully inserted subsidy ${fingerprint}`);
+              pageSubsidiesCreated++;
+              subsidiesCreated++;
+            }
+          }
+          
+          console.log(`✅ Page ${page.id} complete: ${pageSubsidiesCreated} subsidies created`);
+          pagesProcessed++;
+          
+        } catch (chunkError) {
+          console.error(`❌ Error processing page ${page.id}:`, chunkError.message);
           errorsCount++;
-          await logAiError(run_id, page.id, page.source_url, 'processing', (pageError as Error).message);
-          logEvent('ai.page.error', run_id, { page_id: page.id, error: (pageError as Error).message });
+          await logAiError(run_id, page.id, page.source_url, 'ai_api', (chunkError as Error).message);
         }
+        
+      } catch (pageError) {
+        console.error(`❌ Critical error with page ${page.id}:`, pageError.message);
+        errorsCount++;
+        await logAiError(run_id, page.id, page.source_url, 'processing', (pageError as Error).message);
       }
-    } catch (outerError) {
-      console.error(`❌ Critical error in processing loop: ${(outerError as Error).message}`);
-      errorsCount++;
     }
 
-    console.log(`AI_RUN_END {run_id: ${run_id}, pages_processed: ${pagesProcessed}, subs_created: ${subsidiesCreated}, failed: ${errorsCount}}`);
+    console.log(`\n🏁 AI_RUN_END {run_id: ${run_id}, pages_processed: ${pagesProcessed}, subs_created: ${subsidiesCreated}, failed: ${errorsCount}}`);
 
     const endTime = Date.now();
     const durationMs = endTime - startTime;
