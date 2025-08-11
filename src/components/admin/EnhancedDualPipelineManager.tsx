@@ -422,6 +422,29 @@ export default function EnhancedDualPipelineManager() {
               >
                 🔬 Test Isolated AI
               </EnhancedButton>
+              
+              <EnhancedButton 
+                variant="ghost" 
+                onClick={async () => {
+                  try {
+                    toast.info('🔧 Testing AI extraction with Romanian APIA content...');
+                    const result = await supabase.functions.invoke('debug-ai-extraction');
+                    if (result.data?.success) {
+                      toast.success(`🎯 Debug: AI extracted ${result.data.subsidyCount} subsidies from test content`);
+                      console.log('🔍 Debug AI extraction result:', result.data);
+                    } else {
+                      toast.error(`❌ Debug extraction failed: ${result.data?.error}`);
+                    }
+                  } catch (error: any) {
+                    toast.error(`❌ Debug extraction error: ${error.message}`);
+                  }
+                }} 
+                size="sm"
+                tooltip="Test AI extraction with clear Romanian APIA subsidy content to debug extraction issues"
+                icon={<Bot className="h-4 w-4" />}
+              >
+                🔧 Debug AI Extraction
+              </EnhancedButton>
             </div>
             
             <p className="text-sm text-muted-foreground mt-2">

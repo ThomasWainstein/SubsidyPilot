@@ -113,5 +113,8 @@ verify_jwt = false
 [functions.pipeline-post-harvest-patch]
 verify_jwt = false
 
+[functions.debug-ai-extraction]
+verify_jwt = false
+
 [functions.test-ai-processing]
 verify_jwt = false
