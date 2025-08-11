@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { createSafeHTML } from '@/utils/htmlSanitizer';
 
 interface MarkdownRendererProps {
   content: string;
@@ -307,7 +308,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     text = text.replace(/<(https?:\/\/[^>]+)>/g, 
       '<a href="$1" class="text-primary underline decoration-1 underline-offset-2 hover:text-primary/80 hover:decoration-2 transition-all" target="_blank" rel="noopener noreferrer">$1</a>');
 
-    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    return <span dangerouslySetInnerHTML={createSafeHTML(text)} />;
   };
 
   return (

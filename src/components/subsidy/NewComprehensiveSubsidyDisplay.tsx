@@ -20,6 +20,7 @@ import {
 import { ModernDocumentTable } from './ModernDocumentTable';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { SimpleSubsidyDisplay } from './SimpleSubsidyDisplay';
+import { createSafeHTML } from '@/utils/htmlSanitizer';
 
 interface NewComprehensiveSubsidyDisplayProps {
   subsidy: any;
@@ -141,7 +142,7 @@ export const NewComprehensiveSubsidyDisplay: React.FC<NewComprehensiveSubsidyDis
                 <h5 className="font-medium mb-1">{step.title}</h5>
                 <div 
                   className="text-sm text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: step.instructions_html }}
+                  dangerouslySetInnerHTML={createSafeHTML(step.instructions_html || '')}
                 />
               </div>
             </div>
