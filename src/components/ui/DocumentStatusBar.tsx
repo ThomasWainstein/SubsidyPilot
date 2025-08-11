@@ -42,6 +42,10 @@ export function DocumentStatusBar({
         
         <div className="w-full bg-secondary rounded-full h-2">
           <div
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
             className={cn(
               "h-2 rounded-full transition-all duration-500 ease-out",
               isFailed 

@@ -37,9 +37,8 @@ const createWrapper = () => {
     }
   });
   
-  return ({ children }: { children: any }) => (
-    React.createElement(QueryClientProvider, { client: queryClient }, children)
-  );
+  return ({ children }: { children: React.ReactNode }) => 
+    React.createElement(QueryClientProvider, { client: queryClient }, children);
 };
 
 describe('useDocumentStatus', () => {

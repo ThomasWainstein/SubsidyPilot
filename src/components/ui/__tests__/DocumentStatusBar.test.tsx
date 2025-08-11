@@ -81,4 +81,20 @@ describe('DocumentStatusBar', () => {
 
     expect(screen.getByText(/Last updated:/)).toBeDefined();
   });
+
+  it('should include proper accessibility attributes', () => {
+    render(
+      <DocumentStatusBar
+        status="extracting"
+        progress={45}
+        step="Text Extraction"
+      />
+    );
+
+    const progressBar = screen.getByRole('progressbar');
+    expect(progressBar).toBeDefined();
+    expect(progressBar.getAttribute('aria-valuenow')).toBe('45');
+    expect(progressBar.getAttribute('aria-valuemin')).toBe('0');
+    expect(progressBar.getAttribute('aria-valuemax')).toBe('100');
+  });
 });

@@ -104,9 +104,9 @@ export function useDocumentStatus(
       return response.json();
     },
     enabled: !!documentId,
-    refetchInterval: (query) => {
+    refetchInterval: (query: any) => {
       // Stop polling if completed, failed, or realtime is connected
-      const data = query.state.data;
+      const data = query.state.data as DocumentStatusData | undefined;
       if (!data?.extraction || 
           data.extraction.status === 'completed' || 
           data.extraction.status === 'failed' ||
