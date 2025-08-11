@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Feature flags with safe defaults
-const AI_MODEL = Deno.env.get('AI_MODEL') || 'gpt-4o-mini';
+const AI_MODEL = Deno.env.get('AI_MODEL') || 'gpt-4o';
 const AI_MIN_LEN = parseInt(Deno.env.get('AI_MIN_LEN') || '200');
 const AI_CHUNK_SIZE = parseInt(Deno.env.get('AI_CHUNK_SIZE') || '8000');
 const AI_ALLOW_RECENT_FALLBACK = Deno.env.get('AI_ALLOW_RECENT_FALLBACK') === 'true';
