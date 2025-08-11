@@ -267,17 +267,25 @@ ${agencyConfig.examples.map(ex => `- "${ex}"`).join('\n')}
 
 OUTPUT FORMAT: Valid JSON array where each item has:
 - title: Name of the subsidy/grant (in original language)
-- description: What the funding covers  
-- eligibility: Who can apply and requirements
-- deadline: Application deadline (YYYY-MM-DD format if found)
+- description: What the funding covers (be descriptive, include context from content)
+- eligibility: Who can apply and basic requirements (if mentioned)
+- deadline: Application deadline (YYYY-MM-DD format if found, null if unclear)
 - funding_type: "grant" | "subsidy" | "loan" | "tax_credit" | "support_measure"
 - agency: "${agencyConfig.agency}"
-- sector: Agricultural area like "livestock", "crops", "equipment", "rural_development"
-- region: Geographic area if specified
+- sector: ONE of ["livestock", "crops", "equipment", "rural_development", "modernization", "young_farmers"]
+- region: Geographic area if specified (null if national/unclear)
 
-IMPORTANT: Look for ANY financial support, investment schemes, payment programs, or funding opportunities related to agriculture, even if not explicitly called "subsidy".
+EXTRACTION STRATEGY:
+1. Look for ANY mention of financial support, funding programs, or subsidies
+2. Extract information even if mentioned in news articles or press releases
+3. Include general programs that farmers might be eligible for
+4. Be liberal in interpretation - capture anything that could help farmers
+5. For Romanian content, look for amounts in LEI or EUR
+6. Include programs for digital transformation, modernization, young farmers
 
-If NO funding information found, return: []
+IMPORTANT: Be more permissive in extraction. Include anything mentioning agricultural financial support, even if details are limited. For news articles about funding programs, extract the program being discussed.
+
+If ABSOLUTELY NO funding information found, return: []
 
 Content to analyze:
 ${firstChunk}
@@ -297,7 +305,7 @@ Return only valid JSON array, no other text.`;
                 { role: 'user', content: prompt }
               ],
               temperature: 0.1,
-              max_tokens: 1000
+              max_tokens: 2000
             }),
           });
 
