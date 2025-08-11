@@ -19,11 +19,6 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(part => part);
     const documentId = pathParts[pathParts.length - 2]; // documents/:id/action
