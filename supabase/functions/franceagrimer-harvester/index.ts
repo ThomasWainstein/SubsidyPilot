@@ -13,6 +13,28 @@ const corsHeaders = {
 const ENFORCE_DB_INSERT_SUCCESS = Deno.env.get('ENFORCE_DB_INSERT_SUCCESS') !== 'false';
 const ENABLE_STRUCTURED_LOGS = Deno.env.get('ENABLE_STRUCTURED_LOGS') !== 'false';
 
+// === FranceAgriMer URL helpers (detail vs hub/listing) ===
+const FR_DETAIL_RE =
+  /^https?:\/\/(www\.)?franceagrimer\.fr\/aides\/(?!par-|rechercher-une-aide)([^?#]+)$/i;
+const FR_HUB_RE = /\/aides\/par-|\/rechercher-une-aide/i;
+
+function canonicalAidUrl(baseUrl: string, href: string): string | null {
+  try {
+    const u = new URL(href, baseUrl);
+    // normalize: strip hash & tracking
+    u.hash = '';
+    u.searchParams.forEach((_, k) => {
+      if (k.toLowerCase().startsWith('utm_')) u.searchParams.delete(k);
+    });
+    const s = decodeURI(u.toString());
+    if (FR_HUB_RE.test(s)) return null;          // hub/listing
+    if (!FR_DETAIL_RE.test(s)) return null;      // not a detail fiche
+    return s;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -72,8 +94,8 @@ serve(async (req) => {
       const session_id = `franceagrimer-${Date.now()}`;
       
       // Discovery set: List pages + optional direct seeds
-      const listUrls = Array.from({length: Math.min(5, max_pages)}, (_, i) => 
-        `https://www.franceagrimer.fr/rechercher-une-aide?page=${i+1}`
+const listUrls = Array.from({length: Math.max(1, max_pages)}, (_, i) => 
+        `https://www.franceagrimer.fr/rechercher-une-aide?page=${i}`
       );
       
       const directSeeds = [
@@ -93,20 +115,14 @@ serve(async (req) => {
         logEvent('harvester.fr.list.fetch.done', run_id, stat);
         
         if (stat.ok) {
-          // Extract links from a[href*="/aide"], a[href*="/aides/"]
-          const linkPattern = /href="([^"]*\/aides?\/[^"]*)"/g;
+// Extract links and keep only "fiche aide" detail pages
+          const linkPattern = /href="([^"]*\/aides?\/[^"]*)"/gi;
           let match;
           while ((match = linkPattern.exec(html)) !== null) {
-            const href = match[1];
-            const fullUrl = canonicalize(listUrl, href);
-            if (fullUrl && 
-                !fullUrl.includes('/rechercher-une-aide') && 
-                !fullUrl.includes('/par-programme') && 
-                !fullUrl.includes('/faq') && 
-                !fullUrl.includes('/contact')) {
-              candidateUrls.add(fullUrl);
-              logEvent('harvester.fr.candidate.link', run_id, { url: fullUrl });
-            }
+            const full = canonicalAidUrl(listUrl, match[1]);
+            if (!full) continue; // drops hubs/listings and non-detail
+            candidateUrls.add(full);
+            logEvent('harvester.fr.candidate.link', run_id, { url: full });
           }
         }
       }
@@ -129,10 +145,17 @@ serve(async (req) => {
         
         if (!stat.ok) continue;
         
-        const textMarkdown = stripToText(html);
+const textMarkdown = stripToText(html);
+
+        // Enforce detail page URL pattern (avoid hubs/listings)
+        const isDetailUrl = FR_DETAIL_RE.test(candidateUrl);
+        if (!isDetailUrl) {
+          logEvent('harvester.fr.page.skip.reason', run_id, { url: candidateUrl, reason: 'hub_or_listing' });
+          continue;
+        }
         
-        // Eligibility gate
-        if (textMarkdown.length < 1000) {
+        // Eligibility gate (lower threshold; some fiches are concise)
+        if (textMarkdown.length < 400) {
           logEvent('harvester.fr.page.skip.reason', run_id, { url: candidateUrl, reason: 'too_short', length: textMarkdown.length });
           continue;
         }
@@ -144,6 +167,13 @@ serve(async (req) => {
         
         if (!looksLikeSubsidyUrl(candidateUrl, 'fr')) {
           logEvent('harvester.fr.page.skip.reason', run_id, { url: candidateUrl, reason: 'not_subsidy' });
+          continue;
+        }
+        
+        // Heuristic markers for "fiche aide" content
+        const ficheMarkers = /Éligibilit|Bénéficiair|Montant|Calendrier|Date limite|D[ée]p[oô]t|Pi[eè]ces\s+à\s+fournir|T[ée]l[ée]charger/i;
+        if (!ficheMarkers.test(textMarkdown)) {
+          logEvent('harvester.fr.page.skip.reason', run_id, { url: candidateUrl, reason: 'not_fiche_page' });
           continue;
         }
         
