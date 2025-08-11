@@ -521,6 +521,7 @@ export type Database = {
       }
       document_extractions: {
         Row: {
+          chunk_count: number | null
           confidence_score: number | null
           created_at: string
           debug_info: Json | null
@@ -532,10 +533,14 @@ export type Database = {
           extracted_data: Json
           extraction_type: string
           id: string
+          idempotency_key: string | null
           latency_ms: number | null
           model_used: string | null
+          model_version: string | null
           ocr_used: boolean | null
           pages_processed: number | null
+          processing_time_ms: number | null
+          retry_count: number | null
           run_id: string | null
           session_id: string | null
           source_template_version: string | null
@@ -543,6 +548,7 @@ export type Database = {
           table_parser: string | null
           table_quality: number | null
           tables_extracted: Json | null
+          text_chunks: Json | null
           translated: boolean | null
           translation_confidence: number | null
           triggered_by: string | null
@@ -550,6 +556,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          chunk_count?: number | null
           confidence_score?: number | null
           created_at?: string
           debug_info?: Json | null
@@ -561,10 +568,14 @@ export type Database = {
           extracted_data: Json
           extraction_type?: string
           id?: string
+          idempotency_key?: string | null
           latency_ms?: number | null
           model_used?: string | null
+          model_version?: string | null
           ocr_used?: boolean | null
           pages_processed?: number | null
+          processing_time_ms?: number | null
+          retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
           source_template_version?: string | null
@@ -572,6 +583,7 @@ export type Database = {
           table_parser?: string | null
           table_quality?: number | null
           tables_extracted?: Json | null
+          text_chunks?: Json | null
           translated?: boolean | null
           translation_confidence?: number | null
           triggered_by?: string | null
@@ -579,6 +591,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          chunk_count?: number | null
           confidence_score?: number | null
           created_at?: string
           debug_info?: Json | null
@@ -590,10 +603,14 @@ export type Database = {
           extracted_data?: Json
           extraction_type?: string
           id?: string
+          idempotency_key?: string | null
           latency_ms?: number | null
           model_used?: string | null
+          model_version?: string | null
           ocr_used?: boolean | null
           pages_processed?: number | null
+          processing_time_ms?: number | null
+          retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
           source_template_version?: string | null
@@ -601,6 +618,7 @@ export type Database = {
           table_parser?: string | null
           table_quality?: number | null
           tables_extracted?: Json | null
+          text_chunks?: Json | null
           translated?: boolean | null
           translation_confidence?: number | null
           triggered_by?: string | null
@@ -743,6 +761,53 @@ export type Database = {
         }
         Relationships: []
       }
+      extraction_metrics: {
+        Row: {
+          created_at: string | null
+          document_id: string | null
+          duration_ms: number | null
+          end_time: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          operation_type: string
+          start_time: string | null
+          success: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_id?: string | null
+          duration_ms?: number | null
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type: string
+          start_time?: string | null
+          success?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string | null
+          duration_ms?: number | null
+          end_time?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          operation_type?: string
+          start_time?: string | null
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_metrics_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "farm_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extraction_qa_results: {
         Row: {
           admin_notes: string | null
@@ -883,14 +948,19 @@ export type Database = {
           category_agreement: boolean | null
           classification_model: string | null
           classification_timestamp: string | null
+          error_details: Json | null
           farm_id: string
+          file_hash: string | null
           file_name: string
           file_size: number | null
           file_url: string
           id: string
+          language_detected: string | null
           mime_type: string | null
+          page_count: number | null
           predicted_category: string | null
           prediction_confidence: number | null
+          processing_status: string | null
           uploaded_at: string | null
         }
         Insert: {
@@ -898,14 +968,19 @@ export type Database = {
           category_agreement?: boolean | null
           classification_model?: string | null
           classification_timestamp?: string | null
+          error_details?: Json | null
           farm_id: string
+          file_hash?: string | null
           file_name: string
           file_size?: number | null
           file_url: string
           id?: string
+          language_detected?: string | null
           mime_type?: string | null
+          page_count?: number | null
           predicted_category?: string | null
           prediction_confidence?: number | null
+          processing_status?: string | null
           uploaded_at?: string | null
         }
         Update: {
@@ -913,14 +988,19 @@ export type Database = {
           category_agreement?: boolean | null
           classification_model?: string | null
           classification_timestamp?: string | null
+          error_details?: Json | null
           farm_id?: string
+          file_hash?: string | null
           file_name?: string
           file_size?: number | null
           file_url?: string
           id?: string
+          language_detected?: string | null
           mime_type?: string | null
+          page_count?: number | null
           predicted_category?: string | null
           prediction_confidence?: number | null
+          processing_status?: string | null
           uploaded_at?: string | null
         }
         Relationships: [
