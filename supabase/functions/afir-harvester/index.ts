@@ -76,8 +76,8 @@ serve(async (req) => {
         session_id,
         run_id: run_id,
         target_sources: [
-          'https://apia.org.ro/achizitii-publice/',
-          'https://www.madr.ro/'
+          'https://apia.org.ro/informatii-de-interes-public',
+          'https://apia.org.ro/masuri-de-sprijin-si-iacs'
         ],
         extraction_config: {
           preserve_formatting: true,
@@ -139,18 +139,18 @@ serve(async (req) => {
 async function discoverAndScrapeRealPages(session: ScrapingSession, supabase: any, run_id?: string): Promise<any[]> {
   const scrapedPages: any[] = [];
   
-  console.log(`🚀 Starting APIA Romania procurement data collection`);
+  console.log(`🚀 Starting APIA Romania subsidy data collection`);
 
-  // Target the real APIA procurement page
+  // Target the real APIA subsidy/support pages  
   const targetUrls = [
-    'https://apia.org.ro/achizitii-publice/',
-    'https://apia.org.ro/achizitii-publice/page/2/',
-    'https://apia.org.ro/achizitii-publice/page/3/'
+    'https://apia.org.ro/informatii-de-interes-public',
+    'https://apia.org.ro/masuri-de-sprijin-si-iacs',
+    'https://www.madr.ro/afir'
   ];
 
   for (const url of targetUrls) {
     try {
-      console.log(`🔍 Scraping APIA page: ${url}`);
+      console.log(`🔍 Scraping APIA subsidy page: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -186,7 +186,7 @@ async function discoverAndScrapeRealPages(session: ScrapingSession, supabase: an
       
       const pageData = {
         source_url: url,
-        source_site: 'apia-romania',
+        source_site: 'apia-romania-subsidies',
         raw_html: html,
         raw_text: textContent,
         raw_markdown: markdown,

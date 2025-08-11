@@ -377,12 +377,18 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
 
   console.log(`🚀 Starting smart discovery with config:`, harvesterConfig);
 
-  // Collect URLs using the smart collector
-  const subsidyUrls = await collector.collectDetailUrls(harvesterConfig);
-  console.log(`🔗 Smart collection found ${subsidyUrls.length} subsidy URLs`);
+  // For now, use direct URLs since smart collection is failing
+  const directUrls = [
+    'https://www.franceagrimer.fr/aides/vitilience-2025',
+    'https://www.franceagrimer.fr/aides/appel-propositions-du-plan-national-deperissement-du-vignoble-2024',
+    'https://www.franceagrimer.fr/aides/lutte-contre-la-jaunisse-de-la-betterave-2024-pnri-c',
+    'https://www.franceagrimer.fr/aides/fievre-catarrhale-ovine-dispositif-davance'
+  ];
+  
+  console.log(`🔗 Using direct URLs: ${directUrls.length} subsidy URLs`);
   
   // Scrape individual subsidy pages
-  for (const url of subsidyUrls) {
+  for (const url of directUrls) {
     try {
       console.log(`🔍 Scraping: ${url}`);
       const pageContent = await scrapeSubsidyPage(url);
