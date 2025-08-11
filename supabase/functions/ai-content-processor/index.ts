@@ -40,10 +40,12 @@ serve(async (req) => {
       page_ids, 
       quality_threshold = 0.3, 
       min_len = AI_MIN_LEN,
-      model = AI_MODEL,
       allow_recent_fallback = AI_ALLOW_RECENT_FALLBACK,
       recent_window_minutes = 120 
     } = body;
+    
+    // Enforce server-side model selection for consistency
+    const model = AI_MODEL;
     
     runId = run_id;
     const sessionId = `ai-${Date.now()}`;
@@ -365,6 +367,7 @@ Return only valid JSON array, no explanation:`;
                 agency: subsidy.agency,
                 sector: subsidy.sector,
                 region: subsidy.region,
+                record_status: 'active',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }, { 
