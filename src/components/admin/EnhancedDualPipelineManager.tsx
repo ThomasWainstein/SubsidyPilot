@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { StatusBadge, StatusType } from '@/components/ui/status-badge';
 import { ProgressIndicator } from '@/components/ui/progress-indicator';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PipelineResultsDashboard } from '@/components/admin/PipelineResultsDashboard';
 import { supabase } from '@/integrations/supabase/client';
+import { usePipelineRun } from '@/hooks/usePipelineRun';
 import { toast } from 'sonner';
 import { 
   Play, 
@@ -17,91 +18,106 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingUp,
-  Clock
+  Clock,
+  X,
+  FileText
 } from 'lucide-react';
 
 export default function EnhancedDualPipelineManager() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [lastExecution, setLastExecution] = useState<any>(null);
+  const { run, loading, error, start, cancel, isActive, isStarting } = usePipelineRun();
   const [frenchHarvesting, setFrenchHarvesting] = useState(false);
   const [romanianHarvesting, setRomanianHarvesting] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
-  const [operationProgress, setOperationProgress] = useState(0);
-  const [currentOperation, setCurrentOperation] = useState<string>('');
+
+  // Map pipeline status to StatusType
+  const mapPipelineStatusToStatusType = (pipelineStatus: string): StatusType => {
+    switch (pipelineStatus) {
+      case 'queued': return 'pending';
+      case 'running': return 'processing';
+      case 'completed': return 'completed';
+      case 'failed': return 'error';
+      case 'canceled': return 'cancelled';
+      default: return 'pending';
+    }
+  };
+
+  // Derive UI state from pipeline run
+  const getStageStatus = (stage: string): StatusType => {
+    if (!run) return 'ready';
+    
+    const currentStageIndex = ['init', 'harvest', 'ai', 'forms', 'done'].indexOf(run.stage);
+    const targetStageIndex = ['init', 'harvest', 'ai', 'forms', 'done'].indexOf(stage);
+    
+    if (run.status === 'failed' && currentStageIndex >= targetStageIndex) return 'error';
+    if (run.status === 'completed' && stage !== 'done') return 'completed';
+    if (currentStageIndex > targetStageIndex) return 'completed';
+    if (currentStageIndex === targetStageIndex && run.status === 'running') return 'processing';
+    if (currentStageIndex < targetStageIndex) return 'pending';
+    
+    return 'ready';
+  };
 
   const pipelineSteps = [
     {
       label: 'Content Harvesting',
-      status: isRunning || frenchHarvesting || romanianHarvesting ? 'processing' as const : 'ready' as const,
+      status: getStageStatus('harvest'),
       description: 'Scraping government websites for subsidy information'
     },
     {
-      label: 'AI Processing',
-      status: aiProcessing ? 'processing' as const : 'ready' as const,
+      label: 'AI Processing', 
+      status: getStageStatus('ai'),
       description: 'Converting raw content to structured data using OpenAI'
     },
     {
       label: 'Form Generation',
-      status: 'pending' as const,
+      status: getStageStatus('forms'),
       description: 'Creating application forms from structured data'
     }
   ];
 
-  const startFullPipeline = async () => {
-    setIsRunning(true);
-    setOperationProgress(0);
-    setCurrentOperation('Initializing dual pipeline...');
+  const getCurrentStepIndex = () => {
+    if (!run) return 0;
+    return ['init', 'harvest', 'ai', 'forms', 'done'].indexOf(run.stage);
+  };
+
+  const getOperationMessage = () => {
+    if (!run) return '';
     
+    if (run.status === 'failed') return `Pipeline failed at ${run.stage} stage`;
+    if (run.status === 'completed') return 'Pipeline completed successfully!';
+    if (run.status === 'canceled') return 'Pipeline was canceled';
+    
+    switch (run.stage) {
+      case 'init': return 'Initializing pipeline...';
+      case 'harvest': return 'Harvesting content from government websites...';
+      case 'ai': return 'Processing content with AI...';
+      case 'forms': return 'Generating application forms...';
+      case 'done': return 'Pipeline completed!';
+      default: return 'Processing...';
+    }
+  };
+
+  const startFullPipeline = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('dual-pipeline-orchestrator', {
-        body: {
-          action: 'start_full_pipeline',
-          execution_config: {
-            countries: ['france', 'romania'],
-            max_pages_per_country: 10,
-            enable_ai_processing: true,
-            enable_form_generation: true
-          }
-        }
+      await start({
+        countries: ['france', 'romania'],
+        max_pages_per_country: 10,
+        enable_ai_processing: true,
+        enable_form_generation: true
       });
-
-      if (error) throw error;
-
-      setLastExecution(data.execution);
-      toast.success(`Dual pipeline started: ${data.execution_id}`);
       
-      // Simulate progress updates
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        setOperationProgress(Math.min(progress, 95));
-        
-        if (progress < 30) {
-          setCurrentOperation('Harvesting French subsidies...');
-        } else if (progress < 60) {
-          setCurrentOperation('Harvesting Romanian subsidies...');
-        } else if (progress < 90) {
-          setCurrentOperation('Processing with AI...');
-        } else {
-          setCurrentOperation('Generating forms...');
-        }
-        
-        if (progress >= 95) {
-          clearInterval(interval);
-          setOperationProgress(100);
-          setCurrentOperation('Pipeline completed successfully!');
-        }
-      }, 2000);
-
+      toast.success('Dual pipeline started successfully!');
     } catch (error: any) {
-      toast.error(`Pipeline failed: ${error.message}`);
-      setCurrentOperation('Pipeline failed - see error details');
-    } finally {
-      setTimeout(() => {
-        setIsRunning(false);
-        setOperationProgress(0);
-        setCurrentOperation('');
-      }, 3000);
+      toast.error(`Pipeline failed to start: ${error.message}`);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await cancel();
+      toast.info('Pipeline canceled');
+    } catch (error: any) {
+      toast.error(`Failed to cancel pipeline: ${error.message}`);
     }
   };
 
@@ -175,34 +191,95 @@ export default function EnhancedDualPipelineManager() {
           
           {/* Main Pipeline Control */}
           <div className="space-y-4">
-            <EnhancedButton 
-              onClick={startFullPipeline} 
-              loading={isRunning}
-              loadingText="Running Pipeline"
-              showElapsedTime={true}
-              tooltip="Runs the complete pipeline: harvests French & Romanian subsidies, processes with AI, and generates forms. Takes 5-10 minutes."
-              confirmAction={true}
-              confirmMessage="Start Full Pipeline?"
-              className="w-full h-12 text-lg"
-              icon={<Play className="h-5 w-5" />}
-            >
-              Start Full Pipeline
-            </EnhancedButton>
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-            {isRunning && (
+            {/* Pipeline Control Button */}
+            {!isActive && !isStarting ? (
+              <EnhancedButton 
+                onClick={startFullPipeline} 
+                loading={loading}
+                loadingText="Loading Pipeline"
+                tooltip="Runs the complete pipeline: harvests French & Romanian subsidies, processes with AI, and generates forms. Takes 5-10 minutes."
+                confirmAction={true}
+                confirmMessage="Start Full Pipeline?"
+                className="w-full h-12 text-lg"
+                icon={<Play className="h-5 w-5" />}
+              >
+                Start Full Pipeline
+              </EnhancedButton>
+            ) : (
+              <div className="space-y-2">
+                <EnhancedButton 
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={isStarting || run?.status === 'completed'}
+                  className="w-full h-12 text-lg"
+                  icon={<X className="h-5 w-5" />}
+                >
+                  {isStarting ? 'Starting...' : run?.status === 'completed' ? 'Completed' : 'Cancel Pipeline'}
+                </EnhancedButton>
+                
+                {run && (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Run ID: {run.id}</span>
+                    <span>Status: <StatusBadge status={mapPipelineStatusToStatusType(run.status)} /></span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Progress Indicator */}
+            {isActive && (
               <ProgressIndicator
                 steps={pipelineSteps}
-                currentStep={operationProgress < 60 ? 0 : operationProgress < 90 ? 1 : 2}
-                progress={operationProgress}
+                currentStep={getCurrentStepIndex()}
+                progress={run?.progress || 0}
                 showProgress={true}
               />
             )}
 
-            {currentOperation && (
-              <Alert>
+            {/* Operation Status */}
+            {isActive && (
+              <Alert className={run?.status === 'failed' ? 'border-destructive' : ''}>
                 <Clock className="h-4 w-4" />
-                <AlertDescription>{currentOperation}</AlertDescription>
+                <AlertDescription>{getOperationMessage()}</AlertDescription>
               </Alert>
+            )}
+
+            {/* Pipeline Stats */}
+            {run?.stats && Object.keys(run.stats).length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
+                {run.stats.pages_scraped && (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{run.stats.pages_scraped}</div>
+                    <div className="text-sm text-muted-foreground">Pages Scraped</div>
+                  </div>
+                )}
+                {run.stats.subsidies_extracted && (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{run.stats.subsidies_extracted}</div>
+                    <div className="text-sm text-muted-foreground">Subsidies Extracted</div>
+                  </div>
+                )}
+                {run.stats.forms_generated && (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{run.stats.forms_generated}</div>
+                    <div className="text-sm text-muted-foreground">Forms Generated</div>
+                  </div>
+                )}
+                {run?.progress && (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{run.progress}%</div>
+                    <div className="text-sm text-muted-foreground">Progress</div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -261,34 +338,48 @@ export default function EnhancedDualPipelineManager() {
             </p>
           </div>
 
-          {/* Execution Results */}
-          {lastExecution && (
+          {/* Last Execution Results */}
+          {run && run.status === 'completed' && (
             <div className="mt-6 p-4 bg-muted rounded-lg">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold">Last Execution Results</h4>
-                <StatusBadge status={lastExecution.status} />
+                <StatusBadge status={mapPipelineStatusToStatusType(run.status)} />
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{lastExecution.metrics?.pages_scraped || 0}</Badge>
+                  <Badge variant="outline">{run.stats?.pages_scraped || 0}</Badge>
                   <span>Pages Scraped</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{lastExecution.metrics?.subsidies_extracted || 0}</Badge>
+                  <Badge variant="outline">{run.stats?.subsidies_extracted || 0}</Badge>
                   <span>Subsidies Extracted</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{lastExecution.metrics?.forms_generated || 0}</Badge>
+                  <Badge variant="outline">{run.stats?.forms_generated || 0}</Badge>
                   <span>Forms Generated</span>
                 </div>
               </div>
 
-              {lastExecution.metrics?.processing_time && (
+              {run.started_at && run.ended_at && (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  Processing time: {lastExecution.metrics.processing_time}
+                  Processing time: {Math.round((new Date(run.ended_at).getTime() - new Date(run.started_at).getTime()) / 1000)}s
                 </div>
               )}
+            </div>
+          )}
+
+          {/* View Logs Link */}
+          {run && (
+            <div className="flex justify-center">
+              <EnhancedButton
+                variant="ghost"
+                size="sm"
+                icon={<FileText className="h-4 w-4" />}
+                tooltip="View detailed pipeline logs and metrics"
+              >
+                View Pipeline Logs
+              </EnhancedButton>
             </div>
           )}
 

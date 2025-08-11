@@ -126,14 +126,22 @@ serve(async (req) => {
 
     console.log('🔄 Dual Pipeline Orchestrator:', { action });
 
+    // Route to new pipeline-runs system for full pipeline
     if (action === 'start_full_pipeline') {
-      const execution = await startFullPipeline(execution_config || {}, supabase);
-      
+      const { data, error } = await supabase.functions.invoke('pipeline-runs', {
+        body: {
+          action: 'start',
+          config: execution_config || {}
+        }
+      });
+
+      if (error) throw error;
+
       return new Response(JSON.stringify({
         success: true,
-        execution_id: execution.id,
+        execution_id: data.runId,
         message: 'Full dual pipeline started',
-        execution
+        execution: data.run
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

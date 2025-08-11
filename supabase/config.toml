@@ -82,3 +82,9 @@ verify_jwt = false
 
 [functions.scrape-report]
 verify_jwt = false
+
+[functions.pipeline-runs]
+verify_jwt = false
+
+[functions.pipeline-orchestrator]
+verify_jwt = false
