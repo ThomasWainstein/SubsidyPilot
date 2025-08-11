@@ -12,16 +12,6 @@ interface PipelineRun {
   stats: any;
 }
 
-interface ActiveRunStatus {
-  run_id: string;
-  status: string;
-  stage: string;
-  progress: number;
-  created_at: string;
-  updated_at: string;
-  stats: any;
-}
-
 export const useActiveRun = () => {
   const [activeRun, setActiveRun] = useState<PipelineRun | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,15 +27,15 @@ export const useActiveRun = () => {
 
       if (error) throw error;
       
-      // Map the view data to our interface
+      // Map the view data to our interface (v_active_run_status columns)
       const mappedData = data ? {
-        id: data.run_id,
+        id: data.id, // View returns 'id', not 'run_id'
         status: data.status,
         stage: data.stage,
         progress: data.progress,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        stats: data.stats
+        created_at: data.started_at, // Use started_at as created_at fallback
+        updated_at: new Date().toISOString(), // Current time as fallback
+        stats: data.config || {} // Use config as stats fallback
       } : null;
       
       setActiveRun(mappedData);
