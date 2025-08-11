@@ -123,12 +123,15 @@ async function orchestratePipeline(supabase: any, runId: string) {
       console.log(`🤖 Stage 2: AI processing for run ${runId}`);
       const aiResults = await processWithAI(supabase, runId, run.config);
       
-      // Validate AI results
+      // Handle AI results - don't fail if pages had insufficient content
       if (!aiResults.subsidies_created || aiResults.subsidies_created === 0) {
-        await failRun('ai', 'No subsidies were extracted from harvested pages', { 
-          pages_processed: harvestResults.pages_scraped,
-          ai_errors: aiResults.errors || 0
-        });
+        if (aiResults.pages_processed === 0) {
+          console.log(`⚠️ No pages with sufficient content for AI processing (run ${runId})`);
+          // Continue to completion rather than failing
+        } else {
+          console.log(`⚠️ AI processing completed but extracted 0 subsidies from ${aiResults.pages_processed} pages`);
+          // Continue to completion - this is valid (pages may contain no subsidies)
+        }
       }
       
       const aiStats = {
