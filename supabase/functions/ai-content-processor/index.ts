@@ -248,8 +248,8 @@ serve(async (req) => {
           } else if (sourceUrl.includes('franceagrimer') || sourceUrl.includes('.fr')) {
             agencyConfig = {
               language: 'fr',
-              agency: 'FranceAgrimer',
-              systemPrompt: 'You are an expert at extracting French agricultural subsidy information from FranceAgrimer.',
+              agency: 'FranceAgriMer',
+              systemPrompt: 'You are an expert at extracting French agricultural subsidy information from FranceAgriMer.',
               terms: [
                 'subventions agricoles', 'aides financières', 'développement rural',
                 'fonds européens', 'mesures de soutien', 'agriculteurs',
@@ -279,46 +279,32 @@ serve(async (req) => {
             };
           }
 
-          const prompt = `You are an expert at extracting Romanian agricultural subsidy information from APIA content.
+          const prompt = `${agencyConfig.systemPrompt}
 
-AGENCY: ${agencyConfig.agency} (Romanian Agriculture Payment Agency)
+AGENCY: ${agencyConfig.agency}
+LANGUAGE: ${agencyConfig.language}
 SOURCE: ${page.source_url}
 
-EXTRACTION MISSION: Find ALL financial support, payments, grants, or funding mentioned in this content.
+TASK: Extract ALL funding opportunities/subsidies described on this page. Be exhaustive.
 
-LOOK FOR THESE PATTERNS:
-- Amounts in LEI or EUR (e.g., "2.8 milioane lei", "suma de X lei")
-- Payment announcements ("efectuează plata", "se acordă", "sprijin financiar")
-- Support schemes ("ajutor de stat", "măsuri de sprijin", "finanțare")
-- Funding programs ("program de", "schemă de", "subvenție")
-- Agricultural payments ("plăți agricole", "despăgubiri", "compensații")
+OUTPUT: Return ONLY a valid JSON array. Each item MUST have strictly these fields:
+- title: short, specific name of the opportunity (keep language as-is)
+- description: concise but complete summary including key amounts and durations
+- eligibility: who can apply (target audiences, prerequisites)
+- deadline: final closing date if present in YYYY-MM-DD, else null (for multiple phases choose the last closing date)
+- funding_type: one of "grant" | "subsidy" | "support_measure" | "call_for_projects"
+- agency: set EXACTLY to "${agencyConfig.agency}"
+- sector: one of "crops" | "livestock" | "rural_development" | "modernization" | "viticulture"
+- region: null or a region name
 
-BE VERY LIBERAL: Extract ANY mention of financial support for farmers, even from news articles or announcements.
-
-ROMANIAN CONTEXT CLUES:
-- "solicitanți" = applicants
-- "beneficiari" = beneficiaries  
-- "cereri de plată" = payment requests
-- "crescători de animale" = animal breeders
-- "fermieri" = farmers
-- "bugetul de stat" = state budget
-
-OUTPUT: JSON array with subsidies found. For each subsidy:
-- title: Name/description of the financial support (in Romanian)
-- description: Full details about what it covers and amounts
-- eligibility: Who can apply (farmers, animal breeders, etc.)
-- deadline: Date if mentioned (YYYY-MM-DD format) or null
-- funding_type: "support_measure" | "grant" | "subsidy" | "payment"
-- agency: "APIA"
-- sector: "livestock" | "crops" | "rural_development" | "modernization"
-- region: Geographic area or null
-
-CRITICAL: If you see ANY financial amounts or support programs mentioned, extract them! Return [] only if absolutely no funding is mentioned.
+${agencyConfig.language === 'fr'
+  ? 'FR CONTEXT: Pages may list several dépôt phases; infer the final deadline (e.g., "date butoir" or last listed deadline). Capture accurate amounts like "244 000 euros" and durations (24–36 mois).'
+  : 'RO CONTEXT: Detect amounts (LEI/EUR), payment schemes, and applicant categories; include final deadline if present.'}
 
 Content to analyze:
 ${firstChunk}
 
-Return only valid JSON array, no explanation:`;
+Return only the JSON array; no explanations.`;
 
           const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -376,6 +362,20 @@ Return only valid JSON array, no explanation:`;
           let pageSubsidiesCreated = 0;
           for (const rawSub of rawSubsidies) {
             const subsidy = coerceSubsidy(rawSub);
+
+            // Normalize based on source
+            try {
+              const pageUrl = (page.source_url || '').toLowerCase();
+              if (pageUrl.includes('franceagrimer')) {
+                subsidy.agency = 'FranceAgriMer';
+                if (!subsidy.funding_type) subsidy.funding_type = 'grant';
+                if (subsidy.region === undefined) subsidy.region = null;
+                // Map viticulture hints
+                if (!subsidy.sector && /viti|vin|vigne/i.test(subsidy.title || subsidy.description || '')) {
+                  subsidy.sector = 'viticulture';
+                }
+              }
+            } catch (_) { /* noop */ }
             
             // Skip empty subsidies
             if (!subsidy.title && !subsidy.description) {
