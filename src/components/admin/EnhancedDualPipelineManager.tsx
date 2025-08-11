@@ -201,6 +201,25 @@ export default function EnhancedDualPipelineManager() {
     }
   };
 
+  const testIsolatedAI = async () => {
+    try {
+      toast.info('🧪 Testing isolated AI processing...');
+      
+      const { data, error } = await supabase.functions.invoke('test-ai-processing', {});
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast.success(`✅ Isolated AI test passed! Page: ${data.page_id}, Content: ${data.content_length} chars, AI response: ${data.ai_response_length} chars`);
+      } else {
+        toast.error(`❌ Isolated AI test failed: ${data?.error}`);
+      }
+    } catch (error: any) {
+      console.error('Isolated AI test error:', error);
+      toast.error(`❌ Isolated AI test failed: ${error.message}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Pipeline Results Dashboard */}
@@ -383,16 +402,27 @@ export default function EnhancedDualPipelineManager() {
               Process Scraped Pages with AI
             </EnhancedButton>
             
-            <EnhancedButton 
-              variant="ghost" 
-              onClick={testAISetup} 
-              size="sm"
-              tooltip="Test if AI processing setup is working correctly - checks database, API key, and content availability"
-              className="mt-2"
-              icon={<FileText className="h-4 w-4" />}
-            >
-              🧪 Test AI Setup
-            </EnhancedButton>
+            <div className="flex gap-2 mt-2">
+              <EnhancedButton 
+                variant="ghost" 
+                onClick={testAISetup} 
+                size="sm"
+                tooltip="Test if AI processing setup is working correctly - checks database, API key, and content availability"
+                icon={<FileText className="h-4 w-4" />}
+              >
+                🧪 Test AI Setup
+              </EnhancedButton>
+              
+              <EnhancedButton 
+                variant="ghost" 
+                onClick={testIsolatedAI} 
+                size="sm"
+                tooltip="Test isolated AI processing with one page to debug issues"
+                icon={<Bot className="h-4 w-4" />}
+              >
+                🔬 Test Isolated AI
+              </EnhancedButton>
+            </div>
             
             <p className="text-sm text-muted-foreground mt-2">
               Converts raw scraped content into structured subsidy data using OpenAI
