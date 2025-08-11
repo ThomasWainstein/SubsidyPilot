@@ -104,8 +104,9 @@ serve(async (req) => {
     let pages: any[] = [];
     let pagesEligible = 0;
 
-    // Select pages: by page_ids OR by run_id; filter eligible content
+    // Select pages: by page_ids OR get recent unprocessed pages
     if (page_ids && page_ids.length > 0) {
+      console.log(`📋 Fetching specific pages: ${page_ids.length} IDs`);
       const { data: pageData, error: fetchError } = await supabase
         .from('raw_scraped_pages')
         .select('*')
@@ -113,14 +114,20 @@ serve(async (req) => {
 
       if (fetchError) throw fetchError;
       pages = pageData || [];
-    } else if (run_id) {
+    } else {
+      // Get recent pages that haven't been processed yet
+      console.log('📋 Fetching recent unprocessed pages...');
+      const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // 24 hours
       const { data: pageData, error: fetchError } = await supabase
         .from('raw_scraped_pages')
         .select('*')
-        .eq('run_id', run_id);
+        .gte('created_at', recentCutoff)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (fetchError) throw fetchError;
       pages = pageData || [];
+      console.log(`📄 Found ${pages.length} recent pages`);
     }
 
     // Filter eligible content (length >= min_len) - use COALESCE fallback
