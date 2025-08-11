@@ -48,36 +48,6 @@ serve(async (req) => {
     runId = run_id;
     const sessionId = `ai-${Date.now()}`;
     
-    // Check for OpenAI API key with fallback
-    const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API') ?? Deno.env.get('OPENAI_API_KEY');
-    
-    if (!openAIApiKey) {
-      console.log(`AI_RUN_ERROR {run_id: ${run_id}, reason: "MISSING_OPENAI_KEY"}`);
-      logEvent('ai.run.error', run_id, { reason: 'MISSING_OPENAI_KEY' });
-      
-      // Insert ai_content_runs row with error status
-      await supabase.from('ai_content_runs').insert({
-        run_id,
-        model: 'unknown',
-        pages_seen: 0,
-        pages_eligible: 0,
-        pages_processed: 0,
-        subs_created: 0,
-        status: 'error',
-        reason: 'MISSING_OPENAI_KEY',
-        started_at: new Date().toISOString(),
-        ended_at: new Date().toISOString()
-      });
-      
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'MISSING_OPENAI_KEY'
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
     console.log(`AI_RUN_START {run_id: ${run_id}, pages_seen: 0, pages_eligible: 0}`);
     logEvent('ai.run.start', run_id, { 
       page_ids_count: page_ids?.length || 0, 
@@ -87,7 +57,7 @@ serve(async (req) => {
       allow_recent_fallback 
     });
     
-    // Start envelope: insert ai_content_runs
+    // Start envelope: insert ai_content_runs FIRST to track all attempts
     const { data: aiRun, error: aiRunError } = await supabase
       .from('ai_content_runs')
       .insert({
@@ -105,6 +75,31 @@ serve(async (req) => {
     
     if (aiRunError) throw aiRunError;
     aiRunId = aiRun.id;
+
+    // Check for OpenAI API key with fallback AFTER creating envelope
+    const openAIApiKey = Deno.env.get('SCRAPER_RAW_GPT_API') ?? Deno.env.get('OPENAI_API_KEY');
+    
+    if (!openAIApiKey) {
+      console.log(`AI_RUN_ERROR {run_id: ${run_id}, reason: "MISSING_OPENAI_KEY"}`);
+      logEvent('ai.run.error', run_id, { reason: 'MISSING_OPENAI_KEY' });
+      
+      // Update the existing ai_content_runs row with error status
+      await supabase.from('ai_content_runs')
+        .update({
+          status: 'error',
+          notes: 'MISSING_OPENAI_KEY',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', aiRunId);
+      
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'MISSING_OPENAI_KEY'
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     let pages: any[] = [];
     let pagesEligible = 0;
@@ -128,9 +123,9 @@ serve(async (req) => {
       pages = pageData || [];
     }
 
-    // Filter eligible content (length >= min_len)
+    // Filter eligible content (length >= min_len) - use COALESCE fallback
     const eligiblePages = pages.filter(p => {
-      const content = p.text_markdown || p.raw_text || '';
+      const content = p.text_markdown || p.raw_text || p.raw_html || '';
       return content.length >= min_len;
     });
     pagesEligible = eligiblePages.length;
@@ -148,7 +143,7 @@ serve(async (req) => {
 
       if (!recentError && recentPages?.length > 0) {
         const recentEligible = recentPages.filter(p => {
-          const content = p.text_markdown || p.raw_text || '';
+          const content = p.text_markdown || p.raw_text || p.raw_html || '';
           return content.length >= min_len;
         });
         pages.push(...recentEligible);
@@ -170,7 +165,7 @@ serve(async (req) => {
         console.log(`AI_PAGE_PROCESS {page_id: ${page.id}, url: "${page.source_url}"}`);
         logEvent('ai.page.start', run_id, { page_id: page.id, url: page.source_url });
         
-        const content = page.text_markdown || page.raw_text || '';
+        const content = page.text_markdown || page.raw_text || page.raw_html || '';
         if (content.length < min_len) continue;
 
         // Chunk content if needed
