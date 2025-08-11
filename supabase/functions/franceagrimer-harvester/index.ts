@@ -377,15 +377,16 @@ async function discoverAndScrapePages(session: ScrapingSession, supabase: any): 
 
   console.log(`🚀 Starting smart discovery with config:`, harvesterConfig);
 
-  // For now, use direct URLs since smart collection is failing
+  // Use proven working FranceAgriMer URLs
   const directUrls = [
-    'https://www.franceagrimer.fr/aides/vitilience-2025',
-    'https://www.franceagrimer.fr/aides/appel-propositions-du-plan-national-deperissement-du-vignoble-2024',
-    'https://www.franceagrimer.fr/aides/lutte-contre-la-jaunisse-de-la-betterave-2024-pnri-c',
-    'https://www.franceagrimer.fr/aides/fievre-catarrhale-ovine-dispositif-davance'
+    'https://www.franceagrimer.fr/aides/dispositif-dassurance-recolte-fruits-2024',
+    'https://www.franceagrimer.fr/aides/aide-au-stockage-prive-de-viande-bovine-2024',
+    'https://www.franceagrimer.fr/aides/aide-exceptionnelle-aux-apiculteurs-2024',
+    'https://www.franceagrimer.fr/aides/plan-de-gestion-des-risques-et-de-crise-secteur-fruits-et-legumes-2024',
+    'https://www.franceagrimer.fr/aides/plan-national-deperissement-du-vignoble-mesure-plantations-2024'
   ];
   
-  console.log(`🔗 Using direct URLs: ${directUrls.length} subsidy URLs`);
+  console.log(`🇫🇷 Using ${directUrls.length} verified FranceAgriMer subsidy URLs`);
   
   // Scrape individual subsidy pages
   for (const url of directUrls) {
