@@ -1606,6 +1606,7 @@ export type Database = {
           raw_html: string | null
           raw_markdown: string | null
           raw_text: string | null
+          run_id: string | null
           scrape_date: string | null
           source_site: string | null
           source_url: string
@@ -1623,6 +1624,7 @@ export type Database = {
           raw_html?: string | null
           raw_markdown?: string | null
           raw_text?: string | null
+          run_id?: string | null
           scrape_date?: string | null
           source_site?: string | null
           source_url: string
@@ -1640,6 +1642,7 @@ export type Database = {
           raw_html?: string | null
           raw_markdown?: string | null
           raw_text?: string | null
+          run_id?: string | null
           scrape_date?: string | null
           source_site?: string | null
           source_url?: string
@@ -1647,7 +1650,15 @@ export type Database = {
           text_markdown?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_assignments: {
         Row: {
