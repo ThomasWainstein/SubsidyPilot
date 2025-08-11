@@ -7,6 +7,7 @@ import { extractTextFromFile } from './textExtraction.ts';
 import { extractFarmDataWithOpenAI } from './openaiService.ts';
 import { storeExtractionResult, logExtractionError } from './databaseService.ts';
 import { tryLocalExtraction } from './lib/localExtraction.ts';
+import { integrateTableExtraction, detectAndMergeMultiPageTables, validateTableQuality } from '../extract-document-data-enhanced/tableIntegration.ts';
 
 // Enhanced environment diagnostics and validation
 function validateEnvironment() {
@@ -84,6 +85,29 @@ serve(async (req) => {
         : data;
       console.log(`🔍 DEBUG [${step}]:`, sanitizedData);
     }
+  }
+  
+  // Simple language detection function
+  function detectDocumentLanguage(text: string): string {
+    const sample = text.slice(0, 1000).toLowerCase();
+    
+    // Romanian
+    if (/\b(și|cu|de|la|în|pe|pentru|din|este|sunt|avea|face|agricultura|fermă)\b/.test(sample)) {
+      return 'ro';
+    }
+    
+    // French  
+    if (/\b(et|de|le|la|les|des|du|avec|pour|dans|sur|être|avoir|agriculture|ferme)\b/.test(sample)) {
+      return 'fr';
+    }
+    
+    // Spanish
+    if (/\b(y|de|el|la|los|las|del|con|para|en|por|ser|estar|tener|agricultura|granja)\b/.test(sample)) {
+      return 'es';
+    }
+    
+    // Default to English
+    return 'en';
   }
   
   function validateFileUrl(fileUrl: string): boolean {
@@ -187,9 +211,59 @@ serve(async (req) => {
       throw new Error(error);
     }
 
-    // Extract text
+    // ===== PHASE D: ADVANCED TABLE EXTRACTION =====
+    // Get file buffer for table extraction
+    addDebugLog('PHASE_D_TABLE_EXTRACTION_START', { fileName });
+    const fileBuffer = await fileResponse.clone().arrayBuffer();
+    
+    let tableIntegrationResult;
+    let detectedLanguage = 'en'; // Default language
+    
+    try {
+      // Initial language detection from any available text
+      const tempExtractionResult = await extractTextFromFile(fileResponse.clone(), fileName, openAIApiKey);
+      detectedLanguage = detectDocumentLanguage(tempExtractionResult.text);
+      
+      // Run Phase D table extraction with AI post-processing
+      tableIntegrationResult = await integrateTableExtraction(
+        fileBuffer,
+        fileName, 
+        detectedLanguage,
+        openAIApiKey
+      );
+      
+      addDebugLog('PHASE_D_TABLE_EXTRACTION_SUCCESS', {
+        tablesFound: tableIntegrationResult.tableMetrics.totalTables,
+        tableQuality: tableIntegrationResult.tableMetrics.tableQualityScore,
+        subsidyFieldsFound: tableIntegrationResult.tableMetrics.subsidyFieldsFound,
+        processingTime: tableIntegrationResult.tableMetrics.extractionTime + tableIntegrationResult.tableMetrics.postProcessingTime
+      });
+      
+    } catch (tableError) {
+      console.warn('⚠️ Phase D table extraction failed:', tableError);
+      addDebugLog('PHASE_D_TABLE_EXTRACTION_FAILED', {
+        error: tableError.message,
+        fallbackToTextOnly: true
+      });
+      
+      // Continue with text-only extraction
+      tableIntegrationResult = null;
+    }
+
+    // Extract text (enhanced with table content if available)
     addDebugLog('TEXT_EXTRACTION_START', { fileName });
     const extractionResult = await extractTextFromFile(fileResponse, fileName, openAIApiKey);
+    
+    // If we have table results, enhance the text with structured table content
+    if (tableIntegrationResult) {
+      extractionResult.text = extractionResult.text + '\n\n' + tableIntegrationResult.enrichedText;
+      extractionResult.debugInfo = {
+        ...extractionResult.debugInfo,
+        tablesFound: tableIntegrationResult.tableMetrics.totalTables,
+        tableQualityScore: tableIntegrationResult.tableMetrics.tableQualityScore,
+        phaseD: true
+      };
+    }
     
     // 🔍 CRITICAL DEBUG: Log extraction result details
     console.log(`🔍 EXTRACTION RESULT: Text length = ${extractionResult.text.length}`);
@@ -199,7 +273,8 @@ serve(async (req) => {
     addDebugLog('TEXT_EXTRACTION_COMPLETE', {
       textLength: extractionResult.text.length,
       textPreview: extractionResult.text.substring(0, 300),
-      debugInfo: extractionResult.debugInfo
+      debugInfo: extractionResult.debugInfo,
+      tableEnhanced: !!tableIntegrationResult
     });
 
     // Try local extraction first
@@ -279,7 +354,7 @@ serve(async (req) => {
       rawResponse: extractedData.rawResponse?.substring(0, 500)
     });
 
-    // Database storage
+    // Database storage with Phase D table data
     addDebugLog('DATABASE_STORAGE_START', { documentId });
     
     const storeResult = await storeExtractionResult(
@@ -288,7 +363,8 @@ serve(async (req) => {
       supabaseUrl,
       supabaseServiceKey,
       extractionResult.debugInfo.ocrUsed || false,
-      undefined // run_id - will be set later when we have batch processing
+      undefined, // run_id - will be set later when we have batch processing
+      tableIntegrationResult // Phase D table data
     );
 
     if (!storeResult.success) {

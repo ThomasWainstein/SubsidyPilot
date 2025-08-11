@@ -19,7 +19,8 @@ export async function storeExtractionResult(
   supabaseUrl: string,
   supabaseServiceKey: string,
   ocrUsed: boolean = false,
-  runId?: string
+  runId?: string,
+  tableIntegrationResult?: any // Phase D table integration result
 ): Promise<StoreExtractionResult> {
   try {
     // 🔒 SECURITY: Safe connection check without exposing sensitive data
@@ -31,6 +32,21 @@ export async function storeExtractionResult(
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Prepare Phase D table data if available
+    const tableData = tableIntegrationResult ? {
+      tables_extracted: tableIntegrationResult.tableData.processed,
+      table_count: tableIntegrationResult.tableMetrics.totalTables,
+      table_data: tableIntegrationResult.tableData,
+      table_parser: 'phase-d-advanced',
+      table_quality: tableIntegrationResult.tableMetrics.tableQualityScore
+    } : {
+      tables_extracted: null,
+      table_count: 0,
+      table_data: null,
+      table_parser: null,
+      table_quality: null
+    };
+    
     const { data, error } = await supabase
       .from('document_extractions')
       .insert({
@@ -40,12 +56,19 @@ export async function storeExtractionResult(
         confidence_score: extractionData.confidence || 0,
         status: extractionData.error ? 'failed' : 'completed',
         error_message: extractionData.error || null,
-        debug_info: extractionData.debugInfo || {},
+        debug_info: {
+          ...extractionData.debugInfo,
+          phaseD: !!tableIntegrationResult,
+          tableMetrics: tableIntegrationResult?.tableMetrics
+        },
         ocr_used: ocrUsed,
         run_id: runId,
         latency_ms: extractionData.debugInfo?.processingTime || null,
         model_used: extractionData.debugInfo?.model || 'gpt-4o',
-        pages_processed: 1 // Default to 1 for now
+        pages_processed: 1, // Default to 1 for now
+        detected_language: tableIntegrationResult?.tableMetrics.detectedLanguages?.[0] || extractionData.detectedLanguage || 'en',
+        // Phase D table fields
+        ...tableData
       })
       .select('id')
       .single();
