@@ -190,69 +190,96 @@ serve(async (req) => {
         try {
           console.log(`🧠 Making OpenAI API call for page ${page.id}...`);
           
-          // Detect language and create appropriate prompt
-          const isRomanian = content.includes('APIA') || content.includes('măsuri') || content.includes('sprijin') || content.includes('agricultură');
-          const isFrench = content.includes('FranceAgrimer') || content.includes('subvention') || content.includes('agriculture');
+          // Determine agency and language from source URL
+          const sourceUrl = page.source_url.toLowerCase();
+          let agencyConfig = {
+            language: 'en',
+            agency: 'unknown',
+            systemPrompt: 'You are an expert at extracting agricultural subsidy information.',
+            terms: [],
+            examples: []
+          };
           
-          let systemPrompt = 'You are an expert at extracting agricultural subsidy and funding information from web content in multiple languages.';
-          let examples = '';
-          
-          if (isRomanian) {
-            systemPrompt += ' You understand Romanian agricultural terminology.';
-            examples = `
-ROMANIAN TERMS TO LOOK FOR:
-- "măsuri de sprijin" (support measures)
-- "scheme de plată" (payment schemes) 
-- "subvenții agricole" (agricultural subsidies)
-- "fonduri europene" (European funds)
-- "sprijin financiar" (financial support)
-- "dezvoltare rurală" (rural development)
-- "crescători de animale" (animal breeders)
-- "fermieri" (farmers)`;
-          } else if (isFrench) {
-            systemPrompt += ' You understand French agricultural terminology.';
-            examples = `
-FRENCH TERMS TO LOOK FOR:
-- "subventions agricoles" (agricultural subsidies)
-- "aides financières" (financial aid)
-- "développement rural" (rural development)
-- "fonds européens" (European funds)
-- "mesures de soutien" (support measures)`;
+          if (sourceUrl.includes('apia.org.ro')) {
+            agencyConfig = {
+              language: 'ro',
+              agency: 'APIA',
+              systemPrompt: 'You are an expert at extracting Romanian agricultural subsidy information from APIA (Agenția de Plăți și Intervenție pentru Agricultură).',
+              terms: [
+                'măsuri de sprijin', 'scheme de plată', 'subvenții agricole', 
+                'fonduri europene', 'sprijin financiar', 'dezvoltare rurală',
+                'crescători de animale', 'fermieri', 'tinerii fermieri',
+                'modernizare', 'investiții', 'PNDR', 'PAC'
+              ],
+              examples: [
+                'Sprijin pentru tinerii fermieri',
+                'Măsură de modernizare a fermelor',
+                'Schema de sprijin pentru crescătorii de animale',
+                'Fond pentru dezvoltarea rurală'
+              ]
+            };
+          } else if (sourceUrl.includes('franceagrimer') || sourceUrl.includes('.fr')) {
+            agencyConfig = {
+              language: 'fr',
+              agency: 'FranceAgrimer',
+              systemPrompt: 'You are an expert at extracting French agricultural subsidy information from FranceAgrimer.',
+              terms: [
+                'subventions agricoles', 'aides financières', 'développement rural',
+                'fonds européens', 'mesures de soutien', 'agriculteurs',
+                'éleveurs', 'modernisation', 'investissements'
+              ],
+              examples: [
+                'Aide aux jeunes agriculteurs',
+                'Subvention pour la modernisation',
+                'Fonds de développement rural',
+                'Mesure de soutien aux éleveurs'
+              ]
+            };
+          } else if (sourceUrl.includes('afir.info')) {
+            agencyConfig = {
+              language: 'ro',
+              agency: 'AFIR',
+              systemPrompt: 'You are an expert at extracting Romanian agricultural funding information from AFIR (Agenția pentru Finanțarea Investițiilor Rurale).',
+              terms: [
+                'măsuri de finanțare', 'investiții rurale', 'dezvoltare rurală',
+                'modernizare agricolă', 'fonduri de investiții'
+              ],
+              examples: [
+                'Program de investiții rurale',
+                'Măsură de finanțare pentru modernizare',
+                'Fond pentru dezvoltarea agriculturii'
+              ]
+            };
           }
 
-          const prompt = `${systemPrompt}
+          const prompt = `${agencyConfig.systemPrompt}
 
-TASK: Extract ALL subsidy, grant, funding scheme, or financial support information from the following text.
+AGENCY CONTEXT: ${agencyConfig.agency} - ${agencyConfig.language.toUpperCase()}
+SOURCE: ${page.source_url}
 
-WHAT TO EXTRACT:
-- Agricultural subsidies and grants
-- Funding schemes for farmers
-- Financial support programs
-- Agricultural investment schemes  
-- Rural development funds
-- Environmental payment schemes
-- Any monetary support for agriculture, livestock, or rural activities
-${examples}
+TASK: Extract ALL subsidy, grant, funding scheme, or financial support information from this ${agencyConfig.agency} content.
 
-REQUIRED OUTPUT: Valid JSON array where each item has these fields:
-- title: Name of the subsidy/grant (required)
-- description: What the funding covers
+KEY TERMS TO RECOGNIZE (${agencyConfig.language}):
+${agencyConfig.terms.map(term => `- "${term}"`).join('\n')}
+
+EXPECTED SUBSIDIES (examples):
+${agencyConfig.examples.map(ex => `- "${ex}"`).join('\n')}
+
+OUTPUT FORMAT: Valid JSON array where each item has:
+- title: Name of the subsidy/grant (in original language)
+- description: What the funding covers  
 - eligibility: Who can apply and requirements
 - deadline: Application deadline (YYYY-MM-DD format if found)
-- funding_type: Type like "grant", "subsidy", "loan", "tax_credit"
-- agency: Organization providing the funding (e.g., APIA, FranceAgrimer)
-- sector: Agricultural area like "livestock", "crops", "equipment", "land"
+- funding_type: "grant" | "subsidy" | "loan" | "tax_credit" | "support_measure"
+- agency: "${agencyConfig.agency}"
+- sector: Agricultural area like "livestock", "crops", "equipment", "rural_development"
 - region: Geographic area if specified
 
-EXAMPLES of what to look for:
-- "Support for young farmers" / "Sprijin pentru tinerii fermieri"
-- "Livestock modernization grant" / "Grant pentru modernizarea creșterii animalelor"
-- "Organic certification subsidy" / "Subvenție pentru certificarea bio"
-- "Rural development fund" / "Fond pentru dezvoltare rurală"
+IMPORTANT: Look for ANY financial support, investment schemes, payment programs, or funding opportunities related to agriculture, even if not explicitly called "subsidy".
 
-If NO subsidy information is found, return empty array: []
+If NO funding information found, return: []
 
-Text to analyze:
+Content to analyze:
 ${firstChunk}
 
 Return only valid JSON array, no other text.`;
