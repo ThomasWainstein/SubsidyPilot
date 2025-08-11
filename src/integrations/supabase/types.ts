@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_content_errors: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          page_id: string | null
+          run_id: string
+          snippet: string | null
+          source_url: string | null
+          stage: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          page_id?: string | null
+          run_id: string
+          snippet?: string | null
+          source_url?: string | null
+          stage: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          page_id?: string | null
+          run_id?: string
+          snippet?: string | null
+          source_url?: string | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_content_errors_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_form_instances: {
         Row: {
           auto_population_config: Json | null
@@ -1202,6 +1243,44 @@ export type Database = {
         }
         Relationships: []
       }
+      harvest_issues: {
+        Row: {
+          content_length: number | null
+          created_at: string | null
+          id: string
+          page_id: string | null
+          reason: string
+          run_id: string
+          source_url: string | null
+        }
+        Insert: {
+          content_length?: number | null
+          created_at?: string | null
+          id?: string
+          page_id?: string | null
+          reason: string
+          run_id: string
+          source_url?: string | null
+        }
+        Update: {
+          content_length?: number | null
+          created_at?: string | null
+          id?: string
+          page_id?: string | null
+          reason?: string
+          run_id?: string
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harvest_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_audit_log: {
         Row: {
           component_from: string
@@ -1450,6 +1529,7 @@ export type Database = {
           stats: Json | null
           status: string
           updated_at: string | null
+          version: number | null
         }
         Insert: {
           config?: Json
@@ -1463,6 +1543,7 @@ export type Database = {
           stats?: Json | null
           status?: string
           updated_at?: string | null
+          version?: number | null
         }
         Update: {
           config?: Json
@@ -1476,6 +1557,7 @@ export type Database = {
           stats?: Json | null
           status?: string
           updated_at?: string | null
+          version?: number | null
         }
         Relationships: []
       }
@@ -2645,6 +2727,24 @@ export type Database = {
           title?: string | null
         }
         Relationships: []
+      }
+      v_ai_run_summary: {
+        Row: {
+          avg_content_length: number | null
+          pages: number | null
+          pages_failed: number | null
+          pages_ok: number | null
+          run_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_scraped_pages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_extraction_quality: {
         Row: {
