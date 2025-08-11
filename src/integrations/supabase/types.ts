@@ -65,7 +65,7 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["run_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1340,7 +1340,7 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["run_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1821,7 +1821,7 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["run_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2768,24 +2768,6 @@ export type Database = {
           started_at: string | null
           status: string | null
         }
-        Insert: {
-          config?: Json | null
-          id?: string | null
-          progress?: number | null
-          runtime_seconds?: never
-          stage?: string | null
-          started_at?: string | null
-          status?: string | null
-        }
-        Update: {
-          config?: Json | null
-          id?: string | null
-          progress?: number | null
-          runtime_seconds?: never
-          stage?: string | null
-          started_at?: string | null
-          status?: string | null
-        }
         Relationships: []
       }
       v_ai_errors_last_24h: {
@@ -2833,7 +2815,7 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "v_pipeline_health_24h"
-            referencedColumns: ["run_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2903,32 +2885,44 @@ export type Database = {
       }
       v_pipeline_health_24h: {
         Row: {
+          config: Json | null
           duration_seconds: number | null
           ended_at: string | null
           failed_pages: number | null
+          id: string | null
           processed_pages: number | null
-          run_id: string | null
+          progress: number | null
+          stage: string | null
           started_at: string | null
+          stats: Json | null
           status: string | null
           total_pages: number | null
         }
         Insert: {
+          config?: Json | null
           duration_seconds?: never
           ended_at?: string | null
           failed_pages?: never
+          id?: string | null
           processed_pages?: never
-          run_id?: string | null
+          progress?: number | null
+          stage?: string | null
           started_at?: string | null
+          stats?: Json | null
           status?: string | null
           total_pages?: never
         }
         Update: {
+          config?: Json | null
           duration_seconds?: never
           ended_at?: string | null
           failed_pages?: never
+          id?: string | null
           processed_pages?: never
-          run_id?: string | null
+          progress?: number | null
+          stage?: string | null
           started_at?: string | null
+          stats?: Json | null
           status?: string | null
           total_pages?: never
         }
