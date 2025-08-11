@@ -1,0 +1,80 @@
+{
+  "phase_d_thresholds": {
+    "performance": {
+      "max_processing_time_ms": 30000,
+      "max_failure_rate": 0.05,
+      "min_success_rate": 0.95,
+      "token_spike_threshold": 1.5
+    },
+    "quality": {
+      "min_table_quality": 0.5,
+      "min_subsidy_detection_rate": 0.5,
+      "max_queue_backlog": 50
+    },
+    "costs": {
+      "daily_token_budget": 100000,
+      "daily_token_warning": 75000,
+      "hourly_token_spike": 15000
+    },
+    "scaling": {
+      "default": {
+        "max_tables_per_doc": 50,
+        "max_cells_per_doc": 50000,
+        "concurrency": 2,
+        "batch_size": 2
+      },
+      "reduced": {
+        "max_tables_per_doc": 25,
+        "max_cells_per_doc": 25000,
+        "concurrency": 1,
+        "batch_size": 1
+      },
+      "minimal": {
+        "max_tables_per_doc": 10,
+        "max_cells_per_doc": 10000,
+        "concurrency": 1,
+        "batch_size": 1
+      }
+    }
+  },
+  "monitoring": {
+    "check_intervals": {
+      "performance_alert": "5m",
+      "quality_check": "15m",
+      "cost_monitoring": "1h",
+      "health_summary": "4h"
+    },
+    "data_retention": {
+      "raw_table_data_days": 90,
+      "processed_data_days": 365,
+      "logs_days": 30,
+      "metrics_days": 90
+    }
+  },
+  "alerts": {
+    "channels": {
+      "critical": ["slack", "email"],
+      "warning": ["slack"],
+      "info": ["dashboard"]
+    },
+    "escalation": {
+      "failure_rate_critical": 0.20,
+      "processing_time_critical": 60000,
+      "token_budget_exceeded": 150000
+    }
+  },
+  "emergency_procedures": {
+    "disable_phase_d": {
+      "command": "supabase secrets set ENABLE_PHASE_D=false",
+      "impact": "Falls back to basic text extraction"
+    },
+    "reduce_limits": {
+      "command": "Apply 'reduced' scaling profile",
+      "impact": "Lower processing costs, may reduce quality"
+    },
+    "pause_backfill": {
+      "command": "Disable nightly backfill workflow",
+      "impact": "Stops automated reprocessing"
+    }
+  }
+}

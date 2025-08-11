@@ -11,8 +11,23 @@ on:
         options:
         - staging
         - production
+      include_extended_tests:
+        description: 'Run extended edge case tests'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
   schedule:
     - cron: "17 2 * * *"   # nightly 02:17 UTC
+  # Gate deployments on harness success
+  workflow_call:
+    inputs:
+      environment:
+        required: false
+        type: string
+        default: 'staging'
 
 jobs:
   run-harness:
@@ -29,14 +44,28 @@ jobs:
       - name: Generate golden fixtures
         run: deno run -A scripts/make_golden_fixtures.ts
 
-      - name: Run Phase D harness
+      - name: Generate extended fixtures
+        if: ${{ github.event.inputs.include_extended_tests != 'false' }}
+        run: deno run -A scripts/make_golden_fixtures_ext.ts
+
+      - name: Run Phase D harness (core)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           HARNESS_BUCKET: farm-documents
-          HARNESS_USE_SERVICE_ROLE: "true"   # Use service role for function calls
+          HARNESS_USE_SERVICE_ROLE: "true"
         run: deno run -A scripts/phase_d_harness.ts
+
+      - name: Run Phase D harness (extended)
+        if: ${{ github.event.inputs.include_extended_tests != 'false' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HARNESS_BUCKET: farm-documents
+          HARNESS_USE_SERVICE_ROLE: "true"
+        run: deno run -A scripts/phase_d_harness_ext.ts
 
       - name: Upload test artifacts on failure
         if: failure()
