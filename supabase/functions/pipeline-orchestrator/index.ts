@@ -121,16 +121,44 @@ async function orchestratePipeline(supabase: any, runId: string) {
       await updateRun({ stage: 'ai', progress: 50 });
       
       console.log(`🤖 Stage 2: AI processing for run ${runId}`);
+      
+      // Post-harvest patch: Ensure pages are wired to this run
+      console.log(`🔧 Post-harvest patch: wiring pages to run ${runId}`);
+      const { data: patchedPages } = await supabase
+        .from('raw_scraped_pages')
+        .update({ run_id: runId })
+        .gte('created_at', run.started_at)
+        .lte('created_at', new Date().toISOString())
+        .in('source_site', ['franceagrimer', 'afir-romania'])
+        .gte('length(coalesce(text_markdown,raw_text,raw_html))', 200)
+        .is('run_id', null)
+        .select('id');
+      
+      if (patchedPages?.length > 0) {
+        console.log(`✅ Patched ${patchedPages.length} orphaned pages to run ${runId}`);
+      }
+      
       const aiResults = await processWithAI(supabase, runId, run.config);
       
-      // Handle AI results - don't fail if pages had insufficient content
+      // Handle AI results gracefully - don't fail on zero subsidies
       if (!aiResults.subsidies_created || aiResults.subsidies_created === 0) {
         if (aiResults.pages_processed === 0) {
           console.log(`⚠️ No pages with sufficient content for AI processing (run ${runId})`);
-          // Continue to completion rather than failing
+          await updateRun({ 
+            status: 'completed', 
+            stage: 'done', 
+            progress: 100,
+            ended_at: new Date().toISOString(),
+            stats: {
+              ...harvestStats,
+              ai: { pages_processed: 0, subsidies_created: 0, reason: 'no_content' }
+            }
+          });
+          console.log(`✅ Pipeline run ${runId} completed with reason: no_content`);
+          return; // Exit gracefully
         } else {
           console.log(`⚠️ AI processing completed but extracted 0 subsidies from ${aiResults.pages_processed} pages`);
-          // Continue to completion - this is valid (pages may contain no subsidies)
+          // Continue - this is valid (pages may contain no subsidies)
         }
       }
       

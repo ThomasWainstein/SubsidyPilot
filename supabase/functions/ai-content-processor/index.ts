@@ -32,6 +32,17 @@ serve(async (req) => {
     
     console.log(`🤖 Starting AI content processing. Run: ${run_id}, Page IDs: ${page_ids?.length || 'none'}, Allow fallback: ${allowRecentFallback}`);
     
+    // Create AI content run tracking
+    const { data: aiContentRun } = await supabase
+      .from('ai_content_runs')
+      .insert({
+        run_id: run_id,
+        started_at: new Date().toISOString(),
+        model: 'gpt-4.1-2025-04-14'
+      })
+      .select()
+      .single();
+    
     // Update pipeline run to AI stage
     if (run_id) {
       await updatePipelineRun(run_id, {
