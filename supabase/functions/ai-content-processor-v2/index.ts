@@ -386,36 +386,35 @@ serve(async (req) => {
 
         // Check if subsidy already exists by fingerprint
         const { data: existingSubsidy } = await supabase
-          .from('subsidies_structured')
-          .select('id, fingerprint, url, title, updated_at')
-          .eq('fingerprint', fingerprint)
+          .from('subsidies')
+          .select('id, source_url, title, updated_at')
+          .eq('source_url', page.source_url)
           .maybeSingle();
 
         let upsertAction = 'created';
         let upsertResult;
 
         if (existingSubsidy) {
-          console.log(`🔄 Found existing subsidy with fingerprint, updating: ${existingSubsidy.url}`);
+          console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.source_url}`);
           upsertAction = 'updated';
           
           // Update existing record with new data
           console.log(`🔄 Mapping V2 data for update...`);
           
           upsertResult = await supabase
-            .from('subsidies_structured')
+            .from('subsidies')
             .update({
-              // Store the complete V2 comprehensive data
-              verbatim_jsonb: extractedData,
+              // Store the complete V2 comprehensive data in raw_content
+              raw_content: extractedData,
               
               // Basic fields mapped from V2 structure
-              url: page.source_url,
-              title: coreData.title,
-              description: projectData.objectives_detailed || projectData.project_objectives,
-              eligibility: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria,
+              title: { ro: coreData.title },
+              description: { ro: projectData.objectives_detailed || projectData.project_objectives },
+              eligibility_criteria: { ro: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria },
               deadline: datesData.application_deadline || datesData.submission_deadline,
               agency: coreData.authority,
               region: eligibilityData.geographic_eligibility?.eligible_regions || [],
-              sector: coreData.sector ? [coreData.sector] : (coreData.categories || []),
+              categories: coreData.sector ? [coreData.sector] : (coreData.categories || []),
               funding_type: coreData.call_type || fundingData.funding_type,
               
               // New comprehensive fields from V2 structure
@@ -508,115 +507,32 @@ serve(async (req) => {
             })
             .eq('id', existingSubsidy.id);
             
-          console.log(`💾 Update operation completed for: ${existingSubsidy.url}`);
+          console.log(`💾 Update operation completed for: ${existingSubsidy.source_url}`);
         } else {
           console.log(`➕ Creating new subsidy: ${page.source_url}`);
           console.log(`🔄 Mapping V2 data for insert...`);
           
           // Insert new record
           upsertResult = await supabase
-            .from('subsidies_structured')
+            .from('subsidies')
             .insert({
-              // Store the complete V2 comprehensive data
-              verbatim_jsonb: extractedData,
+              // Store the complete V2 comprehensive data in raw_content
+              raw_content: extractedData,
               
-              // Basic fields mapped from V2 structure
-              url: page.source_url,
-              title: coreData.title,
-              description: projectData.objectives_detailed || projectData.project_objectives,
-              eligibility: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria,
+              // Basic fields mapped from V2 structure - using correct schema
+              source_url: page.source_url,
+              title: { ro: coreData.title },
+              description: { ro: projectData.objectives_detailed || projectData.project_objectives },
+              eligibility_criteria: { ro: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria },
               deadline: datesData.application_deadline || datesData.submission_deadline,
               agency: coreData.authority,
               region: eligibilityData.geographic_eligibility?.eligible_regions || [],
-              sector: coreData.sector ? [coreData.sector] : (coreData.categories || []),
+              categories: coreData.sector ? [coreData.sector] : (coreData.categories || []),
               funding_type: coreData.call_type || fundingData.funding_type,
               
-              // New comprehensive fields from V2 structure
-              reference_code: coreData.reference_code,
-              managing_agency: coreData.managing_agency,
-              categories: coreData.categories || [],
-              funding_programme: coreData.funding_programme,
-              policy_objective: coreData.policy_objective,
-              call_type: coreData.call_type,
-              status_detailed: coreData.status_detailed || metaData.current_status,
-              
-              // Enhanced dates from V2 structure
-              publication_date: datesData.publication_date,
-              opening_date: datesData.application_opening_date,
-              evaluation_start_date: datesData.evaluation_start_date,
-              signature_date: datesData.signature_date,
-              extended_deadlines: datesData.extensions_or_modifications,
-              payment_schedule: fundingData.payment_modalities,
-              timeline_notes: datesData.timeline_notes,
-              
-              // Enhanced eligibility from V2 structure
-              eligible_entities: eligibilityData.eligible_entities || [],
-              geographic_eligibility: eligibilityData.geographic_eligibility,
-              entity_size: eligibilityData.entity_size_requirements,
-              activity_sector_codes: eligibilityData.activity_sector_codes || [],
-              previous_award_restrictions: eligibilityData.previous_participation_restrictions,
-              special_conditions: eligibilityData.special_conditions,
-              
-              // Enhanced funding from V2 structure
-              total_budget: fundingData.total_budget,
-              funding_rate_details: fundingData.co_financing_rates,
-              duration_limits: fundingData.project_duration_limits,
-              cofinancing_sources: fundingData.co_financing_sources,
-              payment_modality: fundingData.payment_modalities,
-              budget_tranches: fundingData.budget_breakdown,
-              
-              // Project scope from V2 structure
-              objectives_detailed: projectData.objectives_detailed,
-              expected_results: projectData.expected_outcomes,
-              impact_indicators: projectData.performance_indicators,
-              eligible_expenses_detailed: fundingData.eligible_expenses,
-              ineligible_expenses: fundingData.ineligible_expenses,
-              priority_themes: projectData.priority_areas || [],
-              
-              // Application process from V2 structure
-              process_steps: processData.submission_process_steps,
-              application_language: processData.language_requirements,
-              required_documents_detailed: documentsData.required_documents,
-              submission_method_detailed: processData.submission_method,
-              submission_format: processData.application_format,
-              contact_information: processData.contact_information,
-              support_resources: processData.support_mechanisms,
-              
-              // Evaluation from V2 structure
-              selection_criteria: evaluationData.evaluation_criteria,
-              evaluation_committee: evaluationData.evaluation_committee_composition,
-              evaluation_phases: evaluationData.evaluation_process,
-              conflict_of_interest_notes: evaluationData.conflict_of_interest_guidelines,
-              decision_publication_method: evaluationData.results_communication,
-              
-              // Documents from V2 structure
-              regulatory_references: documentsData.regulatory_framework,
-              verbatim_blocks: documentsData.verbatim_legal_text,
-              forms_detected: documentsData.application_forms,
-              forms_recreated: documentsData.form_templates,
-              
-              // Meta from V2 structure
-              content_hash: contentHash,
-              related_programmes: metaData.related_programs || [],
-              cross_funding_links: metaData.cross_references,
-              
-              // Compliance from V2 structure
-              beneficiary_reporting_requirements: complianceData.beneficiary_obligations,
-              compliance_audit_mechanisms: complianceData.monitoring_mechanisms,
-              sanctions_for_non_compliance: complianceData.penalties,
-              transparency_notes: complianceData.transparency_requirements,
-              previous_recipients_list: complianceData.historical_data,
-              procurement_obligations: complianceData.procurement_rules,
-              environmental_social_safeguards: complianceData.environmental_compliance,
-              additional_support_mechanisms: complianceData.additional_support,
-              
-              // Processing metadata
-              extraction_model: AI_MODEL,
-              extraction_version: 'v2_comprehensive',
-              document_analysis_performed: attachments.length > 0,
-              forms_analysis_performed: !!(documentsData.application_forms),
-              run_id: run_id,
-              fingerprint: fingerprint
+              // Processing metadata only - basic schema
+              record_status: 'active',
+              extraction_batch_id: run_id
             });
             
           console.log(`💾 Insert operation completed for: ${page.source_url}`);
