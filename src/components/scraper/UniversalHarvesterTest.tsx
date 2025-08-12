@@ -89,14 +89,47 @@ export function UniversalHarvesterTest() {
 
   const viewDatabase = async () => {
     try {
-      // Use raw query since types haven't been updated yet
-      const { data: bundles } = await supabase
-        .rpc('app_claims') // Dummy call to check connection
-        .then(() => supabase.from('pipeline_runs' as any).select('*').limit(5));
+      // Check pipeline runs
+      const { data: pipelineRuns, error: pipelineError } = await supabase
+        .from('pipeline_runs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      console.log('Recent pipeline runs:', bundles);
+      // Check raw scraped pages
+      const { data: scrapedPages, error: scrapedError } = await supabase
+        .from('raw_scraped_pages')
+        .select('id, source_url, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Check subsidies structured (main output)
+      const { data: subsidiesStructured, error: subsidiesError } = await supabase
+        .from('subsidies_structured')
+        .select('id, title, url, created_at, run_id')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Check AI content runs
+      const { data: aiRuns, error: aiError } = await supabase
+        .from('ai_content_runs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      console.log('Pipeline runs:', pipelineRuns);
+      console.log('Recent scraped pages:', scrapedPages);
+      console.log('Subsidies structured:', subsidiesStructured);
+      console.log('AI content runs:', aiRuns);
+      
+      if (pipelineError) console.error('Pipeline error:', pipelineError);
+      if (scrapedError) console.error('Scraped pages error:', scrapedError);
+      if (subsidiesError) console.error('Subsidies error:', subsidiesError);
+      if (aiError) console.error('AI runs error:', aiError);
+
       toast.info('📊 Database data logged to console');
     } catch (error) {
+      console.error('Database fetch error:', error);
       toast.error('Failed to fetch database data');
     }
   };

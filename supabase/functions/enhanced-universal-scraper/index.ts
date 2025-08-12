@@ -392,6 +392,16 @@ class UniversalHarvester {
       return url;
     }
   }
+
+  private getMimeTypeFromDocType(docType: string): string {
+    switch (docType) {
+      case 'pdf': return 'application/pdf';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      default: return 'application/octet-stream';
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -458,82 +468,52 @@ Deno.serve(async (req) => {
           // Harvest content
           const bundle = await harvester.harvestContent(url, { runId });
           
-          // Store scrape bundle
-          const { error: bundleError } = await supabase
-            .from('scrape_bundles')
+          // Store scraped page in existing raw_scraped_pages table
+          const { data: pageData, error: pageError } = await supabase
+            .from('raw_scraped_pages')
             .insert({
-              source_kind: bundle.source.kind,
               source_url: bundle.source.url,
-              lang: bundle.lang,
-              content_hash: bundle.content_hash,
-              last_modified: bundle.last_modified,
+              content_text: bundle.blocks.map(b => b.plain_text).join('\n'),
+              content_html: '', // We'll keep this minimal for now
+              title: bundle.blocks.find(b => b.type === 'heading')?.heading_text || 'Untitled',
               run_id: runId,
-              metadata: bundle.metadata
-            });
-
-          if (bundleError) {
-            console.error(`Failed to store bundle for ${url}:`, bundleError);
-            results.errors.push(`Bundle storage failed for ${url}: ${bundleError.message}`);
-            continue;
-          }
-
-          // Get bundle ID for foreign key relationships
-          const { data: bundleData, error: bundleSelectError } = await supabase
-            .from('scrape_bundles')
+              status: 'processed',
+              attachment_count: bundle.documents.length,
+              language: bundle.lang,
+              metadata: {
+                ...bundle.metadata,
+                blocks_count: bundle.blocks.length,
+                documents_count: bundle.documents.length,
+                content_hash: bundle.content_hash
+              }
+            })
             .select('id')
-            .eq('content_hash', bundle.content_hash)
             .single();
 
-          if (bundleSelectError || !bundleData) {
-            console.error(`Failed to retrieve bundle ID for ${url}`);
+          if (pageError) {
+            console.error(`Failed to store scraped page for ${url}:`, pageError);
+            results.errors.push(`Page storage failed for ${url}: ${pageError.message}`);
             continue;
           }
 
-          const bundleId = bundleData.id;
+          const pageId = pageData.id;
 
-          // Store content blocks
-          if (bundle.blocks.length > 0) {
-            const blocksToInsert = bundle.blocks.map(block => ({
-              bundle_id: bundleId,
-              block_id: block.id,
-              block_type: block.type,
-              verbatim: block.verbatim,
-              html_content: block.html_content,
-              plain_text: block.plain_text,
-              table_columns: block.table_columns,
-              table_rows: block.table_rows,
-              list_ordered: block.list_ordered,
-              list_items: block.list_items,
-              heading_level: block.heading_level,
-              heading_text: block.heading_text,
-              source_ref_kind: block.source_ref.kind,
-              source_ref_url: block.source_ref.url,
-              source_ref_selector: block.source_ref.selector
-            }));
-
-            const { error: blocksError } = await supabase
-              .from('content_blocks')
-              .insert(blocksToInsert);
-
-            if (blocksError) {
-              console.error(`Failed to store blocks for ${url}:`, blocksError);
-              results.errors.push(`Blocks storage failed for ${url}: ${blocksError.message}`);
-            }
-          }
-
-          // Store documents
+          // Store harvested documents in existing table
           if (bundle.documents.length > 0) {
             const documentsToInsert = bundle.documents.map(doc => ({
-              bundle_id: bundleId,
-              name: doc.name,
-              doc_type: doc.doc_type,
-              url: doc.url,
-              content_hash: doc.content_hash || '',
-              extraction_status: 'pending'
+              source_url: bundle.source.url,
+              filename: doc.name,
+              mime: harvester.getMimeTypeFromDocType(doc.doc_type),
+              sha256: doc.content_hash || '',
+              run_id: runId,
+              page_id: pageId,
+              size_bytes: null,
+              pages: null,
+              text_ocr: null
             }));
 
             const { error: docsError } = await supabase
-              .from('scraped_documents')
+              .from('harvested_documents')
               .insert(documentsToInsert);
 
             if (docsError) {
