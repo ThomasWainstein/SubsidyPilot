@@ -427,7 +427,7 @@ Deno.serve(async (req) => {
       .insert({
         id: runId,
         status: 'running',
-        stage: 'harvesting',
+        stage: 'harvest',
         config: { sites, pages_per_site, scraper: 'universal_harvester' },
         started_at: new Date().toISOString()
       });
@@ -550,7 +550,7 @@ Deno.serve(async (req) => {
       .from('pipeline_runs')
       .update({
         status: 'completed',
-        stage: 'finished',
+        stage: 'done',
         ended_at: new Date().toISOString(),
         stats: results
       })
