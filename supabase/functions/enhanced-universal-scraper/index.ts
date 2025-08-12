@@ -1,3 +1,6 @@
+// index.ts — Enhanced universal scraper with pagination-based discovery for
+// FranceAgriMer and Les-Aides listing pages.
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -5,124 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Site configurations for URL discovery
-const SITE_CONFIGS = {
-  franceagrimer: {
-    baseUrl: 'https://www.franceagrimer.fr/rechercher-une-aide?page=',
-    startPage: 0,
-    linkSelector: 'h3.fr-card__title a[href*="/aides/"]'
-  },
-  lesaides: {
-    baseUrl: 'https://les-aides.fr/aides/?page=',
-    startPage: 1,
-    linkSelector: '.aide-card a[href*="/aide/"], .result-item a[href*="/aide/"]'
-  }
-};
-
-// URL Discovery function that crawls paginated listing pages
-async function discoverSubsidyUrls(site: string, maxPages: number): Promise<string[]> {
-  const config = SITE_CONFIGS[site as keyof typeof SITE_CONFIGS];
-  if (!config) {
-    console.error(`Unknown site: ${site}`);
-    return [];
-  }
-
-  const discoveredUrls = new Set<string>();
-  let currentPage = config.startPage;
-  let emptyPagesCount = 0;
-  const maxEmptyPages = 3; // Stop after 3 consecutive empty pages
-
-  console.log(`🔍 Discovering URLs for ${site} starting from page ${currentPage}`);
-
-  while (currentPage < config.startPage + maxPages && emptyPagesCount < maxEmptyPages) {
-    try {
-      const pageUrl = `${config.baseUrl}${currentPage}`;
-      console.log(`📄 Fetching page ${currentPage}: ${pageUrl}`);
-
-      const response = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': 'AgriTool-Harvester/1.0.0 (+https://agritool.eu/bot)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
-        },
-        signal: AbortSignal.timeout(30000)
-      });
-
-      if (!response.ok) {
-        console.warn(`❌ Failed to fetch page ${currentPage}: ${response.status}`);
-        emptyPagesCount++;
-        currentPage++;
-        continue;
-      }
-
-      const html = await response.text();
-      const pageUrls = extractUrlsFromPage(html, config.linkSelector, pageUrl);
-      
-      if (pageUrls.length === 0) {
-        emptyPagesCount++;
-        console.log(`⚠️ No URLs found on page ${currentPage}, empty count: ${emptyPagesCount}`);
-      } else {
-        emptyPagesCount = 0; // Reset counter
-        pageUrls.forEach(url => discoveredUrls.add(url));
-        console.log(`✅ Found ${pageUrls.length} URLs on page ${currentPage} (total: ${discoveredUrls.size})`);
-      }
-
-      currentPage++;
-      
-      // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-    } catch (error) {
-      console.error(`❌ Error fetching page ${currentPage}:`, error);
-      emptyPagesCount++;
-      currentPage++;
-    }
-  }
-
-  console.log(`🎯 Discovery complete for ${site}: ${discoveredUrls.size} URLs found`);
-  return Array.from(discoveredUrls);
-}
-
-// Extract URLs from a page using CSS-like selectors (simplified regex approach)
-function extractUrlsFromPage(html: string, selector: string, baseUrl: string): string[] {
-  const urls: string[] = [];
-  
-  // Extract the href pattern from selector
-  let linkPattern = /<a[^>]*href="([^"]*)"[^>]*>/gi;
-  
-  // More specific patterns based on selectors
-  if (selector.includes('fr-card__title')) {
-    linkPattern = /<h3[^>]*class="[^"]*fr-card__title[^"]*"[^>]*>.*?<a[^>]*href="([^"]*\/aides\/[^"]*)"[^>]*>/gi;
-  } else if (selector.includes('aide-card') || selector.includes('result-item')) {
-    linkPattern = /<a[^>]*href="([^"]*\/aide\/[^"]*)"[^>]*>/gi;
-  }
-
-  let match;
-  while ((match = linkPattern.exec(html)) !== null) {
-    try {
-      const href = match[1];
-      const absoluteUrl = new URL(href, baseUrl).toString();
-      
-      // Filter for subsidy URLs
-      if (absoluteUrl.includes('/aides/') || absoluteUrl.includes('/aide/')) {
-        urls.push(absoluteUrl);
-      }
-    } catch (error) {
-      // Skip invalid URLs
-      continue;
-    }
-  }
-
-  return urls;
-}
-
 interface ScrapeBundle {
   id: string;
-  source: {
-    kind: 'webpage';
-    url: string;
-    timestamp: string;
-  };
+  source: { kind: 'webpage'; url: string; timestamp: string; };
   lang: string;
   content_hash: string;
   last_modified: string;
@@ -131,35 +19,26 @@ interface ScrapeBundle {
   metadata?: any;
 }
 
+/* ----------------------------- HARVESTER CORE ----------------------------- */
+
 class UniversalHarvester {
   private timeout: number = 30000;
-  
+
   async harvestContent(url: string, options: { runId?: string } = {}): Promise<ScrapeBundle> {
     console.log(`🌾 Starting harvest for: ${url}`);
-    
     try {
-      // Fetch raw content
       const html = await this.fetchRawContent(url);
-      
-      // Process into structured blocks
       const blocks = await this.processIntoBlocks(html, url);
-      
-      // Extract linked documents  
       const documents = await this.extractLinkedDocuments(html, url);
-      
-      // Create bundle
+
       const bundle: ScrapeBundle = {
         id: crypto.randomUUID(),
-        source: {
-          kind: 'webpage',
-          url: url,
-          timestamp: new Date().toISOString()
-        },
+        source: { kind: 'webpage', url, timestamp: new Date().toISOString() },
         lang: await this.detectLanguage(html),
         content_hash: await this.computeContentHash(blocks, documents),
         last_modified: new Date().toISOString(),
-        blocks: blocks,
-        documents: documents,
+        blocks,
+        documents,
         metadata: {
           harvester_version: '1.0.0',
           harvest_timestamp: new Date().toISOString(),
@@ -167,10 +46,8 @@ class UniversalHarvester {
           url_normalized: this.normalizeUrl(url)
         }
       };
-
       console.log(`✅ Harvested ${blocks.length} blocks and ${documents.length} documents from ${url}`);
       return bundle;
-
     } catch (error) {
       console.error(`❌ Harvest failed for ${url}:`, error);
       throw new Error(`Failed to harvest content: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -188,111 +65,105 @@ class UniversalHarvester {
       },
       signal: AbortSignal.timeout(this.timeout)
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     const html = await response.text();
-    if (!html || html.length < 100) {
-      throw new Error('Empty or too short content received');
-    }
-
+    if (!html || html.length < 100) throw new Error('Empty or too short content received');
     return html;
   }
 
-  private async processIntoBlocks(html: string, sourceUrl: string): Promise<any[]> {
-    // Clean HTML and parse with DOMParser equivalent
-    const cleanedHtml = this.cleanHtml(html);
-    
-    // For server-side, we'll use a simple regex-based approach to extract content blocks
-    const blocks: any[] = [];
-    let blockIndex = 0;
+  private cleanHtml(html: string): string {
+    let cleaned = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
+    cleaned = cleaned.replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, '');
+    cleaned = cleaned.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, '');
+    cleaned = cleaned.replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, '');
+    return cleaned;
+  }
 
-    // Extract headings
-    const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/h[1-6]>/gi;
-    let match;
-    while ((match = headingRegex.exec(cleanedHtml)) !== null) {
-      const level = parseInt(match[1].substring(1));
-      const text = this.cleanText(match[2]);
-      if (text.length > 0) {
+  private cleanText(html: string): string {
+    let text = html.replace(/<[^>]*>/g, '');
+    text = text.replace(/&nbsp;/g, ' ')
+               .replace(/&amp;/g, '&')
+               .replace(/&lt;/g, '<')
+               .replace(/&gt;/g, '>')
+               .replace(/&quot;/g, '"')
+               .replace(/&#39;/g, "'");
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private async processIntoBlocks(html: string, sourceUrl: string): Promise<any[]> {
+    const cleanedHtml = this.cleanHtml(html);
+    const blocks: any[] = [];
+    let idx = 0;
+
+    // Headings
+    const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/h[1-6]>/gi; let m;
+    while ((m = headingRegex.exec(cleanedHtml)) !== null) {
+      const level = parseInt(m[1].substring(1));
+      const text = this.cleanText(m[2]);
+      if (text) {
         blocks.push({
-          id: `block_${blockIndex++}_heading`,
+          id: `block_${idx++}_heading`,
           type: 'heading',
           verbatim: true,
-          html_content: match[0],
+          html_content: m[0],
           plain_text: text,
           heading_level: level,
           heading_text: text,
-          source_ref: {
-            kind: 'webpage',
-            url: sourceUrl,
-            timestamp: new Date().toISOString()
-          }
+          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
         });
       }
     }
 
-    // Extract paragraphs
+    // Paragraphs
     const paragraphRegex = /<p[^>]*>(.*?)<\/p>/gi;
-    while ((match = paragraphRegex.exec(cleanedHtml)) !== null) {
-      const text = this.cleanText(match[1]);
-      if (text.length > 20) { // Only meaningful paragraphs
+    while ((m = paragraphRegex.exec(cleanedHtml)) !== null) {
+      const text = this.cleanText(m[1]);
+      if (text.length > 20) {
         blocks.push({
-          id: `block_${blockIndex++}_paragraph`,
+          id: `block_${idx++}_paragraph`,
           type: 'paragraph',
           verbatim: true,
-          html_content: match[0],
+          html_content: m[0],
           plain_text: text,
-          source_ref: {
-            kind: 'webpage',
-            url: sourceUrl,
-            timestamp: new Date().toISOString()
-          }
+          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
         });
       }
     }
 
-    // Extract tables
+    // Tables
     const tableRegex = /<table[^>]*>(.*?)<\/table>/gi;
-    while ((match = tableRegex.exec(cleanedHtml)) !== null) {
-      const tableData = this.extractTableData(match[0]);
+    while ((m = tableRegex.exec(cleanedHtml)) !== null) {
+      const tableData = this.extractTableData(m[0]);
       if (tableData.columns.length > 0) {
         blocks.push({
-          id: `block_${blockIndex++}_table`,
+          id: `block_${idx++}_table`,
           type: 'table',
           verbatim: true,
-          html_content: match[0],
+          html_content: m[0],
           plain_text: this.tableToPlainText(tableData),
           table_columns: tableData.columns,
           table_rows: tableData.rows,
-          source_ref: {
-            kind: 'webpage',
-            url: sourceUrl,
-            timestamp: new Date().toISOString()
-          }
+          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
         });
       }
     }
 
-    // Extract lists
+    // Lists
     const listRegex = /<(ul|ol)[^>]*>(.*?)<\/(ul|ol)>/gi;
-    while ((match = listRegex.exec(cleanedHtml)) !== null) {
-      const listData = this.extractListData(match[0], match[1] === 'ol');
+    while ((m = listRegex.exec(cleanedHtml)) !== null) {
+      const listData = this.extractListData(m[0], m[1] === 'ol');
       if (listData.items.length > 0) {
         blocks.push({
-          id: `block_${blockIndex++}_list`,
+          id: `block_${idx++}_list`,
           type: 'list',
           verbatim: true,
-          html_content: match[0],
+          html_content: m[0],
           plain_text: listData.items.join('\n'),
           list_ordered: listData.ordered,
           list_items: listData.items,
-          source_ref: {
-            kind: 'webpage',
-            url: sourceUrl,
-            timestamp: new Date().toISOString()
-          }
+          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
         });
       }
     }
@@ -300,156 +171,78 @@ class UniversalHarvester {
     return blocks;
   }
 
-  private cleanHtml(html: string): string {
-    // Remove script and style elements
-    let cleaned = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    cleaned = cleaned.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    
-    // Remove comments
-    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
-    
-    // Remove navigation elements
-    cleaned = cleaned.replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, '');
-    cleaned = cleaned.replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, '');
-    cleaned = cleaned.replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, '');
-    
-    return cleaned;
-  }
-
-  private cleanText(html: string): string {
-    // Remove HTML tags and decode entities
-    let text = html.replace(/<[^>]*>/g, '');
-    text = text.replace(/&nbsp;/g, ' ');
-    text = text.replace(/&amp;/g, '&');
-    text = text.replace(/&lt;/g, '<');
-    text = text.replace(/&gt;/g, '>');
-    text = text.replace(/&quot;/g, '"');
-    text = text.replace(/&#39;/g, "'");
-    return text.replace(/\s+/g, ' ').trim();
-  }
-
   private extractTableData(tableHtml: string): { columns: string[], rows: string[][] } {
     const columns: string[] = [];
     const rows: string[][] = [];
-
-    // Extract headers
-    const headerRegex = /<th[^>]*>(.*?)<\/th>/gi;
-    let match;
-    while ((match = headerRegex.exec(tableHtml)) !== null) {
-      columns.push(this.cleanText(match[1]));
-    }
-
-    // Extract rows
+    const headerRegex = /<th[^>]*>(.*?)<\/th>/gi; let m;
+    while ((m = headerRegex.exec(tableHtml)) !== null) columns.push(this.cleanText(m[1]));
     const rowRegex = /<tr[^>]*>(.*?)<\/tr>/gi;
-    while ((match = rowRegex.exec(tableHtml)) !== null) {
-      const rowHtml = match[1];
+    while ((m = rowRegex.exec(tableHtml)) !== null) {
+      const rowHtml = m[1];
       const cells: string[] = [];
-      const cellRegex = /<td[^>]*>(.*?)<\/td>/gi;
-      let cellMatch;
-      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-        cells.push(this.cleanText(cellMatch[1]));
-      }
-      if (cells.length > 0) {
-        rows.push(cells);
-      }
+      const cellRegex = /<td[^>]*>(.*?)<\/td>/gi; let c;
+      while ((c = cellRegex.exec(rowHtml)) !== null) cells.push(this.cleanText(c[1]));
+      if (cells.length > 0) rows.push(cells);
     }
-
     return { columns, rows };
   }
 
   private extractListData(listHtml: string, ordered: boolean): { ordered: boolean, items: string[] } {
     const items: string[] = [];
-    const itemRegex = /<li[^>]*>(.*?)<\/li>/gi;
-    let match;
-    while ((match = itemRegex.exec(listHtml)) !== null) {
-      const text = this.cleanText(match[1]);
-      if (text.length > 0) {
-        items.push(text);
-      }
+    const itemRegex = /<li[^>]*>(.*?)<\/li>/gi; let m;
+    while ((m = itemRegex.exec(listHtml)) !== null) {
+      const text = this.cleanText(m[1]);
+      if (text) items.push(text);
     }
     return { ordered, items };
   }
 
-  private tableToPlainText(tableData: { columns: string[], rows: string[][] }): string {
-    let text = '';
-    if (tableData.columns.length > 0) {
-      text += tableData.columns.join(' | ') + '\n';
-    }
-    for (const row of tableData.rows) {
-      text += row.join(' | ') + '\n';
-    }
-    return text;
+  private tableToPlainText(t: { columns: string[], rows: string[][] }): string {
+    let s = '';
+    if (t.columns.length) s += t.columns.join(' | ') + '\n';
+    for (const r of t.rows) s += r.join(' | ') + '\n';
+    return s;
   }
 
   private async extractLinkedDocuments(html: string, baseUrl: string): Promise<any[]> {
     const documents: any[] = [];
-    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
-    let match;
-    
-    while ((match = linkRegex.exec(html)) !== null) {
-      const href = match[1];
-      const linkText = this.cleanText(match[2]);
-      
+    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi; let m;
+    while ((m = linkRegex.exec(html)) !== null) {
+      const href = m[1]; const linkText = this.cleanText(m[2]);
       try {
         const absoluteUrl = new URL(href, baseUrl).toString();
         const docType = this.getDocumentType(absoluteUrl);
-        
         if (docType && docType !== 'other') {
           documents.push({
             id: crypto.randomUUID(),
             name: linkText || this.extractFilenameFromUrl(absoluteUrl),
             doc_type: docType,
             url: absoluteUrl,
-            content_hash: '', // Will be computed after download
-            source_ref: {
-              kind: 'webpage',
-              url: baseUrl,
-              timestamp: new Date().toISOString()
-            }
+            content_hash: '',
+            source_ref: { kind: 'webpage', url: baseUrl, timestamp: new Date().toISOString() }
           });
         }
-      } catch (error) {
-        // Skip invalid URLs
-        continue;
-      }
+      } catch { /* ignore invalid urls */ }
     }
-
     return documents;
   }
 
-  private getDocumentType(url: string): 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'other' | null {
+  private getDocumentType(url: string): 'pdf'|'docx'|'xlsx'|'pptx'|'other'|null {
     const ext = url.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'pdf': return 'pdf';
-      case 'docx': return 'docx';
-      case 'xlsx': return 'xlsx';
-      case 'pptx': return 'pptx';
-      case 'doc':
-      case 'xls':
-      case 'ppt':
-        return 'other';
-      default: return null;
-    }
+    switch (ext) { case 'pdf': return 'pdf'; case 'docx': return 'docx';
+      case 'xlsx': return 'xlsx'; case 'pptx': return 'pptx';
+      case 'doc': case 'xls': case 'ppt': return 'other'; default: return null; }
   }
-
   private extractFilenameFromUrl(url: string): string {
-    try {
-      const pathname = new URL(url).pathname;
-      return pathname.split('/').pop() || 'document';
-    } catch {
-      return 'document';
-    }
+    try { const p = new URL(url).pathname; return p.split('/').pop() || 'document'; }
+    catch { return 'document'; }
   }
 
   private async detectLanguage(html: string): Promise<string> {
-    // Simple French detection
     const text = this.cleanText(html).toLowerCase();
-    const frenchWords = ['le', 'la', 'les', 'de', 'du', 'des', 'et', 'ou', 'avec', 'dans', 'pour', 'sur'];
-    const frenchCount = frenchWords.reduce((count, word) => 
-      count + (text.match(new RegExp(`\\b${word}\\b`, 'g'))?.length || 0), 0
-    );
-    
-    return frenchCount > 10 ? 'fr' : 'en';
+    const fr = ['le','la','les','de','du','des','et','ou','avec','dans','pour','sur'];
+    const count = fr.reduce((n,w)=> n + (text.match(new RegExp(`\\b${w}\\b`,'g'))?.length || 0), 0);
+    return count > 10 ? 'fr' : 'en';
   }
 
   private async computeContentHash(blocks: any[], documents: any[]): Promise<string> {
@@ -457,26 +250,17 @@ class UniversalHarvester {
       blocks: blocks.map(b => ({ type: b.type, text: b.plain_text })),
       documents: documents.map(d => ({ name: d.name, url: d.url }))
     };
-    
-    const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(content));
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const data = new TextEncoder().encode(JSON.stringify(content));
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
   private normalizeUrl(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      urlObj.hash = '';
-      urlObj.search = '';
-      return urlObj.toString();
-    } catch {
-      return url;
-    }
+    try { const u = new URL(url); u.hash=''; u.search=''; return u.toString(); }
+    catch { return url; }
   }
 
-  private getMimeTypeFromDocType(docType: string): string {
+  public getMimeTypeFromDocType(docType: string): string {
     switch (docType) {
       case 'pdf': return 'application/pdf';
       case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -487,11 +271,123 @@ class UniversalHarvester {
   }
 }
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+/* ------------------------- SITE-SPECIFIC DISCOVERY ------------------------- */
+
+type DiscoveryResult = { site: 'franceagrimer' | 'lesaides'; urls: string[]; pages_scanned: number; };
+
+async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
+async function fetchHtmlWithUA(url: string, timeout = 30000): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'AgriTool-Harvester/1.0.0 (+https://agritool.eu/bot)',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+    },
+    signal: AbortSignal.timeout(timeout)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${url}`);
+  return await res.text();
+}
+
+function extractLinks(html: string, baseUrl: string): string[] {
+  const links: string[] = [];
+  const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>/gi; let m;
+  while ((m = linkRegex.exec(html)) !== null) {
+    try { links.push(new URL(m[1], baseUrl).toString()); } catch { /* ignore */ }
   }
+  return links;
+}
+
+/** FranceAgriMer: start at ?page=0 and increment until no new detail URLs */
+async function discoverFranceAgriMer(startUrl = 'https://www.franceagrimer.fr/rechercher-une-aide?page=0', maxPages = 50): Promise<DiscoveryResult> {
+  const seen = new Set<string>();
+  const detail = new Set<string>();
+  let pageNum = 0, scanned = 0, newOnLastPage = 0;
+
+  while (pageNum < maxPages) {
+    const url = `https://www.franceagrimer.fr/rechercher-une-aide?page=${pageNum}`;
+    console.log(`🔎 [FAM] Listing page ${pageNum}: ${url}`);
+    let html: string;
+    try { html = await fetchHtmlWithUA(url); }
+    catch (e) { console.warn(`⚠️ [FAM] stop at page ${pageNum}: ${e}`); break; }
+
+    const links = extractLinks(html, url);
+    let addedThisPage = 0;
+
+    for (const href of links) {
+      // Accept detail pages like /aides/<slug>
+      if (href.includes('/aides/') && !href.includes('/rechercher-une-aide')) {
+        if (!detail.has(href)) { detail.add(href); addedThisPage++; }
+      }
+    }
+
+    scanned++;
+    console.log(`   → found ${addedThisPage} new detail URLs (total ${detail.size})`);
+    if (addedThisPage === 0 && newOnLastPage === 0) { console.log('   → no new URLs across two pages, stopping'); break; }
+    newOnLastPage = addedThisPage;
+
+    // crude loop‑protection by listing-page content hash
+    const pageHash = await sha256(html);
+    if (seen.has(pageHash)) { console.log('   → same page content hash detected, stopping'); break; }
+    seen.add(pageHash);
+
+    pageNum++;
+    await sleep(700); // be nice
+  }
+
+  return { site: 'franceagrimer', urls: Array.from(detail), pages_scanned: scanned };
+}
+
+/** Les-Aides: start at ?page=1 and increment until no new detail URLs */
+async function discoverLesAides(startUrl = 'https://les-aides.fr/aides/?page=1', maxPages = 50): Promise<DiscoveryResult> {
+  const seen = new Set<string>();
+  const detail = new Set<string>();
+  let pageNum = 1, scanned = 0, newOnLastPage = 0;
+
+  while (pageNum < maxPages) {
+    const url = `https://les-aides.fr/aides/?page=${pageNum}`;
+    console.log(`🔎 [LA] Listing page ${pageNum}: ${url}`);
+    let html: string;
+    try { html = await fetchHtmlWithUA(url); }
+    catch (e) { console.warn(`⚠️ [LA] stop at page ${pageNum}: ${e}`); break; }
+
+    const links = extractLinks(html, url);
+    let addedThisPage = 0;
+
+    for (const href of links) {
+      // Accept detail pages like /aide/<slug-or-code>.html
+      if (new URL(href).pathname.startsWith('/aide/')) {
+        if (!detail.has(href)) { detail.add(href); addedThisPage++; }
+      }
+    }
+
+    scanned++;
+    console.log(`   → found ${addedThisPage} new detail URLs (total ${detail.size})`);
+    if (addedThisPage === 0 && newOnLastPage === 0) { console.log('   → no new URLs across two pages, stopping'); break; }
+    newOnLastPage = addedThisPage;
+
+    const pageHash = await sha256(html);
+    if (seen.has(pageHash)) { console.log('   → same page content hash detected, stopping'); break; }
+    seen.add(pageHash);
+
+    pageNum++;
+    await sleep(700);
+  }
+
+  return { site: 'lesaides', urls: Array.from(detail), pages_scanned: scanned };
+}
+
+async function sha256(s: string): Promise<string> {
+  const data = new TextEncoder().encode(s);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* --------------------------------- SERVER -------------------------------- */
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const supabase = createClient(
@@ -499,71 +395,62 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { sites = ['franceagrimer', 'lesaides'], pages_per_site = 10 } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const {
+      sites = ['franceagrimer', 'lesaides'],
+      max_listing_pages = 50,       // max pages to paginate per site
+      max_detail_urls_per_site = 200, // safety cap
+      rate_limit_ms = 1000
+    } = body;
 
-    console.log(`🚀 Starting enhanced scraping: ${sites.join(', ')} (${pages_per_site} pages each)`);
+    console.log(`🚀 Start discovery+harvest for: ${sites.join(', ')} (max pages/site=${max_listing_pages})`);
 
-    // Create new pipeline run
     const runId = crypto.randomUUID();
-    const { error: runError } = await supabase
-      .from('pipeline_runs')
-      .insert({
-        id: runId,
-        status: 'running',
-        stage: 'harvest',
-        config: { sites, pages_per_site, scraper: 'universal_harvester' },
-        started_at: new Date().toISOString()
-      });
-
-    if (runError) {
-      throw new Error(`Failed to create pipeline run: ${runError.message}`);
-    }
+    const { error: runError } = await supabase.from('pipeline_runs').insert({
+      id: runId,
+      status: 'running',
+      stage: 'harvest',
+      config: { sites, max_listing_pages, scraper: 'universal_harvester' },
+      started_at: new Date().toISOString()
+    });
+    if (runError) throw new Error(`Failed to create pipeline run: ${runError.message}`);
 
     const harvester = new UniversalHarvester();
     const results = {
       bundles_created: 0,
       blocks_extracted: 0,
       documents_found: 0,
-      sites_processed: [],
-      errors: []
+      sites_processed: [] as any[],
+      errors: [] as string[]
     };
 
-    // Process each requested site
-    for (const site of sites) {
-      console.log(`🔍 Discovering URLs for ${site}...`);
-      
-      // First discover URLs by crawling the paginated listing pages
-      const urls = await discoverSubsidyUrls(site, pages_per_site);
-      
-      if (urls.length === 0) {
-        console.log(`⚠️ No URLs discovered for ${site}`);
-        results.errors.push(`No URLs discovered for site: ${site}`);
+    for (const site of sites as Array<'franceagrimer'|'lesaides'>) {
+      let discovery: DiscoveryResult;
+      if (site === 'franceagrimer') {
+        discovery = await discoverFranceAgriMer('https://www.franceagrimer.fr/rechercher-une-aide?page=0', max_listing_pages);
+      } else if (site === 'lesaides') {
+        discovery = await discoverLesAides('https://les-aides.fr/aides/?page=1', max_listing_pages);
+      } else {
+        results.errors.push(`Unknown site: ${site}`);
         continue;
       }
-      
-      console.log(`📄 Processing ${urls.length} discovered URLs for ${site}`);
 
-      let siteResults = {
-        site,
-        bundles: 0,
-        blocks: 0,
-        documents: 0,
-        urls_processed: []
-      };
+      const allUrls = discovery.urls.slice(0, max_detail_urls_per_site);
+      console.log(`📄 ${site}: discovered ${allUrls.length} detail URLs over ${discovery.pages_scanned} listing pages`);
 
-      for (const url of urls) {
+      const siteResults = { site, bundles: 0, blocks: 0, documents: 0, urls_processed: [] as string[] };
+
+      for (const url of allUrls) {
         try {
-          // Harvest content
           const bundle = await harvester.harvestContent(url, { runId });
-          
-          // Store scraped page in existing raw_scraped_pages table (upsert to handle duplicates)
+
           const { data: pageData, error: pageError } = await supabase
             .from('raw_scraped_pages')
             .upsert({
               source_url: bundle.source.url,
-              source_site: bundle.source.url.includes('franceagrimer') ? 'franceagrimer' : 'lesaides',
+              source_site: site,
               raw_text: bundle.blocks.map(b => b.plain_text).join('\n'),
-              raw_html: '', // We'll keep this minimal for now
+              raw_html: '',
               text_markdown: bundle.blocks.map(b => b.plain_text).join('\n\n'),
               run_id: runId,
               status: 'processed',
@@ -574,21 +461,17 @@ Deno.serve(async (req) => {
                 documents_count: bundle.documents.length,
                 content_hash: bundle.content_hash
               }
-            }, {
-              onConflict: 'source_url'
-            })
+            }, { onConflict: 'source_url' })
             .select('id')
             .single();
 
           if (pageError) {
             console.error(`Failed to store scraped page for ${url}:`, pageError);
             results.errors.push(`Page storage failed for ${url}: ${pageError.message}`);
-            // Don't continue - still count the successful harvest even if storage failed/was duplicate
           }
 
-          const pageId = pageData.id;
+          const pageId = pageData?.id;
 
-          // Store harvested documents in existing table
           if (bundle.documents.length > 0) {
             const documentsToInsert = bundle.documents.map(doc => ({
               source_url: bundle.source.url,
@@ -601,31 +484,23 @@ Deno.serve(async (req) => {
               pages: null,
               text_ocr: null
             }));
-
-            const { error: docsError } = await supabase
-              .from('harvested_documents')
-              .insert(documentsToInsert);
-
+            const { error: docsError } = await supabase.from('harvested_documents').insert(documentsToInsert);
             if (docsError) {
               console.error(`Failed to store documents for ${url}:`, docsError);
               results.errors.push(`Documents storage failed for ${url}: ${docsError.message}`);
             }
           }
 
-          // Update results
           siteResults.bundles++;
           siteResults.blocks += bundle.blocks.length;
           siteResults.documents += bundle.documents.length;
           siteResults.urls_processed.push(url);
 
           console.log(`✅ Processed ${url}: ${bundle.blocks.length} blocks, ${bundle.documents.length} docs`);
-
-          // Rate limiting delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-        } catch (error) {
-          console.error(`❌ Failed to process ${url}:`, error);
-          results.errors.push(`Failed to process ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          await sleep(rate_limit_ms);
+        } catch (e) {
+          console.error(`❌ Failed to process ${url}:`, e);
+          results.errors.push(`Failed to process ${url}: ${e instanceof Error ? e.message : 'Unknown error'}`);
         }
       }
 
@@ -635,7 +510,6 @@ Deno.serve(async (req) => {
       results.documents_found += siteResults.documents;
     }
 
-    // Update pipeline run status
     await supabase
       .from('pipeline_runs')
       .update({
@@ -646,31 +520,19 @@ Deno.serve(async (req) => {
       })
       .eq('id', runId);
 
-    console.log(`🎉 Scraping completed: ${results.bundles_created} bundles, ${results.blocks_extracted} blocks, ${results.documents_found} documents`);
+    console.log(`🎉 Done: ${results.bundles_created} bundles, ${results.blocks_extracted} blocks, ${results.documents_found} documents`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        run_id: runId,
-        results
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({ success: true, run_id: runId, results }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200
+    });
 
   } catch (error) {
     console.error('❌ Enhanced scraping failed:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500
+    });
   }
 });
