@@ -5,27 +5,115 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Comprehensive French subsidy URLs for scraping
-// Function to get discovered URLs from database instead of hardcoded lists
-async function getDiscoveredUrls(site: string, limit: number, supabase: any): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from('raw_scraped_pages')
-      .select('source_url')
-      .eq('source_site', site)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    
-    if (error) {
-      console.error(`Failed to get URLs for ${site}:`, error);
-      return [];
-    }
-    
-    return data?.map(row => row.source_url) || [];
-  } catch (err) {
-    console.error(`Error fetching URLs for ${site}:`, err);
+// Site configurations for URL discovery
+const SITE_CONFIGS = {
+  franceagrimer: {
+    baseUrl: 'https://www.franceagrimer.fr/rechercher-une-aide?page=',
+    startPage: 0,
+    linkSelector: 'h3.fr-card__title a[href*="/aides/"]'
+  },
+  lesaides: {
+    baseUrl: 'https://les-aides.fr/aides/?page=',
+    startPage: 1,
+    linkSelector: '.aide-card a[href*="/aide/"], .result-item a[href*="/aide/"]'
+  }
+};
+
+// URL Discovery function that crawls paginated listing pages
+async function discoverSubsidyUrls(site: string, maxPages: number): Promise<string[]> {
+  const config = SITE_CONFIGS[site as keyof typeof SITE_CONFIGS];
+  if (!config) {
+    console.error(`Unknown site: ${site}`);
     return [];
   }
+
+  const discoveredUrls = new Set<string>();
+  let currentPage = config.startPage;
+  let emptyPagesCount = 0;
+  const maxEmptyPages = 3; // Stop after 3 consecutive empty pages
+
+  console.log(`🔍 Discovering URLs for ${site} starting from page ${currentPage}`);
+
+  while (currentPage < config.startPage + maxPages && emptyPagesCount < maxEmptyPages) {
+    try {
+      const pageUrl = `${config.baseUrl}${currentPage}`;
+      console.log(`📄 Fetching page ${currentPage}: ${pageUrl}`);
+
+      const response = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'AgriTool-Harvester/1.0.0 (+https://agritool.eu/bot)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        },
+        signal: AbortSignal.timeout(30000)
+      });
+
+      if (!response.ok) {
+        console.warn(`❌ Failed to fetch page ${currentPage}: ${response.status}`);
+        emptyPagesCount++;
+        currentPage++;
+        continue;
+      }
+
+      const html = await response.text();
+      const pageUrls = extractUrlsFromPage(html, config.linkSelector, pageUrl);
+      
+      if (pageUrls.length === 0) {
+        emptyPagesCount++;
+        console.log(`⚠️ No URLs found on page ${currentPage}, empty count: ${emptyPagesCount}`);
+      } else {
+        emptyPagesCount = 0; // Reset counter
+        pageUrls.forEach(url => discoveredUrls.add(url));
+        console.log(`✅ Found ${pageUrls.length} URLs on page ${currentPage} (total: ${discoveredUrls.size})`);
+      }
+
+      currentPage++;
+      
+      // Small delay between requests
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+    } catch (error) {
+      console.error(`❌ Error fetching page ${currentPage}:`, error);
+      emptyPagesCount++;
+      currentPage++;
+    }
+  }
+
+  console.log(`🎯 Discovery complete for ${site}: ${discoveredUrls.size} URLs found`);
+  return Array.from(discoveredUrls);
+}
+
+// Extract URLs from a page using CSS-like selectors (simplified regex approach)
+function extractUrlsFromPage(html: string, selector: string, baseUrl: string): string[] {
+  const urls: string[] = [];
+  
+  // Extract the href pattern from selector
+  let linkPattern = /<a[^>]*href="([^"]*)"[^>]*>/gi;
+  
+  // More specific patterns based on selectors
+  if (selector.includes('fr-card__title')) {
+    linkPattern = /<h3[^>]*class="[^"]*fr-card__title[^"]*"[^>]*>.*?<a[^>]*href="([^"]*\/aides\/[^"]*)"[^>]*>/gi;
+  } else if (selector.includes('aide-card') || selector.includes('result-item')) {
+    linkPattern = /<a[^>]*href="([^"]*\/aide\/[^"]*)"[^>]*>/gi;
+  }
+
+  let match;
+  while ((match = linkPattern.exec(html)) !== null) {
+    try {
+      const href = match[1];
+      const absoluteUrl = new URL(href, baseUrl).toString();
+      
+      // Filter for subsidy URLs
+      if (absoluteUrl.includes('/aides/') || absoluteUrl.includes('/aide/')) {
+        urls.push(absoluteUrl);
+      }
+    } catch (error) {
+      // Skip invalid URLs
+      continue;
+    }
+  }
+
+  return urls;
 }
 
 interface ScrapeBundle {
@@ -442,14 +530,14 @@ Deno.serve(async (req) => {
 
     // Process each requested site
     for (const site of sites) {
-      console.log(`📄 Getting discovered URLs for ${site}...`);
+      console.log(`🔍 Discovering URLs for ${site}...`);
       
-      // Get URLs from database (discovered by other harvesters)
-      const urls = await getDiscoveredUrls(site, pages_per_site, supabase);
+      // First discover URLs by crawling the paginated listing pages
+      const urls = await discoverSubsidyUrls(site, pages_per_site);
       
       if (urls.length === 0) {
-        console.log(`⚠️ No discovered URLs found for ${site}`);
-        results.errors.push(`No discovered URLs found for site: ${site}`);
+        console.log(`⚠️ No URLs discovered for ${site}`);
+        results.errors.push(`No URLs discovered for site: ${site}`);
         continue;
       }
       
