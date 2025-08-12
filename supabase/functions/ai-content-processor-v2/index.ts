@@ -251,6 +251,28 @@ serve(async (req) => {
             .join('')
         );
 
+        // Ensure scrape run exists before inserting subsidy
+        const { data: existingRun } = await supabase
+          .from('scrape_runs')
+          .select('id')
+          .eq('id', run_id)
+          .maybeSingle();
+        
+        if (!existingRun) {
+          const { error: runError } = await supabase
+            .from('scrape_runs')
+            .insert({
+              id: run_id,
+              status: 'running',
+              notes: 'V2 Comprehensive AI Processing',
+              metadata: { test_mode: test_mode || false }
+            });
+          
+          if (runError) {
+            console.error('❌ Failed to create scrape run:', runError);
+          }
+        }
+
         // Insert into subsidies_structured
         const { error: insertError } = await supabase
           .from('subsidies_structured')
