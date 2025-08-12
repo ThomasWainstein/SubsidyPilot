@@ -1,0 +1,228 @@
+{
+  "$id": "subsidy_card.schema.json", 
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgriTool Subsidy Card Schema",
+  "description": "Must-show fields with provenance and confidence for subsidy display",
+  "type": "object",
+  "required": ["identity", "fields", "problems"],
+  "properties": {
+    "identity": {
+      "type": "object",
+      "description": "Core subsidy identification",
+      "required": ["title", "authority"],
+      "properties": {
+        "title": { 
+          "type": "string",
+          "description": "Official subsidy program title"
+        },
+        "authority": { 
+          "type": "string",
+          "description": "Issuing government agency or body"
+        },
+        "program_code": {
+          "type": "string",
+          "description": "Official program identifier or code"
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "description": "Must-show fields with confidence and provenance",
+      "properties": {
+        "dates": { "$ref": "#/definitions/verbatim_field" },
+        "who_can_apply": { "$ref": "#/definitions/verbatim_field" },
+        "funding": { "$ref": "#/definitions/verbatim_field" },
+        "eligibility": { "$ref": "#/definitions/verbatim_field" },
+        "evaluation": { "$ref": "#/definitions/verbatim_field" },
+        "apply_link": { "$ref": "#/definitions/verbatim_field" },
+        "contacts": { "$ref": "#/definitions/verbatim_field" }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "description": "Extracted tables with provenance",
+      "items": { "$ref": "#/definitions/table_with_provenance" }
+    },
+    "problems": {
+      "type": "array",
+      "description": "Detected conflicts or missing field issues",
+      "items": { 
+        "type": "string",
+        "description": "Human-readable problem description"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Card-level metadata",
+      "properties": {
+        "extraction_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "overall_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Average confidence across all fields"
+        },
+        "completeness": {
+          "type": "number", 
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Percentage of must-show fields populated"
+        },
+        "source_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of distinct sources used"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "provenance": {
+      "type": "object",
+      "description": "Source reference with detailed attribution",
+      "required": ["kind"],
+      "properties": {
+        "kind": { 
+          "enum": ["webpage", "document"],
+          "description": "Type of source"
+        },
+        "url": { 
+          "type": "string",
+          "format": "uri",
+          "description": "Source URL for webpage"
+        },
+        "filename": { 
+          "type": "string",
+          "description": "Document filename"
+        },
+        "page_number": { 
+          "type": "integer", 
+          "minimum": 1,
+          "description": "Page number within document"
+        },
+        "label": { 
+          "type": "string",
+          "description": "Human-readable source label, e.g., 'From: Decision Art. X / Annex Y (PDF)'"
+        },
+        "section": {
+          "type": "string",
+          "description": "Section or article within source document"
+        },
+        "extraction_method": {
+          "enum": ["direct_text", "promoted_from_doc", "inferred", "normalized"],
+          "description": "How this field value was obtained"
+        }
+      }
+    },
+    "verbatim_field": {
+      "type": "object",
+      "description": "Field value with confidence and source tracking",
+      "required": ["value", "confidence", "source"],
+      "properties": {
+        "value": { 
+          "type": "string",
+          "description": "Verbatim field content"
+        },
+        "confidence": { 
+          "type": "number", 
+          "minimum": 0, 
+          "maximum": 1,
+          "description": "AI extraction confidence score"
+        },
+        "source": { 
+          "$ref": "#/definitions/provenance",
+          "description": "Primary source of this field"
+        },
+        "alternative_sources": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/provenance" },
+          "description": "Additional sources containing similar information"
+        },
+        "normalized": { 
+          "type": "object",
+          "description": "Structured/normalized version of field value",
+          "properties": {
+            "dates": {
+              "type": "array",
+              "items": {
+                "type": "string", 
+                "format": "date"
+              },
+              "description": "ISO date format for date fields"
+            },
+            "amounts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "number" },
+                  "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+                  "type": { "enum": ["minimum", "maximum", "range", "envelope"] }
+                }
+              },
+              "description": "Structured monetary amounts"
+            },
+            "entities": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted entity names for eligibility fields"
+            }
+          }
+        },
+        "conflicts": { 
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "Conflicts detected with other sources"
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": { 
+            "enum": ["incomplete", "unclear", "inconsistent", "outdated", "high_quality"]
+          },
+          "description": "Quality assessment flags"
+        }
+      }
+    },
+    "table_with_provenance": {
+      "type": "object",
+      "description": "Structured table with source information",
+      "required": ["columns", "rows", "source"],
+      "properties": {
+        "columns": { 
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "Table column headers"
+        },
+        "rows": { 
+          "type": "array", 
+          "items": { 
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "description": "Table data rows"
+        },
+        "source": { 
+          "$ref": "#/definitions/provenance",
+          "description": "Source of this table"
+        },
+        "caption": {
+          "type": "string",
+          "description": "Table caption or title"
+        },
+        "context": {
+          "type": "string", 
+          "description": "Surrounding context that explains the table"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence in table extraction accuracy"
+        }
+      }
+    }
+  }
+}

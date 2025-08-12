@@ -1,0 +1,241 @@
+{
+  "$id": "scrape_bundle.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgriTool Scrape Bundle Schema",
+  "description": "Verbatim-first, structure-preserving schema for scraped subsidy content",
+  "type": "object",
+  "required": ["source", "lang", "hash", "last_modified", "blocks", "documents"],
+  "properties": {
+    "source": {
+      "type": "object",
+      "description": "Origin of the scraped content",
+      "required": ["kind"],
+      "properties": {
+        "kind": { 
+          "enum": ["webpage", "document"],
+          "description": "Type of content source"
+        },
+        "url": { 
+          "type": "string",
+          "format": "uri",
+          "description": "URL of webpage source"
+        },
+        "filename": { 
+          "type": "string",
+          "description": "Filename of document source"
+        },
+        "page_number": { 
+          "type": "integer", 
+          "minimum": 1,
+          "description": "Page number within document"
+        }
+      }
+    },
+    "lang": { 
+      "type": "string",
+      "pattern": "^[a-z]{2}$",
+      "description": "ISO 639-1 language code"
+    },
+    "hash": { 
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hash of canonical content for deduplication"
+    },
+    "last_modified": { 
+      "type": "string", 
+      "format": "date-time",
+      "description": "Last modification timestamp of source content"
+    },
+    "blocks": {
+      "type": "array",
+      "description": "Ordered content blocks preserving original structure",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "verbatim", "source_ref"],
+        "properties": {
+          "id": { 
+            "type": "string",
+            "description": "Unique identifier for this content block"
+          },
+          "type": { 
+            "enum": ["heading", "paragraph", "list", "table"],
+            "description": "Type of content block"
+          },
+          "verbatim": { 
+            "const": true,
+            "description": "Flag ensuring content is never rewritten"
+          },
+          "html": { 
+            "type": "string",
+            "description": "Original HTML markup"
+          },
+          "markdown": { 
+            "type": "string",
+            "description": "Clean markdown representation"
+          },
+          "text": {
+            "type": "string", 
+            "description": "Plain text content"
+          },
+          "table": {
+            "type": "object",
+            "description": "Structured table data when type=table",
+            "properties": {
+              "columns": { 
+                "type": "array", 
+                "items": { "type": "string" },
+                "description": "Table column headers"
+              },
+              "rows": { 
+                "type": "array", 
+                "items": { 
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "description": "Table data rows"
+              },
+              "caption": {
+                "type": "string",
+                "description": "Table caption if present"
+              }
+            }
+          },
+          "list": {
+            "type": "object",
+            "description": "Structured list data when type=list",
+            "properties": {
+              "ordered": {
+                "type": "boolean",
+                "description": "Whether this is an ordered (numbered) list"
+              },
+              "items": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List item contents"
+              }
+            }
+          },
+          "heading": {
+            "type": "object", 
+            "description": "Heading structure when type=heading",
+            "properties": {
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 6,
+                "description": "Heading level (1-6)"
+              },
+              "text": {
+                "type": "string",
+                "description": "Heading text content"
+              }
+            }
+          },
+          "source_ref": {
+            "type": "object",
+            "description": "Reference to source location of this block",
+            "required": ["kind"],
+            "properties": {
+              "kind": { "enum": ["webpage", "document"] },
+              "url": { "type": "string", "format": "uri" },
+              "filename": { "type": "string" },
+              "page_number": { "type": "integer", "minimum": 1 },
+              "selector": {
+                "type": "string",
+                "description": "CSS selector or XPath locating this content"
+              }
+            }
+          }
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "description": "Associated documents found during scraping",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "url", "hash"],
+        "properties": {
+          "name": { 
+            "type": "string",
+            "description": "Document filename or title"
+          },
+          "type": { 
+            "enum": ["pdf", "docx", "xlsx", "pptx", "other"],
+            "description": "Document file type"
+          },
+          "url": { 
+            "type": "string",
+            "format": "uri", 
+            "description": "Download URL for document"
+          },
+          "hash": { 
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "SHA256 hash of document content"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Document size in bytes"
+          },
+          "extracted_text": { 
+            "type": "string",
+            "description": "Full text extracted from document"
+          },
+          "tables": {
+            "type": "array",
+            "description": "Tables extracted from document",
+            "items": { 
+              "$ref": "#/properties/blocks/items/properties/table"
+            }
+          },
+          "pages": { 
+            "type": "integer", 
+            "minimum": 1,
+            "description": "Number of pages in document"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of document"
+          },
+          "language": {
+            "type": "string", 
+            "pattern": "^[a-z]{2}$",
+            "description": "Detected language of document content"
+          }
+        }
+      }
+    },
+    "additional_blocks": { 
+      "type": "array", 
+      "items": { "$ref": "#/properties/blocks/items" },
+      "description": "Additional content blocks that don't fit standard categories"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata about the scraping process",
+      "properties": {
+        "scrape_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this content was scraped"
+        },
+        "scraper_version": {
+          "type": "string",
+          "description": "Version of scraper used"
+        },
+        "quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Quality assessment of scraped content"
+        },
+        "extraction_method": {
+          "enum": ["html_parser", "pdf_extractor", "ocr", "api"],
+          "description": "Method used to extract content"
+        }
+      }
+    }
+  }
+}

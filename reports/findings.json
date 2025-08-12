@@ -1,0 +1,224 @@
+{
+  "analysis_date": "2025-08-12T00:00:00Z",
+  "version": "1.0",
+  "overall_compliance": 28,
+  "layers": {
+    "scraper": {
+      "compliance_percentage": 15,
+      "status": "missing",
+      "critical_issues": [
+        {
+          "component": "verbatim_content_storage",
+          "status": "missing",
+          "impact": "high",
+          "files": ["supabase/functions/afir-harvester/index.ts"],
+          "lines": ["171-179"],
+          "description": "No structured blocks, missing verbatim flags",
+          "fix_eta_weeks": 2
+        },
+        {
+          "component": "table_preservation", 
+          "status": "missing",
+          "impact": "critical",
+          "files": ["supabase/functions/lib/harvest.ts"],
+          "description": "Tables flattened in stripToText function",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "document_extraction",
+          "status": "missing", 
+          "impact": "high",
+          "files": ["scraper functions"],
+          "description": "No PDF/DOCX extraction in scrapers",
+          "fix_eta_weeks": 3
+        },
+        {
+          "component": "content_hashing",
+          "status": "partial",
+          "impact": "medium",
+          "files": ["AI_SCRAPER_RAW_TEXTS/scraper/extract_raw_page.py"],
+          "lines": ["236"],
+          "description": "URL hashing only, no content hashing",
+          "fix_eta_weeks": 1
+        }
+      ]
+    },
+    "ai_processing": {
+      "compliance_percentage": 25,
+      "status": "partial",
+      "critical_issues": [
+        {
+          "component": "confidence_scoring",
+          "status": "missing",
+          "impact": "high", 
+          "files": ["extraction pipeline"],
+          "description": "No confidence scoring for extracted fields",
+          "fix_eta_weeks": 2
+        },
+        {
+          "component": "source_provenance",
+          "status": "partial",
+          "impact": "medium",
+          "files": ["src/types/enhanced-subsidy.ts"],
+          "lines": ["3-8"],
+          "description": "Source structure exists but not populated",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "gap_filling_promotion",
+          "status": "missing",
+          "impact": "high",
+          "files": ["AI extraction pipeline"],
+          "description": "No document-to-webpage field promotion",
+          "fix_eta_weeks": 2
+        },
+        {
+          "component": "conflict_detection",
+          "status": "missing",
+          "impact": "medium",
+          "files": ["validation code"],
+          "description": "No conflict detection for inconsistent data",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "data_normalization",
+          "status": "partial",
+          "impact": "medium",
+          "files": ["src/components/subsidy/EnhancedSubsidyDisplay.tsx"],
+          "lines": ["14-30"],
+          "description": "UI-only formatting, hardcoded currency",
+          "fix_eta_weeks": 1
+        }
+      ]
+    },
+    "ui": {
+      "compliance_percentage": 45,
+      "status": "partial",
+      "critical_issues": [
+        {
+          "component": "verbatim_rendering",
+          "status": "partial",
+          "impact": "medium",
+          "files": ["src/components/subsidy/EnhancedSubsidyDisplay.tsx"],
+          "description": "Basic text rendering without verbatim preservation",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "source_badges",
+          "status": "partial",
+          "impact": "high",
+          "files": ["src/components/subsidy/EnhancedSubsidyDisplay.tsx"],
+          "lines": ["32-40"],
+          "description": "Basic source counting, no detailed provenance",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "table_rendering",
+          "status": "missing",
+          "impact": "high",
+          "files": ["subsidy display components"],
+          "description": "No table-specific rendering components",
+          "fix_eta_weeks": 1
+        },
+        {
+          "component": "document_previews",
+          "status": "partial",
+          "impact": "medium",
+          "files": ["src/components/subsidy/EnhancedSubsidyDisplay.tsx"],
+          "lines": ["331-356"],
+          "description": "Download links only, no inline preview",
+          "fix_eta_weeks": 2
+        }
+      ]
+    }
+  },
+  "schema_compliance": {
+    "scrape_bundle_schema": {
+      "compliance_percentage": 10,
+      "missing_fields": [
+        "blocks[]",
+        "verbatim flags", 
+        "structured documents",
+        "content hashes",
+        "page_number tracking"
+      ]
+    },
+    "subsidy_card_schema": {
+      "compliance_percentage": 40,
+      "missing_fields": [
+        "confidence scores",
+        "conflict detection",
+        "normalized fields",
+        "provenance labels"
+      ]
+    }
+  },
+  "risk_assessment": {
+    "high_risk": [
+      {
+        "issue": "table_data_loss",
+        "impact": "business_critical",
+        "description": "Complete loss of tabular information"
+      },
+      {
+        "issue": "missing_confidence",
+        "impact": "data_quality", 
+        "description": "No quality assessment of extracted data"
+      },
+      {
+        "issue": "source_verification",
+        "impact": "trust",
+        "description": "Users cannot verify information sources"
+      }
+    ],
+    "medium_risk": [
+      {
+        "issue": "format_preservation",
+        "impact": "usability",
+        "description": "Original document formatting lost"
+      },
+      {
+        "issue": "conflict_detection", 
+        "impact": "data_quality",
+        "description": "Inconsistent data not flagged"
+      }
+    ],
+    "low_risk": [
+      {
+        "issue": "hash_optimization",
+        "impact": "performance",
+        "description": "Deduplication efficiency"
+      }
+    ]
+  },
+  "immediate_actions": [
+    {
+      "week": 1,
+      "actions": [
+        "Implement table extraction",
+        "Add content hashing"
+      ]
+    },
+    {
+      "week": 2, 
+      "actions": [
+        "Add confidence scoring",
+        "Implement block-based storage"
+      ]
+    },
+    {
+      "week": 3,
+      "actions": [
+        "Integrate document extraction",
+        "Add source provenance population"
+      ]
+    },
+    {
+      "week": 4,
+      "actions": [
+        "Enhance UI with verbatim rendering",
+        "Add table display components"
+      ]
+    }
+  ]
+}
