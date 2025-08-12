@@ -32,7 +32,11 @@ export const AIProcessingTriggerV2 = () => {
       console.log('V2 AI processing response:', data);
       
       if (data?.success) {
-        toast.success(`✅ V2 Processing completed! Created ${data.subsidies_created || 0} comprehensive subsidies from ${data.pages_processed || 0} pages`);
+        if (data.status === 'processing_async') {
+          toast.success(`✅ V2 Processing started! Processing ${data.pages_to_process} pages asynchronously - check logs for completion status`);
+        } else {
+          toast.success(`✅ V2 Processing completed! Created ${data.subsidies_created || 0} comprehensive subsidies from ${data.pages_processed || 0} pages`);
+        }
       } else {
         toast.error(`❌ V2 Processing failed: ${data?.error || 'Unknown error'}`);
       }
