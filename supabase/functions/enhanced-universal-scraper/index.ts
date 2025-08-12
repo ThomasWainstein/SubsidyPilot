@@ -347,12 +347,20 @@ class UniversalHarvester {
 
   private async extractLinkedDocuments(html: string, baseUrl: string): Promise<any[]> {
     const documents: any[] = [];
-    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi; let m;
+    
+    // Enhanced regex to capture document links more thoroughly
+    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi; 
+    let m;
+    
     while ((m = linkRegex.exec(html)) !== null) {
-      const href = m[1]; const linkText = this.cleanText(m[2]);
+      const href = m[1]; 
+      const linkText = this.cleanText(m[2]);
+      
       try {
         const absoluteUrl = new URL(href, baseUrl).toString();
         const docType = this.getDocumentType(absoluteUrl);
+        
+        // More permissive document detection
         if (docType && docType !== 'other') {
           documents.push({
             id: crypto.randomUUID(),
@@ -363,16 +371,83 @@ class UniversalHarvester {
             source_ref: { kind: 'webpage', url: baseUrl, timestamp: new Date().toISOString() }
           });
         }
+        // Also check for file extensions in URL params or download links
+        else if (this.looksLikeDocument(absoluteUrl, linkText)) {
+          const inferredType = this.inferDocumentTypeFromContext(absoluteUrl, linkText);
+          if (inferredType) {
+            documents.push({
+              id: crypto.randomUUID(),
+              name: linkText || this.extractFilenameFromUrl(absoluteUrl),
+              doc_type: inferredType,
+              url: absoluteUrl,
+              content_hash: '',
+              source_ref: { kind: 'webpage', url: baseUrl, timestamp: new Date().toISOString() }
+            });
+          }
+        }
       } catch { /* ignore invalid urls */ }
     }
+    
+    console.log(`📄 Found ${documents.length} documents for ${baseUrl}`);
     return documents;
   }
 
   private getDocumentType(url: string): 'pdf'|'docx'|'xlsx'|'pptx'|'other'|null {
-    const ext = url.split('.').pop()?.toLowerCase();
-    switch (ext) { case 'pdf': return 'pdf'; case 'docx': return 'docx';
-      case 'xlsx': return 'xlsx'; case 'pptx': return 'pptx';
-      case 'doc': case 'xls': case 'ppt': return 'other'; default: return null; }
+    const ext = url.split('.').pop()?.toLowerCase().split('?')[0]; // Remove query params
+    switch (ext) { 
+      case 'pdf': return 'pdf'; 
+      case 'docx': return 'docx';
+      case 'xlsx': return 'xlsx'; 
+      case 'pptx': return 'pptx';
+      case 'doc': case 'xls': case 'ppt': return 'other'; 
+      default: return null; 
+    }
+  }
+
+  private looksLikeDocument(url: string, linkText: string): boolean {
+    // Check URL for document indicators
+    const urlLower = url.toLowerCase();
+    const textLower = linkText.toLowerCase();
+    
+    // Common document URL patterns
+    const docPatterns = [
+      /\.(pdf|doc|docx|xls|xlsx|ppt|pptx)(\?|$|#)/i,
+      /download.*\.(pdf|doc|docx|xls|xlsx|ppt|pptx)/i,
+      /attachment.*\.(pdf|doc|docx|xls|xlsx|ppt|pptx)/i,
+      /files?\/.*\.(pdf|doc|docx|xls|xlsx|ppt|pptx)/i
+    ];
+    
+    // Check if URL matches document patterns
+    for (const pattern of docPatterns) {
+      if (pattern.test(url)) return true;
+    }
+    
+    // Check link text for document indicators
+    const textIndicators = [
+      'pdf', 'télécharger', 'download', 'document', 'fichier', 
+      'annexe', 'formulaire', 'modèle', 'cahier des charges',
+      'décision', 'budget', 'engagement'
+    ];
+    
+    return textIndicators.some(indicator => textLower.includes(indicator));
+  }
+
+  private inferDocumentTypeFromContext(url: string, linkText: string): string|null {
+    const textLower = linkText.toLowerCase();
+    const urlLower = url.toLowerCase();
+    
+    // Try to infer from context
+    if (textLower.includes('pdf') || urlLower.includes('pdf')) return 'pdf';
+    if (textLower.includes('excel') || textLower.includes('xlsx') || urlLower.includes('xlsx')) return 'xlsx';
+    if (textLower.includes('word') || textLower.includes('docx') || urlLower.includes('docx')) return 'docx';
+    
+    // Default to PDF for French government documents
+    if (textLower.includes('document') || textLower.includes('annexe') || 
+        textLower.includes('formulaire') || textLower.includes('décision')) {
+      return 'pdf';
+    }
+    
+    return null;
   }
   private extractFilenameFromUrl(url: string): string {
     try { const p = new URL(url).pathname; return p.split('/').pop() || 'document'; }
