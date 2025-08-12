@@ -15,6 +15,7 @@ export const AIProcessingTriggerV2 = () => {
       toast.info('🚀 Starting V2 Comprehensive AI processing...');
       
       const manualRunId = crypto.randomUUID();
+      console.log('🚀 Starting V2 processing with run_id:', manualRunId);
       
       const { data, error } = await supabase.functions.invoke('ai-content-processor-v2', {
         body: {

@@ -224,12 +224,23 @@ serve(async (req) => {
         }
 
         // Extract comprehensive data
+        console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
+        console.log(`📝 Content length: ${content.length} characters`);
+        
         const extractedData = await extractFromContent(content, attachments);
         
         if (!extractedData) {
           console.log(`❌ Failed to extract data from: ${page.source_url}`);
           continue;
         }
+        
+        console.log(`✅ AI extraction successful for: ${page.source_url}`);
+        console.log(`📊 Extracted data preview:`, {
+          title: extractedData.title,
+          description: extractedData.description?.substring(0, 100),
+          authority: extractedData.authority,
+          hasData: Object.keys(extractedData).length
+        });
 
         // Generate content hash for deduplication
         const contentHash = await crypto.subtle.digest(
