@@ -398,26 +398,61 @@ serve(async (req) => {
           console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.source_url}`);
           upsertAction = 'updated';
           
-          // Update existing record with new data
-          console.log(`🔄 Mapping V2 data for update...`);
+          // Update existing record with STRUCTURED data in proper fields
+          console.log(`🔄 Mapping V2 STRUCTURED data to database fields...`);
           
           upsertResult = await supabase
             .from('subsidies')
             .update({
-              // Store the complete V2 comprehensive data in raw_content
+              // ✅ STRUCTURED DATA goes into proper structured fields
+              title: { ro: coreData.title || 'Untitled Subsidy' },
+              description: { ro: projectData.objectives_detailed || coreData.policy_objective || 'No description available' },
+              eligibility_criteria: { 
+                ro: [
+                  eligibilityData.eligible_entities,
+                  eligibilityData.geographic_eligibility, 
+                  eligibilityData.special_conditions
+                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
+              },
+              
+              // Financial data
+              amount_min: fundingData.funding_amount_min || null,
+              amount_max: fundingData.funding_amount_max || null,
+              
+              // Dates
+              deadline: datesData.closing_date || datesData.application_deadline || null,
+              
+              // Basic fields
+              agency: coreData.authority || 'Unknown Agency',
+              region: eligibilityData.geographic_eligibility ? [eligibilityData.geographic_eligibility] : [],
+              categories: coreData.categories || (coreData.sector ? [coreData.sector] : []),
+              tags: [
+                ...(coreData.categories || []),
+                coreData.sector,
+                coreData.call_type,
+                fundingData.funding_type
+              ].filter(Boolean),
+              funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
+              status: coreData.status_detailed === 'open' ? 'open' : 'closed',
+              
+              // Application documents
+              application_docs: {
+                required_documents: processData.required_documents_detailed,
+                forms_detected: documentsData.forms_detected,
+                submission_method: processData.submission_method_detailed,
+                contact_info: processData.contact_information
+              },
+              
+              // Documents metadata
+              documents: {
+                forms: documentsData.forms_detected || [],
+                regulatory_refs: documentsData.regulatory_references || [],
+                attachments: attachments || []
+              },
+              
+              // ✅ RAW CONTENT stores the complete unprocessed AI response for reference
               raw_content: extractedData,
               
-              // Basic fields mapped from V2 structure
-              title: { ro: coreData.title },
-              description: { ro: projectData.objectives_detailed || projectData.project_objectives },
-              eligibility_criteria: { ro: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria },
-              deadline: datesData.application_deadline || datesData.submission_deadline,
-              agency: coreData.authority,
-              region: eligibilityData.geographic_eligibility?.eligible_regions || [],
-              categories: coreData.sector ? [coreData.sector] : (coreData.categories || []),
-              funding_type: coreData.call_type || fundingData.funding_type,
-              
-              // Only store comprehensive data in raw_content field  
               updated_at: new Date().toISOString()
             })
             .eq('id', existingSubsidy.id);
@@ -425,23 +460,68 @@ serve(async (req) => {
           console.log(`💾 Update operation completed for: ${existingSubsidy.source_url}`);
         } else {
           console.log(`➕ Creating new subsidy: ${page.source_url}`);
-          console.log(`🔄 Mapping V2 data for insert...`);
+          console.log(`🔄 Mapping V2 STRUCTURED data to database fields...`);
           
-          // Insert new record
+          // Generate unique code for new subsidy
+          const subsidyCode = `fr-agri-${fingerprint.substring(0, 8)}`;
+          
+          // Insert new record with STRUCTURED data
           upsertResult = await supabase
             .from('subsidies')
             .insert({
-              // Store the complete V2 comprehensive data in raw_content
-              raw_content: extractedData,
-              
-              // Basic fields mapped from V2 structure - using correct schema
+              // Basic identifiers
+              code: subsidyCode,
               source_url: page.source_url,
-              title: { ro: coreData.title },
-              description: { ro: projectData.objectives_detailed || projectData.project_objectives },
-              eligibility_criteria: { ro: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria },
-              deadline: datesData.application_deadline || datesData.submission_deadline,
-              agency: coreData.authority,
-              region: eligibilityData.geographic_eligibility?.eligible_regions || [],
+              domain: 'franceagrimer.fr',
+              
+              // ✅ STRUCTURED DATA goes into proper structured fields
+              title: { ro: coreData.title || 'Untitled Subsidy' },
+              description: { ro: projectData.objectives_detailed || coreData.policy_objective || 'No description available' },
+              eligibility_criteria: { 
+                ro: [
+                  eligibilityData.eligible_entities,
+                  eligibilityData.geographic_eligibility, 
+                  eligibilityData.special_conditions
+                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
+              },
+              
+              // Financial data
+              amount_min: fundingData.funding_amount_min || null,
+              amount_max: fundingData.funding_amount_max || null,
+              
+              // Dates
+              deadline: datesData.closing_date || datesData.application_deadline || null,
+              
+              // Basic fields
+              agency: coreData.authority || 'Unknown Agency',
+              region: eligibilityData.geographic_eligibility ? [eligibilityData.geographic_eligibility] : [],
+              categories: coreData.categories || (coreData.sector ? [coreData.sector] : []),
+              tags: [
+                ...(coreData.categories || []),
+                coreData.sector,
+                coreData.call_type,
+                fundingData.funding_type
+              ].filter(Boolean),
+              funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
+              status: coreData.status_detailed === 'open' ? 'open' : 'closed',
+              
+              // Application documents
+              application_docs: {
+                required_documents: processData.required_documents_detailed,
+                forms_detected: documentsData.forms_detected,
+                submission_method: processData.submission_method_detailed,
+                contact_info: processData.contact_information
+              },
+              
+              // Documents metadata  
+              documents: {
+                forms: documentsData.forms_detected || [],
+                regulatory_refs: documentsData.regulatory_references || [],
+                attachments: attachments || []
+              },
+              
+              // ✅ RAW CONTENT stores the complete unprocessed AI response for reference
+              raw_content: extractedData,
               categories: coreData.sector ? [coreData.sector] : (coreData.categories || []),
               funding_type: coreData.call_type || fundingData.funding_type,
               
