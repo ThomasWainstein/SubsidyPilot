@@ -354,114 +354,253 @@ serve(async (req) => {
           }
         }
 
-        // Insert into subsidies_structured
-        const { error: insertError } = await supabase
+        // Check if subsidy already exists by fingerprint
+        const { data: existingSubsidy } = await supabase
           .from('subsidies_structured')
-          .insert({
-            // Basic fields (maintain backwards compatibility)
-            url: page.source_url,
-            title: extractedData.title,
-            description: extractedData.description || extractedData.objectives_detailed,
-            eligibility: extractedData.eligibility_criteria,
-            deadline: extractedData.closing_date,
-            agency: extractedData.authority,
-            region: extractedData.geographic_eligibility?.regions || [],
-            sector: extractedData.sector ? [extractedData.sector] : [],
-            funding_type: extractedData.call_type,
-            
-            // New comprehensive fields
-            reference_code: extractedData.reference_code,
-            managing_agency: extractedData.managing_agency,
-            categories: extractedData.categories || [],
-            funding_programme: extractedData.funding_programme,
-            policy_objective: extractedData.policy_objective,
-            call_type: extractedData.call_type,
-            status_detailed: extractedData.status_detailed,
-            
-            // Dates
-            publication_date: extractedData.publication_date,
-            opening_date: extractedData.opening_date,
-            evaluation_start_date: extractedData.evaluation_start_date,
-            signature_date: extractedData.signature_date,
-            extended_deadlines: extractedData.extended_deadlines,
-            payment_schedule: extractedData.payment_schedule,
-            timeline_notes: extractedData.timeline_notes,
-            
-            // Enhanced eligibility
-            eligible_entities: extractedData.eligible_entities || [],
-            geographic_eligibility: extractedData.geographic_eligibility,
-            entity_size: extractedData.entity_size,
-            activity_sector_codes: extractedData.activity_sector_codes || [],
-            previous_award_restrictions: extractedData.previous_award_restrictions,
-            special_conditions: extractedData.special_conditions,
-            
-            // Enhanced funding
-            total_budget: extractedData.total_budget,
-            funding_rate_details: extractedData.funding_rate_details,
-            duration_limits: extractedData.duration_limits,
-            cofinancing_sources: extractedData.cofinancing_sources,
-            payment_modality: extractedData.payment_modality,
-            budget_tranches: extractedData.budget_tranches,
-            
-            // Project scope
-            objectives_detailed: extractedData.objectives_detailed,
-            expected_results: extractedData.expected_results,
-            impact_indicators: extractedData.impact_indicators,
-            eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
-            ineligible_expenses: extractedData.ineligible_expenses,
-            priority_themes: extractedData.priority_themes || [],
-            
-            // Application process
-            process_steps: extractedData.process_steps,
-            application_language: extractedData.application_language,
-            required_documents_detailed: extractedData.required_documents_detailed,
-            submission_method_detailed: extractedData.submission_method_detailed,
-            submission_format: extractedData.submission_format,
-            contact_information: extractedData.contact_information,
-            support_resources: extractedData.support_resources,
-            
-            // Evaluation
-            selection_criteria: extractedData.selection_criteria,
-            evaluation_committee: extractedData.evaluation_committee,
-            evaluation_phases: extractedData.evaluation_phases,
-            conflict_of_interest_notes: extractedData.conflict_of_interest_notes,
-            decision_publication_method: extractedData.decision_publication_method,
-            
-            // Documents
-            regulatory_references: extractedData.regulatory_references,
-            verbatim_blocks: extractedData.verbatim_blocks,
-            forms_detected: extractedData.forms_detected,
-            forms_recreated: extractedData.forms_recreated,
-            
-            // Meta
-            content_hash: contentHash,
-            related_programmes: extractedData.related_programmes || [],
-            cross_funding_links: extractedData.cross_funding_links,
-            
-            // Compliance
-            beneficiary_reporting_requirements: extractedData.beneficiary_reporting_requirements,
-            compliance_audit_mechanisms: extractedData.compliance_audit_mechanisms,
-            sanctions_for_non_compliance: extractedData.sanctions_for_non_compliance,
-            transparency_notes: extractedData.transparency_notes,
-            previous_recipients_list: extractedData.previous_recipients_list,
-            procurement_obligations: extractedData.procurement_obligations,
-            environmental_social_safeguards: extractedData.environmental_social_safeguards,
-            additional_support_mechanisms: extractedData.additional_support_mechanisms,
-            
-            // Processing metadata
-            extraction_model: AI_MODEL,
-            extraction_version: 'v2_comprehensive',
-            document_analysis_performed: attachments.length > 0,
-            forms_analysis_performed: !!extractedData.forms_detected,
-            run_id: run_id,
-            fingerprint: fingerprint
-          });
+          .select('id, fingerprint, url, title, updated_at')
+          .eq('fingerprint', fingerprint)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error(`❌ Failed to insert subsidy for ${page.source_url}:`, insertError);
+        let upsertAction = 'created';
+        let upsertResult;
+
+        if (existingSubsidy) {
+          console.log(`🔄 Found existing subsidy with fingerprint, updating: ${existingSubsidy.url}`);
+          upsertAction = 'updated';
+          
+          // Update existing record with new data
+          upsertResult = await supabase
+            .from('subsidies_structured')
+            .update({
+              // Basic fields (maintain backwards compatibility)
+              url: page.source_url,
+              title: extractedData.title,
+              description: extractedData.description || extractedData.objectives_detailed,
+              eligibility: extractedData.eligibility_criteria,
+              deadline: extractedData.closing_date,
+              agency: extractedData.authority,
+              region: extractedData.geographic_eligibility?.regions || [],
+              sector: extractedData.sector ? [extractedData.sector] : [],
+              funding_type: extractedData.call_type,
+              
+              // New comprehensive fields
+              reference_code: extractedData.reference_code,
+              managing_agency: extractedData.managing_agency,
+              categories: extractedData.categories || [],
+              funding_programme: extractedData.funding_programme,
+              policy_objective: extractedData.policy_objective,
+              call_type: extractedData.call_type,
+              status_detailed: extractedData.status_detailed,
+              
+              // Dates
+              publication_date: extractedData.publication_date,
+              opening_date: extractedData.opening_date,
+              evaluation_start_date: extractedData.evaluation_start_date,
+              signature_date: extractedData.signature_date,
+              extended_deadlines: extractedData.extended_deadlines,
+              payment_schedule: extractedData.payment_schedule,
+              timeline_notes: extractedData.timeline_notes,
+              
+              // Enhanced eligibility
+              eligible_entities: extractedData.eligible_entities || [],
+              geographic_eligibility: extractedData.geographic_eligibility,
+              entity_size: extractedData.entity_size,
+              activity_sector_codes: extractedData.activity_sector_codes || [],
+              previous_award_restrictions: extractedData.previous_award_restrictions,
+              special_conditions: extractedData.special_conditions,
+              
+              // Enhanced funding
+              total_budget: extractedData.total_budget,
+              funding_rate_details: extractedData.funding_rate_details,
+              duration_limits: extractedData.duration_limits,
+              cofinancing_sources: extractedData.cofinancing_sources,
+              payment_modality: extractedData.payment_modality,
+              budget_tranches: extractedData.budget_tranches,
+              
+              // Project scope
+              objectives_detailed: extractedData.objectives_detailed,
+              expected_results: extractedData.expected_results,
+              impact_indicators: extractedData.impact_indicators,
+              eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
+              ineligible_expenses: extractedData.ineligible_expenses,
+              priority_themes: extractedData.priority_themes || [],
+              
+              // Application process
+              process_steps: extractedData.process_steps,
+              application_language: extractedData.application_language,
+              required_documents_detailed: extractedData.required_documents_detailed,
+              submission_method_detailed: extractedData.submission_method_detailed,
+              submission_format: extractedData.submission_format,
+              contact_information: extractedData.contact_information,
+              support_resources: extractedData.support_resources,
+              
+              // Evaluation
+              selection_criteria: extractedData.selection_criteria,
+              evaluation_committee: extractedData.evaluation_committee,
+              evaluation_phases: extractedData.evaluation_phases,
+              conflict_of_interest_notes: extractedData.conflict_of_interest_notes,
+              decision_publication_method: extractedData.decision_publication_method,
+              
+              // Documents
+              regulatory_references: extractedData.regulatory_references,
+              verbatim_blocks: extractedData.verbatim_blocks,
+              forms_detected: extractedData.forms_detected,
+              forms_recreated: extractedData.forms_recreated,
+              
+              // Meta
+              content_hash: contentHash,
+              related_programmes: extractedData.related_programmes || [],
+              cross_funding_links: extractedData.cross_funding_links,
+              
+              // Compliance
+              beneficiary_reporting_requirements: extractedData.beneficiary_reporting_requirements,
+              compliance_audit_mechanisms: extractedData.compliance_audit_mechanisms,
+              sanctions_for_non_compliance: extractedData.sanctions_for_non_compliance,
+              transparency_notes: extractedData.transparency_notes,
+              previous_recipients_list: extractedData.previous_recipients_list,
+              procurement_obligations: extractedData.procurement_obligations,
+              environmental_social_safeguards: extractedData.environmental_social_safeguards,
+              additional_support_mechanisms: extractedData.additional_support_mechanisms,
+              
+              // Processing metadata
+              extraction_model: AI_MODEL,
+              extraction_version: 'v2_comprehensive',
+              document_analysis_performed: attachments.length > 0,
+              forms_analysis_performed: !!extractedData.forms_detected,
+              run_id: run_id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingSubsidy.id);
+        } else {
+          console.log(`➕ Creating new subsidy: ${page.source_url}`);
+          
+          // Insert new record
+          upsertResult = await supabase
+            .from('subsidies_structured')
+            .insert({
+              // Basic fields (maintain backwards compatibility)
+              url: page.source_url,
+              title: extractedData.title,
+              description: extractedData.description || extractedData.objectives_detailed,
+              eligibility: extractedData.eligibility_criteria,
+              deadline: extractedData.closing_date,
+              agency: extractedData.authority,
+              region: extractedData.geographic_eligibility?.regions || [],
+              sector: extractedData.sector ? [extractedData.sector] : [],
+              funding_type: extractedData.call_type,
+              
+              // New comprehensive fields
+              reference_code: extractedData.reference_code,
+              managing_agency: extractedData.managing_agency,
+              categories: extractedData.categories || [],
+              funding_programme: extractedData.funding_programme,
+              policy_objective: extractedData.policy_objective,
+              call_type: extractedData.call_type,
+              status_detailed: extractedData.status_detailed,
+              
+              // Dates
+              publication_date: extractedData.publication_date,
+              opening_date: extractedData.opening_date,
+              evaluation_start_date: extractedData.evaluation_start_date,
+              signature_date: extractedData.signature_date,
+              extended_deadlines: extractedData.extended_deadlines,
+              payment_schedule: extractedData.payment_schedule,
+              timeline_notes: extractedData.timeline_notes,
+              
+              // Enhanced eligibility
+              eligible_entities: extractedData.eligible_entities || [],
+              geographic_eligibility: extractedData.geographic_eligibility,
+              entity_size: extractedData.entity_size,
+              activity_sector_codes: extractedData.activity_sector_codes || [],
+              previous_award_restrictions: extractedData.previous_award_restrictions,
+              special_conditions: extractedData.special_conditions,
+              
+              // Enhanced funding
+              total_budget: extractedData.total_budget,
+              funding_rate_details: extractedData.funding_rate_details,
+              duration_limits: extractedData.duration_limits,
+              cofinancing_sources: extractedData.cofinancing_sources,
+              payment_modality: extractedData.payment_modality,
+              budget_tranches: extractedData.budget_tranches,
+              
+              // Project scope
+              objectives_detailed: extractedData.objectives_detailed,
+              expected_results: extractedData.expected_results,
+              impact_indicators: extractedData.impact_indicators,
+              eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
+              ineligible_expenses: extractedData.ineligible_expenses,
+              priority_themes: extractedData.priority_themes || [],
+              
+              // Application process
+              process_steps: extractedData.process_steps,
+              application_language: extractedData.application_language,
+              required_documents_detailed: extractedData.required_documents_detailed,
+              submission_method_detailed: extractedData.submission_method_detailed,
+              submission_format: extractedData.submission_format,
+              contact_information: extractedData.contact_information,
+              support_resources: extractedData.support_resources,
+              
+              // Evaluation
+              selection_criteria: extractedData.selection_criteria,
+              evaluation_committee: extractedData.evaluation_committee,
+              evaluation_phases: extractedData.evaluation_phases,
+              conflict_of_interest_notes: extractedData.conflict_of_interest_notes,
+              decision_publication_method: extractedData.decision_publication_method,
+              
+              // Documents
+              regulatory_references: extractedData.regulatory_references,
+              verbatim_blocks: extractedData.verbatim_blocks,
+              forms_detected: extractedData.forms_detected,
+              forms_recreated: extractedData.forms_recreated,
+              
+              // Meta
+              content_hash: contentHash,
+              related_programmes: extractedData.related_programmes || [],
+              cross_funding_links: extractedData.cross_funding_links,
+              
+              // Compliance
+              beneficiary_reporting_requirements: extractedData.beneficiary_reporting_requirements,
+              compliance_audit_mechanisms: extractedData.compliance_audit_mechanisms,
+              sanctions_for_non_compliance: extractedData.sanctions_for_non_compliance,
+              transparency_notes: extractedData.transparency_notes,
+              previous_recipients_list: extractedData.previous_recipients_list,
+              procurement_obligations: extractedData.procurement_obligations,
+              environmental_social_safeguards: extractedData.environmental_social_safeguards,
+              additional_support_mechanisms: extractedData.additional_support_mechanisms,
+              
+              // Processing metadata
+              extraction_model: AI_MODEL,
+              extraction_version: 'v2_comprehensive',
+              document_analysis_performed: attachments.length > 0,
+              forms_analysis_performed: !!extractedData.forms_detected,
+              run_id: run_id,
+              fingerprint: fingerprint
+            });
+        }
+
+        if (upsertResult.error) {
+          console.error(`❌ Failed to ${upsertAction} subsidy for ${page.source_url}:`, upsertResult.error);
+          
+          // Log detailed error information
+          console.error('💥 Database upsert error details:', {
+            action: upsertAction,
+            url: page.source_url,
+            fingerprint: fingerprint,
+            existingSubsidy: existingSubsidy?.id,
+            errorCode: upsertResult.error.code,
+            errorMessage: upsertResult.error.message,
+            errorDetails: upsertResult.error.details
+          });
         } else {
           subsidiesCreated++;
-          console.log(`✅ Created comprehensive subsidy record for: ${page.source_url}`);
+          console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
+          console.log(`📊 ${upsertAction.charAt(0).toUpperCase() + upsertAction.slice(1)} data preview:`, {
+            title: extractedData.title || 'No title',
+            authority: extractedData.authority || 'No authority',
+            hasDescription: !!(extractedData.description || extractedData.objectives_detailed),
+            totalFieldsSet: Object.keys(extractedData).length,
+            fingerprint: fingerprint.substring(0, 12) + '...'
+          });
         }
 
       } catch (pageError) {
