@@ -348,44 +348,58 @@ class UniversalHarvester {
   private async extractLinkedDocuments(html: string, baseUrl: string): Promise<any[]> {
     const documents: any[] = [];
     
-    // Enhanced regex to capture document links more thoroughly
-    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi; 
+    // Enhanced regex to capture document links more thoroughly, including nested elements
+    const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi; 
     let m;
+    
+    console.log(`🔍 Starting document extraction for ${baseUrl}`);
     
     while ((m = linkRegex.exec(html)) !== null) {
       const href = m[1]; 
-      const linkText = this.cleanText(m[2]);
+      const linkHTML = m[2];
+      const linkText = this.cleanText(linkHTML);
+      
+      console.log(`🔗 Checking link: ${href} with text: "${linkText}"`);
       
       try {
         const absoluteUrl = new URL(href, baseUrl).toString();
         const docType = this.getDocumentType(absoluteUrl);
         
+        console.log(`📋 URL: ${absoluteUrl}, detected type: ${docType}`);
+        
         // More permissive document detection
         if (docType && docType !== 'other') {
-          documents.push({
+          const doc = {
             id: crypto.randomUUID(),
             name: linkText || this.extractFilenameFromUrl(absoluteUrl),
             doc_type: docType,
             url: absoluteUrl,
             content_hash: '',
             source_ref: { kind: 'webpage', url: baseUrl, timestamp: new Date().toISOString() }
-          });
+          };
+          documents.push(doc);
+          console.log(`✅ Added document: ${doc.name} (${doc.doc_type})`);
         }
         // Also check for file extensions in URL params or download links
         else if (this.looksLikeDocument(absoluteUrl, linkText)) {
           const inferredType = this.inferDocumentTypeFromContext(absoluteUrl, linkText);
+          console.log(`🤔 Looks like document, inferred type: ${inferredType}`);
           if (inferredType) {
-            documents.push({
+            const doc = {
               id: crypto.randomUUID(),
               name: linkText || this.extractFilenameFromUrl(absoluteUrl),
               doc_type: inferredType,
               url: absoluteUrl,
               content_hash: '',
               source_ref: { kind: 'webpage', url: baseUrl, timestamp: new Date().toISOString() }
-            });
+            };
+            documents.push(doc);
+            console.log(`✅ Added inferred document: ${doc.name} (${doc.doc_type})`);
           }
         }
-      } catch { /* ignore invalid urls */ }
+      } catch (e) { 
+        console.log(`❌ Error processing link ${href}: ${e.message}`);
+      }
     }
     
     console.log(`📄 Found ${documents.length} documents for ${baseUrl}`);
