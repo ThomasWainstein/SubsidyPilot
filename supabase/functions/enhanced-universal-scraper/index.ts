@@ -188,6 +188,7 @@ class UniversalHarvester {
   private async processIntoBlocks(html: string, sourceUrl: string): Promise<any[]> {
     const cleanedHtml = this.cleanHtml(html);
     const blocks: any[] = [];
+    const seenContent = new Set<string>();
     let idx = 0;
 
     // Headings
@@ -195,37 +196,48 @@ class UniversalHarvester {
     while ((m = headingRegex.exec(cleanedHtml)) !== null) {
       const level = parseInt(m[1].substring(1));
       const text = this.cleanText(m[2]);
-      if (text) {
-        blocks.push({
-          id: `block_${idx++}_heading`,
-          type: 'heading',
-          verbatim: true,
-          html_content: m[0],
-          plain_text: text,
-          heading_level: level,
-          heading_text: text,
-          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
-        });
+      if (text && text.length > 2) {
+        const contentKey = `heading_${text.toLowerCase().trim()}`;
+        if (!seenContent.has(contentKey)) {
+          seenContent.add(contentKey);
+          blocks.push({
+            id: `block_${idx++}_heading`,
+            type: 'heading',
+            verbatim: true,
+            html_content: m[0],
+            plain_text: text,
+            markdown_content: `${'#'.repeat(level)} ${text}`,
+            heading_level: level,
+            heading_text: text,
+            source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+          });
+        }
       }
     }
 
-    // Paragraphs
+    // Paragraphs with improved processing
     const paragraphRegex = /<p[^>]*>(.*?)<\/p>/gi;
     while ((m = paragraphRegex.exec(cleanedHtml)) !== null) {
       const text = this.cleanText(m[1]);
       if (text.length > 20) {
-        // Apply structure restoration to paragraph text
-        const structuredText = this.restoreTextStructure(text);
-        
-        blocks.push({
-          id: `block_${idx++}_paragraph`,
-          type: 'paragraph',
-          verbatim: true,
-          html_content: m[0],
-          plain_text: structuredText,
-          markdown_content: structuredText,
-          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
-        });
+        const contentKey = text.toLowerCase().trim().substring(0, 100);
+        if (!seenContent.has(contentKey)) {
+          seenContent.add(contentKey);
+          
+          // Don't apply aggressive structure restoration to individual paragraphs
+          // Just clean and format properly
+          const cleanedText = text.replace(/\s+/g, ' ').trim();
+          
+          blocks.push({
+            id: `block_${idx++}_paragraph`,
+            type: 'paragraph',
+            verbatim: true,
+            html_content: m[0],
+            plain_text: cleanedText,
+            markdown_content: cleanedText,
+            source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+          });
+        }
       }
     }
 
@@ -234,16 +246,22 @@ class UniversalHarvester {
     while ((m = tableRegex.exec(cleanedHtml)) !== null) {
       const tableData = this.extractTableData(m[0]);
       if (tableData.columns.length > 0) {
-        blocks.push({
-          id: `block_${idx++}_table`,
-          type: 'table',
-          verbatim: true,
-          html_content: m[0],
-          plain_text: this.tableToPlainText(tableData),
-          table_columns: tableData.columns,
-          table_rows: tableData.rows,
-          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
-        });
+        const tableText = this.tableToPlainText(tableData);
+        const contentKey = `table_${tableText.substring(0, 100)}`;
+        if (!seenContent.has(contentKey)) {
+          seenContent.add(contentKey);
+          blocks.push({
+            id: `block_${idx++}_table`,
+            type: 'table',
+            verbatim: true,
+            html_content: m[0],
+            plain_text: tableText,
+            markdown_content: this.tableToMarkdown(tableData),
+            table_columns: tableData.columns,
+            table_rows: tableData.rows,
+            source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+          });
+        }
       }
     }
 
@@ -252,16 +270,22 @@ class UniversalHarvester {
     while ((m = listRegex.exec(cleanedHtml)) !== null) {
       const listData = this.extractListData(m[0], m[1] === 'ol');
       if (listData.items.length > 0) {
-        blocks.push({
-          id: `block_${idx++}_list`,
-          type: 'list',
-          verbatim: true,
-          html_content: m[0],
-          plain_text: listData.items.join('\n'),
-          list_ordered: listData.ordered,
-          list_items: listData.items,
-          source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
-        });
+        const listText = listData.items.join('\n');
+        const contentKey = `list_${listText.substring(0, 100)}`;
+        if (!seenContent.has(contentKey)) {
+          seenContent.add(contentKey);
+          blocks.push({
+            id: `block_${idx++}_list`,
+            type: 'list',
+            verbatim: true,
+            html_content: m[0],
+            plain_text: listText,
+            markdown_content: this.listToMarkdown(listData),
+            list_ordered: listData.ordered,
+            list_items: listData.items,
+            source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+          });
+        }
       }
     }
 
@@ -299,6 +323,26 @@ class UniversalHarvester {
     if (t.columns.length) s += t.columns.join(' | ') + '\n';
     for (const r of t.rows) s += r.join(' | ') + '\n';
     return s;
+  }
+
+  private tableToMarkdown(t: { columns: string[], rows: string[][] }): string {
+    if (t.columns.length === 0) return '';
+    
+    let md = '| ' + t.columns.join(' | ') + ' |\n';
+    md += '| ' + t.columns.map(() => '---').join(' | ') + ' |\n';
+    
+    for (const row of t.rows) {
+      md += '| ' + row.join(' | ') + ' |\n';
+    }
+    
+    return md;
+  }
+
+  private listToMarkdown(l: { ordered: boolean, items: string[] }): string {
+    return l.items.map((item, i) => {
+      const marker = l.ordered ? `${i + 1}.` : '-';
+      return `${marker} ${item}`;
+    }).join('\n');
   }
 
   private async extractLinkedDocuments(html: string, baseUrl: string): Promise<any[]> {
