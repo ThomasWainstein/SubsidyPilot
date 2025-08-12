@@ -33,6 +33,7 @@ export function UniversalHarvesterTest() {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<ScrapeResults | null>(null);
   const [progress, setProgress] = useState(0);
+  const [dbData, setDbData] = useState<any>(null);
 
   const runScraping = async () => {
     setIsRunning(true);
@@ -117,6 +118,15 @@ export function UniversalHarvesterTest() {
         .order('created_at', { ascending: false })
         .limit(3);
 
+      const data = {
+        pipelineRuns: pipelineRuns || [],
+        scrapedPages: scrapedPages || [],
+        subsidiesStructured: subsidiesStructured || [],
+        aiRuns: aiRuns || []
+      };
+
+      setDbData(data);
+      
       console.log('Pipeline runs:', pipelineRuns);
       console.log('Recent scraped pages:', scrapedPages);
       console.log('Subsidies structured:', subsidiesStructured);
@@ -127,7 +137,7 @@ export function UniversalHarvesterTest() {
       if (subsidiesError) console.error('Subsidies error:', subsidiesError);
       if (aiError) console.error('AI runs error:', aiError);
 
-      toast.info('📊 Database data logged to console');
+      toast.success('📊 Database data loaded successfully');
     } catch (error) {
       console.error('Database fetch error:', error);
       toast.error('Failed to fetch database data');
@@ -292,6 +302,94 @@ export function UniversalHarvesterTest() {
                 </CardContent>
               </Card>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {dbData && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DatabaseIcon className="h-5 w-5" />
+              Database Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold mb-2">Recent Scraped Pages ({dbData.scrapedPages.length})</h4>
+                <div className="space-y-2">
+                  {dbData.scrapedPages.map((page: any) => (
+                    <div key={page.id} className="p-2 bg-muted/50 rounded text-sm">
+                      <div className="font-medium truncate">{page.source_url}</div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Status: {page.status}</span>
+                        <span>{new Date(page.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {dbData.scrapedPages.length === 0 && (
+                    <div className="text-muted-foreground text-sm">No scraped pages found</div>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-2">Pipeline Runs ({dbData.pipelineRuns.length})</h4>
+                <div className="space-y-2">
+                  {dbData.pipelineRuns.map((run: any) => (
+                    <div key={run.id} className="p-2 bg-muted/50 rounded text-sm">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Status: {run.status}</span>
+                        <Badge variant={run.status === 'completed' ? 'default' : 'secondary'}>
+                          {run.stage}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(run.started_at).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                  {dbData.pipelineRuns.length === 0 && (
+                    <div className="text-muted-foreground text-sm">No pipeline runs found</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold mb-2">Subsidies Structured ({dbData.subsidiesStructured.length})</h4>
+                <div className="space-y-2">
+                  {dbData.subsidiesStructured.map((subsidy: any) => (
+                    <div key={subsidy.id} className="p-2 bg-muted/50 rounded text-sm">
+                      <div className="font-medium truncate">{subsidy.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">{subsidy.url}</div>
+                    </div>
+                  ))}
+                  {dbData.subsidiesStructured.length === 0 && (
+                    <div className="text-muted-foreground text-sm">No structured subsidies found</div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">AI Content Runs ({dbData.aiRuns.length})</h4>
+                <div className="space-y-2">
+                  {dbData.aiRuns.map((run: any) => (
+                    <div key={run.id} className="p-2 bg-muted/50 rounded text-sm">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Run {run.id.slice(0, 8)}</span>
+                        <span className="text-xs">{run.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {dbData.aiRuns.length === 0 && (
+                    <div className="text-muted-foreground text-sm">No AI runs found</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
