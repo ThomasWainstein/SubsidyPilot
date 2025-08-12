@@ -30,8 +30,9 @@ interface DocumentViewerProps {
   };
 }
 
-// Feature flag check
-const ENABLE_PDF_VIEWER = import.meta.env.DEV && import.meta.env.VITE_ENABLE_PDF_VIEWER === 'true';
+// Feature flag check - use standardized config
+import { FEATURES } from '@/config/environment';
+const ENABLE_PDF_VIEWER = FEATURES.DEBUG_LOGGING;
 
 export function DocumentViewer({ 
   documentUrl, 

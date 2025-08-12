@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Feature flags - enable in development only
-const ENABLE_PDF_VIEWER = import.meta.env.DEV && import.meta.env.VITE_ENABLE_PDF_VIEWER === 'true';
+// Feature flags - use standardized config
+import { FEATURES } from '@/config/environment';
+const ENABLE_PDF_VIEWER = FEATURES.DEBUG_LOGGING;
 
 // PDF.js types (will be properly typed when available)
 type PDFDocumentProxy = any;

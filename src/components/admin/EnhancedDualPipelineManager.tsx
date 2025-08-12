@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { prodLogger } from '@/utils/productionLogger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
@@ -166,7 +167,7 @@ export default function EnhancedDualPipelineManager() {
         throw error;
       }
       
-      console.log('AI processing response:', data);
+      prodLogger.debug('AI processing response:', data);
       
       if (data?.success) {
         toast.success(`✅ AI processing completed! Created ${data.subsidies_created || 0} subsidies from ${data.pages_processed || 0} pages`);
@@ -431,7 +432,7 @@ export default function EnhancedDualPipelineManager() {
                     const result = await supabase.functions.invoke('debug-ai-extraction');
                     if (result.data?.success) {
                       toast.success(`🎯 Debug: AI extracted ${result.data.subsidyCount} subsidies from test content`);
-                      console.log('🔍 Debug AI extraction result:', result.data);
+                      prodLogger.debug('Debug AI extraction result:', result.data);
                     } else {
                       toast.error(`❌ Debug extraction failed: ${result.data?.error}`);
                     }
