@@ -468,10 +468,10 @@ Deno.serve(async (req) => {
           // Harvest content
           const bundle = await harvester.harvestContent(url, { runId });
           
-          // Store scraped page in existing raw_scraped_pages table
+          // Store scraped page in existing raw_scraped_pages table (upsert to handle duplicates)
           const { data: pageData, error: pageError } = await supabase
             .from('raw_scraped_pages')
-            .insert({
+            .upsert({
               source_url: bundle.source.url,
               source_site: bundle.source.url.includes('franceagrimer') ? 'franceagrimer' : 'lesaides',
               raw_text: bundle.blocks.map(b => b.plain_text).join('\n'),
@@ -486,6 +486,8 @@ Deno.serve(async (req) => {
                 documents_count: bundle.documents.length,
                 content_hash: bundle.content_hash
               }
+            }, {
+              onConflict: 'source_url'
             })
             .select('id')
             .single();
@@ -493,7 +495,7 @@ Deno.serve(async (req) => {
           if (pageError) {
             console.error(`Failed to store scraped page for ${url}:`, pageError);
             results.errors.push(`Page storage failed for ${url}: ${pageError.message}`);
-            continue;
+            // Don't continue - still count the successful harvest even if storage failed/was duplicate
           }
 
           const pageId = pageData.id;
