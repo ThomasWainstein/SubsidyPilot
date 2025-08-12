@@ -6,6 +6,8 @@ import { AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatusDashboard } from '@/components/admin/StatusDashboard';
+import ProductionReadinessCheck from '@/components/production/ProductionReadinessCheck';
+import { UniversalHarvesterTest } from '@/components/scraper/UniversalHarvesterTest';
 import EnhancedSubsidyManagement from '@/components/admin/EnhancedSubsidyManagement';
 import EnhancedImportManagement from '@/components/admin/EnhancedImportManagement';
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
@@ -111,7 +113,10 @@ const AdminPageContent = () => {
           {/* Main Admin Tabs */}
           <Tabs defaultValue="health" className="w-full">
             <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-10 h-12 min-w-max">
+              <TabsList className="grid w-full grid-cols-11 h-12 min-w-max">
+                <TabsTrigger value="system" className="flex items-center gap-2">
+                  🚀 System
+                </TabsTrigger>
                 <TabsTrigger value="health" className="flex items-center gap-2">
                   🏥 Health
                 </TabsTrigger>
@@ -144,6 +149,17 @@ const AdminPageContent = () => {
                 </TabsTrigger>
               </TabsList>
             </div>
+            
+            <TabsContent value="system" className="mt-6">
+              <div className="space-y-6">
+                <ErrorBoundary>
+                  <ProductionReadinessCheck />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <UniversalHarvesterTest />
+                </ErrorBoundary>
+              </div>
+            </TabsContent>
             
             <TabsContent value="health" className="mt-6">
               <ErrorBoundary>
