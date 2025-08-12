@@ -23,7 +23,7 @@ class APIRateLimiter {
   private rateLimits = new Map<string, { count: number; resetTime: number }>();
   private requestQueue: RequestBatch[] = [];
   private activeRequests = 0;
-  private maxConcurrentRequests = PRODUCTION_CONFIG.LIMITS.API_RATE_LIMIT / 10; // 10% of rate limit
+  private maxConcurrentRequests = PRODUCTION_CONFIG.api.rateLimitPerMinute / 10; // 10% of rate limit
 
   static getInstance(): APIRateLimiter {
     if (!APIRateLimiter.instance) {

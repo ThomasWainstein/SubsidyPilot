@@ -13,15 +13,7 @@ export const FEATURES = {
   TESTING_MODE: IS_DEVELOPMENT && typeof window !== 'undefined' && (window as any).__TESTING__,
 } as const;
 
-// SECURITY: Deprecated admin configuration - replaced with database-driven roles
-// This configuration is now only used for development bootstrapping
+// Admin configuration - database-driven roles only
 export const ADMIN_CONFIG = {
-  // SECURITY: Hardcoded admin emails removed for production security
-  DEVELOPMENT_BOOTSTRAP_EMAILS: IS_DEVELOPMENT ? [
-    'admin@agritool.com', // Only for local development
-  ] : [],
   REQUIRE_DATABASE_ROLES: true, // Always require database-driven roles
 } as const;
-
-// SECURITY: Deprecated admin function removed for security
-// All admin checks must now use AdminContext.isAdmin or database-driven role checking

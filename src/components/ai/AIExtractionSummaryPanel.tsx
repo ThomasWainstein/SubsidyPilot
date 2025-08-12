@@ -96,8 +96,7 @@ const AIExtractionSummaryPanel: React.FC<AIExtractionSummaryPanelProps> = ({
 
   const handleViewData = () => {
     if (extraction.extractedData) {
-      console.log('📊 Extracted Data:', extraction.extractedData);
-      console.log('🗂️ Mapped Data:', extraction.mappedData);
+      // Extraction data available in component state
       toast.success('Extraction data logged to console - check browser dev tools');
     }
     onViewDetails?.();

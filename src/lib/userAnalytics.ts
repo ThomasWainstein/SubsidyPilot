@@ -377,7 +377,7 @@ class UserAnalytics {
     const batch = [...this.actionQueue];
     this.actionQueue = [];
 
-    if (PRODUCTION_CONFIG.MONITORING.USER_ANALYTICS) {
+    if (PRODUCTION_CONFIG.monitoring.enableUserAnalytics) {
       this.sendAnalyticsData(batch);
     }
 

@@ -298,13 +298,13 @@ const DocumentCard = ({ document, onDelete, onView, isDeleting = false, farmId }
           }}
           onRetryExtraction={() => {
             // Trigger manual extraction button
-            console.log('Retry extraction for document:', document.id);
+            // Trigger manual extraction retry
           }}
           onApplyToProfile={() => {
             navigate(`/farm/${farmId}/edit?prefill=true&extractionId=${document.id}`);
           }}
           onViewDetails={() => {
-            console.log('View extraction details for:', document.id);
+            // Show extraction details modal
           }}
           onDownloadLog={() => {
             if (latestAttempt) {

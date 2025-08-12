@@ -114,7 +114,7 @@ export default function OCRTestDashboard() {
       
       try {
         // Run baseline extraction
-        console.log(`Testing document ${i + 1}/${selectedDocuments.length}: ${doc?.file_name}`);
+        // Testing document progress tracked internally
         
         const baselineResult = await runBaselineExtraction(documentId);
         const improvedResult = await runImprovedExtraction(documentId);

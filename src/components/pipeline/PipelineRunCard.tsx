@@ -47,7 +47,7 @@ export const PipelineRunCard: React.FC = () => {
 
   const resumeAI = async () => {
     // This would call the existing AI processing endpoint
-    console.log('Resume AI processing...');
+    // Resume AI processing pipeline
   };
 
   if (isLoading) {

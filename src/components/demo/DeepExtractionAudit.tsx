@@ -347,7 +347,7 @@ export const DeepExtractionAudit: React.FC = () => {
               qualityMetrics={generateQualityMetrics()}
               issues={generateQualityIssues()}
               onReextract={(force) => runExtractionTest()}
-              onManualReview={() => console.log('Manual review requested')}
+              onManualReview={() => console.info('Manual review requested')}
               isExtracting={isExtracting}
             />
           ) : (

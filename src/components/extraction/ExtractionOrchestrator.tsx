@@ -36,7 +36,6 @@ export const ExtractionOrchestrator: React.FC<ExtractionOrchestratorProps> = ({
     reset
   } = useHybridExtraction({
     onSuccess: (result) => {
-      console.log('Extraction completed:', result);
       onComplete?.(result.extractedFields);
     },
     onError: (error) => {
@@ -49,7 +48,7 @@ export const ExtractionOrchestrator: React.FC<ExtractionOrchestratorProps> = ({
     
     // For demo purposes, we'll simulate upload and extraction
     const file = files[0]; // Process first file
-    console.log('Processing file:', file.name);
+    // Processing file for extraction
     
     // In real implementation, you'd upload to Supabase and get a URL
     // For now, we'll just trigger extraction with a mock URL

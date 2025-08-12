@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ interface SearchFilters {
 }
 
 export function FrenchSubsidySearch() {
+  const navigate = useNavigate();
   const [subsidies, setSubsidies] = useState<FrenchSubsidy[]>([]);
   const [filteredSubsidies, setFilteredSubsidies] = useState<FrenchSubsidy[]>([]);
   const [loading, setLoading] = useState(false);
@@ -335,8 +337,8 @@ export function FrenchSubsidySearch() {
               <FrenchSubsidyCard
                 key={subsidy.id}
                 subsidy={subsidy}
-                onViewDetails={(id) => console.log('View details:', id)}
-                onApply={(id) => console.log('Apply to:', id)}
+                onViewDetails={(id) => navigate(`/subsidies/${id}`)}
+                onApply={(id) => navigate(`/subsidies/${id}/apply`)}
               />
             ))}
           </div>
