@@ -472,6 +472,41 @@ Deno.serve(async (req) => {
 
           const pageId = pageData?.id;
 
+          // Store individual content blocks
+          if (bundle.blocks.length > 0 && pageId) {
+            const blocksToInsert = bundle.blocks.map(block => ({
+              bundle_id: pageId, // Use pageId as bundle reference
+              block_id: block.id,
+              block_type: block.type,
+              verbatim: block.verbatim,
+              html_content: block.html_content,
+              markdown_content: block.markdown_content,
+              plain_text: block.plain_text,
+              // Table specific fields
+              table_columns: block.table_columns || null,
+              table_rows: block.table_rows || null,
+              table_caption: block.table_caption || null,
+              // List specific fields
+              list_ordered: block.list_ordered || null,
+              list_items: block.list_items || null,
+              // Heading specific fields
+              heading_level: block.heading_level || null,
+              heading_text: block.heading_text || null,
+              // Source reference fields
+              source_ref_kind: block.source_ref.kind,
+              source_ref_url: block.source_ref.url,
+              source_ref_filename: block.source_ref.filename || null,
+              source_ref_page_number: block.source_ref.page_number || null,
+              source_ref_selector: block.source_ref.selector || null
+            }));
+            
+            const { error: blocksError } = await supabase.from('content_blocks').insert(blocksToInsert);
+            if (blocksError) {
+              console.error(`Failed to store content blocks for ${url}:`, blocksError);
+              results.errors.push(`Content blocks storage failed for ${url}: ${blocksError.message}`);
+            }
+          }
+
           if (bundle.documents.length > 0) {
             const documentsToInsert = bundle.documents.map(doc => ({
               source_url: bundle.source.url,
