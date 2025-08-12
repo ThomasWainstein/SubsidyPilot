@@ -96,6 +96,64 @@ class UniversalHarvester {
     return text.replace(/\s+/g, ' ').trim();
   }
 
+  private restoreTextStructure(rawText: string): string {
+    let text = rawText;
+    
+    // 1. Normalize excessive whitespace but preserve intentional breaks
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    // 2. Restore list structure by breaking on semicolons in list contexts
+    text = text.replace(/;([A-ZÀ-Ÿ])/g, ';\n• $1');
+    text = text.replace(/;(\s*[a-zà-ÿ])/g, ';\n• $1');
+    
+    // 3. Add section breaks before key French subsidy terms
+    const sectionMarkers = [
+      'Montant de l\'aide',
+      'Bénéficiaires éligibles', 
+      'Les exploitants agricoles',
+      'Instruction et demande',
+      'La demande est composée',
+      'Le dossier de demande',
+      'La demande de paiement',
+      'Procédure',
+      'Comment',
+      'Modalités de gestion',
+      'Appel à proposition',
+      'Les objectifs généraux'
+    ];
+    
+    for (const marker of sectionMarkers) {
+      text = text.replace(new RegExp(`(${marker})`, 'g'), `\n\n## $1\n`);
+    }
+    
+    // 4. Clean up repeated content (naive deduplication)
+    const lines = text.split('\n');
+    const uniqueLines: string[] = [];
+    const seen = new Set<string>();
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.length > 10 && !seen.has(trimmed)) {
+        uniqueLines.push(line);
+        seen.add(trimmed);
+      } else if (trimmed.length <= 10) {
+        uniqueLines.push(line); // Keep short lines (formatting)
+      }
+    }
+    
+    // 5. Improve bullet point formatting
+    let result = uniqueLines.join('\n');
+    result = result.replace(/•\s*•/g, '•'); // Remove double bullets
+    result = result.replace(/^\s*•\s*/gm, '• '); // Standardize bullet formatting
+    
+    // 6. Fix common French formatting issues
+    result = result.replace(/\s+,/g, ',');
+    result = result.replace(/\s+\./g, '.');
+    result = result.replace(/\s+:/g, ':');
+    
+    return result;
+  }
+
   private async processIntoBlocks(html: string, sourceUrl: string): Promise<any[]> {
     const cleanedHtml = this.cleanHtml(html);
     const blocks: any[] = [];
@@ -125,12 +183,16 @@ class UniversalHarvester {
     while ((m = paragraphRegex.exec(cleanedHtml)) !== null) {
       const text = this.cleanText(m[1]);
       if (text.length > 20) {
+        // Apply structure restoration to paragraph text
+        const structuredText = this.restoreTextStructure(text);
+        
         blocks.push({
           id: `block_${idx++}_paragraph`,
           type: 'paragraph',
           verbatim: true,
           html_content: m[0],
-          plain_text: text,
+          plain_text: structuredText,
+          markdown_content: structuredText,
           source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
         });
       }
@@ -291,12 +353,14 @@ class UniversalHarvester {
             for (const p of paragraphs) {
               const text = this.cleanText(p);
               if (text.length > 20) {
+                const structuredText = this.restoreTextStructure(text);
                 blocks.push({
                   id: `tab_block_${idx++}_paragraph`,
                   type: 'paragraph',
                   verbatim: true,
                   html_content: p,
-                  plain_text: text,
+                  plain_text: structuredText,
+                  markdown_content: structuredText,
                   source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
                 });
               }
