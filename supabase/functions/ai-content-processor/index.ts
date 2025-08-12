@@ -285,21 +285,27 @@ AGENCY: ${agencyConfig.agency}
 LANGUAGE: ${agencyConfig.language}
 SOURCE: ${page.source_url}
 
-TASK: Extract ALL funding opportunities/subsidies described on this page. Be exhaustive.
+STRICT REQUIREMENT: Do NOT summarize or paraphrase. Preserve original wording verbatim. Keep language as-is.
+
+TASK: Extract ALL funding opportunities/subsidies on this page. Be exhaustive.
 
 OUTPUT: Return ONLY a valid JSON array. Each item MUST have strictly these fields:
-- title: short, specific name of the opportunity (keep language as-is)
-- description: concise but complete summary including key amounts and durations
-- eligibility: who can apply (target audiences, prerequisites)
-- deadline: final closing date if present in YYYY-MM-DD, else null (for multiple phases choose the last closing date)
+- title: exact program name as shown (verbatim)
+- description: first paragraph(s) of the program presentation verbatim (no rewriting)
+- description_markdown: full presentation/objectives block in markdown verbatim
+- eligibility: short verbatim statement of who can apply
+- eligibility_markdown: full eligibility section in markdown verbatim
+- application_method_markdown: detailed application/how-to-apply section in markdown verbatim, or null
+- funding_markdown: full funding/amounts/payment terms section in markdown verbatim, or null
+- deadline: final overall closing date in YYYY-MM-DD if present; if multiple phases, choose the last listed date; else null
 - funding_type: one of "grant" | "subsidy" | "support_measure" | "call_for_projects"
 - agency: set EXACTLY to "${agencyConfig.agency}"
 - sector: one of "crops" | "livestock" | "rural_development" | "modernization" | "viticulture"
 - region: null or a region name
 
 ${agencyConfig.language === 'fr'
-  ? 'FR CONTEXT: Pages may list several dépôt phases; infer the final deadline (e.g., "date butoir" or last listed deadline). Capture accurate amounts like "244 000 euros" and durations (24–36 mois).'
-  : 'RO CONTEXT: Detect amounts (LEI/EUR), payment schemes, and applicant categories; include final deadline if present.'}
+  ? 'FR CONTEXT: Pages may list multiple dépôt phases; choose the last overall deadline (e.g., 30/05/2025). Capture amounts like "244 000 euros" verbatim and durations verbatim (e.g., "24 à 36 mois").'
+  : 'RO CONTEXT: Capture amounts (LEI/EUR) verbatim, payment schemes, and applicant categories verbatim; include final deadline if present.'}
 
 Content to analyze:
 ${firstChunk}
@@ -402,12 +408,17 @@ Return only the JSON array; no explanations.`;
                 run_id,
                 title: subsidy.title,
                 description: subsidy.description,
+                description_markdown: subsidy.description_markdown || null,
                 eligibility: subsidy.eligibility,
+                eligibility_markdown: subsidy.eligibility_markdown || null,
+                application_method_markdown: subsidy.application_method_markdown || null,
+                funding_markdown: subsidy.funding_markdown || null,
                 deadline: subsidy.deadline,
                 funding_type: subsidy.funding_type,
                 agency: subsidy.agency,
                 sector: subsidy.sector,
                 region: subsidy.region,
+                verbatim_extraction: true,
                 record_status: 'active',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
