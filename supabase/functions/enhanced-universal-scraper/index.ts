@@ -407,14 +407,31 @@ class UniversalHarvester {
   }
 
   private getDocumentType(url: string): 'pdf'|'docx'|'xlsx'|'pptx'|'other'|null {
-    const ext = url.split('.').pop()?.toLowerCase().split('?')[0]; // Remove query params
+    // Clean URL by removing query params and fragment
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    const ext = cleanUrl.split('.').pop()?.toLowerCase();
+    
+    console.log(`🔍 Checking extension for URL: ${url} -> cleaned: ${cleanUrl} -> extension: ${ext}`);
+    
     switch (ext) { 
-      case 'pdf': return 'pdf'; 
-      case 'docx': return 'docx';
-      case 'xlsx': return 'xlsx'; 
-      case 'pptx': return 'pptx';
-      case 'doc': case 'xls': case 'ppt': return 'other'; 
-      default: return null; 
+      case 'pdf': 
+        console.log(`✅ Detected PDF: ${ext}`);
+        return 'pdf'; 
+      case 'docx': 
+        console.log(`✅ Detected DOCX: ${ext}`);
+        return 'docx';
+      case 'xlsx': 
+        console.log(`✅ Detected XLSX: ${ext}`);
+        return 'xlsx'; 
+      case 'pptx': 
+        console.log(`✅ Detected PPTX: ${ext}`);
+        return 'pptx';
+      case 'doc': case 'xls': case 'ppt': 
+        console.log(`⚠️ Detected legacy format: ${ext}`);
+        return 'other'; 
+      default: 
+        console.log(`❌ No document extension detected: ${ext}`);
+        return null; 
     }
   }
 
