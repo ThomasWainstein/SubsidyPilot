@@ -19,6 +19,7 @@ import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard'
 import { AuditTrailViewer } from '@/components/admin/AuditTrailViewer';
 import { ManualPipelineDebugger } from '@/components/admin/ManualPipelineDebugger';
 import { AIProcessingTrigger } from '@/components/admin/AIProcessingTrigger';
+import { AIProcessingTriggerV2 } from '@/components/admin/AIProcessingTriggerV2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -195,6 +196,7 @@ const AdminPageContent = () => {
             <TabsContent value="ai-control" className="mt-6">
               <ErrorBoundary>
                 <div className="space-y-6">
+                  <AIProcessingTriggerV2 />
                   <AIProcessingTrigger />
                   <AIProcessingControl />
                 </div>
