@@ -278,9 +278,31 @@ serve(async (req) => {
     let subsidiesCreated = 0;
     let pagesProcessed = 0;
 
-    // Process each page
-    for (const page of pages) {
-      try {
+    // For test mode, send immediate response and process async  
+    if (test_mode && pages.length > 2) {
+      // Send immediate response to avoid timeout
+      const quickResponse = {
+        success: true,
+        run_id: run_id,
+        message: `Started processing ${pages.length} pages asynchronously`,
+        pages_to_process: pages.length,
+        status: 'processing_async'
+      };
+      
+      console.log('⚡ Sending immediate response for async processing');
+      
+      // Process pages asynchronously without blocking response
+      processPages().catch(console.error);
+      
+      return new Response(JSON.stringify(quickResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    async function processPages() {
+      // Process each page
+      for (const page of pages) {
+        try {
         pagesProcessed++;
         console.log(`🔍 Processing page: ${page.source_url}`);
         
@@ -569,10 +591,25 @@ serve(async (req) => {
           console.log(`🔍 Verbatim data size: ${JSON.stringify(extractedData).length} characters`);
         }
 
-      } catch (pageError) {
-        console.error(`❌ Error processing page ${page.source_url}:`, pageError);
+        } catch (pageError) {
+          console.error(`❌ Error processing page ${page.source_url}:`, pageError);
+        }
       }
+
+      const result = {
+        success: true,
+        run_id,
+        model: AI_MODEL,
+        pages_processed: pagesProcessed,
+        subsidies_created: subsidiesCreated,
+        version: 'v2_comprehensive'
+      };
+
+      console.log(`🎉 V2 Processing complete:`, result);
     }
+
+    // Synchronous processing for small batches
+    await processPages();
 
     const result = {
       success: true,
