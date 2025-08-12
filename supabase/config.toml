@@ -121,3 +121,6 @@ verify_jwt = false
 
 [functions.ai-test-single-page]
 verify_jwt = false
+
+[functions.ai-content-processor-v2]
+verify_jwt = false
