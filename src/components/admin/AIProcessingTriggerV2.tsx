@@ -39,7 +39,13 @@ export const AIProcessingTriggerV2 = () => {
       
     } catch (error: any) {
       console.error('V2 AI processing error:', error);
-      toast.error(`❌ V2 Processing failed: ${error.message}`);
+      
+      let errorMessage = error.message;
+      if (error.name === 'FunctionsFetchError' || errorMessage.includes('Failed to fetch')) {
+        errorMessage = 'Edge function is unavailable - try again in a moment. The function may be redeploying.';
+      }
+      
+      toast.error(`❌ V2 Processing failed: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
     }
