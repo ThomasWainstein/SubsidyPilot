@@ -31,6 +31,10 @@ class UniversalHarvester {
       const blocks = await this.processIntoBlocks(html, url);
       const documents = await this.extractLinkedDocuments(html, url);
 
+      // Try to get additional content from potential AJAX/tab content
+      const additionalBlocks = await this.extractTabContent(html, url);
+      blocks.push(...additionalBlocks);
+
       const bundle: ScrapeBundle = {
         id: crypto.randomUUID(),
         source: { kind: 'webpage', url, timestamp: new Date().toISOString() },
@@ -258,6 +262,72 @@ class UniversalHarvester {
   private normalizeUrl(url: string): string {
     try { const u = new URL(url); u.hash=''; u.search=''; return u.toString(); }
     catch { return url; }
+  }
+
+  private async extractTabContent(html: string, sourceUrl: string): Promise<any[]> {
+    const blocks: any[] = [];
+    let idx = 1000; // Start with high index to avoid conflicts
+
+    // Look for tab content patterns common in FranceAgriMer
+    const tabPatterns = [
+      /<div[^>]*class="[^"]*tab-content[^"]*"[^>]*>(.*?)<\/div>/gis,
+      /<div[^>]*id="[^"]*tab[^"]*"[^>]*>(.*?)<\/div>/gis,
+      /<div[^>]*data-tab[^>]*>(.*?)<\/div>/gis,
+      // Look for accordion/collapsible content
+      /<div[^>]*class="[^"]*collapse[^"]*"[^>]*>(.*?)<\/div>/gis,
+      /<details[^>]*>(.*?)<\/details>/gis,
+      // Look for hidden content that might be tab content
+      /<div[^>]*style="[^"]*display:\s*none[^"]*"[^>]*>(.*?)<\/div>/gis
+    ];
+
+    for (const pattern of tabPatterns) {
+      let m;
+      while ((m = pattern.exec(html)) !== null) {
+        const content = m[1];
+        if (content && content.length > 50) {
+          // Extract paragraphs from tab content
+          const paragraphs = content.match(/<p[^>]*>(.*?)<\/p>/gi);
+          if (paragraphs) {
+            for (const p of paragraphs) {
+              const text = this.cleanText(p);
+              if (text.length > 20) {
+                blocks.push({
+                  id: `tab_block_${idx++}_paragraph`,
+                  type: 'paragraph',
+                  verbatim: true,
+                  html_content: p,
+                  plain_text: text,
+                  source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+                });
+              }
+            }
+          }
+
+          // Extract lists from tab content
+          const lists = content.match(/<(ul|ol)[^>]*>(.*?)<\/(ul|ol)>/gi);
+          if (lists) {
+            for (const list of lists) {
+              const listData = this.extractListData(list, list.toLowerCase().includes('<ol'));
+              if (listData.items.length > 0) {
+                blocks.push({
+                  id: `tab_block_${idx++}_list`,
+                  type: 'list',
+                  verbatim: true,
+                  html_content: list,
+                  plain_text: listData.items.join('\n'),
+                  list_ordered: listData.ordered,
+                  list_items: listData.items,
+                  source_ref: { kind: 'webpage', url: sourceUrl, timestamp: new Date().toISOString() }
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`📑 Extracted ${blocks.length} additional blocks from tab/hidden content`);
+    return blocks;
   }
 
   public getMimeTypeFromDocType(docType: string): string {
