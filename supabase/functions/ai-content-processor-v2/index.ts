@@ -249,11 +249,14 @@ serve(async (req) => {
     
     if (page_ids && page_ids.length > 0) {
       query = query.in('id', page_ids);
+    } else if (test_mode) {
+      // In test mode, process ALL pages (not just recent ones)
+      query = query.order('created_at', { ascending: false });
     } else {
-      // Process recent unprocessed pages
+      // For regular runs, process recent unprocessed pages
       query = query
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .limit(5); // Start with 5 pages for testing
+        .limit(50);
     }
     
     const { data: pages, error: pagesError } = await query;
