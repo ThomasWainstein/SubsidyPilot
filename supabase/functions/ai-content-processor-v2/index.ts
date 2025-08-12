@@ -117,6 +117,10 @@ Return the extracted information as a JSON object with all the fields listed abo
 
 async function extractFromContent(content: string, attachments: any[] = []): Promise<any> {
   try {
+    console.log('🤖 Starting AI extraction...');
+    console.log(`📝 Content preview: ${content.substring(0, 200)}...`);
+    console.log(`📎 Attachments: ${attachments.length} files`);
+
     const messages = [
       {
         role: 'system',
@@ -127,6 +131,10 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
         content: `Extract comprehensive subsidy information from this content:\n\n${content}\n\nAttached documents available: ${attachments.map(a => a.name).join(', ')}`
       }
     ];
+
+    console.log('🔗 Making OpenAI API call...');
+    console.log(`🔑 API Key available: ${openAIApiKey ? 'Yes' : 'No'}`);
+    console.log(`🔑 API Key preview: ${openAIApiKey ? openAIApiKey.substring(0, 10) + '...' : 'N/A'}`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -142,22 +150,84 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
       }),
     });
 
+    console.log(`🌐 OpenAI Response status: ${response.status}`);
+    console.log(`🌐 OpenAI Response headers:`, Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ OpenAI API error ${response.status}:`, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('📥 OpenAI Response received');
+    console.log(`🔍 Response structure:`, {
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length,
+      hasMessage: !!data.choices?.[0]?.message,
+      hasContent: !!data.choices?.[0]?.message?.content,
+      usage: data.usage
+    });
+
+    if (!data.choices?.[0]?.message?.content) {
+      console.error('❌ No content in OpenAI response:', data);
+      throw new Error('No content returned from OpenAI');
+    }
+
     const extractedText = data.choices[0].message.content;
+    console.log(`📄 Raw AI response length: ${extractedText.length} characters`);
+    console.log(`📄 Raw AI response preview: ${extractedText.substring(0, 300)}...`);
     
-    // Parse JSON response
-    const jsonStart = extractedText.indexOf('{');
-    const jsonEnd = extractedText.lastIndexOf('}') + 1;
-    const jsonText = extractedText.slice(jsonStart, jsonEnd);
+    // Parse JSON response with better error handling
+    console.log('🔍 Parsing JSON response...');
+    let jsonText;
+    try {
+      const jsonStart = extractedText.indexOf('{');
+      const jsonEnd = extractedText.lastIndexOf('}') + 1;
+      
+      if (jsonStart === -1 || jsonEnd === 0) {
+        console.error('❌ No JSON found in response:', extractedText);
+        throw new Error('No JSON found in AI response');
+      }
+      
+      jsonText = extractedText.slice(jsonStart, jsonEnd);
+      console.log(`📄 Extracted JSON length: ${jsonText.length} characters`);
+      console.log(`📄 JSON preview: ${jsonText.substring(0, 200)}...`);
+      
+    } catch (sliceError) {
+      console.error('❌ Error extracting JSON from response:', sliceError);
+      console.log('📄 Full response text:', extractedText);
+      throw sliceError;
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonText);
+      console.log('✅ JSON parsed successfully');
+      console.log(`📊 Parsed data keys: ${Object.keys(parsedData).join(', ')}`);
+      console.log(`📊 Data preview:`, {
+        title: parsedData.title,
+        authority: parsedData.authority,
+        totalFields: Object.keys(parsedData).length,
+        hasDescription: !!parsedData.description,
+        hasEligibility: !!parsedData.eligibility_criteria
+      });
+      
+    } catch (parseError) {
+      console.error('❌ JSON parsing failed:', parseError);
+      console.log('📄 Failed JSON text:', jsonText);
+      throw new Error(`JSON parsing error: ${parseError.message}`);
+    }
     
-    return JSON.parse(jsonText);
+    return parsedData;
 
   } catch (error) {
-    console.error('Extraction error:', error);
+    console.error('💥 EXTRACTION ERROR:', error);
+    console.error('💥 Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     return null;
   }
 }
