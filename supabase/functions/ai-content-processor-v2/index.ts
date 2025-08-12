@@ -178,26 +178,51 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
     console.log(`📄 Raw AI response length: ${extractedText.length} characters`);
     console.log(`📄 Raw AI response preview: ${extractedText.substring(0, 300)}...`);
     
-    // Parse JSON response with better error handling
+    // Parse JSON response with better error handling and validation
     console.log('🔍 Parsing JSON response...');
     let jsonText;
     try {
-      const jsonStart = extractedText.indexOf('{');
-      const jsonEnd = extractedText.lastIndexOf('}') + 1;
+      // Try multiple strategies to extract JSON
+      let cleanText = extractedText.trim();
       
-      if (jsonStart === -1 || jsonEnd === 0) {
-        console.error('❌ No JSON found in response:', extractedText);
+      // Remove markdown code blocks if present
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const jsonStart = cleanText.indexOf('{');
+      let jsonEnd = cleanText.lastIndexOf('}') + 1;
+      
+      if (jsonStart === -1) {
+        console.error('❌ No JSON found in response:', cleanText.substring(0, 500));
         throw new Error('No JSON found in AI response');
       }
       
-      jsonText = extractedText.slice(jsonStart, jsonEnd);
+      // Validate that we have proper closing bracket
+      if (jsonEnd <= jsonStart) {
+        console.error('❌ No closing bracket found, attempting to fix...');
+        // Count opening vs closing brackets
+        const openBrackets = (cleanText.match(/\{/g) || []).length;
+        const closeBrackets = (cleanText.match(/\}/g) || []).length;
+        const missingBrackets = openBrackets - closeBrackets;
+        
+        if (missingBrackets > 0) {
+          console.log(`🔧 Adding ${missingBrackets} missing closing brackets`);
+          cleanText += '}' .repeat(missingBrackets);
+          jsonEnd = cleanText.lastIndexOf('}') + 1;
+        }
+      }
+      
+      jsonText = cleanText.slice(jsonStart, jsonEnd);
       console.log(`📄 Extracted JSON length: ${jsonText.length} characters`);
-      console.log(`📄 JSON preview: ${jsonText.substring(0, 200)}...`);
+      console.log(`📄 JSON preview: ${jsonText.substring(0, 300)}...`);
       
     } catch (sliceError) {
       console.error('❌ Error extracting JSON from response:', sliceError);
-      console.log('📄 Full response text:', extractedText);
-      throw sliceError;
+      console.log('📄 Full response text:', extractedText.substring(0, 1000));
+      throw new Error(`JSON extraction error: ${sliceError.message}`);
     }
 
     let parsedData;
@@ -215,7 +240,16 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
       
     } catch (parseError) {
       console.error('❌ JSON parsing failed:', parseError);
-      console.log('📄 Failed JSON text:', jsonText);
+      console.log('📄 Failed JSON text:', jsonText.substring(0, 1000));
+      
+      // Try to provide more specific error information
+      const errorMatch = parseError.message.match(/position (\d+)/);
+      if (errorMatch) {
+        const position = parseInt(errorMatch[1]);
+        console.log(`📍 Error context around position ${position}:`, 
+          jsonText.substring(Math.max(0, position - 50), position + 50));
+      }
+      
       throw new Error(`JSON parsing error: ${parseError.message}`);
     }
     
@@ -358,9 +392,17 @@ serve(async (req) => {
         console.log(`🔍 DEBUG - Core identification data:`, JSON.stringify(coreData, null, 2));
         console.log(`🔍 DEBUG - Project data:`, JSON.stringify(projectData, null, 2));
         
+        // Safe description extraction handling both string and array types
+        const safeDescription = (() => {
+          const obj = projectData.objectives_detailed;
+          if (typeof obj === 'string') return obj.substring(0, 100);
+          if (Array.isArray(obj) && obj.length > 0) return obj[0].substring(0, 100);
+          return coreData.policy_objective?.substring(0, 100) || 'No description';
+        })();
+        
         console.log(`📊 Extracted data preview:`, {
           title: coreData.title,
-          description: projectData.objectives_detailed?.substring(0, 100),
+          description: safeDescription,
           authority: coreData.authority,
           managingAgency: coreData.managing_agency,
           hasData: Object.keys(extractedData).length,
@@ -436,7 +478,12 @@ serve(async (req) => {
             .update({
               // ✅ STRUCTURED DATA goes into proper structured fields
               title: { ro: coreData.title || extractedData.title || 'Untitled Subsidy' },
-              description: { ro: projectData.objectives_detailed || extractedData.description || coreData.policy_objective || 'No description available' },
+              description: { ro: (() => {
+                const obj = projectData.objectives_detailed;
+                if (typeof obj === 'string') return obj;
+                if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
+                return extractedData.description || coreData.policy_objective || 'No description available';
+              })() },
               eligibility_criteria: { 
                 ro: [
                   eligibilityData.eligible_entities,
@@ -506,7 +553,12 @@ serve(async (req) => {
               
               // ✅ STRUCTURED DATA goes into proper structured fields
               title: { ro: coreData.title || 'Untitled Subsidy' },
-              description: { ro: projectData.objectives_detailed || coreData.policy_objective || 'No description available' },
+              description: { ro: (() => {
+                const obj = projectData.objectives_detailed;
+                if (typeof obj === 'string') return obj;
+                if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
+                return coreData.policy_objective || 'No description available';
+              })() },
               eligibility_criteria: { 
                 ro: [
                   eligibilityData.eligible_entities,
