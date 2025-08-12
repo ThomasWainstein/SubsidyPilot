@@ -352,6 +352,59 @@ class UniversalHarvester {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
+  private isDetailPage(html: string, url: string): boolean {
+    // Check if this is a detail page vs category/listing page
+    const cleanedHtml = this.cleanHtml(html);
+    
+    // Count repeated article/aid listings (indicator of category page)
+    const aidListingPatterns = [
+      /<article[^>]*>[\s\S]*?<\/article>/gi,
+      /<div[^>]*class="[^"]*aid[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+      /<h[2-4][^>]*>[\s\S]*?<a[^>]*href="[^"]*\/aides\/[^"]*"[^>]*>/gi
+    ];
+    
+    let listingCount = 0;
+    for (const pattern of aidListingPatterns) {
+      const matches = cleanedHtml.match(pattern);
+      listingCount += matches?.length || 0;
+    }
+    
+    // If more than 3 aid listings detected, likely a category page
+    if (listingCount > 3) {
+      console.log(`🚫 Skipping category page with ${listingCount} listings: ${url}`);
+      return false;
+    }
+    
+    // Check for detail page indicators
+    const detailIndicators = [
+      /téléprocédure/i,
+      /demande d'aide/i,
+      /montant de l'aide/i,
+      /bénéficiaires/i,
+      /critères d'éligibilité/i,
+      /date limite/i,
+      /comment/i,
+      /pour qui/i,
+      /quand/i
+    ];
+    
+    const indicatorCount = detailIndicators.reduce((count, pattern) => {
+      return count + (pattern.test(cleanedHtml) ? 1 : 0);
+    }, 0);
+    
+    // Check text content length (detail pages have more content)
+    const textContent = this.cleanText(cleanedHtml);
+    const hasSubstantialContent = textContent.length > 1000;
+    
+    const isDetail = indicatorCount >= 2 && hasSubstantialContent;
+    
+    if (!isDetail) {
+      console.log(`🚫 Skipping non-detail page (indicators: ${indicatorCount}, length: ${textContent.length}): ${url}`);
+    }
+    
+    return isDetail;
+  }
+
   private normalizeUrl(url: string): string {
     try { const u = new URL(url); u.hash=''; u.search=''; return u.toString(); }
     catch { return url; }
@@ -607,6 +660,12 @@ Deno.serve(async (req) => {
 
       for (const url of allUrls) {
         try {
+          // Check if this is a detail page before processing
+          const html = await harvester['fetchRawContent'](url);
+          if (!harvester['isDetailPage'](html, url)) {
+            continue; // Skip category/listing pages
+          }
+          
           const bundle = await harvester.harvestContent(url, { runId });
           
           // Generate proper markdown content
