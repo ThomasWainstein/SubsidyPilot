@@ -1358,6 +1358,48 @@ export type Database = {
           },
         ]
       }
+      harvested_documents: {
+        Row: {
+          created_at: string | null
+          filename: string | null
+          id: string
+          mime: string | null
+          page_id: string | null
+          pages: number | null
+          run_id: string | null
+          sha256: string | null
+          size_bytes: number | null
+          source_url: string
+          text_ocr: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          filename?: string | null
+          id?: string
+          mime?: string | null
+          page_id?: string | null
+          pages?: number | null
+          run_id?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          source_url: string
+          text_ocr?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          filename?: string | null
+          id?: string
+          mime?: string | null
+          page_id?: string | null
+          pages?: number | null
+          run_id?: string | null
+          sha256?: string | null
+          size_bytes?: number | null
+          source_url?: string
+          text_ocr?: string | null
+        }
+        Relationships: []
+      }
       integration_audit_log: {
         Row: {
           component_from: string
@@ -1764,6 +1806,7 @@ export type Database = {
         Row: {
           attachment_count: number | null
           attachment_paths: Json | null
+          attachments_jsonb: Json | null
           combined_content_markdown: string | null
           created_at: string | null
           error_message: string | null
@@ -1773,6 +1816,7 @@ export type Database = {
           raw_text: string | null
           run_id: string | null
           scrape_date: string | null
+          sections_jsonb: Json | null
           source_site: string | null
           source_url: string
           status: string | null
@@ -1782,6 +1826,7 @@ export type Database = {
         Insert: {
           attachment_count?: number | null
           attachment_paths?: Json | null
+          attachments_jsonb?: Json | null
           combined_content_markdown?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -1791,6 +1836,7 @@ export type Database = {
           raw_text?: string | null
           run_id?: string | null
           scrape_date?: string | null
+          sections_jsonb?: Json | null
           source_site?: string | null
           source_url: string
           status?: string | null
@@ -1800,6 +1846,7 @@ export type Database = {
         Update: {
           attachment_count?: number | null
           attachment_paths?: Json | null
+          attachments_jsonb?: Json | null
           combined_content_markdown?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -1809,6 +1856,7 @@ export type Database = {
           raw_text?: string | null
           run_id?: string | null
           scrape_date?: string | null
+          sections_jsonb?: Json | null
           source_site?: string | null
           source_url?: string
           status?: string | null
@@ -2148,11 +2196,13 @@ export type Database = {
           created_at: string
           deadline: string | null
           deadlines: string | null
+          deadlines_jsonb: Json | null
           deadlines_markdown: string | null
           description: string | null
           description_markdown: string | null
           document_count: number | null
           documents: Json | null
+          documents_jsonb: Json | null
           documents_markdown: string | null
           eligibility: string | null
           eligibility_markdown: string | null
@@ -2204,6 +2254,7 @@ export type Database = {
           updated_at: string
           url: string | null
           verbatim_extraction: boolean | null
+          verbatim_jsonb: Json | null
         }
         Insert: {
           agency?: string | null
@@ -2228,11 +2279,13 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           deadlines?: string | null
+          deadlines_jsonb?: Json | null
           deadlines_markdown?: string | null
           description?: string | null
           description_markdown?: string | null
           document_count?: number | null
           documents?: Json | null
+          documents_jsonb?: Json | null
           documents_markdown?: string | null
           eligibility?: string | null
           eligibility_markdown?: string | null
@@ -2284,6 +2337,7 @@ export type Database = {
           updated_at?: string
           url?: string | null
           verbatim_extraction?: boolean | null
+          verbatim_jsonb?: Json | null
         }
         Update: {
           agency?: string | null
@@ -2308,11 +2362,13 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           deadlines?: string | null
+          deadlines_jsonb?: Json | null
           deadlines_markdown?: string | null
           description?: string | null
           description_markdown?: string | null
           document_count?: number | null
           documents?: Json | null
+          documents_jsonb?: Json | null
           documents_markdown?: string | null
           eligibility?: string | null
           eligibility_markdown?: string | null
@@ -2364,6 +2420,7 @@ export type Database = {
           updated_at?: string
           url?: string | null
           verbatim_extraction?: boolean | null
+          verbatim_jsonb?: Json | null
         }
         Relationships: [
           {

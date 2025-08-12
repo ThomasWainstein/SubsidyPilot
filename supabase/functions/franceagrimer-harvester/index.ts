@@ -35,6 +35,94 @@ function canonicalAidUrl(baseUrl: string, href: string): string | null {
   }
 }
 
+// --- Helpers to extract sections and attachments from FranceAgriMer pages ---
+function extractSections(html: string) {
+  try {
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<br\s*\/?>(\s*\n)*/gi, '\n')
+      .replace(/<li[^>]*>/gi, '\n• ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<h[1-6][^>]*>/gi, '\n## ')
+      .replace(/<\/h[1-6]>/gi, '\n')
+      .replace(/<[^>]+>/g, '');
+
+    const sections: Record<string, string> = {};
+    const labels = [
+      { key: 'presentation', label: 'Présentation' },
+      { key: 'eligibility', label: 'Pour qui ?' },
+      { key: 'when', label: 'Quand ?' },
+      { key: 'how_to_apply', label: 'Comment ?' },
+      { key: 'documents_associes', label: 'Documents associés' },
+    ];
+
+    const idx: Array<{key: string; i: number; label: string}> = [];
+    for (const l of labels) {
+      const i = text.indexOf(l.label);
+      if (i >= 0) idx.push({ key: l.key, i, label: l.label });
+    }
+    idx.sort((a, b) => a.i - b.i);
+    for (let k = 0; k < idx.length; k++) {
+      const cur = idx[k];
+      const next = idx[k + 1];
+      const slice = text.substring(cur.i + cur.label.length).substring(0, next ? next.i - cur.i - cur.label.length : undefined).trim();
+      if (slice) sections[cur.key] = slice;
+    }
+    // Fallback: if nothing found, store first 2k chars as presentation
+    if (!sections.presentation) {
+      const plain = stripToText(html);
+      sections.presentation = plain.slice(0, 2000);
+    }
+    return sections;
+  } catch (_) {
+    return { presentation: stripToText(html).slice(0, 2000) };
+  }
+}
+
+function extractAttachments(html: string, baseUrl: string) {
+  const out: Array<{title: string; url: string; type?: string; size_kb?: number; date?: string}> = [];
+  try {
+    const start = html.search(/Documents associés/i);
+    if (start < 0) return out;
+    const after = html.slice(start);
+    // Stop at next major header
+    const endMatch = after.search(/<h2|<h3|<section|<\/main>/i);
+    const block = endMatch > 0 ? after.slice(0, endMatch) : after;
+
+    const anchorRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = anchorRe.exec(block)) !== null) {
+      const href = canonicalize(baseUrl, m[1]);
+      if (!href) continue;
+      const inner = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      // Peek trailing context for type/size/date
+      const tail = block.slice(m.index + m[0].length, m.index + m[0].length + 200);
+      const sizeMatch = tail.match(/(\d+[\.,]?\d*)\s*(KB|MB)/i);
+      const dateMatch = tail.match(/(\d{2}\/[\d]{2}\/[\d]{4}|\d{2}\/\d{2}\/\d{2,4})/);
+      const ext = (new URL(href)).pathname.split('.').pop() || '';
+      const type = ext.toLowerCase();
+      let size_kb: number | undefined;
+      if (sizeMatch) {
+        const val = parseFloat(sizeMatch[1].replace(',', '.'));
+        size_kb = /MB/i.test(sizeMatch[2]) ? Math.round(val * 1024) : Math.round(val);
+      }
+      out.push({
+        title: inner || ext.toUpperCase(),
+        url: href,
+        type,
+        size_kb,
+        date: dateMatch ? dateMatch[1] : undefined
+      });
+    }
+  } catch (_) {
+    // ignore
+  }
+  return out;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -212,6 +300,10 @@ const textMarkdown = stripToText(html);
           continue;
         }
         
+        // Extract structured sections and attachments
+        const sections = extractSections(html);
+        const attachments = extractAttachments(html, candidateUrl);
+        
         // Insert into raw_scraped_pages
         const pageData = {
           run_id,
@@ -220,7 +312,9 @@ const textMarkdown = stripToText(html);
           raw_html: html,
           raw_text: textMarkdown,
           text_markdown: textMarkdown,
-          status: 'scraped'
+          status: 'scraped',
+          sections_jsonb: sections,
+          attachments_jsonb: attachments
         };
         
         try {
@@ -240,6 +334,23 @@ const textMarkdown = stripToText(html);
             insertedIds.push(data.id);
             pagesInsertedDb++;
             logEvent('harvester.fr.insert.success', run_id, { url: candidateUrl, id: data.id });
+
+            // Persist attachments metadata into harvested_documents
+            if (attachments && attachments.length > 0) {
+              const docsRows = attachments.map(a => ({
+                run_id,
+                page_id: data.id,
+                source_url: a.url,
+                filename: a.title,
+                mime: a.type ? `application/${a.type}` : null,
+                size_bytes: a.size_kb ? a.size_kb * 1024 : null,
+              }));
+              try {
+                await supabase.from('harvested_documents').insert(docsRows);
+              } catch (docErr) {
+                logEvent('harvester.fr.docs.error', run_id, { url: candidateUrl, error: (docErr as Error).message });
+              }
+            }
           }
         } catch (insertErr) {
           logEvent('harvester.fr.insert.error', run_id, { url: candidateUrl, error: (insertErr as Error).message });
