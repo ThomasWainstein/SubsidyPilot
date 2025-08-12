@@ -604,8 +604,6 @@ serve(async (req) => {
               
               // ✅ RAW CONTENT stores the complete unprocessed AI response for reference
               raw_content: extractedData,
-              categories: coreData.sector ? [coreData.sector] : (coreData.categories || []),
-              funding_type: coreData.call_type || fundingData.funding_type,
               
               // Processing metadata only - basic schema
               record_status: 'active',
