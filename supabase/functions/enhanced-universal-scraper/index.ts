@@ -473,15 +473,15 @@ Deno.serve(async (req) => {
             .from('raw_scraped_pages')
             .insert({
               source_url: bundle.source.url,
-              content_text: bundle.blocks.map(b => b.plain_text).join('\n'),
-              content_html: '', // We'll keep this minimal for now
-              title: bundle.blocks.find(b => b.type === 'heading')?.heading_text || 'Untitled',
+              source_site: bundle.source.url.includes('franceagrimer') ? 'franceagrimer' : 'lesaides',
+              raw_text: bundle.blocks.map(b => b.plain_text).join('\n'),
+              raw_html: '', // We'll keep this minimal for now
+              text_markdown: bundle.blocks.map(b => b.plain_text).join('\n\n'),
               run_id: runId,
               status: 'processed',
               attachment_count: bundle.documents.length,
-              language: bundle.lang,
-              metadata: {
-                ...bundle.metadata,
+              scrape_date: new Date().toISOString(),
+              sections_jsonb: {
                 blocks_count: bundle.blocks.length,
                 documents_count: bundle.documents.length,
                 content_hash: bundle.content_hash
