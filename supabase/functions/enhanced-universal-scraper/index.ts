@@ -8,16 +8,18 @@ const corsHeaders = {
 // Comprehensive French subsidy URLs for scraping
 const SCRAPE_TARGETS = {
   franceagrimer: [
+    // Working FranceAgrimer URLs (updated January 2025)
     'https://www.franceagrimer.fr/aides/os-13-ta-13-arret-temporaire-dactivite-de-peche-westmed',
     'https://www.franceagrimer.fr/aides/aide-aux-investissements-en-exploitations-pour-la-protection-contre-la-secheresse',
     'https://www.franceagrimer.fr/aides/projets-territoriaux-filieres-legumineuses',
-    'https://www.franceagrimer.fr/aides/aide-aux-investissements-des-exploitations-agricoles',
-    'https://www.franceagrimer.fr/aides/aide-a-la-modernisation-et-a-la-restructuration-de-la-filiere-oleicole',
-    'https://www.franceagrimer.fr/aides/aide-aux-investissements-collectifs-de-transformation-et-commercialisation',
-    'https://www.franceagrimer.fr/aides/aide-aux-investissements-dans-les-dom',
-    'https://www.franceagrimer.fr/aides/aide-a-la-promotion-collective',
-    'https://www.franceagrimer.fr/aides/aide-aux-investissements-materiels-dans-les-exploitations-arboricoles',
-    'https://www.franceagrimer.fr/aides/aide-a-la-conversion-a-lagriculture-biologique'
+    // Updated working URLs from current FranceAgrimer site
+    'https://www.franceagrimer.fr/filieres-vin-et-cidriculture/vin/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-fruits-et-legumes/fruits-et-legumes/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-grandes-cultures/cereales/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-elevage/lait/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-elevage/viandes/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-peche-et-aquaculture/peche/aides-nationales',
+    'https://www.franceagrimer.fr/filieres-peche-et-aquaculture/aquaculture/aides-nationales'
   ],
   lesaides: [
     'https://les-aides.fr/aide/dFY_3w/ddfip/aide-aux-entreprises-affectees-par-les-troubles-a-l-ordre-public.html',
