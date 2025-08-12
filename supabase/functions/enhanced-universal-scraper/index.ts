@@ -608,6 +608,25 @@ Deno.serve(async (req) => {
       for (const url of allUrls) {
         try {
           const bundle = await harvester.harvestContent(url, { runId });
+          
+          // Generate proper markdown content
+          const markdownContent = bundle.blocks.map(block => {
+            if (block.type === 'heading') {
+              const hashes = '#'.repeat(block.heading_level || 1);
+              return `${hashes} ${block.plain_text}`;
+            } else if (block.type === 'list') {
+              return block.list_items?.map((item: string) => `- ${item}`).join('\n') || block.plain_text;
+            } else if (block.type === 'table') {
+              return `**Table:**\n${block.plain_text}`;
+            }
+            return block.plain_text;
+          }).join('\n\n');
+
+          // Combine all content for combined_content_markdown
+          const combinedMarkdown = `# ${new URL(url).pathname.split('/').pop()?.replace(/-/g, ' ') || 'Content'}\n\n${markdownContent}`;
+          
+          // Get document paths
+          const attachmentPaths = bundle.documents.map(doc => doc.url);
 
           const { data: pageData, error: pageError } = await supabase
             .from('raw_scraped_pages')
@@ -615,8 +634,11 @@ Deno.serve(async (req) => {
               source_url: bundle.source.url,
               source_site: site,
               raw_text: bundle.blocks.map(b => b.plain_text).join('\n'),
-              raw_html: '',
-              text_markdown: bundle.blocks.map(b => b.plain_text).join('\n\n'),
+              raw_html: bundle.blocks.map(b => b.html_content || '').join('\n'),
+              text_markdown: markdownContent,
+              raw_markdown: markdownContent,
+              combined_content_markdown: combinedMarkdown,
+              attachment_paths: attachmentPaths,
               run_id: runId,
               status: 'processed',
               attachment_count: bundle.documents.length,
@@ -625,7 +647,8 @@ Deno.serve(async (req) => {
                 blocks_count: bundle.blocks.length,
                 documents_count: bundle.documents.length,
                 content_hash: bundle.content_hash
-              }
+              },
+              attachments_jsonb: bundle.documents
             }, { onConflict: 'source_url' })
             .select('id')
             .single();
