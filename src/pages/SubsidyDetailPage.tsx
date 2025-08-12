@@ -8,10 +8,13 @@ import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { SimpleSubsidyDisplay } from '@/components/subsidy/SimpleSubsidyDisplay';
+import { EnhancedSubsidyDisplay } from '@/components/subsidy/EnhancedSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
 import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
 import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
+import { EnhancedSubsidy, isEnhancedSubsidy } from '@/types/enhanced-subsidy';
+import { mapLegacyToEnhanced } from '@/utils/subsidyDataMapper';
 import { toast } from 'sonner';
 
 const SubsidyDetailPage = () => {
@@ -182,33 +185,39 @@ const SubsidyDetailPage = () => {
             </Button>
           </div>
 
-          {/* Direct Comprehensive Subsidy Display - No Tabs! */}
+          {/* Detect if this is enhanced format and display accordingly */}
           <div className="space-y-6">
-            <SimpleSubsidyDisplay subsidy={subsidy} />
-            
-            {/* Schema Extraction Status */}
-            <SchemaExtractionStatus
-              subsidyId={subsidyId!}
-              title="Application Form Schema"
-              autoRefresh={true}
-              showDetails={true}
-            />
-            
-            {/* Enhanced Data Extraction - Between Schema and Form */}
-            {subsidy?.url && (
-              <EnhancedExtractionTrigger 
-                subsidyUrl={subsidy.url}
-                subsidyTitle={subsidy.title}
-                onSuccess={() => navigate(0)}
-              />
+            {isEnhancedSubsidy(subsidy) ? (
+              <EnhancedSubsidyDisplay subsidy={subsidy} />
+            ) : (
+              <>
+                <SimpleSubsidyDisplay subsidy={subsidy} />
+                
+                {/* Schema Extraction Status */}
+                <SchemaExtractionStatus
+                  subsidyId={subsidyId!}
+                  title="Application Form Schema"
+                  autoRefresh={true}
+                  showDetails={true}
+                />
+                
+                {/* Enhanced Data Extraction - Between Schema and Form */}
+                {subsidy?.url && (
+                  <EnhancedExtractionTrigger 
+                    subsidyUrl={subsidy.url}
+                    subsidyTitle={subsidy.title}
+                    onSuccess={() => navigate(0)}
+                  />
+                )}
+                
+                {/* Application Form Section */}
+                <ExtractedFormApplication
+                  subsidyId={subsidyId!}
+                  subsidyTitle={subsidy.title || 'Subsidy Program'}
+                  farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
+                />
+              </>
             )}
-            
-            {/* Application Form Section */}
-            <ExtractedFormApplication
-              subsidyId={subsidyId!}
-              subsidyTitle={subsidy.title || 'Subsidy Program'}
-              farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
-            />
           </div>
         </div>
       </main>
