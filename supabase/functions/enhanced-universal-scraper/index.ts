@@ -6,33 +6,26 @@ const corsHeaders = {
 }
 
 // Comprehensive French subsidy URLs for scraping
-const SCRAPE_TARGETS = {
-  franceagrimer: [
-    // Working FranceAgrimer URLs (updated January 2025)
-    'https://www.franceagrimer.fr/aides/os-13-ta-13-arret-temporaire-dactivite-de-peche-westmed',
-    'https://www.franceagrimer.fr/aides/aide-aux-investissements-en-exploitations-pour-la-protection-contre-la-secheresse',
-    'https://www.franceagrimer.fr/aides/projets-territoriaux-filieres-legumineuses',
-    // Updated working URLs from current FranceAgrimer site
-    'https://www.franceagrimer.fr/filieres-vin-et-cidriculture/vin/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-fruits-et-legumes/fruits-et-legumes/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-grandes-cultures/cereales/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-elevage/lait/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-elevage/viandes/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-peche-et-aquaculture/peche/aides-nationales',
-    'https://www.franceagrimer.fr/filieres-peche-et-aquaculture/aquaculture/aides-nationales'
-  ],
-  lesaides: [
-    'https://les-aides.fr/aide/dFY_3w/ddfip/aide-aux-entreprises-affectees-par-les-troubles-a-l-ordre-public.html',
-    'https://les-aides.fr/aide/cWP_1w/bpifrance/pret-de-developpement-pme.html',
-    'https://les-aides.fr/aide/ePP_1w/region-auvergne-rhone-alpes/aide-aux-investissements-des-entreprises-agricoles.html',
-    'https://les-aides.fr/aide/fGH_2w/ademe/aide-a-la-decision-pour-des-investissements-economes-en-ressources.html',
-    'https://les-aides.fr/aide/gTR_3w/ministere-de-lagriculture/aide-aux-petites-exploitations-agricoles.html',
-    'https://les-aides.fr/aide/hYU_4w/conseil-regional/soutien-aux-projets-dinnovation-agricole.html',
-    'https://les-aides.fr/aide/iOP_5w/europe/feader-mesures-agroenvironnementales.html',
-    'https://les-aides.fr/aide/jKL_6w/chambres-agriculture/accompagnement-technique-exploitation.html',
-    'https://les-aides.fr/aide/kMN_7w/msa/aide-a-linstallation-jeunes-agriculteurs.html',
-    'https://les-aides.fr/aide/lPQ_8w/credit-agricole/financement-materiel-agricole.html'
-  ]
+// Function to get discovered URLs from database instead of hardcoded lists
+async function getDiscoveredUrls(site: string, limit: number, supabase: any): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('raw_scraped_pages')
+      .select('source_url')
+      .eq('source_site', site)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error(`Failed to get URLs for ${site}:`, error);
+      return [];
+    }
+    
+    return data?.map(row => row.source_url) || [];
+  } catch (err) {
+    console.error(`Error fetching URLs for ${site}:`, err);
+    return [];
+  }
 }
 
 interface ScrapeBundle {
@@ -449,13 +442,18 @@ Deno.serve(async (req) => {
 
     // Process each requested site
     for (const site of sites) {
-      if (!SCRAPE_TARGETS[site as keyof typeof SCRAPE_TARGETS]) {
-        results.errors.push(`Unknown site: ${site}`);
+      console.log(`📄 Getting discovered URLs for ${site}...`);
+      
+      // Get URLs from database (discovered by other harvesters)
+      const urls = await getDiscoveredUrls(site, pages_per_site, supabase);
+      
+      if (urls.length === 0) {
+        console.log(`⚠️ No discovered URLs found for ${site}`);
+        results.errors.push(`No discovered URLs found for site: ${site}`);
         continue;
       }
-
-      const urls = SCRAPE_TARGETS[site as keyof typeof SCRAPE_TARGETS].slice(0, pages_per_site);
-      console.log(`📄 Processing ${urls.length} URLs for ${site}`);
+      
+      console.log(`📄 Processing ${urls.length} discovered URLs for ${site}`);
 
       let siteResults = {
         site,
