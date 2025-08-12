@@ -3655,6 +3655,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_ai_and_subsidy_data: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       purge_pipeline_data: {
         Args: Record<PropertyKey, never>
         Returns: Json
