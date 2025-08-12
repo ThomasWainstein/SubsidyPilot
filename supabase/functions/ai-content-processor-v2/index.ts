@@ -305,11 +305,36 @@ serve(async (req) => {
         }
         
         console.log(`✅ AI extraction successful for: ${page.source_url}`);
+        
+        // Log raw extracted data for debugging
+        console.log(`🔍 Raw extracted data structure:`, {
+          topLevelKeys: Object.keys(extractedData),
+          coreIdExists: !!extractedData.core_identification,
+          coreIdKeys: extractedData.core_identification ? Object.keys(extractedData.core_identification) : [],
+          datesExists: !!extractedData.dates,
+          eligibilityExists: !!extractedData.eligibility,
+          fundingExists: !!extractedData.funding
+        });
+        
+        // Extract core identification data safely
+        const coreData = extractedData.core_identification || {};
+        const datesData = extractedData.dates || {};
+        const eligibilityData = extractedData.eligibility || {};
+        const fundingData = extractedData.funding || {};
+        const projectData = extractedData.project_scope_objectives || {};
+        const processData = extractedData.application_process || {};
+        const evaluationData = extractedData.evaluation_selection || {};
+        const documentsData = extractedData.documents_annexes || {};
+        const metaData = extractedData.meta_language || {};
+        const complianceData = extractedData.compliance_transparency || {};
+        
         console.log(`📊 Extracted data preview:`, {
-          title: extractedData.title,
-          description: extractedData.description?.substring(0, 100),
-          authority: extractedData.authority,
-          hasData: Object.keys(extractedData).length
+          title: coreData.title,
+          description: projectData.objectives_detailed?.substring(0, 100),
+          authority: coreData.authority,
+          managingAgency: coreData.managing_agency,
+          hasData: Object.keys(extractedData).length,
+          verbatimDataSize: JSON.stringify(extractedData).length
         });
 
         // Generate content hash for deduplication
@@ -322,15 +347,20 @@ serve(async (req) => {
             .join('')
         );
 
-        // Create fingerprint for deduplication
+        // Create fingerprint for deduplication using properly extracted data
+        const fingerprintSource = `${coreData.title || 'untitled'}-${coreData.authority || 'unknown'}-${page.source_url}`;
+        console.log(`🔑 Creating fingerprint from: "${fingerprintSource}"`);
+        
         const fingerprint = await crypto.subtle.digest(
           'SHA-256',
-          new TextEncoder().encode(`${extractedData.title}-${extractedData.authority}-${page.source_url}`)
+          new TextEncoder().encode(fingerprintSource)
         ).then(buffer => 
           Array.from(new Uint8Array(buffer))
             .map(b => b.toString(16).padStart(2, '0'))
             .join('')
         );
+        
+        console.log(`🔑 Generated fingerprint: ${fingerprint.substring(0, 16)}...`);
 
         // Ensure scrape run exists before inserting subsidy
         const { data: existingRun } = await supabase
@@ -369,213 +399,227 @@ serve(async (req) => {
           upsertAction = 'updated';
           
           // Update existing record with new data
+          console.log(`🔄 Mapping V2 data for update...`);
+          
           upsertResult = await supabase
             .from('subsidies_structured')
             .update({
-              // Basic fields (maintain backwards compatibility)
+              // Store the complete V2 comprehensive data
+              verbatim_jsonb: extractedData,
+              
+              // Basic fields mapped from V2 structure
               url: page.source_url,
-              title: extractedData.title,
-              description: extractedData.description || extractedData.objectives_detailed,
-              eligibility: extractedData.eligibility_criteria,
-              deadline: extractedData.closing_date,
-              agency: extractedData.authority,
-              region: extractedData.geographic_eligibility?.regions || [],
-              sector: extractedData.sector ? [extractedData.sector] : [],
-              funding_type: extractedData.call_type,
+              title: coreData.title,
+              description: projectData.objectives_detailed || projectData.project_objectives,
+              eligibility: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria,
+              deadline: datesData.application_deadline || datesData.submission_deadline,
+              agency: coreData.authority,
+              region: eligibilityData.geographic_eligibility?.eligible_regions || [],
+              sector: coreData.sector ? [coreData.sector] : (coreData.categories || []),
+              funding_type: coreData.call_type || fundingData.funding_type,
               
-              // New comprehensive fields
-              reference_code: extractedData.reference_code,
-              managing_agency: extractedData.managing_agency,
-              categories: extractedData.categories || [],
-              funding_programme: extractedData.funding_programme,
-              policy_objective: extractedData.policy_objective,
-              call_type: extractedData.call_type,
-              status_detailed: extractedData.status_detailed,
+              // New comprehensive fields from V2 structure
+              reference_code: coreData.reference_code,
+              managing_agency: coreData.managing_agency,
+              categories: coreData.categories || [],
+              funding_programme: coreData.funding_programme,
+              policy_objective: coreData.policy_objective,
+              call_type: coreData.call_type,
+              status_detailed: coreData.status_detailed || metaData.current_status,
               
-              // Dates
-              publication_date: extractedData.publication_date,
-              opening_date: extractedData.opening_date,
-              evaluation_start_date: extractedData.evaluation_start_date,
-              signature_date: extractedData.signature_date,
-              extended_deadlines: extractedData.extended_deadlines,
-              payment_schedule: extractedData.payment_schedule,
-              timeline_notes: extractedData.timeline_notes,
+              // Enhanced dates from V2 structure
+              publication_date: datesData.publication_date,
+              opening_date: datesData.application_opening_date,
+              evaluation_start_date: datesData.evaluation_start_date,
+              signature_date: datesData.signature_date,
+              extended_deadlines: datesData.extensions_or_modifications,
+              payment_schedule: fundingData.payment_modalities,
+              timeline_notes: datesData.timeline_notes,
               
-              // Enhanced eligibility
-              eligible_entities: extractedData.eligible_entities || [],
-              geographic_eligibility: extractedData.geographic_eligibility,
-              entity_size: extractedData.entity_size,
-              activity_sector_codes: extractedData.activity_sector_codes || [],
-              previous_award_restrictions: extractedData.previous_award_restrictions,
-              special_conditions: extractedData.special_conditions,
+              // Enhanced eligibility from V2 structure
+              eligible_entities: eligibilityData.eligible_entities || [],
+              geographic_eligibility: eligibilityData.geographic_eligibility,
+              entity_size: eligibilityData.entity_size_requirements,
+              activity_sector_codes: eligibilityData.activity_sector_codes || [],
+              previous_award_restrictions: eligibilityData.previous_participation_restrictions,
+              special_conditions: eligibilityData.special_conditions,
               
-              // Enhanced funding
-              total_budget: extractedData.total_budget,
-              funding_rate_details: extractedData.funding_rate_details,
-              duration_limits: extractedData.duration_limits,
-              cofinancing_sources: extractedData.cofinancing_sources,
-              payment_modality: extractedData.payment_modality,
-              budget_tranches: extractedData.budget_tranches,
+              // Enhanced funding from V2 structure
+              total_budget: fundingData.total_budget,
+              funding_rate_details: fundingData.co_financing_rates,
+              duration_limits: fundingData.project_duration_limits,
+              cofinancing_sources: fundingData.co_financing_sources,
+              payment_modality: fundingData.payment_modalities,
+              budget_tranches: fundingData.budget_breakdown,
               
-              // Project scope
-              objectives_detailed: extractedData.objectives_detailed,
-              expected_results: extractedData.expected_results,
-              impact_indicators: extractedData.impact_indicators,
-              eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
-              ineligible_expenses: extractedData.ineligible_expenses,
-              priority_themes: extractedData.priority_themes || [],
+              // Project scope from V2 structure
+              objectives_detailed: projectData.objectives_detailed,
+              expected_results: projectData.expected_outcomes,
+              impact_indicators: projectData.performance_indicators,
+              eligible_expenses_detailed: fundingData.eligible_expenses,
+              ineligible_expenses: fundingData.ineligible_expenses,
+              priority_themes: projectData.priority_areas || [],
               
-              // Application process
-              process_steps: extractedData.process_steps,
-              application_language: extractedData.application_language,
-              required_documents_detailed: extractedData.required_documents_detailed,
-              submission_method_detailed: extractedData.submission_method_detailed,
-              submission_format: extractedData.submission_format,
-              contact_information: extractedData.contact_information,
-              support_resources: extractedData.support_resources,
+              // Application process from V2 structure
+              process_steps: processData.submission_process_steps,
+              application_language: processData.language_requirements,
+              required_documents_detailed: documentsData.required_documents,
+              submission_method_detailed: processData.submission_method,
+              submission_format: processData.application_format,
+              contact_information: processData.contact_information,
+              support_resources: processData.support_mechanisms,
               
-              // Evaluation
-              selection_criteria: extractedData.selection_criteria,
-              evaluation_committee: extractedData.evaluation_committee,
-              evaluation_phases: extractedData.evaluation_phases,
-              conflict_of_interest_notes: extractedData.conflict_of_interest_notes,
-              decision_publication_method: extractedData.decision_publication_method,
+              // Evaluation from V2 structure
+              selection_criteria: evaluationData.evaluation_criteria,
+              evaluation_committee: evaluationData.evaluation_committee_composition,
+              evaluation_phases: evaluationData.evaluation_process,
+              conflict_of_interest_notes: evaluationData.conflict_of_interest_guidelines,
+              decision_publication_method: evaluationData.results_communication,
               
-              // Documents
-              regulatory_references: extractedData.regulatory_references,
-              verbatim_blocks: extractedData.verbatim_blocks,
-              forms_detected: extractedData.forms_detected,
-              forms_recreated: extractedData.forms_recreated,
+              // Documents from V2 structure
+              regulatory_references: documentsData.regulatory_framework,
+              verbatim_blocks: documentsData.verbatim_legal_text,
+              forms_detected: documentsData.application_forms,
+              forms_recreated: documentsData.form_templates,
               
-              // Meta
+              // Meta from V2 structure
               content_hash: contentHash,
-              related_programmes: extractedData.related_programmes || [],
-              cross_funding_links: extractedData.cross_funding_links,
+              related_programmes: metaData.related_programs || [],
+              cross_funding_links: metaData.cross_references,
               
-              // Compliance
-              beneficiary_reporting_requirements: extractedData.beneficiary_reporting_requirements,
-              compliance_audit_mechanisms: extractedData.compliance_audit_mechanisms,
-              sanctions_for_non_compliance: extractedData.sanctions_for_non_compliance,
-              transparency_notes: extractedData.transparency_notes,
-              previous_recipients_list: extractedData.previous_recipients_list,
-              procurement_obligations: extractedData.procurement_obligations,
-              environmental_social_safeguards: extractedData.environmental_social_safeguards,
-              additional_support_mechanisms: extractedData.additional_support_mechanisms,
+              // Compliance from V2 structure
+              beneficiary_reporting_requirements: complianceData.beneficiary_obligations,
+              compliance_audit_mechanisms: complianceData.monitoring_mechanisms,
+              sanctions_for_non_compliance: complianceData.penalties,
+              transparency_notes: complianceData.transparency_requirements,
+              previous_recipients_list: complianceData.historical_data,
+              procurement_obligations: complianceData.procurement_rules,
+              environmental_social_safeguards: complianceData.environmental_compliance,
+              additional_support_mechanisms: complianceData.additional_support,
               
               // Processing metadata
               extraction_model: AI_MODEL,
               extraction_version: 'v2_comprehensive',
               document_analysis_performed: attachments.length > 0,
-              forms_analysis_performed: !!extractedData.forms_detected,
+              forms_analysis_performed: !!(documentsData.application_forms),
               run_id: run_id,
+              fingerprint: fingerprint,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingSubsidy.id);
+            
+          console.log(`💾 Update operation completed for: ${existingSubsidy.url}`);
         } else {
           console.log(`➕ Creating new subsidy: ${page.source_url}`);
+          console.log(`🔄 Mapping V2 data for insert...`);
           
           // Insert new record
           upsertResult = await supabase
             .from('subsidies_structured')
             .insert({
-              // Basic fields (maintain backwards compatibility)
+              // Store the complete V2 comprehensive data
+              verbatim_jsonb: extractedData,
+              
+              // Basic fields mapped from V2 structure
               url: page.source_url,
-              title: extractedData.title,
-              description: extractedData.description || extractedData.objectives_detailed,
-              eligibility: extractedData.eligibility_criteria,
-              deadline: extractedData.closing_date,
-              agency: extractedData.authority,
-              region: extractedData.geographic_eligibility?.regions || [],
-              sector: extractedData.sector ? [extractedData.sector] : [],
-              funding_type: extractedData.call_type,
+              title: coreData.title,
+              description: projectData.objectives_detailed || projectData.project_objectives,
+              eligibility: eligibilityData.eligible_entities_detailed || eligibilityData.basic_eligibility_criteria,
+              deadline: datesData.application_deadline || datesData.submission_deadline,
+              agency: coreData.authority,
+              region: eligibilityData.geographic_eligibility?.eligible_regions || [],
+              sector: coreData.sector ? [coreData.sector] : (coreData.categories || []),
+              funding_type: coreData.call_type || fundingData.funding_type,
               
-              // New comprehensive fields
-              reference_code: extractedData.reference_code,
-              managing_agency: extractedData.managing_agency,
-              categories: extractedData.categories || [],
-              funding_programme: extractedData.funding_programme,
-              policy_objective: extractedData.policy_objective,
-              call_type: extractedData.call_type,
-              status_detailed: extractedData.status_detailed,
+              // New comprehensive fields from V2 structure
+              reference_code: coreData.reference_code,
+              managing_agency: coreData.managing_agency,
+              categories: coreData.categories || [],
+              funding_programme: coreData.funding_programme,
+              policy_objective: coreData.policy_objective,
+              call_type: coreData.call_type,
+              status_detailed: coreData.status_detailed || metaData.current_status,
               
-              // Dates
-              publication_date: extractedData.publication_date,
-              opening_date: extractedData.opening_date,
-              evaluation_start_date: extractedData.evaluation_start_date,
-              signature_date: extractedData.signature_date,
-              extended_deadlines: extractedData.extended_deadlines,
-              payment_schedule: extractedData.payment_schedule,
-              timeline_notes: extractedData.timeline_notes,
+              // Enhanced dates from V2 structure
+              publication_date: datesData.publication_date,
+              opening_date: datesData.application_opening_date,
+              evaluation_start_date: datesData.evaluation_start_date,
+              signature_date: datesData.signature_date,
+              extended_deadlines: datesData.extensions_or_modifications,
+              payment_schedule: fundingData.payment_modalities,
+              timeline_notes: datesData.timeline_notes,
               
-              // Enhanced eligibility
-              eligible_entities: extractedData.eligible_entities || [],
-              geographic_eligibility: extractedData.geographic_eligibility,
-              entity_size: extractedData.entity_size,
-              activity_sector_codes: extractedData.activity_sector_codes || [],
-              previous_award_restrictions: extractedData.previous_award_restrictions,
-              special_conditions: extractedData.special_conditions,
+              // Enhanced eligibility from V2 structure
+              eligible_entities: eligibilityData.eligible_entities || [],
+              geographic_eligibility: eligibilityData.geographic_eligibility,
+              entity_size: eligibilityData.entity_size_requirements,
+              activity_sector_codes: eligibilityData.activity_sector_codes || [],
+              previous_award_restrictions: eligibilityData.previous_participation_restrictions,
+              special_conditions: eligibilityData.special_conditions,
               
-              // Enhanced funding
-              total_budget: extractedData.total_budget,
-              funding_rate_details: extractedData.funding_rate_details,
-              duration_limits: extractedData.duration_limits,
-              cofinancing_sources: extractedData.cofinancing_sources,
-              payment_modality: extractedData.payment_modality,
-              budget_tranches: extractedData.budget_tranches,
+              // Enhanced funding from V2 structure
+              total_budget: fundingData.total_budget,
+              funding_rate_details: fundingData.co_financing_rates,
+              duration_limits: fundingData.project_duration_limits,
+              cofinancing_sources: fundingData.co_financing_sources,
+              payment_modality: fundingData.payment_modalities,
+              budget_tranches: fundingData.budget_breakdown,
               
-              // Project scope
-              objectives_detailed: extractedData.objectives_detailed,
-              expected_results: extractedData.expected_results,
-              impact_indicators: extractedData.impact_indicators,
-              eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
-              ineligible_expenses: extractedData.ineligible_expenses,
-              priority_themes: extractedData.priority_themes || [],
+              // Project scope from V2 structure
+              objectives_detailed: projectData.objectives_detailed,
+              expected_results: projectData.expected_outcomes,
+              impact_indicators: projectData.performance_indicators,
+              eligible_expenses_detailed: fundingData.eligible_expenses,
+              ineligible_expenses: fundingData.ineligible_expenses,
+              priority_themes: projectData.priority_areas || [],
               
-              // Application process
-              process_steps: extractedData.process_steps,
-              application_language: extractedData.application_language,
-              required_documents_detailed: extractedData.required_documents_detailed,
-              submission_method_detailed: extractedData.submission_method_detailed,
-              submission_format: extractedData.submission_format,
-              contact_information: extractedData.contact_information,
-              support_resources: extractedData.support_resources,
+              // Application process from V2 structure
+              process_steps: processData.submission_process_steps,
+              application_language: processData.language_requirements,
+              required_documents_detailed: documentsData.required_documents,
+              submission_method_detailed: processData.submission_method,
+              submission_format: processData.application_format,
+              contact_information: processData.contact_information,
+              support_resources: processData.support_mechanisms,
               
-              // Evaluation
-              selection_criteria: extractedData.selection_criteria,
-              evaluation_committee: extractedData.evaluation_committee,
-              evaluation_phases: extractedData.evaluation_phases,
-              conflict_of_interest_notes: extractedData.conflict_of_interest_notes,
-              decision_publication_method: extractedData.decision_publication_method,
+              // Evaluation from V2 structure
+              selection_criteria: evaluationData.evaluation_criteria,
+              evaluation_committee: evaluationData.evaluation_committee_composition,
+              evaluation_phases: evaluationData.evaluation_process,
+              conflict_of_interest_notes: evaluationData.conflict_of_interest_guidelines,
+              decision_publication_method: evaluationData.results_communication,
               
-              // Documents
-              regulatory_references: extractedData.regulatory_references,
-              verbatim_blocks: extractedData.verbatim_blocks,
-              forms_detected: extractedData.forms_detected,
-              forms_recreated: extractedData.forms_recreated,
+              // Documents from V2 structure
+              regulatory_references: documentsData.regulatory_framework,
+              verbatim_blocks: documentsData.verbatim_legal_text,
+              forms_detected: documentsData.application_forms,
+              forms_recreated: documentsData.form_templates,
               
-              // Meta
+              // Meta from V2 structure
               content_hash: contentHash,
-              related_programmes: extractedData.related_programmes || [],
-              cross_funding_links: extractedData.cross_funding_links,
+              related_programmes: metaData.related_programs || [],
+              cross_funding_links: metaData.cross_references,
               
-              // Compliance
-              beneficiary_reporting_requirements: extractedData.beneficiary_reporting_requirements,
-              compliance_audit_mechanisms: extractedData.compliance_audit_mechanisms,
-              sanctions_for_non_compliance: extractedData.sanctions_for_non_compliance,
-              transparency_notes: extractedData.transparency_notes,
-              previous_recipients_list: extractedData.previous_recipients_list,
-              procurement_obligations: extractedData.procurement_obligations,
-              environmental_social_safeguards: extractedData.environmental_social_safeguards,
-              additional_support_mechanisms: extractedData.additional_support_mechanisms,
+              // Compliance from V2 structure
+              beneficiary_reporting_requirements: complianceData.beneficiary_obligations,
+              compliance_audit_mechanisms: complianceData.monitoring_mechanisms,
+              sanctions_for_non_compliance: complianceData.penalties,
+              transparency_notes: complianceData.transparency_requirements,
+              previous_recipients_list: complianceData.historical_data,
+              procurement_obligations: complianceData.procurement_rules,
+              environmental_social_safeguards: complianceData.environmental_compliance,
+              additional_support_mechanisms: complianceData.additional_support,
               
               // Processing metadata
               extraction_model: AI_MODEL,
               extraction_version: 'v2_comprehensive',
               document_analysis_performed: attachments.length > 0,
-              forms_analysis_performed: !!extractedData.forms_detected,
+              forms_analysis_performed: !!(documentsData.application_forms),
               run_id: run_id,
               fingerprint: fingerprint
             });
+            
+          console.log(`💾 Insert operation completed for: ${page.source_url}`);
         }
 
         if (upsertResult.error) {
@@ -595,12 +639,23 @@ serve(async (req) => {
           subsidiesCreated++;
           console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
           console.log(`📊 ${upsertAction.charAt(0).toUpperCase() + upsertAction.slice(1)} data preview:`, {
-            title: extractedData.title || 'No title',
-            authority: extractedData.authority || 'No authority',
-            hasDescription: !!(extractedData.description || extractedData.objectives_detailed),
+            title: coreData.title || 'No title',
+            authority: coreData.authority || 'No authority',
+            hasDescription: !!(projectData.objectives_detailed || projectData.project_objectives),
             totalFieldsSet: Object.keys(extractedData).length,
+            verbatimDataStored: !!extractedData && Object.keys(extractedData).length > 0,
             fingerprint: fingerprint.substring(0, 12) + '...'
           });
+          
+          // Additional debugging for successful operations
+          console.log(`🔍 Core data mapped:`, {
+            title: coreData.title,
+            authority: coreData.authority,
+            managing_agency: coreData.managing_agency,
+            reference_code: coreData.reference_code
+          });
+          
+          console.log(`🔍 Verbatim data size: ${JSON.stringify(extractedData).length} characters`);
         }
 
       } catch (pageError) {
