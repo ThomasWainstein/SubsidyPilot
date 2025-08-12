@@ -350,6 +350,11 @@ serve(async (req) => {
         const metaData = extractedData.meta_language || {};
         const complianceData = extractedData.compliance_transparency || {};
         
+        // DEBUG: Log the actual data structure we're receiving
+        console.log(`🔍 DEBUG - Full extracted data structure:`, JSON.stringify(extractedData, null, 2).substring(0, 1000));
+        console.log(`🔍 DEBUG - Core identification data:`, JSON.stringify(coreData, null, 2));
+        console.log(`🔍 DEBUG - Project data:`, JSON.stringify(projectData, null, 2));
+        
         console.log(`📊 Extracted data preview:`, {
           title: coreData.title,
           description: projectData.objectives_detailed?.substring(0, 100),
@@ -427,8 +432,8 @@ serve(async (req) => {
             .from('subsidies')
             .update({
               // ✅ STRUCTURED DATA goes into proper structured fields
-              title: { ro: coreData.title || 'Untitled Subsidy' },
-              description: { ro: projectData.objectives_detailed || coreData.policy_objective || 'No description available' },
+              title: { ro: coreData.title || extractedData.title || 'Untitled Subsidy' },
+              description: { ro: projectData.objectives_detailed || extractedData.description || coreData.policy_objective || 'No description available' },
               eligibility_criteria: { 
                 ro: [
                   eligibilityData.eligible_entities,
@@ -438,14 +443,14 @@ serve(async (req) => {
               },
               
               // Financial data
-              amount_min: fundingData.funding_amount_min || null,
-              amount_max: fundingData.funding_amount_max || null,
+              amount_min: fundingData.funding_amount_min || fundingData.funding_amount?.min || null,
+              amount_max: fundingData.funding_amount_max || fundingData.funding_amount?.max || null,
               
               // Dates
               deadline: datesData.closing_date || datesData.application_deadline || null,
               
               // Basic fields
-              agency: coreData.authority || 'Unknown Agency',
+              agency: coreData.authority || extractedData.authority || 'Unknown Agency',
               region: eligibilityData.geographic_eligibility ? [eligibilityData.geographic_eligibility] : [],
               categories: coreData.categories || (coreData.sector ? [coreData.sector] : []),
               tags: [
