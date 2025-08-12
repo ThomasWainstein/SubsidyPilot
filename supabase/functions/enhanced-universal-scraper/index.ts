@@ -33,7 +33,15 @@ class UniversalHarvester {
 
       // Try to get additional content from potential AJAX/tab content
       const additionalBlocks = await this.extractTabContent(html, url);
-      blocks.push(...additionalBlocks);
+      
+      // Deduplicate blocks to avoid content from both main and tab sections
+      const existingTexts = new Set(blocks.map(b => b.plain_text.trim().toLowerCase()));
+      const uniqueAdditionalBlocks = additionalBlocks.filter(block => {
+        const normalizedText = block.plain_text.trim().toLowerCase();
+        return !existingTexts.has(normalizedText);
+      });
+      
+      blocks.push(...uniqueAdditionalBlocks);
 
       const bundle: ScrapeBundle = {
         id: crypto.randomUUID(),
@@ -87,26 +95,49 @@ class UniversalHarvester {
 
   private cleanText(html: string): string {
     let text = html.replace(/<[^>]*>/g, '');
-    text = text.replace(/&nbsp;/g, ' ')
-               .replace(/&amp;/g, '&')
-               .replace(/&lt;/g, '<')
-               .replace(/&gt;/g, '>')
-               .replace(/&quot;/g, '"')
-               .replace(/&#39;/g, "'");
+    
+    // Decode numeric HTML entities
+    text = text.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)));
+    
+    // Decode named HTML entities (comprehensive list for French content)
+    const entities: Record<string, string> = {
+      nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
+      eacute: 'é', egrave: 'è', ecirc: 'ê', euml: 'ë',
+      agrave: 'à', aacute: 'á', acirc: 'â', auml: 'ä',
+      igrave: 'ì', iacute: 'í', icirc: 'î', iuml: 'ï',
+      ograve: 'ò', oacute: 'ó', ocirc: 'ô', ouml: 'ö',
+      ugrave: 'ù', uacute: 'ú', ucirc: 'û', uuml: 'ü',
+      ccedil: 'ç', ntilde: 'ñ', rsquo: "'", lsquo: "'",
+      rdquo: '"', ldquo: '"', laquo: '«', raquo: '»',
+      euro: '€', hellip: '…', mdash: '—', ndash: '–'
+    };
+    
+    text = text.replace(/&([a-zA-Z]+);/g, (match, entity) => {
+      return entities[entity.toLowerCase()] || match;
+    });
+    
     return text.replace(/\s+/g, ' ').trim();
   }
 
   private restoreTextStructure(rawText: string): string {
-    let text = rawText;
+    let text = rawText.trim();
     
-    // 1. Normalize excessive whitespace but preserve intentional breaks
-    text = text.replace(/\s+/g, ' ').trim();
+    // 1. First normalize whitespace 
+    text = text.replace(/\s+/g, ' ');
     
-    // 2. Restore list structure by breaking on semicolons in list contexts
-    text = text.replace(/;([A-ZÀ-Ÿ])/g, ';\n• $1');
-    text = text.replace(/;(\s*[a-zà-ÿ])/g, ';\n• $1');
+    // 2. Fix French punctuation spacing
+    text = text.replace(/\s+([,.:;!?])/g, '$1');
+    text = text.replace(/([,.:;!?])\s+/g, '$1 ');
     
-    // 3. Add section breaks before key French subsidy terms
+    // 3. Detect and format numbered/lettered lists (a., b., c. or 1., 2., 3.)
+    text = text.replace(/\b([a-z])\.\s+/gi, '\n• $1. ');
+    text = text.replace(/\b(\d+)\.\s+/g, '\n• $1. ');
+    
+    // 4. Smart semicolon handling - only break for lists, not inline text
+    // Look for patterns like "; exploitant" or "; être" that indicate list items
+    text = text.replace(/;\s*(être|avoir|exploitant|groupement|personne|immatriculé)/gi, ';\n• $1');
+    
+    // 5. Add section breaks before key subsidy terms
     const sectionMarkers = [
       'Montant de l\'aide',
       'Bénéficiaires éligibles', 
@@ -115,43 +146,43 @@ class UniversalHarvester {
       'La demande est composée',
       'Le dossier de demande',
       'La demande de paiement',
+      'Procédure de dépôt',
       'Procédure',
-      'Comment',
+      'Comment déposer',
       'Modalités de gestion',
       'Appel à proposition',
-      'Les objectifs généraux'
+      'Les objectifs généraux',
+      'Conditions d\'éligibilité'
     ];
     
     for (const marker of sectionMarkers) {
-      text = text.replace(new RegExp(`(${marker})`, 'g'), `\n\n## $1\n`);
+      const regex = new RegExp(`\\b(${marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi');
+      text = text.replace(regex, `\n\n## $1\n`);
     }
     
-    // 4. Clean up repeated content (naive deduplication)
-    const lines = text.split('\n');
-    const uniqueLines: string[] = [];
+    // 6. Clean up excessive bullets and formatting
+    text = text.replace(/•\s*•+/g, '•'); // Remove multiple bullets
+    text = text.replace(/^\s*•\s*/gm, '• '); // Standardize bullet formatting
+    
+    // 7. Remove bullets that accidentally split words
+    text = text.replace(/(\w)\s*•\s*(\w)/g, '$1$2');
+    
+    // 8. Basic deduplication - remove identical sentences
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    const uniqueSentences: string[] = [];
     const seen = new Set<string>();
     
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.length > 10 && !seen.has(trimmed)) {
-        uniqueLines.push(line);
-        seen.add(trimmed);
-      } else if (trimmed.length <= 10) {
-        uniqueLines.push(line); // Keep short lines (formatting)
+    for (const sentence of sentences) {
+      const normalized = sentence.trim().toLowerCase();
+      if (normalized.length > 20 && !seen.has(normalized)) {
+        uniqueSentences.push(sentence);
+        seen.add(normalized);
+      } else if (normalized.length <= 20) {
+        uniqueSentences.push(sentence); // Keep short sentences
       }
     }
     
-    // 5. Improve bullet point formatting
-    let result = uniqueLines.join('\n');
-    result = result.replace(/•\s*•/g, '•'); // Remove double bullets
-    result = result.replace(/^\s*•\s*/gm, '• '); // Standardize bullet formatting
-    
-    // 6. Fix common French formatting issues
-    result = result.replace(/\s+,/g, ',');
-    result = result.replace(/\s+\./g, '.');
-    result = result.replace(/\s+:/g, ':');
-    
-    return result;
+    return uniqueSentences.join(' ').trim();
   }
 
   private async processIntoBlocks(html: string, sourceUrl: string): Promise<any[]> {
