@@ -698,6 +698,8 @@ serve(async (req) => {
     const { page_ids, test_mode = false, model = CONFIG.AI_MODEL } = requestData;
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
+    console.log(`🤖 Using AI Model: ${model}`);
+    console.log(`📊 Request Config:`, { model, test_mode, page_count: page_ids?.length });
     
     // Create run tracking record in pipeline_runs (required by FK)
     const { error: runError } = await supabase

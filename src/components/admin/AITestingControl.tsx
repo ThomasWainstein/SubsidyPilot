@@ -36,7 +36,7 @@ export function AITestingControl() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState<AIRunResult | null>(null);
   const [batchSize, setBatchSize] = useState('2');
-  const [model, setModel] = useState('gpt-4.1-2025-04-14');
+  const [model, setModel] = useState('ft:gpt-4o-mini-2024-07-18:personal:subsidy-extractor-v1:C4Z0In47');
   const [customRunId, setCustomRunId] = useState('');
   const [pageFilter, setPageFilter] = useState('all');
   const [loading, setLoading] = useState(true);
