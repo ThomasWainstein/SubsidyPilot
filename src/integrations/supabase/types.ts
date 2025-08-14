@@ -2427,6 +2427,7 @@ export type Database = {
           extraction_completeness_score: number | null
           extraction_method: string | null
           extraction_model: string | null
+          extraction_timestamp: string | null
           extraction_version: string | null
           fingerprint: string | null
           forms_analysis_performed: boolean | null
@@ -2580,6 +2581,7 @@ export type Database = {
           extraction_completeness_score?: number | null
           extraction_method?: string | null
           extraction_model?: string | null
+          extraction_timestamp?: string | null
           extraction_version?: string | null
           fingerprint?: string | null
           forms_analysis_performed?: boolean | null
@@ -2733,6 +2735,7 @@ export type Database = {
           extraction_completeness_score?: number | null
           extraction_method?: string | null
           extraction_model?: string | null
+          extraction_timestamp?: string | null
           extraction_version?: string | null
           fingerprint?: string | null
           forms_analysis_performed?: boolean | null
