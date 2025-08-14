@@ -516,6 +516,31 @@ serve(async (req) => {
           }
           
           console.log(`✅ AI extraction successful for: ${page.source_url}`);
+          console.log(`📊 Extracted data structure:`, {
+            hasCore: !!extractedData.core_identification,
+            hasDates: !!extractedData.dates,
+            hasEligibility: !!extractedData.eligibility,
+            hasFunding: !!extractedData.funding,
+            title: extractedData.core_identification?.title || extractedData.title,
+            categories: extractedData.core_identification?.categories,
+            sectors: extractedData.core_identification?.sector
+          });
+          
+          // Save raw extraction for debugging
+          const { error: rawLogError } = await supabase
+            .from('ai_raw_extractions')
+            .insert({
+              run_id,
+              page_id: page.id,
+              raw_output: JSON.stringify(extractedData),
+              content_preview: content.substring(0, 500),
+              model: model,
+              prompt: 'comprehensive_extraction_v2'
+            });
+          
+          if (rawLogError) {
+            console.error('Failed to log raw extraction:', rawLogError);
+          }
           
           // Extract core identification data safely
           const coreData = extractedData.core_identification || {};
