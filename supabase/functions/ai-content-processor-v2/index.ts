@@ -584,8 +584,8 @@ serve(async (req) => {
                   eligibilityData.special_conditions
                 ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
                 agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
-                region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-                sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+                region: sanitizeStringValue(sanitizeArrayValue(eligibilityData.geographic_eligibility).join(', ')),
+                sector: sanitizeStringValue(sanitizeArrayValue(coreData.categories || coreData.sector).join(', ')),
                 funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
                 deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
                 run_id: run_id,
@@ -613,8 +613,8 @@ serve(async (req) => {
                   eligibilityData.special_conditions
                 ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
                 agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
-                region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-                sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+                region: sanitizeStringValue(sanitizeArrayValue(eligibilityData.geographic_eligibility).join(', ')),
+                sector: sanitizeStringValue(sanitizeArrayValue(coreData.categories || coreData.sector).join(', ')),
                 funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
                 deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
                 run_id: run_id
@@ -623,6 +623,18 @@ serve(async (req) => {
           
           if (upsertResult.error) {
             console.error(`❌ Failed to ${upsertAction} subsidy for ${page.source_url}:`, upsertResult.error);
+            // Log DB upsert error for diagnostics
+            const { error: dbErrorLog } = await supabase
+              .from('ai_content_errors')
+              .insert({
+                run_id,
+                page_id: page.id,
+                source_url: page.source_url,
+                stage: 'db_upsert',
+                message: upsertResult.error.message || 'Unknown DB upsert error',
+                snippet: JSON.stringify({ action: upsertAction }).substring(0, 500)
+              });
+            if (dbErrorLog) console.error('Failed to log DB upsert error:', dbErrorLog);
           } else {
             subsidiesCreated++;
             console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
