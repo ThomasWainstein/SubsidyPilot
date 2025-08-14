@@ -423,23 +423,27 @@ serve(async (req) => {
     let subsidiesCreated = 0;
     let pagesProcessed = 0;
 
-    // For test mode, send immediate response and process async  
-    if (test_mode && pages.length > 2) {
-      // Send immediate response to avoid timeout
-      const quickResponse = {
+    // For test mode, process synchronously to ensure completion
+    // Async processing in edge functions gets terminated when response is sent
+    if (test_mode && pages.length > 1) {
+      console.log('🔄 Processing pages synchronously for test mode to ensure completion');
+      
+      // Process first few pages synchronously to avoid timeout
+      for (let i = 0; i < Math.min(pages.length, 2); i++) {
+        await processSinglePage(pages[i], run_id);
+        subsidiesCreated++;
+        pagesProcessed++;
+      }
+      
+      const result = {
         success: true,
         run_id: run_id,
-        message: `Started processing ${pages.length} pages asynchronously`,
-        pages_to_process: pages.length,
-        status: 'processing_async'
+        message: `Processed ${Math.min(pages.length, 2)} pages synchronously`,
+        pages_processed: Math.min(pages.length, 2),
+        status: 'completed_sync'
       };
       
-      console.log('⚡ Sending immediate response for async processing');
-      
-      // Process pages asynchronously without blocking response
-      processPages().catch(console.error);
-      
-      return new Response(JSON.stringify(quickResponse), {
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
