@@ -2389,6 +2389,7 @@ export type Database = {
           compliance_audit_mechanisms: string | null
           compliance_requirements: string | null
           conditional_eligibility: Json | null
+          confidence_score: number | null
           conflict_of_interest_notes: string | null
           contact_information: Json | null
           content_checksum: string | null
@@ -2541,6 +2542,7 @@ export type Database = {
           compliance_audit_mechanisms?: string | null
           compliance_requirements?: string | null
           conditional_eligibility?: Json | null
+          confidence_score?: number | null
           conflict_of_interest_notes?: string | null
           contact_information?: Json | null
           content_checksum?: string | null
@@ -2693,6 +2695,7 @@ export type Database = {
           compliance_audit_mechanisms?: string | null
           compliance_requirements?: string | null
           conditional_eligibility?: Json | null
+          confidence_score?: number | null
           conflict_of_interest_notes?: string | null
           contact_information?: Json | null
           content_checksum?: string | null
