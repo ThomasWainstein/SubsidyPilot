@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 // Configuration Management
 const CONFIG = {
-  AI_MODEL: 'gpt-4.1-2025-04-14',
+  AI_MODEL: 'ft:gpt-4o-mini-2024-07-18:personal:subsidy-extractor-v1:C4Z0In47',
   CONCURRENT_LIMIT: 3,
   MAX_RETRIES: 3,
   RETRY_DELAY_MS: 1000,
