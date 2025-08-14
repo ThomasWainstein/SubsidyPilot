@@ -12,8 +12,188 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const supabase = createClient(supabaseUrl!, supabaseKey!);
 
-// Latest model for best extraction quality
-const AI_MODEL = 'gpt-4.1-2025-04-14';
+// Configuration Management
+const CONFIG = {
+  AI_MODEL: 'gpt-4.1-2025-04-14',
+  CONCURRENT_LIMIT: 3,
+  MAX_RETRIES: 3,
+  RETRY_DELAY_MS: 1000,
+  MAX_TOKENS: 4000,
+  TEMPERATURE: 0.2,
+  JSON_RESPONSE_FORMAT: { type: "json_object" }
+};
+
+// Data Validation Schema
+const SUBSIDY_SCHEMA = {
+  required: ['title', 'authority'],
+  optional: ['description', 'eligibility', 'region', 'sector', 'funding_type', 'deadline'],
+  
+  validators: {
+    title: (value: any) => {
+      if (!value || typeof value !== 'string' || value.trim().length < 3) {
+        throw new Error('Title must be a string with at least 3 characters');
+      }
+      return value.trim();
+    },
+    
+    authority: (value: any) => {
+      if (!value || typeof value !== 'string') {
+        throw new Error('Authority is required and must be a string');
+      }
+      return value.trim();
+    },
+    
+    deadline: (value: any) => {
+      if (!value) return null;
+      
+      const date = new Date(value);
+      if (isNaN(date.getTime())) {
+        throw new Error('Deadline must be a valid date');
+      }
+      
+      // Warn about past deadlines
+      if (date < new Date()) {
+        console.warn(`⚠️ Deadline is in the past: ${value}`);
+      }
+      
+      return date.toISOString().split('T')[0];
+    },
+    
+    funding_type: (value: any) => {
+      const validTypes = ['Grant', 'Loan', 'Subsidy', 'Tax Credit', 'Other'];
+      if (value && !validTypes.includes(value)) {
+        console.warn(`⚠️ Unknown funding type: ${value}`);
+      }
+      return value || 'Grant';
+    }
+  }
+};
+
+// Data Validation Function
+function validateSubsidyData(extractedData: any) {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const validated: any = {};
+  
+  // Check required fields
+  for (const field of SUBSIDY_SCHEMA.required) {
+    try {
+      const validator = SUBSIDY_SCHEMA.validators[field as keyof typeof SUBSIDY_SCHEMA.validators];
+      const value = extractedData[field];
+      
+      if (validator) {
+        validated[field] = validator(value);
+      } else {
+        if (!value) {
+          errors.push(`Required field '${field}' is missing`);
+        } else {
+          validated[field] = value;
+        }
+      }
+    } catch (error: any) {
+      errors.push(`Validation error for '${field}': ${error.message}`);
+    }
+  }
+  
+  // Process optional fields
+  for (const field of SUBSIDY_SCHEMA.optional) {
+    try {
+      const validator = SUBSIDY_SCHEMA.validators[field as keyof typeof SUBSIDY_SCHEMA.validators];
+      const value = extractedData[field];
+      
+      if (value) {
+        if (validator) {
+          validated[field] = validator(value);
+        } else {
+          validated[field] = sanitizeStringValue(value);
+        }
+      }
+    } catch (error: any) {
+      warnings.push(`Validation warning for '${field}': ${error.message}`);
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+    data: validated
+  };
+}
+
+// Improved JSON Parser
+function parseJSONResponse(responseText: string): any {
+  try {
+    // Remove markdown code blocks
+    let cleanText = responseText.trim();
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    // Find JSON boundaries
+    const jsonStart = cleanText.indexOf('{');
+    let jsonEnd = cleanText.lastIndexOf('}') + 1;
+    
+    if (jsonStart === -1) {
+      throw new Error('No JSON object found in response');
+    }
+    
+    if (jsonEnd <= jsonStart) {
+      // Try to fix missing closing brackets
+      const openBrackets = (cleanText.match(/\{/g) || []).length;
+      const closeBrackets = (cleanText.match(/\}/g) || []).length;
+      const missingBrackets = openBrackets - closeBrackets;
+      
+      if (missingBrackets > 0) {
+        console.log(`🔧 Adding ${missingBrackets} missing closing brackets`);
+        cleanText += '}' .repeat(missingBrackets);
+        jsonEnd = cleanText.lastIndexOf('}') + 1;
+      }
+    }
+    
+    const jsonText = cleanText.slice(jsonStart, jsonEnd);
+    return JSON.parse(jsonText);
+    
+  } catch (error: any) {
+    console.error('❌ JSON parsing failed:', error.message);
+    console.error('📄 Response text preview:', responseText.substring(0, 500));
+    throw new Error(`JSON parsing error: ${error.message}`);
+  }
+}
+
+// Retry with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = CONFIG.MAX_RETRIES,
+  baseDelay: number = CONFIG.RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry on certain errors
+      if (error.message.includes('401') || error.message.includes('403')) {
+        throw error;
+      }
+      
+      if (attempt === maxRetries) {
+        throw lastError;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      console.log(`⏳ Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError!;
+}
 
 const COMPREHENSIVE_EXTRACTION_PROMPT = `
 You are an expert AI assistant specializing in extracting structured information from government subsidy and funding documents.
@@ -226,7 +406,7 @@ function sanitizeArrayValue(value: any): string[] {
 async function extractFromContent(
   content: string,
   attachments: any[] = [],
-  model: string = AI_MODEL,
+  model: string = CONFIG.AI_MODEL,
   ctx?: { run_id?: string; page_id?: string; source_url?: string; content_preview?: string }
 ): Promise<any> {
   try {
@@ -237,7 +417,7 @@ async function extractFromContent(
     const messages = [
       {
         role: 'system',
-        content: COMPREHENSIVE_EXTRACTION_PROMPT
+        content: COMPREHENSIVE_EXTRACTION_PROMPT + "\n\nYou MUST return only valid JSON. Do not include any commentary or markdown formatting."
       },
       {
         role: 'user',
@@ -258,31 +438,42 @@ async function extractFromContent(
     const isLegacy = /gpt-4o/i.test(model);
     let endpointUsed = isLegacy ? 'chat.completions' : 'responses';
 
-    // Prepare payloads
+    // Prepare payloads with response format enforcement
     const chatPayload: Record<string, any> = isLegacy
-      ? { model, messages, temperature: 0.2, max_tokens: 4000 }
-      : { model, messages, max_completion_tokens: 4000 };
+      ? { model, messages, temperature: CONFIG.TEMPERATURE, max_tokens: CONFIG.MAX_TOKENS, response_format: CONFIG.JSON_RESPONSE_FORMAT }
+      : { model, messages, max_completion_tokens: CONFIG.MAX_TOKENS, response_format: CONFIG.JSON_RESPONSE_FORMAT };
 
-    const responsesPayload: Record<string, any> = { model, input: messages, max_completion_tokens: 4000 };
+    const responsesPayload: Record<string, any> = { model, input: messages, max_completion_tokens: CONFIG.MAX_TOKENS };
 
     console.log('🧪 Model payload configuration:', { model, isLegacy, endpointPreferred: endpointUsed, chatKeys: Object.keys(chatPayload), responsesKeys: Object.keys(responsesPayload) });
 
-    // Execute request with fallback (Responses -> Chat)
-    let response: Response;
-    if (!isLegacy) {
-      response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(responsesPayload),
-      });
+    // Execute request with retry and fallback
+    const makeRequest = async (): Promise<Response> => {
+      let response: Response;
+      if (!isLegacy) {
+        response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(responsesPayload),
+        });
 
-      if (!response.ok) {
-        const errTxt = await response.text();
-        console.error('⚠️ Responses endpoint failed, falling back to chat.completions:', errTxt?.slice(0, 500));
-        endpointUsed = 'chat.completions';
+        if (!response.ok) {
+          const errTxt = await response.text();
+          console.error('⚠️ Responses endpoint failed, falling back to chat.completions:', errTxt?.slice(0, 500));
+          endpointUsed = 'chat.completions';
+          response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(chatPayload),
+          });
+        }
+      } else {
         response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -292,19 +483,25 @@ async function extractFromContent(
           body: JSON.stringify(chatPayload),
         });
       }
-    } else {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(chatPayload),
-      });
-    }
+      return response;
+    };
+
+    const response = await retryWithBackoff(makeRequest);
 
     console.log(`🌐 OpenAI Response status [${endpointUsed}]: ${response.status}`);
-    console.log(`🌐 OpenAI Response headers:`, Object.fromEntries(response.headers.entries()));
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+    console.log(`🌐 OpenAI Response headers:`, responseHeaders);
+    
+    // Log important headers for debugging
+    if (responseHeaders['x-request-id']) {
+      console.log(`🔍 Request ID: ${responseHeaders['x-request-id']}`);
+    }
+    if (responseHeaders['x-ratelimit-remaining-requests']) {
+      console.log(`📊 Rate Limit - Remaining Requests: ${responseHeaders['x-ratelimit-remaining-requests']}`);
+    }
+    if (responseHeaders['x-ratelimit-remaining-tokens']) {
+      console.log(`📊 Rate Limit - Remaining Tokens: ${responseHeaders['x-ratelimit-remaining-tokens']}`);
+    }
 
     const rawText = await response.text();
 
@@ -371,82 +568,43 @@ async function extractFromContent(
     console.log(`📄 Raw AI response length: ${extractedText.length} characters`);
     console.log(`📄 Raw AI response preview: ${extractedText.substring(0, 300)}...`);
     
-    // Parse JSON response with better error handling and validation
+    // Parse JSON response with improved parser
     console.log('🔍 Parsing JSON response...');
-    let jsonText;
-    try {
-      // Try multiple strategies to extract JSON
-      let cleanText = extractedText.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanText.startsWith('```json')) {
-        cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanText.startsWith('```')) {
-        cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      const jsonStart = cleanText.indexOf('{');
-      let jsonEnd = cleanText.lastIndexOf('}') + 1;
-      
-      if (jsonStart === -1) {
-        console.error('❌ No JSON found in response:', cleanText.substring(0, 500));
-        throw new Error('No JSON found in AI response');
-      }
-      
-      // Validate that we have proper closing bracket
-      if (jsonEnd <= jsonStart) {
-        console.error('❌ No closing bracket found, attempting to fix...');
-        // Count opening vs closing brackets
-        const openBrackets = (cleanText.match(/\{/g) || []).length;
-        const closeBrackets = (cleanText.match(/\}/g) || []).length;
-        const missingBrackets = openBrackets - closeBrackets;
-        
-        if (missingBrackets > 0) {
-          console.log(`🔧 Adding ${missingBrackets} missing closing brackets`);
-          cleanText += '}' .repeat(missingBrackets);
-          jsonEnd = cleanText.lastIndexOf('}') + 1;
-        }
-      }
-      
-      jsonText = cleanText.slice(jsonStart, jsonEnd);
-      console.log(`📄 Extracted JSON length: ${jsonText.length} characters`);
-      console.log(`📄 JSON preview: ${jsonText.substring(0, 300)}...`);
-      
-    } catch (sliceError) {
-      console.error('❌ Error extracting JSON from response:', sliceError);
-      console.log('📄 Full response text:', extractedText.substring(0, 1000));
-      throw new Error(`JSON extraction error: ${sliceError.message}`);
-    }
-
-    let parsedData;
-    try {
-      parsedData = JSON.parse(jsonText);
-      console.log('✅ JSON parsed successfully');
-      console.log(`📊 Parsed data keys: ${Object.keys(parsedData).join(', ')}`);
-      console.log(`📊 Data preview:`, {
-        title: parsedData.title,
-        authority: parsedData.authority,
-        totalFields: Object.keys(parsedData).length,
-        hasDescription: !!parsedData.description,
-        hasEligibility: !!parsedData.eligibility_criteria
-      });
-      
-    } catch (parseError) {
-      console.error('❌ JSON parsing failed:', parseError);
-      console.log('📄 Failed JSON text:', jsonText.substring(0, 1000));
-      
-      // Try to provide more specific error information
-      const errorMatch = parseError.message.match(/position (\d+)/);
-      if (errorMatch) {
-        const position = parseInt(errorMatch[1]);
-        console.log(`📍 Error context around position ${position}:`, 
-          jsonText.substring(Math.max(0, position - 50), position + 50));
-      }
-      
-      throw new Error(`JSON parsing error: ${parseError.message}`);
+    const parsedData = parseJSONResponse(extractedText);
+    
+    console.log('✅ JSON parsed successfully');
+    console.log(`📊 Parsed data keys: ${Object.keys(parsedData).join(', ')}`);
+    
+    // Validate extracted data
+    const validation = validateSubsidyData(parsedData);
+    console.log(`🔍 Validation results: ${validation.isValid ? 'VALID' : 'INVALID'}`);
+    
+    if (validation.errors.length > 0) {
+      console.warn('⚠️ Validation errors:', validation.errors);
     }
     
-    return parsedData;
+    if (validation.warnings.length > 0) {
+      console.warn('⚠️ Validation warnings:', validation.warnings);
+    }
+    
+    console.log(`📊 Data preview:`, {
+      title: validation.data.title,
+      authority: validation.data.authority,
+      totalFields: Object.keys(validation.data).length,
+      validationScore: validation.isValid ? 1.0 : 0.5
+    });
+    
+    // Return validated data with metadata
+    return {
+      ...validation.data,
+      _validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings,
+        rawFieldCount: Object.keys(parsedData).length,
+        validatedFieldCount: Object.keys(validation.data).length
+      }
+    };
 
   } catch (error) {
     console.error('💥 EXTRACTION ERROR:', error);
@@ -465,7 +623,7 @@ serve(async (req) => {
   }
 
   try {
-    const { run_id, page_ids, test_mode = false, model = AI_MODEL } = await req.json();
+    const { run_id, page_ids, test_mode = false, model = CONFIG.AI_MODEL } = await req.json();
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
     
@@ -522,13 +680,136 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📄 Processing ${pages.length} pages`);
+    console.log(`📄 Processing ${pages.length} pages with concurrency limit: ${CONFIG.CONCURRENT_LIMIT}`);
 
     let subsidiesCreated = 0;
     let pagesProcessed = 0;
 
-    // Process pages synchronously to ensure completion
-    await processPages();
+    // Process pages in batches with concurrency control
+    const processBatch = async (batch: any[]) => {
+      return Promise.allSettled(
+        batch.map(async (page) => {
+          console.log(`🔍 Processing page: ${page.source_url}`);
+          
+          // Get content - prefer combined markdown, fallback to raw text
+          const content = page.combined_content_markdown || page.raw_text || '';
+          const attachments = page.attachments_jsonb || [];
+          
+          if (content.length < 100) {
+            console.log(`⚠️ Skipping page with insufficient content: ${page.source_url}`);
+            return { success: false, url: page.source_url, reason: 'Insufficient content' };
+          }
+
+          try {
+            console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
+            console.log(`📝 Content length: ${content.length} characters`);
+            
+            const extractedData = await extractFromContent(
+              content,
+              attachments,
+              model,
+              { 
+                run_id,
+                page_id: page.id,
+                source_url: page.source_url,
+                content_preview: content.substring(0, 500)
+              }
+            );
+
+            if (extractedData && extractedData.title) {
+              console.log(`✅ Extracted data from: ${page.source_url}`);
+              
+              // Save to subsidies_structured table with sanitized data
+              const subsidyData = {
+                run_id,
+                url: page.source_url,
+                title: sanitizeStringValue(extractedData.title) || 'Untitled Subsidy',
+                description: sanitizeStringValue(extractedData.description),
+                eligibility: sanitizeStringValue(extractedData.eligibility_criteria || extractedData.eligibility),
+                deadline: sanitizeDateValue(extractedData.closing_date || extractedData.deadline),
+                agency: sanitizeStringValue(extractedData.authority || extractedData.managing_agency) || 'Unknown Agency',
+                region: sanitizeStringValue(extractedData.region || extractedData.geographic_eligibility),
+                sector: sanitizeStringValue(extractedData.sector),
+                funding_type: sanitizeStringValue(extractedData.funding_type || extractedData.call_type) || 'Grant',
+                total_budget: sanitizeNumericValue(extractedData.total_budget),
+                funding_amount: sanitizeStringValue(extractedData.funding_amount),
+                raw_data: extractedData,
+                confidence_score: extractedData._validation?.isValid ? 0.9 : 0.6,
+                language: 'fr',
+                extracted_documents: sanitizeArrayValue(extractedData.forms_detected),
+                document_count: Array.isArray(extractedData.forms_detected) ? extractedData.forms_detected.length : 0,
+                extraction_timestamp: new Date().toISOString(),
+                ai_model: model,
+                version: 'v2_comprehensive_validated'
+              };
+              
+              const { error: insertError } = await supabase
+                .from('subsidies_structured')
+                .insert(subsidyData);
+              
+              if (insertError) {
+                console.error(`❌ Failed to save subsidy data for ${page.source_url}:`, insertError);
+                throw insertError;
+              } else {
+                console.log(`💾 Saved subsidy data for: ${page.source_url}`);
+                return { success: true, url: page.source_url };
+              }
+            } else {
+              console.log(`⚠️ No valid data extracted from: ${page.source_url}`);
+              return { success: false, url: page.source_url, reason: 'No valid data extracted' };
+            }
+            
+          } catch (error: any) {
+            console.error(`❌ Failed to extract data from: ${page.source_url}`);
+            console.error('💥 EXTRACTION ERROR:', error);
+            console.error('💥 Error details:', {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            });
+            
+            // Log error to database
+            try {
+              await supabase
+                .from('ai_content_errors')
+                .insert({
+                  run_id,
+                  page_id: page.id,
+                  source_url: page.source_url,
+                  stage: 'extraction',
+                  message: error.message,
+                  snippet: content?.substring(0, 500)
+                });
+            } catch (logError) {
+              console.error('Failed to log extraction error:', logError);
+            }
+            
+            throw error;
+          }
+        })
+      );
+    };
+
+    // Process in batches
+    const batches = [];
+    for (let i = 0; i < pages.length; i += CONFIG.CONCURRENT_LIMIT) {
+      batches.push(pages.slice(i, i + CONFIG.CONCURRENT_LIMIT));
+    }
+
+    for (const batch of batches) {
+      console.log(`🔄 Processing batch of ${batch.length} pages...`);
+      const results = await processBatch(batch);
+      
+      // Count results
+      for (const result of results) {
+        pagesProcessed++;
+        if (result.status === 'fulfilled' && result.value?.success) {
+          subsidiesCreated++;
+        }
+      }
+      
+      console.log(`📊 Batch complete: ${pagesProcessed}/${pages.length} processed, ${subsidiesCreated} subsidies created`);
+    }
 
     // Update run completion status
     const { error: updateError } = await supabase
@@ -568,194 +849,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-    async function processPages() {
-      // Process each page
-      for (const page of pages) {
-        try {
-          pagesProcessed++;
-          console.log(`🔍 Processing page: ${page.source_url}`);
-          
-          // Get content - prefer combined markdown, fallback to raw text
-          const content = page.combined_content_markdown || page.raw_text || '';
-          const attachments = page.attachments_jsonb || [];
-          
-          if (content.length < 100) {
-            console.log(`⚠️ Skipping page with insufficient content: ${page.source_url}`);
-            continue;
-          }
-
-          // Extract comprehensive data
-          console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
-          console.log(`📝 Content length: ${content.length} characters`);
-          
-          const extractedData = await extractFromContent(content, attachments, model, { run_id, page_id: page.id, source_url: page.source_url, content_preview: content.substring(0, 500) });
-          
-          if (!extractedData) {
-            console.log(`❌ Failed to extract data from: ${page.source_url}`);
-            
-            // Log extraction error
-            const { error: errorLogError } = await supabase
-              .from('ai_content_errors')
-              .insert({
-                run_id,
-                page_id: page.id,
-                source_url: page.source_url,
-                stage: 'extraction',
-                message: 'AI extraction returned null - possible API error or content processing failure',
-                snippet: content.substring(0, 500)
-              });
-            
-            if (errorLogError) {
-              console.error('Failed to log extraction error:', errorLogError);
-            }
-            
-            continue;
-          }
-          
-          console.log(`✅ AI extraction successful for: ${page.source_url}`);
-          console.log(`📊 Extracted data structure:`, {
-            hasCore: !!extractedData.core_identification,
-            hasDates: !!extractedData.dates,
-            hasEligibility: !!extractedData.eligibility,
-            hasFunding: !!extractedData.funding,
-            title: extractedData.core_identification?.title || extractedData.title,
-            categories: extractedData.core_identification?.categories,
-            sectors: extractedData.core_identification?.sector
-          });
-          
-          // Save raw extraction for debugging
-          const { error: rawLogError } = await supabase
-            .from('ai_raw_extractions')
-            .insert({
-              run_id,
-              page_id: page.id,
-              raw_output: JSON.stringify(extractedData),
-              content_preview: content.substring(0, 500),
-              model: model,
-              prompt: 'comprehensive_extraction_v2'
-            });
-          
-          if (rawLogError) {
-            console.error('Failed to log raw extraction:', rawLogError);
-          }
-          
-          // Extract core identification data safely
-          const coreData = extractedData.core_identification || {};
-          const datesData = extractedData.dates || {};
-          const eligibilityData = extractedData.eligibility || {};
-          const fundingData = extractedData.funding || {};
-          const projectData = extractedData.project_scope_objectives || {};
-          const processData = extractedData.application_process || {};
-          
-          // Check if subsidy already exists by URL
-          const { data: existingSubsidy } = await supabase
-            .from('subsidies_structured')
-            .select('id, url, title, updated_at')
-            .eq('url', page.source_url)
-            .maybeSingle();
-
-          let upsertAction = 'created';
-          let upsertResult;
-
-          if (existingSubsidy) {
-            console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.url}`);
-            upsertAction = 'updated';
-            
-            upsertResult = await supabase
-              .from('subsidies_structured')
-              .update({
-                title: sanitizeStringValue(coreData.title || extractedData.title || 'Untitled Subsidy'),
-                description: sanitizeStringValue((() => {
-                  const obj = projectData.objectives_detailed;
-                  if (typeof obj === 'string') return obj;
-                  if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
-                  return extractedData.description || coreData.policy_objective || 'No description available';
-                })()),
-                eligibility: sanitizeStringValue([
-                  eligibilityData.eligible_entities,
-                  eligibilityData.geographic_eligibility, 
-                  eligibilityData.special_conditions
-                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
-                agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
-                region: sanitizeStringValue(sanitizeArrayValue(eligibilityData.geographic_eligibility).join(', ')),
-                sector: sanitizeStringValue(sanitizeArrayValue(coreData.categories || coreData.sector).join(', ')),
-                funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
-                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
-                run_id: run_id,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existingSubsidy.id);
-              
-          } else {
-            console.log(`➕ Creating new subsidy: ${page.source_url}`);
-            
-            upsertResult = await supabase
-              .from('subsidies_structured')
-              .insert({
-                url: page.source_url,
-                title: sanitizeStringValue(coreData.title || 'Untitled Subsidy'),
-                description: sanitizeStringValue((() => {
-                  const obj = projectData.objectives_detailed;
-                  if (typeof obj === 'string') return obj;
-                  if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
-                  return coreData.policy_objective || 'No description available';
-                })()),
-                eligibility: sanitizeStringValue([
-                  eligibilityData.eligible_entities,
-                  eligibilityData.geographic_eligibility, 
-                  eligibilityData.special_conditions
-                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
-                agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
-                region: sanitizeStringValue(sanitizeArrayValue(eligibilityData.geographic_eligibility).join(', ')),
-                sector: sanitizeStringValue(sanitizeArrayValue(coreData.categories || coreData.sector).join(', ')),
-                funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
-                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
-                run_id: run_id
-              });
-          }
-          
-          if (upsertResult.error) {
-            console.error(`❌ Failed to ${upsertAction} subsidy for ${page.source_url}:`, upsertResult.error);
-            // Log DB upsert error for diagnostics
-            const { error: dbErrorLog } = await supabase
-              .from('ai_content_errors')
-              .insert({
-                run_id,
-                page_id: page.id,
-                source_url: page.source_url,
-                stage: 'db_upsert',
-                message: upsertResult.error.message || 'Unknown DB upsert error',
-                snippet: JSON.stringify({ action: upsertAction }).substring(0, 500)
-              });
-            if (dbErrorLog) console.error('Failed to log DB upsert error:', dbErrorLog);
-          } else {
-            subsidiesCreated++;
-            console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
-          }
-
-        } catch (pageError) {
-          console.error(`❌ Error processing page ${page.source_url}:`, pageError);
-          
-          // Log page processing error
-          const { error: errorLogError } = await supabase
-            .from('ai_content_errors')
-            .insert({
-              run_id,
-              page_id: page.id,
-              source_url: page.source_url,
-              stage: 'page_processing',
-              message: pageError.message || 'Unknown page processing error',
-              snippet: pageError.stack?.substring(0, 500) || ''
-            });
-          
-          if (errorLogError) {
-            console.error('Failed to log page error:', errorLogError);
-          }
-        }
-      }
-    }
-
-  } catch (error) {
+  } catch (error: any) {
     console.error('V2 AI processor error:', error);
     
     // Update run status to failed
@@ -770,8 +864,6 @@ serve(async (req) => {
         })
         .eq('id', run_id);
       
-      
-      
       if (updateError) {
         console.error('Failed to update failed run status:', updateError);
       }
@@ -780,7 +872,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
-      version: 'v2_comprehensive'
+      version: 'v2_comprehensive_enhanced'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
