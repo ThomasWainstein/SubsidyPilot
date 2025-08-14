@@ -551,6 +551,13 @@ async function extractFromContent(
       response_format: CONFIG.JSON_RESPONSE_FORMAT
     };
 
+    // For newer models (GPT-4.1+), use max_completion_tokens instead of max_tokens
+    if (model.includes('gpt-4.1') || model.includes('gpt-5') || model.includes('o3') || model.includes('o4')) {
+      delete payload.temperature; // Not supported in newer models
+      delete payload.max_tokens;
+      payload.max_completion_tokens = CONFIG.MAX_TOKENS;
+    }
+
     // Execute request with retry
     const makeRequest = async (): Promise<Response> => {
       return await fetch('https://api.openai.com/v1/chat/completions', {
