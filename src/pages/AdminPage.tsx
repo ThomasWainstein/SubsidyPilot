@@ -14,13 +14,10 @@ import CanonicalValidationDashboard from '@/components/admin/CanonicalValidation
 import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipelineManager';
 import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfig';
 import RealTimePipelineMonitor from '@/components/admin/RealTimePipelineMonitor';
-import { AIProcessingControl } from '@/components/admin/AIProcessingControl';
 import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard';
 import { AuditTrailViewer } from '@/components/admin/AuditTrailViewer';
 import { ManualPipelineDebugger } from '@/components/admin/ManualPipelineDebugger';
-import { AIProcessingTrigger } from '@/components/admin/AIProcessingTrigger';
-import { AIProcessingTriggerV2 } from '@/components/admin/AIProcessingTriggerV2';
-import { AIV2FunctionTester } from '@/components/admin/AIV2FunctionTester';
+import { AITestingControl } from '@/components/admin/AITestingControl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
@@ -196,12 +193,7 @@ const AdminPageContent = () => {
             
             <TabsContent value="ai-control" className="mt-6">
               <ErrorBoundary>
-                <div className="space-y-6">
-                  <AIV2FunctionTester />
-                  <AIProcessingTriggerV2 />
-                  <AIProcessingTrigger />
-                  <AIProcessingControl />
-                </div>
+                <AITestingControl />
               </ErrorBoundary>
             </TabsContent>
             
