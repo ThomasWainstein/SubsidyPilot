@@ -384,6 +384,20 @@ serve(async (req) => {
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
     
+    // Create run tracking record
+    const { error: runError } = await supabase
+      .from('ai_content_runs')
+      .insert({
+        run_id,
+        started_at: new Date().toISOString(),
+        status: 'running',
+        model: AI_MODEL
+      });
+    
+    if (runError) {
+      console.error('❌ Failed to create run record:', runError);
+    }
+    
     // Get pages to process
     let query = supabase
       .from('raw_scraped_pages')
@@ -426,6 +440,23 @@ serve(async (req) => {
     // Process pages synchronously to ensure completion
     await processPages();
 
+    // Update run completion status
+    const { error: updateError } = await supabase
+      .from('ai_content_runs')
+      .update({
+        status: 'completed',
+        ended_at: new Date().toISOString(),
+        pages_seen: pages.length,
+        pages_eligible: pages.length,
+        pages_processed: pagesProcessed,
+        subs_created: subsidiesCreated
+      })
+      .eq('run_id', run_id);
+
+    if (updateError) {
+      console.error('❌ Failed to update run record:', updateError);
+    }
+
     const result = {
       success: true,
       run_id,
@@ -465,6 +496,23 @@ serve(async (req) => {
           
           if (!extractedData) {
             console.log(`❌ Failed to extract data from: ${page.source_url}`);
+            
+            // Log extraction error
+            const { error: errorLogError } = await supabase
+              .from('ai_content_errors')
+              .insert({
+                run_id,
+                page_id: page.id,
+                source_url: page.source_url,
+                stage: 'extraction',
+                message: 'AI extraction returned null - possible API error or content processing failure',
+                snippet: content.substring(0, 500)
+              });
+            
+            if (errorLogError) {
+              console.error('Failed to log extraction error:', errorLogError);
+            }
+            
             continue;
           }
           
@@ -554,12 +602,44 @@ serve(async (req) => {
 
         } catch (pageError) {
           console.error(`❌ Error processing page ${page.source_url}:`, pageError);
+          
+          // Log page processing error
+          const { error: errorLogError } = await supabase
+            .from('ai_content_errors')
+            .insert({
+              run_id,
+              page_id: page.id,
+              source_url: page.source_url,
+              stage: 'page_processing',
+              message: pageError.message || 'Unknown page processing error',
+              snippet: pageError.stack?.substring(0, 500) || ''
+            });
+          
+          if (errorLogError) {
+            console.error('Failed to log page error:', errorLogError);
+          }
         }
       }
     }
 
   } catch (error) {
     console.error('V2 AI processor error:', error);
+    
+    // Update run status to failed
+    if (typeof run_id !== 'undefined') {
+      const { error: updateError } = await supabase
+        .from('ai_content_runs')
+        .update({
+          status: 'failed',
+          ended_at: new Date().toISOString(),
+          reason: error.message
+        })
+        .eq('run_id', run_id);
+      
+      if (updateError) {
+        console.error('Failed to update failed run status:', updateError);
+      }
+    }
     
     return new Response(JSON.stringify({
       success: false,
