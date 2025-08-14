@@ -196,211 +196,229 @@ async function retryWithBackoff<T>(
 }
 
 const COMPREHENSIVE_EXTRACTION_PROMPT = `
-You are an expert AI assistant specializing in extracting structured information from government subsidy and funding documents.
+You are an expert AI assistant specializing in extracting structured information from French government subsidy and funding documents.
 
-Your task is to extract comprehensive information from French government subsidy pages and their attachments, focusing on these 10 categories:
+CRITICAL: You MUST return ONLY a JSON object with the exact nested structure shown below. Do not include any commentary, explanations, or markdown formatting.
 
-## 1. CORE IDENTIFICATION
-- title: Full official name 
-- reference_code: Official decision/dossier/legal reference ID
-- authority: Managing/issuing body (e.g., FranceAgriMer, ADEME)
-- managing_agency: Specific department managing the program
-- sector: Economic/industrial sectors targeted
-- categories: Thematic tags (Climate Change, R&D, Innovation, Regional Development, etc.)
-- funding_programme: Parent funding scheme (France 2030, FEADER, etc.)
-- policy_objective: Alignment with national/EU policy goals
-- call_type: Nature of funding (Appel à projets, Subvention directe, Prêt, etc.)
-- status_detailed: Current status (open, closed, upcoming, suspended)
+Return this exact structure:
 
-## 2. DATES
-- publication_date: When officially published
-- opening_date: Applications begin
-- closing_date: Deadline for submissions  
-- evaluation_start_date: Evaluation begins
-- signature_date: Contract/agreement dates
-- extended_deadlines: Any extensions
-- payment_schedule: Payment phases/dates
-- timeline_notes: Additional timeline info
+{
+  "core_identification": {
+    "title": "Full official subsidy name",
+    "authority": "Managing agency (e.g., FranceAgriMer, ADEME)",
+    "reference_code": "Official reference number",
+    "sector": "Economic/industrial sectors targeted",
+    "funding_programme": "Parent funding scheme",
+    "call_type": "Nature of funding (Appel à projets, Subvention directe, etc.)",
+    "status_detailed": "Current status (open, closed, upcoming)"
+  },
+  "dates": {
+    "publication_date": "YYYY-MM-DD format",
+    "opening_date": "YYYY-MM-DD format", 
+    "closing_date": "YYYY-MM-DD format",
+    "application_deadline": "YYYY-MM-DD format"
+  },
+  "eligibility": {
+    "eligible_entities": "Who can apply (farmers, SMEs, etc.)",
+    "geographic_eligibility": "Areas covered (regions, DOM, etc.)",
+    "entity_size": "Enterprise size requirements",
+    "special_conditions": "Additional requirements"
+  },
+  "funding": {
+    "total_budget": "Total program envelope",
+    "funding_amount": "Min/max amounts per beneficiary", 
+    "funding_rate_details": "Percentage coverage, bonuses",
+    "funding_type": "Grant/Loan/Subsidy/Tax Credit"
+  },
+  "project_scope_objectives": {
+    "objectives_detailed": "Program aims and goals",
+    "eligible_expenses_detailed": "Covered costs",
+    "ineligible_expenses": "Excluded costs"
+  },
+  "application_process": {
+    "required_documents_detailed": "Forms, annexes, certifications",
+    "submission_method_detailed": "Portal/platform details",
+    "contact_information": "Support contacts"
+  },
+  "forms_detected": ["List of application form names found in attachments"]
+}
 
-## 3. ELIGIBILITY
-- eligible_entities: Who can apply (farmers, SMEs, cooperatives, etc.)
-- geographic_eligibility: Areas covered (regions, DOM, etc.)
-- entity_size: micro/small/medium/large enterprises
-- activity_sector_codes: Industry codes (NAF/APE)
-- previous_award_restrictions: Rules for previous beneficiaries
-- special_conditions: Additional requirements
+EXAMPLE for French subsidy:
+{
+  "core_identification": {
+    "title": "Aide à l'investissement en faveur de la compétitivité des entreprises agroalimentaires",
+    "authority": "FranceAgriMer",
+    "reference_code": "INTV-AGRAL-2024-01",
+    "sector": "Agroalimentaire",
+    "funding_programme": "France 2030",
+    "call_type": "Appel à projets",
+    "status_detailed": "open"
+  },
+  "dates": {
+    "publication_date": "2024-01-15",
+    "opening_date": "2024-02-01",
+    "closing_date": "2024-06-30",
+    "application_deadline": "2024-06-30"
+  },
+  "eligibility": {
+    "eligible_entities": "PME du secteur agroalimentaire",
+    "geographic_eligibility": "France métropolitaine et DOM-TOM",
+    "entity_size": "Micro, petites et moyennes entreprises",
+    "special_conditions": "Entreprise créée depuis plus de 2 ans"
+  },
+  "funding": {
+    "total_budget": "50000000",
+    "funding_amount": "Minimum 50000 euros, Maximum 2000000 euros",
+    "funding_rate_details": "40% des dépenses éligibles, 50% pour les jeunes entreprises",
+    "funding_type": "Grant"
+  },
+  "project_scope_objectives": {
+    "objectives_detailed": "Modernisation des outils de production, amélioration de la compétitivité",
+    "eligible_expenses_detailed": "Équipements, logiciels, formation du personnel",
+    "ineligible_expenses": "Fonds de roulement, TVA récupérable"
+  },
+  "application_process": {
+    "required_documents_detailed": "Formulaire de demande, devis détaillés, plan de financement",
+    "submission_method_detailed": "Dépôt électronique via le portail FranceAgriMer",
+    "contact_information": "contact.aides@franceagrimer.gouv.fr"
+  },
+  "forms_detected": ["formulaire_demande_aide.pdf", "annexe_plan_financement.xlsx"]
+}
 
-## 4. FUNDING
-- total_budget: Total program envelope
-- funding_amount: Min/max amounts per beneficiary
-- funding_rate_details: Percentage coverage, bonuses, modifiers
-- duration_limits: Project duration/spending windows
-- cofinancing_sources: Other required/allowed funding
-- payment_modality: How payments are made
-- budget_tranches: Multi-year/phase splitting
-
-## 5. PROJECT SCOPE & OBJECTIVES
-- objectives_detailed: Program aims and goals
-- expected_results: Quantitative/qualitative outcomes
-- impact_indicators: Measurable KPIs
-- eligible_expenses_detailed: Covered costs
-- ineligible_expenses: Excluded costs
-- priority_themes: Internal priorities
-
-## 6. APPLICATION PROCESS
-- process_steps: Ordered application process
-- application_language: Supported languages
-- required_documents_detailed: Forms, annexes, certifications
-- submission_method_detailed: Portal/platform details
-- submission_format: Format requirements
-- contact_information: Support contacts
-- support_resources: FAQs, guides, webinars
-
-## 7. EVALUATION & SELECTION
-- selection_criteria: Scoring/prioritization criteria
-- evaluation_committee: Evaluation body
-- evaluation_phases: Multiple rounds description
-- conflict_of_interest_notes: Conflict rules
-- decision_publication_method: Results publication
-
-## 8. DOCUMENTS & ANNEXES
-- regulatory_references: Laws, decrees, EU regulations
-- verbatim_blocks: Raw content preserving formatting
-- forms_detected: Application forms identified
-- forms_recreated: Digital form recreation data
-
-## 9. META & LANGUAGE
-- content_hash: Content change detection
-- related_programmes: Similar/linked schemes
-- cross_funding_links: Interaction with other funding
-
-## 10. COMPLIANCE & TRANSPARENCY
-- beneficiary_reporting_requirements: Post-funding obligations
-- compliance_audit_mechanisms: Audit procedures
-- sanctions_for_non_compliance: Penalties
-- transparency_notes: Publicity obligations
-- previous_recipients_list: Past beneficiaries
-- procurement_obligations: Public procurement rules
-- environmental_social_safeguards: ESG conditions
-- additional_support_mechanisms: Related advisory support
-
-**IMPORTANT INSTRUCTIONS:**
-1. Extract as much information as possible from the provided content
-2. If information is missing from the main page, note which documents might contain it
-3. Use NULL for missing information, don't make up data
-4. Provide confidence scores for extracted information
-5. Identify potential application forms in attached documents
-6. Return valid JSON with all extracted fields
-
-Return the extracted information as a JSON object with all the fields listed above.
+Instructions:
+- Extract information from both the main page content AND attachment contents provided
+- Use NULL for missing information - do not invent data
+- Dates must be in YYYY-MM-DD format
+- Numbers should be extracted as strings (preserve original formatting)
+- Return ONLY the JSON object, no other text
 `;
 
-// Data sanitization functions
-function sanitizeNumericValue(value: any): number | null {
-  if (value === null || value === undefined || value === '') {
-    return null;
+// Enhanced attachment processing function
+async function processAttachments(attachments: any[]): Promise<string> {
+  if (!attachments || attachments.length === 0) {
+    return "No attached documents provided.";
   }
   
-  if (typeof value === 'number') {
-    return isNaN(value) ? null : value;
-  }
+  let attachmentContent = "\n\n=== ATTACHED DOCUMENTS CONTENT ===\n";
   
-  if (typeof value === 'string') {
-    // Remove common currency symbols and formatting
-    let cleaned = value
-      .replace(/[€$£¥₹]/g, '') // Remove currency symbols
-      .replace(/\s+/g, ' ') // Normalize spaces
-      .replace(/\(.*?\)/g, '') // Remove parenthetical content like "(plafond d'aide publique...)"
-      .replace(/[^\d\s,.-]/g, '') // Keep only digits, spaces, commas, dots, hyphens
-      .trim();
+  for (const attachment of attachments) {
+    attachmentContent += `\n--- DOCUMENT: ${attachment.name} ---\n`;
     
-    // Handle European number format (space/dot as thousands separator, comma as decimal)
-    if (cleaned.includes(',') && cleaned.includes(' ')) {
-      // Example: "100 000,50" or "1 500,00"
-      cleaned = cleaned.replace(/\s/g, '').replace(',', '.');
-    } else if (cleaned.includes(' ') && !cleaned.includes(',')) {
-      // Example: "100 000" 
-      cleaned = cleaned.replace(/\s/g, '');
-    } else if (cleaned.includes(',') && !cleaned.includes('.')) {
-      // Example: "1000,50" - European decimal format
-      cleaned = cleaned.replace(',', '.');
+    // If attachment has text content, include it
+    if (attachment.text_content) {
+      attachmentContent += attachment.text_content.substring(0, 8000); // Limit per document
+    } else if (attachment.extracted_text) {
+      attachmentContent += attachment.extracted_text.substring(0, 8000);
+    } else {
+      attachmentContent += `[Document detected but text content not available: ${attachment.name}]`;
     }
     
-    // Extract first valid number
-    const numberMatch = cleaned.match(/^\d+(?:\.\d+)?/);
-    if (numberMatch) {
-      const parsed = parseFloat(numberMatch[0]);
-      return isNaN(parsed) ? null : parsed;
+    attachmentContent += "\n--- END DOCUMENT ---\n";
+  }
+  
+  return attachmentContent;
+}
+
+// Improved JSON parser with multiple strategies
+function parseJSONResponse(responseText: string): any {
+  try {
+    // Strategy 1: Look for fenced JSON blocks first
+    const fencedMatch = responseText.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+    if (fencedMatch) {
+      console.log('📦 Found fenced JSON block');
+      return JSON.parse(fencedMatch[1]);
     }
-  }
-  
-  return null;
-}
-
-function sanitizeStringValue(value: any): string | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  
-  if (typeof value === 'string') {
-    return value.trim() || null;
-  }
-  
-  if (Array.isArray(value)) {
-    return value.filter(Boolean).join(', ') || null;
-  }
-  
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
-  }
-  
-  return String(value).trim() || null;
-}
-
-function sanitizeDateValue(value: any): string | null {
-  if (!value) return null;
-  
-  if (typeof value === 'string') {
-    // Try to parse common date formats
-    const datePatterns = [
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,  // DD/MM/YYYY
-      /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
-      /(\d{1,2})-(\d{1,2})-(\d{4})/    // DD-MM-YYYY
-    ];
     
-    for (const pattern of datePatterns) {
-      const match = value.match(pattern);
-      if (match) {
-        try {
-          const date = new Date(match[0]);
-          if (!isNaN(date.getTime())) {
-            return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
-          }
-        } catch (e) {
-          // Continue to next pattern
+    // Strategy 2: Look for any fenced blocks  
+    const anyFencedMatch = responseText.match(/```\s*(\{[\s\S]*?\})\s*```/);
+    if (anyFencedMatch) {
+      console.log('📦 Found generic fenced block');
+      return JSON.parse(anyFencedMatch[1]);
+    }
+    
+    // Strategy 3: Find first complete JSON object using brace balancing
+    let braceCount = 0;
+    let jsonStart = -1;
+    let jsonEnd = -1;
+    
+    for (let i = 0; i < responseText.length; i++) {
+      if (responseText[i] === '{') {
+        if (braceCount === 0) jsonStart = i;
+        braceCount++;
+      } else if (responseText[i] === '}') {
+        braceCount--;
+        if (braceCount === 0 && jsonStart !== -1) {
+          jsonEnd = i + 1;
+          break;
         }
       }
     }
+    
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const jsonText = responseText.slice(jsonStart, jsonEnd);
+      console.log('📦 Found balanced JSON object');
+      return JSON.parse(jsonText);
+    }
+    
+    throw new Error('No valid JSON structure found in response');
+    
+  } catch (error: any) {
+    console.error('❌ All JSON parsing strategies failed:', error.message);
+    console.error('📄 Response preview:', responseText.substring(0, 1000));
+    throw new Error(`JSON parsing error: ${error.message}`);
   }
-  
-  return null;
 }
 
-function sanitizeArrayValue(value: any): string[] {
-  if (!value) return [];
-  
-  if (Array.isArray(value)) {
-    return value.filter(Boolean).map(v => String(v).trim()).filter(Boolean);
+// Schema fallback function - maps flat structure to nested if needed
+function normalizeExtractedData(data: any): any {
+  // If already has nested structure, return as-is
+  if (data.core_identification) {
+    return data;
   }
   
-  if (typeof value === 'string') {
-    // Split on common delimiters
-    return value.split(/[,;|]/)
-      .map(v => v.trim())
-      .filter(Boolean);
-  }
+  console.log('🔄 Converting flat structure to nested schema');
   
-  return [String(value).trim()].filter(Boolean);
+  // Map flat structure to nested
+  return {
+    core_identification: {
+      title: data.title,
+      authority: data.authority,
+      reference_code: data.reference_code,
+      sector: data.sector,
+      funding_programme: data.funding_programme,
+      call_type: data.call_type || data.funding_type,
+      status_detailed: data.status_detailed || data.status
+    },
+    dates: {
+      publication_date: data.publication_date,
+      opening_date: data.opening_date,
+      closing_date: data.closing_date || data.deadline,
+      application_deadline: data.application_deadline || data.deadline
+    },
+    eligibility: {
+      eligible_entities: data.eligible_entities || data.eligibility,
+      geographic_eligibility: data.geographic_eligibility || data.region,
+      entity_size: data.entity_size,
+      special_conditions: data.special_conditions
+    },
+    funding: {
+      total_budget: data.total_budget,
+      funding_amount: data.funding_amount,
+      funding_rate_details: data.funding_rate_details,
+      funding_type: data.funding_type
+    },
+    project_scope_objectives: {
+      objectives_detailed: data.objectives_detailed || data.description,
+      eligible_expenses_detailed: data.eligible_expenses_detailed,
+      ineligible_expenses: data.ineligible_expenses
+    },
+    application_process: {
+      required_documents_detailed: data.required_documents_detailed,
+      submission_method_detailed: data.submission_method_detailed,
+      contact_information: data.contact_information
+    },
+    forms_detected: data.forms_detected || []
+  };
 }
 
 async function extractFromContent(
@@ -414,81 +432,57 @@ async function extractFromContent(
     console.log(`📝 Content preview: ${content.substring(0, 200)}...`);
     console.log(`📎 Attachments: ${attachments.length} files`);
 
+    // Process attachments to include actual content
+    const attachmentContent = await processAttachments(attachments);
+
     const messages = [
       {
         role: 'system',
-        content: COMPREHENSIVE_EXTRACTION_PROMPT + "\n\nYou MUST return only valid JSON. Do not include any commentary or markdown formatting."
+        content: COMPREHENSIVE_EXTRACTION_PROMPT
       },
       {
         role: 'user',
-        content: `Extract comprehensive subsidy information from this content:\n\n${content}\n\nAttached documents available: ${attachments.map(a => a.name).join(', ')}`
+        content: `Extract comprehensive subsidy information from this content:\n\n${content}${attachmentContent}`
       }
     ];
 
-    console.log('🔗 Making OpenAI API call...');
+
+    // Simplified to use only chat/completions for stability
+    console.log('🔗 Making OpenAI API call to chat/completions...');
     console.log(`🔑 API Key available: ${openAIApiKey ? 'Yes' : 'No'}`);
     console.log(`🔑 API Key preview: ${openAIApiKey ? openAIApiKey.substring(0, 10) + '...' : 'N/A'}`);
     console.log('🧩 Payload metrics:', {
       systemChars: COMPREHENSIVE_EXTRACTION_PROMPT.length,
-      userChars: content.length,
+      userChars: content.length + attachmentContent.length,
       attachmentsCount: attachments.length,
-      model
+      model,
+      totalInputSize: content.length + attachmentContent.length + COMPREHENSIVE_EXTRACTION_PROMPT.length
     });
 
-    const isLegacy = /gpt-4o/i.test(model);
-    let endpointUsed = isLegacy ? 'chat.completions' : 'responses';
+    // Use only chat/completions for consistency and stability
+    const payload = { 
+      model, 
+      messages, 
+      temperature: 0, // Deterministic for extraction
+      max_tokens: CONFIG.MAX_TOKENS,
+      response_format: CONFIG.JSON_RESPONSE_FORMAT
+    };
 
-    // Prepare payloads with response format enforcement
-    const chatPayload: Record<string, any> = isLegacy
-      ? { model, messages, temperature: CONFIG.TEMPERATURE, max_tokens: CONFIG.MAX_TOKENS, response_format: CONFIG.JSON_RESPONSE_FORMAT }
-      : { model, messages, max_completion_tokens: CONFIG.MAX_TOKENS, response_format: CONFIG.JSON_RESPONSE_FORMAT };
-
-    const responsesPayload: Record<string, any> = { model, input: messages, max_completion_tokens: CONFIG.MAX_TOKENS };
-
-    console.log('🧪 Model payload configuration:', { model, isLegacy, endpointPreferred: endpointUsed, chatKeys: Object.keys(chatPayload), responsesKeys: Object.keys(responsesPayload) });
-
-    // Execute request with retry and fallback
+    // Execute request with retry
     const makeRequest = async (): Promise<Response> => {
-      let response: Response;
-      if (!isLegacy) {
-        response = await fetch('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(responsesPayload),
-        });
-
-        if (!response.ok) {
-          const errTxt = await response.text();
-          console.error('⚠️ Responses endpoint failed, falling back to chat.completions:', errTxt?.slice(0, 500));
-          endpointUsed = 'chat.completions';
-          response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(chatPayload),
-          });
-        }
-      } else {
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(chatPayload),
-        });
-      }
-      return response;
+      return await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
     };
 
     const response = await retryWithBackoff(makeRequest);
 
-    console.log(`🌐 OpenAI Response status [${endpointUsed}]: ${response.status}`);
+    console.log(`🌐 OpenAI Response status: ${response.status}`);
     const responseHeaders = Object.fromEntries(response.headers.entries());
     console.log(`🌐 OpenAI Response headers:`, responseHeaders);
     
@@ -516,7 +510,7 @@ async function extractFromContent(
             raw_output: rawText,
             content_preview: ctx.content_preview || content.substring(0, 500),
             model,
-            prompt: `comprehensive_extraction_v2_${endpointUsed}`
+            prompt: `comprehensive_extraction_v2_chat_completions`
           });
         if (rawSaveErr) console.error('Failed to save raw OpenAI response:', rawSaveErr);
       }
@@ -537,32 +531,13 @@ async function extractFromContent(
       throw new Error('Failed to parse OpenAI JSON body');
     }
 
-    console.log('📥 OpenAI Response received');
-    console.log('🔍 Response structural hints:', {
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length,
-      hasOutput: !!data.output,
-      hasOutputText: !!data.output_text
-    });
-
-    // Normalize to a single text string
-    let extractedText: string | undefined = data?.output_text;
-    if (!extractedText && Array.isArray(data?.output)) {
-      try {
-        extractedText = data.output
-          .flatMap((o: any) => (Array.isArray(o?.content) ? o.content : []))
-          .map((c: any) => c?.text || c?.output_text || '')
-          .filter(Boolean)
-          .join('\n');
-      } catch (_) { /* ignore */ }
-    }
-    if (!extractedText && data?.choices?.[0]?.message?.content) {
-      extractedText = data.choices[0].message.content;
-    }
+    
+    // Extract content from chat/completions response
+    const extractedText = data?.choices?.[0]?.message?.content;
 
     if (!extractedText) {
-      console.error('❌ No usable text in OpenAI response:', data);
-      throw new Error('No usable text in OpenAI response');
+      console.error('❌ No content in OpenAI response:', data);
+      throw new Error('No content in OpenAI response');
     }
 
     console.log(`📄 Raw AI response length: ${extractedText.length} characters`);
@@ -572,11 +547,21 @@ async function extractFromContent(
     console.log('🔍 Parsing JSON response...');
     const parsedData = parseJSONResponse(extractedText);
     
-    console.log('✅ JSON parsed successfully');
-    console.log(`📊 Parsed data keys: ${Object.keys(parsedData).join(', ')}`);
+    // Normalize to nested structure if needed
+    const normalizedData = normalizeExtractedData(parsedData);
+    
+    console.log('✅ JSON parsed and normalized successfully');
+    console.log(`📊 Normalized data structure:`, {
+      hasCore: !!normalizedData.core_identification,
+      hasDates: !!normalizedData.dates,
+      hasEligibility: !!normalizedData.eligibility,
+      hasFunding: !!normalizedData.funding,
+      title: normalizedData.core_identification?.title,
+      authority: normalizedData.core_identification?.authority
+    });
     
     // Validate extracted data
-    const validation = validateSubsidyData(parsedData);
+    const validation = validateSubsidyData(normalizedData);
     console.log(`🔍 Validation results: ${validation.isValid ? 'VALID' : 'INVALID'}`);
     
     if (validation.errors.length > 0) {
@@ -587,22 +572,15 @@ async function extractFromContent(
       console.warn('⚠️ Validation warnings:', validation.warnings);
     }
     
-    console.log(`📊 Data preview:`, {
-      title: validation.data.title,
-      authority: validation.data.authority,
-      totalFields: Object.keys(validation.data).length,
-      validationScore: validation.isValid ? 1.0 : 0.5
-    });
-    
-    // Return validated data with metadata
+    // Return normalized data with validation metadata
     return {
-      ...validation.data,
+      ...normalizedData,
       _validation: {
         isValid: validation.isValid,
         errors: validation.errors,
         warnings: validation.warnings,
         rawFieldCount: Object.keys(parsedData).length,
-        validatedFieldCount: Object.keys(validation.data).length
+        normalizedFieldCount: Object.keys(normalizedData).length
       }
     };
 
@@ -618,12 +596,15 @@ async function extractFromContent(
 }
 
 serve(async (req) => {
+  let run_id: string; // Declare here to fix scope issue
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { run_id, page_ids, test_mode = false, model = CONFIG.AI_MODEL } = await req.json();
+    const requestData = await req.json();
+    run_id = requestData.run_id; // Assign here
+    const { page_ids, test_mode = false, model = CONFIG.AI_MODEL } = requestData;
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
     
@@ -716,23 +697,35 @@ serve(async (req) => {
               }
             );
 
-            if (extractedData && extractedData.title) {
+            if (extractedData && extractedData.core_identification?.title) {
               console.log(`✅ Extracted data from: ${page.source_url}`);
+              
+              // Extract data from nested structure
+              const coreData = extractedData.core_identification || {};
+              const datesData = extractedData.dates || {};
+              const eligibilityData = extractedData.eligibility || {};
+              const fundingData = extractedData.funding || {};
+              const projectData = extractedData.project_scope_objectives || {};
+              const processData = extractedData.application_process || {};
               
               // Save to subsidies_structured table with sanitized data
               const subsidyData = {
                 run_id,
                 url: page.source_url,
-                title: sanitizeStringValue(extractedData.title) || 'Untitled Subsidy',
-                description: sanitizeStringValue(extractedData.description),
-                eligibility: sanitizeStringValue(extractedData.eligibility_criteria || extractedData.eligibility),
-                deadline: sanitizeDateValue(extractedData.closing_date || extractedData.deadline),
-                agency: sanitizeStringValue(extractedData.authority || extractedData.managing_agency) || 'Unknown Agency',
-                region: sanitizeStringValue(extractedData.region || extractedData.geographic_eligibility),
-                sector: sanitizeStringValue(extractedData.sector),
-                funding_type: sanitizeStringValue(extractedData.funding_type || extractedData.call_type) || 'Grant',
-                total_budget: sanitizeNumericValue(extractedData.total_budget),
-                funding_amount: sanitizeStringValue(extractedData.funding_amount),
+                title: sanitizeStringValue(coreData.title) || 'Untitled Subsidy',
+                description: sanitizeStringValue(projectData.objectives_detailed || coreData.policy_objective),
+                eligibility: sanitizeStringValue([
+                  eligibilityData.eligible_entities,
+                  eligibilityData.geographic_eligibility, 
+                  eligibilityData.special_conditions
+                ].filter(Boolean).join('. ')),
+                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
+                agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
+                region: sanitizeStringValue(eligibilityData.geographic_eligibility),
+                sector: sanitizeStringValue(coreData.sector),
+                funding_type: sanitizeStringValue(fundingData.funding_type || coreData.call_type) || 'Grant',
+                total_budget: sanitizeNumericValue(fundingData.total_budget),
+                funding_amount: sanitizeStringValue(fundingData.funding_amount),
                 raw_data: extractedData,
                 confidence_score: extractedData._validation?.isValid ? 0.9 : 0.6,
                 language: 'fr',
@@ -740,7 +733,7 @@ serve(async (req) => {
                 document_count: Array.isArray(extractedData.forms_detected) ? extractedData.forms_detected.length : 0,
                 extraction_timestamp: new Date().toISOString(),
                 ai_model: model,
-                version: 'v2_comprehensive_validated'
+                version: 'v2_comprehensive_enhanced'
               };
               
               const { error: insertError } = await supabase
@@ -755,8 +748,8 @@ serve(async (req) => {
                 return { success: true, url: page.source_url };
               }
             } else {
-              console.log(`⚠️ No valid data extracted from: ${page.source_url}`);
-              return { success: false, url: page.source_url, reason: 'No valid data extracted' };
+              console.log(`⚠️ No valid data extracted from: ${page.source_url} - missing core identification`);
+              return { success: false, url: page.source_url, reason: 'No valid title in core_identification' };
             }
             
           } catch (error: any) {
@@ -840,7 +833,7 @@ serve(async (req) => {
       model: model,
       pages_processed: pagesProcessed,
       subsidies_created: subsidiesCreated,
-      version: 'v2_comprehensive'
+      version: 'v2_comprehensive_enhanced'
     };
 
     console.log(`🎉 V2 Processing complete:`, result);
