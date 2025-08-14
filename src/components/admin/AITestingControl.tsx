@@ -249,6 +249,7 @@ export function AITestingControl() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ft:gpt-4o-mini-2024-07-18:personal:subsidy-extractor-v1:C4Z0In47">Fine-tuned Subsidy Extractor (Custom)</SelectItem>
                   <SelectItem value="gpt-4.1-2025-04-14">GPT-4.1 (Recommended)</SelectItem>
                   <SelectItem value="gpt-5-2025-08-07">GPT-5 (Latest)</SelectItem>
                   <SelectItem value="gpt-4o-mini">GPT-4o Mini (Fast)</SelectItem>
