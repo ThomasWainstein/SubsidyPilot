@@ -49,9 +49,11 @@ export function AITestingControl() {
   const loadPages = async () => {
     setLoading(true);
     try {
+      console.log('🔍 Loading pages with filter:', pageFilter);
+      
       let query = supabase
         .from('raw_scraped_pages')
-        .select('id, source_url, created_at, status, run_id')
+        .select('id, source_url, created_at, status, run_id, raw_text')
         .order('created_at', { ascending: false });
 
       if (pageFilter === 'processed') {
@@ -72,24 +74,22 @@ export function AITestingControl() {
       
       if (error) throw error;
 
-      const pagesWithLength = await Promise.all(
-        (data || []).map(async (page) => {
-          const { data: contentData } = await supabase
-            .from('raw_scraped_pages')
-            .select('raw_text')
-            .eq('id', page.id)
-            .single();
-          
-          return {
-            ...page,
-            content_length: contentData?.raw_text?.length || 0
-          };
-        })
-      );
+      console.log('📄 Raw pages data:', data?.length, 'pages loaded');
+      
+      // Process the data to include content length
+      const pagesWithLength = (data || []).map((page) => ({
+        id: page.id,
+        source_url: page.source_url,
+        created_at: page.created_at,
+        status: page.status,
+        run_id: page.run_id,
+        content_length: page.raw_text?.length || 0
+      }));
 
+      console.log('✅ Processed pages:', pagesWithLength.length);
       setPages(pagesWithLength);
     } catch (error) {
-      console.error('Error loading pages:', error);
+      console.error('❌ Error loading pages:', error);
       toast.error('Failed to load pages');
     } finally {
       setLoading(false);
@@ -102,12 +102,14 @@ export function AITestingControl() {
       return;
     }
 
+    console.log('🚀 Starting AI test with pages:', selectedPages);
     setIsProcessing(true);
     
     try {
       const testRunId = customRunId || crypto.randomUUID();
       
       toast.info(`🧪 Starting AI test on ${selectedPages.length} page(s)...`);
+      console.log('📡 Calling AI function with:', { testRunId, selectedPages, model, batchSize });
       
       const { data, error } = await supabase.functions.invoke('ai-content-processor-v2', {
         body: {
@@ -185,10 +187,11 @@ export function AITestingControl() {
 
   const selectRandomPages = () => {
     const count = parseInt(batchSize);
-    const availablePages = pages.filter(p => p.status === 'completed');
+    const availablePages = pages.filter(p => p.status === 'processed'); // Changed from 'completed' to 'processed'
     const shuffled = [...availablePages].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, count).map(p => p.id);
     setSelectedPages(selected);
+    console.log('🎲 Selected random pages:', selected.length, 'from', availablePages.length, 'available');
     toast.info(`Selected ${selected.length} random pages`);
   };
 
@@ -365,7 +368,7 @@ export function AITestingControl() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={page.status === 'completed' ? 'default' : 'secondary'}>
+                  <Badge variant={page.status === 'processed' ? 'default' : 'secondary'}>
                     {page.status}
                   </Badge>
                   <Button
