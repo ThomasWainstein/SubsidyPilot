@@ -223,7 +223,12 @@ function sanitizeArrayValue(value: any): string[] {
   return [String(value).trim()].filter(Boolean);
 }
 
-async function extractFromContent(content: string, attachments: any[] = [], model: string = AI_MODEL): Promise<any> {
+async function extractFromContent(
+  content: string,
+  attachments: any[] = [],
+  model: string = AI_MODEL,
+  ctx?: { run_id?: string; page_id?: string; source_url?: string; content_preview?: string }
+): Promise<any> {
   try {
     console.log('🤖 Starting AI extraction...');
     console.log(`📝 Content preview: ${content.substring(0, 200)}...`);
@@ -243,49 +248,126 @@ async function extractFromContent(content: string, attachments: any[] = [], mode
     console.log('🔗 Making OpenAI API call...');
     console.log(`🔑 API Key available: ${openAIApiKey ? 'Yes' : 'No'}`);
     console.log(`🔑 API Key preview: ${openAIApiKey ? openAIApiKey.substring(0, 10) + '...' : 'N/A'}`);
+    console.log('🧩 Payload metrics:', {
+      systemChars: COMPREHENSIVE_EXTRACTION_PROMPT.length,
+      userChars: content.length,
+      attachmentsCount: attachments.length,
+      model
+    });
 
-    // Build model-specific payload (GPT-5/4.1 use max_completion_tokens, 4o/4o-mini use max_tokens + temperature)
     const isLegacy = /gpt-4o/i.test(model);
-    const bodyPayload: Record<string, any> = isLegacy
+    let endpointUsed = isLegacy ? 'chat.completions' : 'responses';
+
+    // Prepare payloads
+    const chatPayload: Record<string, any> = isLegacy
       ? { model, messages, temperature: 0.2, max_tokens: 4000 }
       : { model, messages, max_completion_tokens: 4000 };
 
-    console.log('🧪 Model payload configuration:', { model, isLegacy, payloadKeys: Object.keys(bodyPayload) });
+    const responsesPayload: Record<string, any> = { model, input: messages, max_completion_tokens: 4000 };
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bodyPayload),
-    });
+    console.log('🧪 Model payload configuration:', { model, isLegacy, endpointPreferred: endpointUsed, chatKeys: Object.keys(chatPayload), responsesKeys: Object.keys(responsesPayload) });
 
-    console.log(`🌐 OpenAI Response status: ${response.status}`);
+    // Execute request with fallback (Responses -> Chat)
+    let response: Response;
+    if (!isLegacy) {
+      response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(responsesPayload),
+      });
+
+      if (!response.ok) {
+        const errTxt = await response.text();
+        console.error('⚠️ Responses endpoint failed, falling back to chat.completions:', errTxt?.slice(0, 500));
+        endpointUsed = 'chat.completions';
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatPayload),
+        });
+      }
+    } else {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(chatPayload),
+      });
+    }
+
+    console.log(`🌐 OpenAI Response status [${endpointUsed}]: ${response.status}`);
     console.log(`🌐 OpenAI Response headers:`, Object.fromEntries(response.headers.entries()));
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ OpenAI API error ${response.status}:`, errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    const rawText = await response.text();
+
+    // Persist raw response for diagnostics (even on errors)
+    try {
+      if (ctx?.run_id && ctx?.page_id) {
+        const { error: rawSaveErr } = await supabase
+          .from('ai_raw_extractions')
+          .insert({
+            run_id: ctx.run_id,
+            page_id: ctx.page_id,
+            raw_output: rawText,
+            content_preview: ctx.content_preview || content.substring(0, 500),
+            model,
+            prompt: `comprehensive_extraction_v2_${endpointUsed}`
+          });
+        if (rawSaveErr) console.error('Failed to save raw OpenAI response:', rawSaveErr);
+      }
+    } catch (e) {
+      console.error('Failed to log raw OpenAI response:', e);
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      console.error(`❌ OpenAI API error ${response.status}:`, rawText?.slice(0, 800));
+      throw new Error(`OpenAI API error: ${response.status} - ${rawText?.slice(0, 800)}`);
+    }
+
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      console.error('❌ Failed to parse OpenAI JSON body:', e);
+      throw new Error('Failed to parse OpenAI JSON body');
+    }
+
     console.log('📥 OpenAI Response received');
-    console.log(`🔍 Response structure:`, {
+    console.log('🔍 Response structural hints:', {
       hasChoices: !!data.choices,
       choicesLength: data.choices?.length,
-      hasMessage: !!data.choices?.[0]?.message,
-      hasContent: !!data.choices?.[0]?.message?.content,
-      usage: data.usage
+      hasOutput: !!data.output,
+      hasOutputText: !!data.output_text
     });
 
-    if (!data.choices?.[0]?.message?.content) {
-      console.error('❌ No content in OpenAI response:', data);
-      throw new Error('No content returned from OpenAI');
+    // Normalize to a single text string
+    let extractedText: string | undefined = data?.output_text;
+    if (!extractedText && Array.isArray(data?.output)) {
+      try {
+        extractedText = data.output
+          .flatMap((o: any) => (Array.isArray(o?.content) ? o.content : []))
+          .map((c: any) => c?.text || c?.output_text || '')
+          .filter(Boolean)
+          .join('\n');
+      } catch (_) { /* ignore */ }
+    }
+    if (!extractedText && data?.choices?.[0]?.message?.content) {
+      extractedText = data.choices[0].message.content;
     }
 
-    const extractedText = data.choices[0].message.content;
+    if (!extractedText) {
+      console.error('❌ No usable text in OpenAI response:', data);
+      throw new Error('No usable text in OpenAI response');
+    }
+
     console.log(`📄 Raw AI response length: ${extractedText.length} characters`);
     console.log(`📄 Raw AI response preview: ${extractedText.substring(0, 300)}...`);
     
@@ -495,7 +577,7 @@ serve(async (req) => {
           console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
           console.log(`📝 Content length: ${content.length} characters`);
           
-          const extractedData = await extractFromContent(content, attachments, model);
+          const extractedData = await extractFromContent(content, attachments, model, { run_id, page_id: page.id, source_url: page.source_url, content_preview: content.substring(0, 500) });
           
           if (!extractedData) {
             console.log(`❌ Failed to extract data from: ${page.source_url}`);
