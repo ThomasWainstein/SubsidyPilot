@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -2364,6 +2364,7 @@ export type Database = {
           activity_sector_codes: string[] | null
           additional_support_mechanisms: string | null
           agency: string | null
+          ai_model: string | null
           amount: number[] | null
           amounts: string | null
           application_language: string | null
@@ -2515,6 +2516,7 @@ export type Database = {
           activity_sector_codes?: string[] | null
           additional_support_mechanisms?: string | null
           agency?: string | null
+          ai_model?: string | null
           amount?: number[] | null
           amounts?: string | null
           application_language?: string | null
@@ -2666,6 +2668,7 @@ export type Database = {
           activity_sector_codes?: string[] | null
           additional_support_mechanisms?: string | null
           agency?: string | null
+          ai_model?: string | null
           amount?: number[] | null
           amounts?: string | null
           application_language?: string | null
@@ -3496,18 +3499,18 @@ export type Database = {
       }
       assign_user_role: {
         Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["app_role"]
           _assigned_by?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       calculate_match_confidence: {
         Args: {
-          farm_tags: string[]
-          subsidy_tags: string[]
           farm_region: string
+          farm_tags: string[]
           subsidy_regions: string[]
+          subsidy_tags: string[]
         }
         Returns: number
       }
@@ -3538,104 +3541,104 @@ export type Database = {
       get_active_run_status: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          status: string
-          stage: string
-          progress: number
-          started_at: string
           config: Json
+          id: string
+          progress: number
           runtime_seconds: number
+          stage: string
+          started_at: string
+          status: string
         }[]
       }
       get_admin_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_users: number
-          total_farms: number
           total_documents: number
           total_extractions: number
+          total_farms: number
+          total_users: number
         }[]
       }
       get_ai_errors_last_24h: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          run_id: string
-          stage: string
-          message: string
-          source_url: string
           created_at: string
+          id: string
+          message: string
+          run_id: string
+          source_url: string
+          stage: string
         }[]
       }
       get_data_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
-          table_name: string
           count: number
+          table_name: string
         }[]
       }
       get_extraction_summary: {
         Args: { p_user_id?: string }
         Returns: {
+          confidence_avg: number
           document_id: string
           extraction_count: number
           latest_status: string
-          confidence_avg: number
         }[]
       }
       get_phase_d_extractions: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          document_id: string
-          status: string
-          created_at: string
-          updated_at: string
-          confidence_score: number
-          extraction_method: string
           ai_model: string
-          version: string
-          total_tables: number
-          successful_tables: number
-          subsidy_fields_found: number
-          total_tokens_used: number
+          confidence_score: number
+          created_at: string
+          document_id: string
+          extraction_method: string
+          extraction_outcome: string
           extraction_time_ms: number
+          has_subsidy_data: boolean
+          id: string
           post_processing_time_ms: number
-          total_processing_time_ms: number
+          quality_tier: string
+          status: string
+          subsidy_fields_found: number
+          successful_tables: number
           table_count: number
           table_quality: number
           tables_extracted: Json
-          quality_tier: string
-          has_subsidy_data: boolean
-          extraction_outcome: string
+          total_processing_time_ms: number
+          total_tables: number
+          total_tokens_used: number
+          updated_at: string
+          version: string
         }[]
       }
       get_pipeline_health_24h: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          status: string
-          stage: string
-          progress: number
-          started_at: string
-          ended_at: string
           config: Json
-          stats: Json
-          total_pages: number
-          processed_pages: number
-          failed_pages: number
           duration_seconds: number
+          ended_at: string
+          failed_pages: number
+          id: string
+          processed_pages: number
+          progress: number
+          stage: string
+          started_at: string
+          stats: Json
+          status: string
+          total_pages: number
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       increment_retry_count: {
-        Args: { p_extraction_id: string; p_backoff_seconds?: number }
+        Args: { p_backoff_seconds?: number; p_extraction_id: string }
         Returns: boolean
       }
       is_admin: {
@@ -3648,10 +3651,10 @@ export type Database = {
       }
       log_security_event: {
         Args: {
-          _event_type: string
-          _target_user_id?: string
           _event_data?: Json
+          _event_type: string
           _risk_level?: string
+          _target_user_id?: string
         }
         Returns: undefined
       }
@@ -3669,9 +3672,9 @@ export type Database = {
       }
       revoke_user_role: {
         Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["app_role"]
           _revoked_by?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -3682,25 +3685,25 @@ export type Database = {
       scrape_run_kpis: {
         Args: { p_run_id: string }
         Returns: {
-          docs_total: number
-          docs_ok: number
-          docs_fail: number
-          docs_pending: number
-          ocr_rate: number
           avg_latency: number
-          subsidies_parsed: number
-          pages_crawled: number
-          error_rate: number
           completion_rate: number
+          docs_fail: number
+          docs_ok: number
+          docs_pending: number
+          docs_total: number
+          error_rate: number
+          ocr_rate: number
+          pages_crawled: number
+          subsidies_parsed: number
         }[]
       }
       update_extraction_status: {
         Args: {
           p_extraction_id: string
-          p_status: Database["public"]["Enums"]["extraction_status_enum"]
           p_failure_code?: string
           p_failure_detail?: string
           p_progress_metadata?: Json
+          p_status: Database["public"]["Enums"]["extraction_status_enum"]
         }
         Returns: boolean
       }
