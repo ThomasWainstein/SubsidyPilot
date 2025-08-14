@@ -321,6 +321,103 @@ async function processAttachments(attachments: any[]): Promise<string> {
 
 // Enhanced attachment processing function (duplicate function body removed)
 
+// Data structure fallback function - handles both nested and flat JSON responses
+function extractDataWithFallback(extractedData: any): any {
+  console.log('🔍 VALIDATION - Data structure check:', {
+    hasNestedStructure: !!(extractedData.core_identification || extractedData.dates),
+    topLevelKeys: Object.keys(extractedData),
+    coreTitle: extractedData.core_identification?.title || extractedData.title,
+    hasAnyTitle: !!(extractedData.core_identification?.title || extractedData.title),
+    hasAnyAuthority: !!(extractedData.core_identification?.authority || extractedData.authority)
+  });
+
+  // Check if we have the expected nested structure
+  const hasNestedStructure = extractedData.core_identification || 
+                            extractedData.dates || 
+                            extractedData.eligibility;
+
+  if (hasNestedStructure) {
+    console.log('✅ Using nested data structure');
+    return {
+      core_identification: extractedData.core_identification || {},
+      dates: extractedData.dates || {},
+      eligibility: extractedData.eligibility || {},
+      funding: extractedData.funding || {},
+      project_scope_objectives: extractedData.project_scope_objectives || {},
+      application_process: extractedData.application_process || {},
+      evaluation_selection: extractedData.evaluation_selection || {},
+      documents_annexes: extractedData.documents_annexes || {},
+      meta_language: extractedData.meta_language || {},
+      compliance_transparency: extractedData.compliance_transparency || {}
+    };
+  } else {
+    console.log('⚠️ Falling back to flat data structure mapping');
+    // Map flat structure to nested structure
+    return {
+      core_identification: {
+        title: extractedData.title,
+        authority: extractedData.authority,
+        reference_code: extractedData.reference_code,
+        managing_agency: extractedData.managing_agency,
+        sector: extractedData.sector,
+        categories: extractedData.categories,
+        funding_programme: extractedData.funding_programme,
+        policy_objective: extractedData.policy_objective,
+        call_type: extractedData.call_type,
+        status_detailed: extractedData.status_detailed
+      },
+      dates: {
+        publication_date: extractedData.publication_date,
+        opening_date: extractedData.opening_date,
+        closing_date: extractedData.closing_date,
+        evaluation_start_date: extractedData.evaluation_start_date,
+        signature_date: extractedData.signature_date,
+        extended_deadlines: extractedData.extended_deadlines,
+        payment_schedule: extractedData.payment_schedule,
+        timeline_notes: extractedData.timeline_notes
+      },
+      eligibility: {
+        eligible_entities: extractedData.eligible_entities,
+        geographic_eligibility: extractedData.geographic_eligibility,
+        entity_size: extractedData.entity_size,
+        activity_sector_codes: extractedData.activity_sector_codes,
+        previous_award_restrictions: extractedData.previous_award_restrictions,
+        special_conditions: extractedData.special_conditions
+      },
+      funding: {
+        total_budget: extractedData.total_budget,
+        funding_amount: extractedData.funding_amount,
+        funding_rate_details: extractedData.funding_rate_details,
+        duration_limits: extractedData.duration_limits,
+        cofinancing_sources: extractedData.cofinancing_sources,
+        payment_modality: extractedData.payment_modality,
+        budget_tranches: extractedData.budget_tranches
+      },
+      project_scope_objectives: {
+        objectives_detailed: extractedData.objectives_detailed,
+        expected_results: extractedData.expected_results,
+        impact_indicators: extractedData.impact_indicators,
+        eligible_expenses_detailed: extractedData.eligible_expenses_detailed,
+        ineligible_expenses: extractedData.ineligible_expenses,
+        priority_themes: extractedData.priority_themes
+      },
+      application_process: {
+        process_steps: extractedData.process_steps,
+        application_language: extractedData.application_language,
+        required_documents_detailed: extractedData.required_documents_detailed,
+        submission_method_detailed: extractedData.submission_method_detailed,
+        submission_format: extractedData.submission_format,
+        contact_information: extractedData.contact_information,
+        support_resources: extractedData.support_resources
+      },
+      evaluation_selection: extractedData.evaluation_selection || {},
+      documents_annexes: extractedData.documents_annexes || {},
+      meta_language: extractedData.meta_language || {},
+      compliance_transparency: extractedData.compliance_transparency || {}
+    };
+  }
+}
+
 // Schema fallback function - maps flat structure to nested if needed
 function normalizeExtractedData(data: any): any {
   // If already has nested structure, return as-is
@@ -371,6 +468,40 @@ function normalizeExtractedData(data: any): any {
     },
     forms_detected: data.forms_detected || []
   };
+}
+
+// Utility functions for data sanitization
+function sanitizeStringValue(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === 'object') {
+    value = JSON.stringify(value);
+  }
+  const str = String(value).trim();
+  return str.length > 0 ? str : null;
+}
+
+function sanitizeDateValue(value: any): string | null {
+  if (!value) return null;
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeNumericValue(value: any): string | null {
+  if (!value) return null;
+  const str = String(value).replace(/[^\d.,]/g, '');
+  return str.length > 0 ? str : null;
+}
+
+function sanitizeArrayValue(value: any): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
+  if (typeof value === 'string') return [value.trim()].filter(Boolean);
+  return [];
 }
 
 async function extractFromContent(
@@ -499,17 +630,18 @@ async function extractFromContent(
     console.log('🔍 Parsing JSON response...');
     const parsedData = parseJSONResponse(extractedText);
     
-    // Normalize to nested structure if needed
-    const normalizedData = normalizeExtractedData(parsedData);
+    // Use the enhanced fallback function instead of simple normalization
+    const normalizedData = extractDataWithFallback(parsedData);
     
     console.log('✅ JSON parsed and normalized successfully');
-    console.log(`📊 Normalized data structure:`, {
+    console.log(`📊 Enhanced data structure check:`, {
       hasCore: !!normalizedData.core_identification,
       hasDates: !!normalizedData.dates,
       hasEligibility: !!normalizedData.eligibility,
       hasFunding: !!normalizedData.funding,
       title: normalizedData.core_identification?.title,
-      authority: normalizedData.core_identification?.authority
+      authority: normalizedData.core_identification?.authority,
+      dataStructureSource: normalizedData.core_identification ? 'nested' : 'flat_mapped'
     });
     
     // Validate extracted data
