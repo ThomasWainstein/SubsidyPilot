@@ -708,8 +708,17 @@ serve(async (req) => {
             existingSubsidy: existingSubsidy?.id,
             errorCode: upsertResult.error.code,
             errorMessage: upsertResult.error.message,
-            errorDetails: upsertResult.error.details
+            errorDetails: upsertResult.error.details,
+            hint: upsertResult.error.hint
           });
+          
+          // Log the exact data being inserted for debugging
+          console.error('💥 Data that failed to insert:', JSON.stringify({
+            title: coreData.title,
+            agency: coreData.authority,
+            url: page.source_url
+          }, null, 2));
+          
         } else {
           subsidiesCreated++;
           console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
