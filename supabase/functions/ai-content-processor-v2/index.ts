@@ -566,78 +566,70 @@ serve(async (req) => {
 
         // Check if subsidy already exists by fingerprint
         const { data: existingSubsidy } = await supabase
-          .from('subsidies')
-          .select('id, source_url, title, updated_at')
-          .eq('source_url', page.source_url)
+          .from('subsidies_structured')
+          .select('id, url, title, updated_at')
+          .eq('url', page.source_url)
           .maybeSingle();
 
         let upsertAction = 'created';
         let upsertResult;
 
         if (existingSubsidy) {
-          console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.source_url}`);
+          console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.url}`);
           upsertAction = 'updated';
           
           // Update existing record with STRUCTURED data in proper fields
-          console.log(`🔄 Mapping V2 STRUCTURED data to database fields...`);
+          console.log(`🔄 Mapping V2 STRUCTURED data to subsidies_structured table...`);
           
           upsertResult = await supabase
-            .from('subsidies')
+            .from('subsidies_structured')
             .update({
-              // ✅ STRUCTURED DATA goes into proper structured fields
-              title: { ro: coreData.title || extractedData.title || 'Untitled Subsidy' },
-              description: { ro: (() => {
+              // Basic identification
+              title: sanitizeStringValue(coreData.title || extractedData.title || 'Untitled Subsidy'),
+              description: sanitizeStringValue((() => {
                 const obj = projectData.objectives_detailed;
                 if (typeof obj === 'string') return obj;
                 if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
                 return extractedData.description || coreData.policy_objective || 'No description available';
-              })() },
-              eligibility_criteria: { 
-                ro: [
-                  eligibilityData.eligible_entities,
-                  eligibilityData.geographic_eligibility, 
-                  eligibilityData.special_conditions
-                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
-              },
+              })()),
+              eligibility: sanitizeStringValue([
+                eligibilityData.eligible_entities,
+                eligibilityData.geographic_eligibility, 
+                eligibilityData.special_conditions
+              ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
               
               // Financial data - SANITIZED to prevent database errors
-              amount_min: sanitizeNumericValue(fundingData.funding_amount_min || fundingData.funding_amount?.min),
-              amount_max: sanitizeNumericValue(fundingData.funding_amount_max || fundingData.funding_amount?.max),
+              amount: sanitizeArrayValue([
+                fundingData.funding_amount_min ? `Min: ${fundingData.funding_amount_min}` : null,
+                fundingData.funding_amount_max ? `Max: ${fundingData.funding_amount_max}` : null
+              ].filter(Boolean)),
+              co_financing_rate: sanitizeNumericValue(fundingData.funding_rate_details),
               
               // Dates - SANITIZED to proper format
               deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
+              application_window_start: sanitizeDateValue(datesData.opening_date),
+              application_window_end: sanitizeDateValue(datesData.closing_date),
               
               // Basic fields - SANITIZED
               agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
               region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-              categories: sanitizeArrayValue(coreData.categories || coreData.sector),
-              tags: sanitizeArrayValue([
-                ...(coreData.categories || []),
-                coreData.sector,
-                coreData.call_type,
-                fundingData.funding_type
-              ].filter(Boolean)),
-              funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
-              status: coreData.status_detailed === 'open' ? 'open' : 'closed',
+              sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+              funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
+              program: sanitizeStringValue(coreData.funding_programme),
               
-              // Application documents
-              application_docs: {
-                required_documents: processData.required_documents_detailed,
-                forms_detected: documentsData.forms_detected,
-                submission_method: processData.submission_method_detailed,
-                contact_info: processData.contact_information
-              },
+              // Application details
+              application_method: sanitizeStringValue(processData.submission_method_detailed),
               
-              // Documents metadata
-              documents: {
-                forms: documentsData.forms_detected || [],
-                regulatory_refs: documentsData.regulatory_references || [],
-                attachments: attachments || []
-              },
+              // Extracted from various sections
+              objectives: sanitizeArrayValue(projectData.objectives_detailed),
+              eligible_actions: sanitizeArrayValue(projectData.eligible_expenses_detailed),
+              ineligible_actions: sanitizeArrayValue(projectData.ineligible_expenses),
+              beneficiary_types: sanitizeArrayValue(eligibilityData.eligible_entities),
               
-              // ✅ RAW CONTENT stores the complete unprocessed AI response for reference
-              raw_content: extractedData,
-              
+              // Process metadata
+              run_id: run_id,
+              extraction_batch_id: run_id,
+              record_status: 'active',
               updated_at: new Date().toISOString()
             })
             .eq('id', existingSubsidy.id);
@@ -645,77 +637,61 @@ serve(async (req) => {
           console.log(`💾 Update operation completed for: ${existingSubsidy.source_url}`);
         } else {
           console.log(`➕ Creating new subsidy: ${page.source_url}`);
-          console.log(`🔄 Mapping V2 STRUCTURED data to database fields...`);
+          console.log(`🔄 Mapping V2 STRUCTURED data to subsidies_structured table...`);
           
-          // Generate unique code for new subsidy
-          const subsidyCode = `fr-agri-${fingerprint.substring(0, 8)}`;
-          
-          // Insert new record with STRUCTURED data
+          // Insert new record with STRUCTURED data into subsidies_structured table
           upsertResult = await supabase
-            .from('subsidies')
+            .from('subsidies_structured')
             .insert({
               // Basic identifiers
-              code: subsidyCode,
-              source_url: page.source_url,
-              domain: 'franceagrimer.fr',
+              url: page.source_url,
               
-              // ✅ STRUCTURED DATA goes into proper structured fields
-              title: { ro: coreData.title || 'Untitled Subsidy' },
-              description: { ro: (() => {
+              // Basic identification
+              title: sanitizeStringValue(coreData.title || 'Untitled Subsidy'),
+              description: sanitizeStringValue((() => {
                 const obj = projectData.objectives_detailed;
                 if (typeof obj === 'string') return obj;
                 if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
                 return coreData.policy_objective || 'No description available';
-              })() },
-              eligibility_criteria: { 
-                ro: [
-                  eligibilityData.eligible_entities,
-                  eligibilityData.geographic_eligibility, 
-                  eligibilityData.special_conditions
-                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
-              },
+              })()),
+              eligibility: sanitizeStringValue([
+                eligibilityData.eligible_entities,
+                eligibilityData.geographic_eligibility, 
+                eligibilityData.special_conditions
+              ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
               
               // Financial data - SANITIZED to prevent database errors
-              amount_min: sanitizeNumericValue(fundingData.funding_amount_min || fundingData.funding_amount?.min),
-              amount_max: sanitizeNumericValue(fundingData.funding_amount_max || fundingData.funding_amount?.max),
+              amount: sanitizeArrayValue([
+                fundingData.funding_amount_min ? `Min: ${fundingData.funding_amount_min}` : null,
+                fundingData.funding_amount_max ? `Max: ${fundingData.funding_amount_max}` : null
+              ].filter(Boolean)),
+              co_financing_rate: sanitizeNumericValue(fundingData.funding_rate_details),
               
-              // Dates - SANITIZED to proper format  
+              // Dates - SANITIZED to proper format
               deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
+              application_window_start: sanitizeDateValue(datesData.opening_date),
+              application_window_end: sanitizeDateValue(datesData.closing_date),
               
               // Basic fields - SANITIZED
               agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
               region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-              categories: sanitizeArrayValue(coreData.categories || coreData.sector),
-              tags: sanitizeArrayValue([
-                ...(coreData.categories || []),
-                coreData.sector,
-                coreData.call_type,
-                fundingData.funding_type
-              ].filter(Boolean)),
-              funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
-              status: coreData.status_detailed === 'open' ? 'open' : 'closed',
+              sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+              funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
+              program: sanitizeStringValue(coreData.funding_programme),
               
-              // Application documents
-              application_docs: {
-                required_documents: processData.required_documents_detailed,
-                forms_detected: documentsData.forms_detected,
-                submission_method: processData.submission_method_detailed,
-                contact_info: processData.contact_information
-              },
+              // Application details
+              application_method: sanitizeStringValue(processData.submission_method_detailed),
               
-              // Documents metadata  
-              documents: {
-                forms: documentsData.forms_detected || [],
-                regulatory_refs: documentsData.regulatory_references || [],
-                attachments: attachments || []
-              },
+              // Extracted from various sections
+              objectives: sanitizeArrayValue(projectData.objectives_detailed),
+              eligible_actions: sanitizeArrayValue(projectData.eligible_expenses_detailed),
+              ineligible_actions: sanitizeArrayValue(projectData.ineligible_expenses),
+              beneficiary_types: sanitizeArrayValue(eligibilityData.eligible_entities),
               
-              // ✅ RAW CONTENT stores the complete unprocessed AI response for reference
-              raw_content: extractedData,
-              
-              // Processing metadata only - basic schema
-              record_status: 'active',
-              extraction_batch_id: run_id
+              // Process metadata
+              run_id: run_id,
+              extraction_batch_id: run_id,
+              record_status: 'active'
             });
             
           console.log(`💾 Insert operation completed for: ${page.source_url}`);
