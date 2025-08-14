@@ -752,7 +752,7 @@ serve(async (req) => {
         run_id,
         model: AI_MODEL,
         pages_processed: pagesProcessed,
-        subsidies_created: subsidiesCreated,
+        subs_created: subsidiesCreated,
         version: 'v2_comprehensive'
       };
 
