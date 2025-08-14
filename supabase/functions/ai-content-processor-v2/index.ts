@@ -781,59 +781,85 @@ serve(async (req) => {
               }
             );
 
-            if (extractedData && extractedData.core_identification?.title) {
-              console.log(`✅ Extracted data from: ${page.source_url}`);
+            if (extractedData) {
+              console.log(`🔍 CRITICAL DEBUG - Extracted data structure for ${page.source_url}:`, {
+                hasData: !!extractedData,
+                hasCore: !!extractedData.core_identification,
+                coreTitle: extractedData.core_identification?.title,
+                topLevelTitle: extractedData.title,
+                topLevelKeys: Object.keys(extractedData),
+                validationIsValid: extractedData._validation?.isValid,
+                validationErrors: extractedData._validation?.errors
+              });
               
-              // Extract data from nested structure
-              const coreData = extractedData.core_identification || {};
-              const datesData = extractedData.dates || {};
-              const eligibilityData = extractedData.eligibility || {};
-              const fundingData = extractedData.funding || {};
-              const projectData = extractedData.project_scope_objectives || {};
-              const processData = extractedData.application_process || {};
+              // Enhanced validation - check both nested and top-level title
+              const hasValidTitle = extractedData.core_identification?.title || extractedData.title;
               
-              // Save to subsidies_structured table with sanitized data
-              const subsidyData = {
-                run_id,
-                url: page.source_url,
-                title: sanitizeStringValue(coreData.title) || 'Untitled Subsidy',
-                description: sanitizeStringValue(projectData.objectives_detailed || coreData.policy_objective),
-                eligibility: sanitizeStringValue([
-                  eligibilityData.eligible_entities,
-                  eligibilityData.geographic_eligibility, 
-                  eligibilityData.special_conditions
-                ].filter(Boolean).join('. ')),
-                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
-                agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
-                region: sanitizeStringValue(eligibilityData.geographic_eligibility),
-                sector: sanitizeStringValue(coreData.sector),
-                funding_type: sanitizeStringValue(fundingData.funding_type || coreData.call_type) || 'Grant',
-                total_budget: sanitizeNumericValue(fundingData.total_budget),
-                funding_amount: sanitizeStringValue(fundingData.funding_amount),
-                raw_data: extractedData,
-                confidence_score: extractedData._validation?.isValid ? 0.9 : 0.6,
-                language: 'fr',
-                extracted_documents: sanitizeArrayValue(extractedData.forms_detected),
-                document_count: Array.isArray(extractedData.forms_detected) ? extractedData.forms_detected.length : 0,
-                extraction_timestamp: new Date().toISOString(),
-                ai_model: model,
-                version: 'v2_comprehensive_enhanced'
-              };
-              
-              const { error: insertError } = await supabase
-                .from('subsidies_structured')
-                .insert(subsidyData);
-              
-              if (insertError) {
-                console.error(`❌ Failed to save subsidy data for ${page.source_url}:`, insertError);
-                throw insertError;
+              if (hasValidTitle) {
+                console.log(`✅ Extracted data from: ${page.source_url} - Title: ${hasValidTitle}`);
+                
+                // Extract data from nested structure (already handled by fallback function)
+                const coreData = extractedData.core_identification || {};
+                const datesData = extractedData.dates || {};
+                const eligibilityData = extractedData.eligibility || {};
+                const fundingData = extractedData.funding || {};
+                const projectData = extractedData.project_scope_objectives || {};
+                const processData = extractedData.application_process || {};
+                
+                // Save to subsidies_structured table with sanitized data
+                const subsidyData = {
+                  run_id,
+                  url: page.source_url,
+                  title: sanitizeStringValue(coreData.title || extractedData.title) || 'Untitled Subsidy',
+                  description: sanitizeStringValue(projectData.objectives_detailed || coreData.policy_objective || extractedData.description),
+                  eligibility: sanitizeStringValue([
+                    eligibilityData.eligible_entities || extractedData.eligible_entities,
+                    eligibilityData.geographic_eligibility || extractedData.geographic_eligibility, 
+                    eligibilityData.special_conditions || extractedData.special_conditions
+                  ].filter(Boolean).join('. ')),
+                  deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline || extractedData.deadline),
+                  agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
+                  region: sanitizeStringValue(eligibilityData.geographic_eligibility || extractedData.region),
+                  sector: sanitizeStringValue(coreData.sector || extractedData.sector),
+                  funding_type: sanitizeStringValue(fundingData.funding_type || coreData.call_type || extractedData.funding_type) || 'Grant',
+                  total_budget: sanitizeNumericValue(fundingData.total_budget || extractedData.total_budget),
+                  funding_amount: sanitizeStringValue(fundingData.funding_amount || extractedData.funding_amount),
+                  raw_data: extractedData,
+                  confidence_score: extractedData._validation?.isValid ? 0.9 : 0.6,
+                  language: 'fr',
+                  extracted_documents: sanitizeArrayValue(extractedData.forms_detected || extractedData.documents),
+                  document_count: Array.isArray(extractedData.forms_detected || extractedData.documents) ? (extractedData.forms_detected || extractedData.documents).length : 0,
+                  extraction_timestamp: new Date().toISOString(),
+                  ai_model: model,
+                  version: 'v2_comprehensive_enhanced'
+                };
+                
+                console.log(`💾 Attempting to save subsidy data for: ${page.source_url}`, {
+                  title: subsidyData.title,
+                  agency: subsidyData.agency,
+                  hasRequiredFields: !!(subsidyData.title && subsidyData.agency)
+                });
+                
+                const { error: insertError } = await supabase
+                  .from('subsidies_structured')
+                  .insert(subsidyData);
+                
+                if (insertError) {
+                  console.error(`❌ Failed to save subsidy data for ${page.source_url}:`, insertError);
+                  throw insertError;
+                } else {
+                  console.log(`💾 Saved subsidy data for: ${page.source_url}`);
+                  return { success: true, url: page.source_url };
+                }
               } else {
-                console.log(`💾 Saved subsidy data for: ${page.source_url}`);
-                return { success: true, url: page.source_url };
+                console.log(`⚠️ No valid title found in extracted data from: ${page.source_url}`, {
+                  extractedDataKeys: Object.keys(extractedData),
+                  coreIdentification: extractedData.core_identification,
+                  topLevelTitle: extractedData.title,
+                  validationErrors: extractedData._validation?.errors
+                });
+                return { success: false, url: page.source_url, reason: 'No valid title found in extracted data' };
               }
-            } else {
-              console.log(`⚠️ No valid data extracted from: ${page.source_url} - missing core identification`);
-              return { success: false, url: page.source_url, reason: 'No valid title in core_identification' };
             }
             
           } catch (error: any) {
