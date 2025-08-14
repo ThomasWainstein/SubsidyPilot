@@ -319,17 +319,7 @@ async function processAttachments(attachments: any[]): Promise<string> {
   return attachmentContent;
 }
 
-// Improved JSON parser with multiple strategies
-function parseJSONResponse(responseText: string): any {
-  try {
-    // Strategy 1: Look for fenced JSON blocks first
-    const fencedMatch = responseText.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-    if (fencedMatch) {
-      console.log('📦 Found fenced JSON block');
-      return JSON.parse(fencedMatch[1]);
-    }
-    
-    // Strategy 2: Look for any fenced blocks  
+// Note: parseJSONResponse function is already defined above, removing duplicate
     const anyFencedMatch = responseText.match(/```\s*(\{[\s\S]*?\})\s*```/);
     if (anyFencedMatch) {
       console.log('📦 Found generic fenced block');
