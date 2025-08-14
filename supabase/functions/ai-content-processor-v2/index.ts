@@ -115,6 +115,114 @@ Your task is to extract comprehensive information from French government subsidy
 Return the extracted information as a JSON object with all the fields listed above.
 `;
 
+// Data sanitization functions
+function sanitizeNumericValue(value: any): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  
+  if (typeof value === 'number') {
+    return isNaN(value) ? null : value;
+  }
+  
+  if (typeof value === 'string') {
+    // Remove common currency symbols and formatting
+    let cleaned = value
+      .replace(/[€$£¥₹]/g, '') // Remove currency symbols
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .replace(/\(.*?\)/g, '') // Remove parenthetical content like "(plafond d'aide publique...)"
+      .replace(/[^\d\s,.-]/g, '') // Keep only digits, spaces, commas, dots, hyphens
+      .trim();
+    
+    // Handle European number format (space/dot as thousands separator, comma as decimal)
+    if (cleaned.includes(',') && cleaned.includes(' ')) {
+      // Example: "100 000,50" or "1 500,00"
+      cleaned = cleaned.replace(/\s/g, '').replace(',', '.');
+    } else if (cleaned.includes(' ') && !cleaned.includes(',')) {
+      // Example: "100 000" 
+      cleaned = cleaned.replace(/\s/g, '');
+    } else if (cleaned.includes(',') && !cleaned.includes('.')) {
+      // Example: "1000,50" - European decimal format
+      cleaned = cleaned.replace(',', '.');
+    }
+    
+    // Extract first valid number
+    const numberMatch = cleaned.match(/^\d+(?:\.\d+)?/);
+    if (numberMatch) {
+      const parsed = parseFloat(numberMatch[0]);
+      return isNaN(parsed) ? null : parsed;
+    }
+  }
+  
+  return null;
+}
+
+function sanitizeStringValue(value: any): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  
+  if (typeof value === 'string') {
+    return value.trim() || null;
+  }
+  
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).join(', ') || null;
+  }
+  
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  
+  return String(value).trim() || null;
+}
+
+function sanitizeDateValue(value: any): string | null {
+  if (!value) return null;
+  
+  if (typeof value === 'string') {
+    // Try to parse common date formats
+    const datePatterns = [
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,  // DD/MM/YYYY
+      /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
+      /(\d{1,2})-(\d{1,2})-(\d{4})/    // DD-MM-YYYY
+    ];
+    
+    for (const pattern of datePatterns) {
+      const match = value.match(pattern);
+      if (match) {
+        try {
+          const date = new Date(match[0]);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+          }
+        } catch (e) {
+          // Continue to next pattern
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+function sanitizeArrayValue(value: any): string[] {
+  if (!value) return [];
+  
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map(v => String(v).trim()).filter(Boolean);
+  }
+  
+  if (typeof value === 'string') {
+    // Split on common delimiters
+    return value.split(/[,;|]/)
+      .map(v => v.trim())
+      .filter(Boolean);
+  }
+  
+  return [String(value).trim()].filter(Boolean);
+}
+
 async function extractFromContent(content: string, attachments: any[] = []): Promise<any> {
   try {
     console.log('🤖 Starting AI extraction...');
@@ -492,23 +600,23 @@ serve(async (req) => {
                 ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
               },
               
-              // Financial data
-              amount_min: fundingData.funding_amount_min || fundingData.funding_amount?.min || null,
-              amount_max: fundingData.funding_amount_max || fundingData.funding_amount?.max || null,
+              // Financial data - SANITIZED to prevent database errors
+              amount_min: sanitizeNumericValue(fundingData.funding_amount_min || fundingData.funding_amount?.min),
+              amount_max: sanitizeNumericValue(fundingData.funding_amount_max || fundingData.funding_amount?.max),
               
-              // Dates
-              deadline: datesData.closing_date || datesData.application_deadline || null,
+              // Dates - SANITIZED to proper format
+              deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
               
-              // Basic fields
-              agency: coreData.authority || extractedData.authority || 'Unknown Agency',
-              region: eligibilityData.geographic_eligibility ? [eligibilityData.geographic_eligibility] : [],
-              categories: coreData.categories || (coreData.sector ? [coreData.sector] : []),
-              tags: [
+              // Basic fields - SANITIZED
+              agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
+              region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
+              categories: sanitizeArrayValue(coreData.categories || coreData.sector),
+              tags: sanitizeArrayValue([
                 ...(coreData.categories || []),
                 coreData.sector,
                 coreData.call_type,
                 fundingData.funding_type
-              ].filter(Boolean),
+              ].filter(Boolean)),
               funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
               status: coreData.status_detailed === 'open' ? 'open' : 'closed',
               
@@ -567,23 +675,23 @@ serve(async (req) => {
                 ].filter(Boolean).join('. ') || 'No eligibility criteria specified'
               },
               
-              // Financial data
-              amount_min: fundingData.funding_amount_min || null,
-              amount_max: fundingData.funding_amount_max || null,
+              // Financial data - SANITIZED to prevent database errors
+              amount_min: sanitizeNumericValue(fundingData.funding_amount_min || fundingData.funding_amount?.min),
+              amount_max: sanitizeNumericValue(fundingData.funding_amount_max || fundingData.funding_amount?.max),
               
-              // Dates
-              deadline: datesData.closing_date || datesData.application_deadline || null,
+              // Dates - SANITIZED to proper format  
+              deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
               
-              // Basic fields
-              agency: coreData.authority || 'Unknown Agency',
-              region: eligibilityData.geographic_eligibility ? [eligibilityData.geographic_eligibility] : [],
-              categories: coreData.categories || (coreData.sector ? [coreData.sector] : []),
-              tags: [
+              // Basic fields - SANITIZED
+              agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
+              region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
+              categories: sanitizeArrayValue(coreData.categories || coreData.sector),
+              tags: sanitizeArrayValue([
                 ...(coreData.categories || []),
                 coreData.sector,
                 coreData.call_type,
                 fundingData.funding_type
-              ].filter(Boolean),
+              ].filter(Boolean)),
               funding_type: coreData.call_type || fundingData.funding_type || 'Grant',
               status: coreData.status_detailed === 'open' ? 'open' : 'closed',
               
