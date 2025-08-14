@@ -87,6 +87,7 @@ export function AITestingControl() {
       }));
 
       console.log('✅ Processed pages:', pagesWithLength.length);
+      console.log('📊 First page sample:', pagesWithLength[0]);
       setPages(pagesWithLength);
     } catch (error) {
       console.error('❌ Error loading pages:', error);
@@ -178,11 +179,17 @@ export function AITestingControl() {
   };
 
   const togglePageSelection = (pageId: string) => {
-    setSelectedPages(prev => 
-      prev.includes(pageId) 
+    console.log('🖱️ Clicking page:', pageId);
+    console.log('📋 Current selection:', selectedPages);
+    
+    setSelectedPages(prev => {
+      const newSelection = prev.includes(pageId) 
         ? prev.filter(id => id !== pageId)
-        : [...prev, pageId]
-    );
+        : [...prev, pageId];
+      
+      console.log('✅ New selection:', newSelection);
+      return newSelection;
+    });
   };
 
   const selectRandomPages = () => {
@@ -196,6 +203,7 @@ export function AITestingControl() {
   };
 
   if (loading) {
+    console.log('🔄 Component is loading...');
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
@@ -205,6 +213,8 @@ export function AITestingControl() {
       </Card>
     );
   }
+  
+  console.log('🔧 Component render - Pages:', pages.length, 'Selected:', selectedPages.length);
 
   return (
     <div className="space-y-6">
@@ -345,45 +355,56 @@ export function AITestingControl() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {pages.map((page) => (
-              <div 
-                key={page.id}
-                className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                  selectedPages.includes(page.id) 
-                    ? 'bg-primary/10 border-primary' 
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => togglePageSelection(page.id)}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedPages.includes(page.id)}
-                  onChange={() => togglePageSelection(page.id)}
-                  className="w-4 h-4"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{page.source_url}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {(page.content_length / 1000).toFixed(1)}k chars • {new Date(page.created_at).toLocaleDateString()}
+            {pages.map((page) => {
+              console.log('🎨 Rendering page:', page.id, 'Selected:', selectedPages.includes(page.id));
+              return (
+                <div 
+                  key={page.id}
+                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedPages.includes(page.id) 
+                      ? 'bg-primary/10 border-primary' 
+                      : 'hover:bg-muted/50'
+                  }`}
+                  onClick={(e) => {
+                    console.log('🖱️ Div clicked for page:', page.id);
+                    e.preventDefault();
+                    togglePageSelection(page.id);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPages.includes(page.id)}
+                    onChange={(e) => {
+                      console.log('☑️ Checkbox changed for page:', page.id);
+                      e.stopPropagation();
+                      togglePageSelection(page.id);
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{page.source_url}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {(page.content_length / 1000).toFixed(1)}k chars • {new Date(page.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={page.status === 'processed' ? 'default' : 'secondary'}>
+                      {page.status}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewPageContent(page.id);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={page.status === 'processed' ? 'default' : 'secondary'}>
-                    {page.status}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      viewPageContent(page.id);
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             
             {pages.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
