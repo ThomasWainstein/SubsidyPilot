@@ -223,7 +223,7 @@ function sanitizeArrayValue(value: any): string[] {
   return [String(value).trim()].filter(Boolean);
 }
 
-async function extractFromContent(content: string, attachments: any[] = []): Promise<any> {
+async function extractFromContent(content: string, attachments: any[] = [], model: string = AI_MODEL): Promise<any> {
   try {
     console.log('🤖 Starting AI extraction...');
     console.log(`📝 Content preview: ${content.substring(0, 200)}...`);
@@ -251,7 +251,7 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model: model,
         messages,
         max_completion_tokens: 4000
       }),
@@ -379,7 +379,7 @@ serve(async (req) => {
   }
 
   try {
-    const { run_id, page_ids, test_mode = false } = await req.json();
+    const { run_id, page_ids, test_mode = false, model = AI_MODEL } = await req.json();
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
     
@@ -390,7 +390,7 @@ serve(async (req) => {
         run_id,
         started_at: new Date().toISOString(),
         status: 'running',
-        model: AI_MODEL
+        model: model
       });
     
     if (runError) {
@@ -459,7 +459,7 @@ serve(async (req) => {
     const result = {
       success: true,
       run_id,
-      model: AI_MODEL,
+      model: model,
       pages_processed: pagesProcessed,
       subsidies_created: subsidiesCreated,
       version: 'v2_comprehensive'
@@ -491,7 +491,7 @@ serve(async (req) => {
           console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
           console.log(`📝 Content length: ${content.length} characters`);
           
-          const extractedData = await extractFromContent(content, attachments);
+          const extractedData = await extractFromContent(content, attachments, model);
           
           if (!extractedData) {
             console.log(`❌ Failed to extract data from: ${page.source_url}`);
