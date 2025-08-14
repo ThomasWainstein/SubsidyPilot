@@ -423,347 +423,7 @@ serve(async (req) => {
     let subsidiesCreated = 0;
     let pagesProcessed = 0;
 
-    // For test mode, process synchronously to ensure completion
-    // Async processing in edge functions gets terminated when response is sent
-    if (test_mode && pages.length > 1) {
-      console.log('🔄 Processing pages synchronously for test mode to ensure completion');
-      
-      // Process first few pages synchronously to avoid timeout
-      for (let i = 0; i < Math.min(pages.length, 2); i++) {
-        await processSinglePage(pages[i], run_id);
-        subsidiesCreated++;
-        pagesProcessed++;
-      }
-      
-      const result = {
-        success: true,
-        run_id: run_id,
-        message: `Processed ${Math.min(pages.length, 2)} pages synchronously`,
-        pages_processed: Math.min(pages.length, 2),
-        status: 'completed_sync'
-      };
-      
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    async function processPages() {
-      // Process each page
-      for (const page of pages) {
-        try {
-        pagesProcessed++;
-        console.log(`🔍 Processing page: ${page.source_url}`);
-        
-        // Get content - prefer combined markdown, fallback to raw text
-        const content = page.combined_content_markdown || page.raw_text || '';
-        const attachments = page.attachments_jsonb || [];
-        
-        if (content.length < 100) {
-          console.log(`⚠️ Skipping page with insufficient content: ${page.source_url}`);
-          continue;
-        }
-
-        // Extract comprehensive data
-        console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
-        console.log(`📝 Content length: ${content.length} characters`);
-        
-        const extractedData = await extractFromContent(content, attachments);
-        
-        if (!extractedData) {
-          console.log(`❌ Failed to extract data from: ${page.source_url}`);
-          continue;
-        }
-        
-        console.log(`✅ AI extraction successful for: ${page.source_url}`);
-        
-        // Log raw extracted data for debugging
-        console.log(`🔍 Raw extracted data structure:`, {
-          topLevelKeys: Object.keys(extractedData),
-          coreIdExists: !!extractedData.core_identification,
-          coreIdKeys: extractedData.core_identification ? Object.keys(extractedData.core_identification) : [],
-          datesExists: !!extractedData.dates,
-          eligibilityExists: !!extractedData.eligibility,
-          fundingExists: !!extractedData.funding
-        });
-        
-        // Extract core identification data safely
-        const coreData = extractedData.core_identification || {};
-        const datesData = extractedData.dates || {};
-        const eligibilityData = extractedData.eligibility || {};
-        const fundingData = extractedData.funding || {};
-        const projectData = extractedData.project_scope_objectives || {};
-        const processData = extractedData.application_process || {};
-        const evaluationData = extractedData.evaluation_selection || {};
-        const documentsData = extractedData.documents_annexes || {};
-        const metaData = extractedData.meta_language || {};
-        const complianceData = extractedData.compliance_transparency || {};
-        
-        // DEBUG: Log the actual data structure we're receiving
-        console.log(`🔍 DEBUG - Full extracted data structure:`, JSON.stringify(extractedData, null, 2).substring(0, 1000));
-        console.log(`🔍 DEBUG - Core identification data:`, JSON.stringify(coreData, null, 2));
-        console.log(`🔍 DEBUG - Project data:`, JSON.stringify(projectData, null, 2));
-        
-        // Safe description extraction handling both string and array types
-        const safeDescription = (() => {
-          const obj = projectData.objectives_detailed;
-          if (typeof obj === 'string') return obj.substring(0, 100);
-          if (Array.isArray(obj) && obj.length > 0) return obj[0].substring(0, 100);
-          return coreData.policy_objective?.substring(0, 100) || 'No description';
-        })();
-        
-        console.log(`📊 Extracted data preview:`, {
-          title: coreData.title,
-          description: safeDescription,
-          authority: coreData.authority,
-          managingAgency: coreData.managing_agency,
-          hasData: Object.keys(extractedData).length,
-          verbatimDataSize: JSON.stringify(extractedData).length
-        });
-
-        // Generate content hash for deduplication
-        const contentHash = await crypto.subtle.digest(
-          'SHA-256', 
-          new TextEncoder().encode(content)
-        ).then(buffer => 
-          Array.from(new Uint8Array(buffer))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('')
-        );
-
-        // Create fingerprint for deduplication using properly extracted data
-        const fingerprintSource = `${coreData.title || 'untitled'}-${coreData.authority || 'unknown'}-${page.source_url}`;
-        console.log(`🔑 Creating fingerprint from: "${fingerprintSource}"`);
-        
-        const fingerprint = await crypto.subtle.digest(
-          'SHA-256',
-          new TextEncoder().encode(fingerprintSource)
-        ).then(buffer => 
-          Array.from(new Uint8Array(buffer))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('')
-        );
-        
-        console.log(`🔑 Generated fingerprint: ${fingerprint.substring(0, 16)}...`);
-
-        // Ensure scrape run exists before inserting subsidy
-        const { data: existingRun } = await supabase
-          .from('scrape_runs')
-          .select('id')
-          .eq('id', run_id)
-          .maybeSingle();
-        
-        if (!existingRun) {
-          const { error: runError } = await supabase
-            .from('scrape_runs')
-            .insert({
-              id: run_id,
-              status: 'running',
-              notes: 'V2 Comprehensive AI Processing',
-              metadata: { test_mode: test_mode || false }
-            });
-          
-          if (runError) {
-            console.error('❌ Failed to create scrape run:', runError);
-          }
-        }
-
-        // Check if subsidy already exists by fingerprint
-        const { data: existingSubsidy } = await supabase
-          .from('subsidies_structured')
-          .select('id, url, title, updated_at')
-          .eq('url', page.source_url)
-          .maybeSingle();
-
-        let upsertAction = 'created';
-        let upsertResult;
-
-        if (existingSubsidy) {
-          console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.url}`);
-          upsertAction = 'updated';
-          
-          // Update existing record with STRUCTURED data in proper fields
-          console.log(`🔄 Mapping V2 STRUCTURED data to subsidies_structured table...`);
-          
-          upsertResult = await supabase
-            .from('subsidies_structured')
-            .update({
-              // Basic identification
-              title: sanitizeStringValue(coreData.title || extractedData.title || 'Untitled Subsidy'),
-              description: sanitizeStringValue((() => {
-                const obj = projectData.objectives_detailed;
-                if (typeof obj === 'string') return obj;
-                if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
-                return extractedData.description || coreData.policy_objective || 'No description available';
-              })()),
-              eligibility: sanitizeStringValue([
-                eligibilityData.eligible_entities,
-                eligibilityData.geographic_eligibility, 
-                eligibilityData.special_conditions
-              ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
-              
-              // Financial data - SANITIZED to prevent database errors
-              amount: sanitizeArrayValue([
-                fundingData.funding_amount_min ? `Min: ${fundingData.funding_amount_min}` : null,
-                fundingData.funding_amount_max ? `Max: ${fundingData.funding_amount_max}` : null
-              ].filter(Boolean)),
-              co_financing_rate: sanitizeNumericValue(fundingData.funding_rate_details),
-              
-              // Dates - SANITIZED to proper format
-              deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
-              application_window_start: sanitizeDateValue(datesData.opening_date),
-              application_window_end: sanitizeDateValue(datesData.closing_date),
-              
-              // Basic fields - SANITIZED
-              agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
-              region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-              sector: sanitizeArrayValue(coreData.categories || coreData.sector),
-              funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
-              program: sanitizeStringValue(coreData.funding_programme),
-              
-              // Application details
-              application_method: sanitizeStringValue(processData.submission_method_detailed),
-              
-              // Extracted from various sections
-              objectives: sanitizeArrayValue(projectData.objectives_detailed),
-              eligible_actions: sanitizeArrayValue(projectData.eligible_expenses_detailed),
-              ineligible_actions: sanitizeArrayValue(projectData.ineligible_expenses),
-              beneficiary_types: sanitizeArrayValue(eligibilityData.eligible_entities),
-              
-              // Process metadata
-              run_id: run_id,
-              extraction_batch_id: run_id,
-              record_status: 'active',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingSubsidy.id);
-            
-          console.log(`💾 Update operation completed for: ${existingSubsidy.source_url}`);
-        } else {
-          console.log(`➕ Creating new subsidy: ${page.source_url}`);
-          console.log(`🔄 Mapping V2 STRUCTURED data to subsidies_structured table...`);
-          
-          // Insert new record with STRUCTURED data into subsidies_structured table
-          upsertResult = await supabase
-            .from('subsidies_structured')
-            .insert({
-              // Basic identifiers
-              url: page.source_url,
-              
-              // Basic identification
-              title: sanitizeStringValue(coreData.title || 'Untitled Subsidy'),
-              description: sanitizeStringValue((() => {
-                const obj = projectData.objectives_detailed;
-                if (typeof obj === 'string') return obj;
-                if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
-                return coreData.policy_objective || 'No description available';
-              })()),
-              eligibility: sanitizeStringValue([
-                eligibilityData.eligible_entities,
-                eligibilityData.geographic_eligibility, 
-                eligibilityData.special_conditions
-              ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
-              
-              // Financial data - SANITIZED to prevent database errors
-              amount: sanitizeArrayValue([
-                fundingData.funding_amount_min ? `Min: ${fundingData.funding_amount_min}` : null,
-                fundingData.funding_amount_max ? `Max: ${fundingData.funding_amount_max}` : null
-              ].filter(Boolean)),
-              co_financing_rate: sanitizeNumericValue(fundingData.funding_rate_details),
-              
-              // Dates - SANITIZED to proper format
-              deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
-              application_window_start: sanitizeDateValue(datesData.opening_date),
-              application_window_end: sanitizeDateValue(datesData.closing_date),
-              
-              // Basic fields - SANITIZED
-              agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
-              region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
-              sector: sanitizeArrayValue(coreData.categories || coreData.sector),
-              funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
-              program: sanitizeStringValue(coreData.funding_programme),
-              
-              // Application details
-              application_method: sanitizeStringValue(processData.submission_method_detailed),
-              
-              // Extracted from various sections
-              objectives: sanitizeArrayValue(projectData.objectives_detailed),
-              eligible_actions: sanitizeArrayValue(projectData.eligible_expenses_detailed),
-              ineligible_actions: sanitizeArrayValue(projectData.ineligible_expenses),
-              beneficiary_types: sanitizeArrayValue(eligibilityData.eligible_entities),
-              
-              // Process metadata
-              run_id: run_id,
-              extraction_batch_id: run_id,
-              record_status: 'active'
-            });
-            
-          console.log(`💾 Insert operation completed for: ${page.source_url}`);
-        }
-        
-        if (upsertResult.error) {
-          console.error(`❌ Failed to ${upsertAction} subsidy for ${page.source_url}:`, upsertResult.error);
-          
-          // Log detailed error information
-          console.error('💥 Database upsert error details:', {
-            action: upsertAction,
-            url: page.source_url,
-            fingerprint: fingerprint,
-            existingSubsidy: existingSubsidy?.id,
-            errorCode: upsertResult.error.code,
-            errorMessage: upsertResult.error.message,
-            errorDetails: upsertResult.error.details,
-            hint: upsertResult.error.hint
-          });
-          
-          // Log the exact data being inserted for debugging
-          console.error('💥 Data that failed to insert:', JSON.stringify({
-            title: coreData.title,
-            agency: coreData.authority,
-            url: page.source_url
-          }, null, 2));
-          
-        } else {
-          subsidiesCreated++;
-          console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
-          console.log(`📊 ${upsertAction.charAt(0).toUpperCase() + upsertAction.slice(1)} data preview:`, {
-            title: coreData.title || 'No title',
-            authority: coreData.authority || 'No authority',
-            hasDescription: !!(projectData.objectives_detailed || projectData.project_objectives),
-            totalFieldsSet: Object.keys(extractedData).length,
-            verbatimDataStored: !!extractedData && Object.keys(extractedData).length > 0,
-            fingerprint: fingerprint.substring(0, 12) + '...'
-          });
-          
-          // Additional debugging for successful operations
-          console.log(`🔍 Core data mapped:`, {
-            title: coreData.title,
-            authority: coreData.authority,
-            managing_agency: coreData.managing_agency,
-            reference_code: coreData.reference_code
-          });
-          
-          console.log(`🔍 Verbatim data size: ${JSON.stringify(extractedData).length} characters`);
-        }
-
-        } catch (pageError) {
-          console.error(`❌ Error processing page ${page.source_url}:`, pageError);
-        }
-      }
-
-      const result = {
-        success: true,
-        run_id,
-        model: AI_MODEL,
-        pages_processed: pagesProcessed,
-        subs_created: subsidiesCreated,
-        version: 'v2_comprehensive'
-      };
-
-      console.log(`🎉 V2 Processing complete:`, result);
-    }
-
-    // Synchronous processing for small batches
+    // Process pages synchronously to ensure completion
     await processPages();
 
     const result = {
@@ -780,6 +440,123 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
+
+    async function processPages() {
+      // Process each page
+      for (const page of pages) {
+        try {
+          pagesProcessed++;
+          console.log(`🔍 Processing page: ${page.source_url}`);
+          
+          // Get content - prefer combined markdown, fallback to raw text
+          const content = page.combined_content_markdown || page.raw_text || '';
+          const attachments = page.attachments_jsonb || [];
+          
+          if (content.length < 100) {
+            console.log(`⚠️ Skipping page with insufficient content: ${page.source_url}`);
+            continue;
+          }
+
+          // Extract comprehensive data
+          console.log(`🧠 Starting AI extraction for: ${page.source_url}`);
+          console.log(`📝 Content length: ${content.length} characters`);
+          
+          const extractedData = await extractFromContent(content, attachments);
+          
+          if (!extractedData) {
+            console.log(`❌ Failed to extract data from: ${page.source_url}`);
+            continue;
+          }
+          
+          console.log(`✅ AI extraction successful for: ${page.source_url}`);
+          
+          // Extract core identification data safely
+          const coreData = extractedData.core_identification || {};
+          const datesData = extractedData.dates || {};
+          const eligibilityData = extractedData.eligibility || {};
+          const fundingData = extractedData.funding || {};
+          const projectData = extractedData.project_scope_objectives || {};
+          const processData = extractedData.application_process || {};
+          
+          // Check if subsidy already exists by URL
+          const { data: existingSubsidy } = await supabase
+            .from('subsidies_structured')
+            .select('id, url, title, updated_at')
+            .eq('url', page.source_url)
+            .maybeSingle();
+
+          let upsertAction = 'created';
+          let upsertResult;
+
+          if (existingSubsidy) {
+            console.log(`🔄 Found existing subsidy, updating: ${existingSubsidy.url}`);
+            upsertAction = 'updated';
+            
+            upsertResult = await supabase
+              .from('subsidies_structured')
+              .update({
+                title: sanitizeStringValue(coreData.title || extractedData.title || 'Untitled Subsidy'),
+                description: sanitizeStringValue((() => {
+                  const obj = projectData.objectives_detailed;
+                  if (typeof obj === 'string') return obj;
+                  if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
+                  return extractedData.description || coreData.policy_objective || 'No description available';
+                })()),
+                eligibility: sanitizeStringValue([
+                  eligibilityData.eligible_entities,
+                  eligibilityData.geographic_eligibility, 
+                  eligibilityData.special_conditions
+                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
+                agency: sanitizeStringValue(coreData.authority || extractedData.authority) || 'Unknown Agency',
+                region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
+                sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+                funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
+                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
+                run_id: run_id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingSubsidy.id);
+              
+          } else {
+            console.log(`➕ Creating new subsidy: ${page.source_url}`);
+            
+            upsertResult = await supabase
+              .from('subsidies_structured')
+              .insert({
+                url: page.source_url,
+                title: sanitizeStringValue(coreData.title || 'Untitled Subsidy'),
+                description: sanitizeStringValue((() => {
+                  const obj = projectData.objectives_detailed;
+                  if (typeof obj === 'string') return obj;
+                  if (Array.isArray(obj) && obj.length > 0) return obj.join(' ');
+                  return coreData.policy_objective || 'No description available';
+                })()),
+                eligibility: sanitizeStringValue([
+                  eligibilityData.eligible_entities,
+                  eligibilityData.geographic_eligibility, 
+                  eligibilityData.special_conditions
+                ].filter(Boolean).join('. ') || 'No eligibility criteria specified'),
+                agency: sanitizeStringValue(coreData.authority) || 'Unknown Agency',
+                region: sanitizeArrayValue(eligibilityData.geographic_eligibility),
+                sector: sanitizeArrayValue(coreData.categories || coreData.sector),
+                funding_type: sanitizeStringValue(coreData.call_type || fundingData.funding_type) || 'Grant',
+                deadline: sanitizeDateValue(datesData.closing_date || datesData.application_deadline),
+                run_id: run_id
+              });
+          }
+          
+          if (upsertResult.error) {
+            console.error(`❌ Failed to ${upsertAction} subsidy for ${page.source_url}:`, upsertResult.error);
+          } else {
+            subsidiesCreated++;
+            console.log(`✅ Successfully ${upsertAction} comprehensive subsidy record for: ${page.source_url}`);
+          }
+
+        } catch (pageError) {
+          console.error(`❌ Error processing page ${page.source_url}:`, pageError);
+        }
+      }
+    }
 
   } catch (error) {
     console.error('V2 AI processor error:', error);
