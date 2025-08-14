@@ -244,17 +244,21 @@ async function extractFromContent(content: string, attachments: any[] = [], mode
     console.log(`🔑 API Key available: ${openAIApiKey ? 'Yes' : 'No'}`);
     console.log(`🔑 API Key preview: ${openAIApiKey ? openAIApiKey.substring(0, 10) + '...' : 'N/A'}`);
 
+    // Build model-specific payload (GPT-5/4.1 use max_completion_tokens, 4o/4o-mini use max_tokens + temperature)
+    const isLegacy = /gpt-4o/i.test(model);
+    const bodyPayload: Record<string, any> = isLegacy
+      ? { model, messages, temperature: 0.2, max_tokens: 4000 }
+      : { model, messages, max_completion_tokens: 4000 };
+
+    console.log('🧪 Model payload configuration:', { model, isLegacy, payloadKeys: Object.keys(bodyPayload) });
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: model,
-        messages,
-        max_completion_tokens: 4000
-      }),
+      body: JSON.stringify(bodyPayload),
     });
 
     console.log(`🌐 OpenAI Response status: ${response.status}`);
