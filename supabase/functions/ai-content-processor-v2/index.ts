@@ -319,45 +319,7 @@ async function processAttachments(attachments: any[]): Promise<string> {
   return attachmentContent;
 }
 
-// Note: parseJSONResponse function is already defined above, removing duplicate
-    const anyFencedMatch = responseText.match(/```\s*(\{[\s\S]*?\})\s*```/);
-    if (anyFencedMatch) {
-      console.log('📦 Found generic fenced block');
-      return JSON.parse(anyFencedMatch[1]);
-    }
-    
-    // Strategy 3: Find first complete JSON object using brace balancing
-    let braceCount = 0;
-    let jsonStart = -1;
-    let jsonEnd = -1;
-    
-    for (let i = 0; i < responseText.length; i++) {
-      if (responseText[i] === '{') {
-        if (braceCount === 0) jsonStart = i;
-        braceCount++;
-      } else if (responseText[i] === '}') {
-        braceCount--;
-        if (braceCount === 0 && jsonStart !== -1) {
-          jsonEnd = i + 1;
-          break;
-        }
-      }
-    }
-    
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const jsonText = responseText.slice(jsonStart, jsonEnd);
-      console.log('📦 Found balanced JSON object');
-      return JSON.parse(jsonText);
-    }
-    
-    throw new Error('No valid JSON structure found in response');
-    
-  } catch (error: any) {
-    console.error('❌ All JSON parsing strategies failed:', error.message);
-    console.error('📄 Response preview:', responseText.substring(0, 1000));
-    throw new Error(`JSON parsing error: ${error.message}`);
-  }
-}
+// Enhanced attachment processing function (duplicate function body removed)
 
 // Schema fallback function - maps flat structure to nested if needed
 function normalizeExtractedData(data: any): any {
