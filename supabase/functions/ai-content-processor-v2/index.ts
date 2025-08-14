@@ -469,15 +469,20 @@ serve(async (req) => {
     
     console.log(`🚀 V2 Comprehensive AI Processing started - Run: ${run_id}`);
     
-    // Create run tracking record
+    // Create run tracking record in pipeline_runs (required by FK)
     const { error: runError } = await supabase
-      .from('ai_content_runs')
+      .from('pipeline_runs')
       .insert({
-        run_id,
-        started_at: new Date().toISOString(),
+        id: run_id,
         status: 'running',
-        model: model
+        stage: 'ai_processing',
+        progress: 0,
+        config: { model },
+        started_at: new Date().toISOString(),
+        version: 2
       });
+    
+    
     
     if (runError) {
       console.error('❌ Failed to create run record:', runError);
@@ -527,16 +532,22 @@ serve(async (req) => {
 
     // Update run completion status
     const { error: updateError } = await supabase
-      .from('ai_content_runs')
+      .from('pipeline_runs')
       .update({
         status: 'completed',
+        stage: 'done',
+        progress: 100,
         ended_at: new Date().toISOString(),
-        pages_seen: pages.length,
-        pages_eligible: pages.length,
-        pages_processed: pagesProcessed,
-        subs_created: subsidiesCreated
+        stats: {
+          pages_seen: pages.length,
+          pages_eligible: pages.length,
+          pages_processed: pagesProcessed,
+          subs_created: subsidiesCreated
+        }
       })
-      .eq('run_id', run_id);
+      .eq('id', run_id);
+
+    
 
     if (updateError) {
       console.error('❌ Failed to update run record:', updateError);
@@ -750,13 +761,16 @@ serve(async (req) => {
     // Update run status to failed
     if (typeof run_id !== 'undefined') {
       const { error: updateError } = await supabase
-        .from('ai_content_runs')
+        .from('pipeline_runs')
         .update({
           status: 'failed',
+          stage: 'error',
           ended_at: new Date().toISOString(),
           reason: error.message
         })
-        .eq('run_id', run_id);
+        .eq('id', run_id);
+      
+      
       
       if (updateError) {
         console.error('Failed to update failed run status:', updateError);
