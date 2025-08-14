@@ -253,8 +253,7 @@ async function extractFromContent(content: string, attachments: any[] = []): Pro
       body: JSON.stringify({
         model: AI_MODEL,
         messages,
-        temperature: 0.1,
-        max_tokens: 4000
+        max_completion_tokens: 4000
       }),
     });
 
