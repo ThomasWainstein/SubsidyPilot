@@ -465,6 +465,333 @@ class ContentPreservationProcessor {
   }
 
   private async extractSummaryData(blocks: any[]): Promise<any> {
+    // Create structured summary from all content blocks
+    const summary = {
+      core_identification: this.extractCoreInfo(blocks),
+      dates: this.extractAllDatesFromBlocks(blocks),
+      funding: this.extractFundingInfo(blocks),
+      eligibility: this.extractEligibilityInfo(blocks),
+      contact: this.extractContactInfo(blocks)
+    };
+
+    // Create flexible content sections that preserve ALL text
+    const content_sections = this.createFlexibleContentSections(blocks);
+
+    // Extract all attachments/documents
+    const attachments = this.extractAllDocuments(blocks);
+
+    return {
+      summary,
+      content_sections, // This captures EVERYTHING in organized sections
+      attachments,
+      metadata: {
+        total_blocks: blocks.length,
+        content_completeness: this.calculateContentCompleteness(blocks),
+        processing_method: 'lossless_hybrid'
+      }
+    };
+  }
+
+  private createFlexibleContentSections(blocks: any[]): any[] {
+    const sections: any[] = [];
+    let currentSection: any = null;
+    
+    // Group blocks into logical sections based on content
+    for (const block of blocks) {
+      const sectionType = this.identifySectionType(block);
+      
+      if (this.isNewSection(block, currentSection)) {
+        // Save previous section
+        if (currentSection) {
+          sections.push(currentSection);
+        }
+        
+        // Start new section
+        currentSection = {
+          section_name: this.extractSectionName(block),
+          section_type: sectionType,
+          content_blocks: [block],
+          full_text: block.plain_text,
+          contains_key_info: block.semantic_data,
+          importance_score: block.display_properties?.importance || 0
+        };
+      } else if (currentSection) {
+        // Add to existing section
+        currentSection.content_blocks.push(block);
+        currentSection.full_text += '\n' + block.plain_text;
+        
+        // Merge semantic data
+        if (block.semantic_data) {
+          this.mergeSemanticData(currentSection.contains_key_info, block.semantic_data);
+        }
+      }
+    }
+    
+    // Add last section
+    if (currentSection) {
+      sections.push(currentSection);
+    }
+    
+    // Ensure we have all major sections by checking content
+    this.ensureAllSectionsCapture(sections, blocks);
+    
+    return sections;
+  }
+
+  private identifySectionType(block: any): string {
+    const content = block.plain_text.toLowerCase();
+    
+    // Standard French subsidy sections
+    if (content.includes('présentation') || content.includes('objectif')) return 'presentation';
+    if (content.includes('pour qui') || content.includes('bénéficiaire')) return 'beneficiaries';
+    if (content.includes('quand') || content.includes('date')) return 'timeline';
+    if (content.includes('comment') || content.includes('procédure')) return 'procedure';
+    if (content.includes('montant') || content.includes('financement')) return 'funding';
+    if (content.includes('éligibilité') || content.includes('condition')) return 'eligibility';
+    if (content.includes('document') || content.includes('pièce')) return 'documents';
+    if (content.includes('contact') || content.includes('information')) return 'contact';
+    
+    return block.category || 'content';
+  }
+
+  private isNewSection(block: any, currentSection: any): boolean {
+    if (!currentSection) return true;
+    if (block.type === 'heading') return true;
+    
+    const blockType = this.identifySectionType(block);
+    return blockType !== currentSection.section_type;
+  }
+
+  private extractSectionName(block: any): string {
+    if (block.type === 'heading') {
+      return block.plain_text.trim();
+    }
+    
+    const content = block.plain_text.toLowerCase();
+    
+    // Extract section names from common patterns
+    if (content.includes('présentation')) return 'Présentation';
+    if (content.includes('pour qui')) return 'Pour qui ?';
+    if (content.includes('quand')) return 'Quand ?';
+    if (content.includes('comment')) return 'Comment ?';
+    if (content.includes('montant')) return 'Montant de l\'aide';
+    if (content.includes('éligibilité')) return 'Éligibilité';
+    if (content.includes('procédure')) return 'Procédure';
+    if (content.includes('document')) return 'Documents associés';
+    if (content.includes('contact')) return 'Contacts et informations';
+    
+    // Generate name from content type
+    return this.generateSectionName(this.identifySectionType(block));
+  }
+
+  private generateSectionName(sectionType: string): string {
+    const names: Record<string, string> = {
+      'presentation': 'Présentation',
+      'beneficiaries': 'Bénéficiaires',
+      'timeline': 'Calendrier',
+      'procedure': 'Procédure',
+      'funding': 'Financement',
+      'eligibility': 'Éligibilité',
+      'documents': 'Documents',
+      'contact': 'Contacts',
+      'content': 'Informations générales'
+    };
+    
+    return names[sectionType] || 'Contenu';
+  }
+
+  private mergeSemanticData(target: any, source: any): void {
+    if (!target || !source) return;
+    
+    // Merge arrays
+    const arrayFields = ['contains_dates', 'contains_amounts', 'contains_contacts', 'action_items'];
+    for (const field of arrayFields) {
+      if (source[field] && Array.isArray(source[field])) {
+        target[field] = target[field] || [];
+        target[field].push(...source[field]);
+        target[field] = [...new Set(target[field])]; // Deduplicate
+      }
+    }
+  }
+
+  private ensureAllSectionsCapture(sections: any[], blocks: any[]): void {
+    // Check if any blocks are missed
+    const capturedBlockIds = new Set();
+    sections.forEach(section => {
+      section.content_blocks.forEach((block: any) => capturedBlockIds.add(block.id));
+    });
+    
+    // Add missed blocks to a general section
+    const missedBlocks = blocks.filter(block => !capturedBlockIds.has(block.id));
+    if (missedBlocks.length > 0) {
+      sections.push({
+        section_name: 'Informations complémentaires',
+        section_type: 'additional',
+        content_blocks: missedBlocks,
+        full_text: missedBlocks.map(b => b.plain_text).join('\n'),
+        contains_key_info: {},
+        importance_score: 5
+      });
+    }
+  }
+
+  private extractCoreInfo(blocks: any[]): any {
+    const allText = blocks.map(b => b.plain_text).join(' ').toLowerCase();
+    
+    return {
+      title: this.extractTitle(blocks),
+      authority: this.extractAuthority(allText),
+      sector: this.extractSector(allText),
+      status: this.extractStatus(allText),
+      call_type: this.extractCallType(allText)
+    };
+  }
+
+  private extractTitle(blocks: any[]): string {
+    // Look for heading blocks first
+    const headingBlocks = blocks.filter(b => b.type === 'heading');
+    if (headingBlocks.length > 0) {
+      return headingBlocks[0].plain_text.replace(/\s*\|\s*FranceAgriMer.*/, '').trim();
+    }
+    
+    // Fallback to first significant content
+    const significantBlocks = blocks.filter(b => b.quality_metrics?.word_count > 5);
+    if (significantBlocks.length > 0) {
+      const firstLine = significantBlocks[0].plain_text.split('\n')[0];
+      return firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+    }
+    
+    return 'Aide FranceAgriMer';
+  }
+
+  private extractAuthority(text: string): string {
+    if (text.includes('franceagrimer')) return 'FranceAgriMer';
+    if (text.includes('ministère')) return 'Ministère';
+    if (text.includes('préfecture')) return 'Préfecture';
+    return 'Non spécifié';
+  }
+
+  private extractSector(text: string): string {
+    const sectors = {
+      'viti': 'Vitivinicole',
+      'cidre': 'Cidricole', 
+      'agriculture': 'Agriculture',
+      'pêche': 'Pêche',
+      'élevage': 'Élevage'
+    };
+    
+    for (const [key, value] of Object.entries(sectors)) {
+      if (text.includes(key)) return value;
+    }
+    
+    return 'Non spécifié';
+  }
+
+  private extractStatus(text: string): string {
+    if (text.includes('fermé') || text.includes('clos')) return 'closed';
+    if (text.includes('ouvert') || text.includes('disponible')) return 'open';
+    return 'unknown';
+  }
+
+  private extractCallType(text: string): string {
+    if (text.includes('appel à projets')) return 'Appel à projets';
+    if (text.includes('aide directe')) return 'Aide directe';
+    return 'Non spécifié';
+  }
+
+  private extractAllDatesFromBlocks(blocks: any[]): any {
+    const allDates: string[] = [];
+    blocks.forEach(block => {
+      if (block.semantic_data?.contains_dates) {
+        allDates.push(...block.semantic_data.contains_dates);
+      }
+    });
+    
+    const uniqueDates = [...new Set(allDates)];
+    
+    return {
+      all_dates: uniqueDates,
+      deadline: this.findDeadline(uniqueDates),
+      opening_date: this.findOpeningDate(uniqueDates),
+      closing_date: this.findClosingDate(uniqueDates)
+    };
+  }
+
+  private extractFundingInfo(blocks: any[]): any {
+    const allAmounts: string[] = [];
+    blocks.forEach(block => {
+      if (block.semantic_data?.contains_amounts) {
+        allAmounts.push(...block.semantic_data.contains_amounts);
+      }
+    });
+    
+    return {
+      amounts_found: [...new Set(allAmounts)],
+      funding_rate: allAmounts.find(a => a.includes('%')),
+      max_amount: allAmounts.find(a => a.includes('€'))
+    };
+  }
+
+  private extractEligibilityInfo(blocks: any[]): any {
+    const eligibilityBlocks = blocks.filter(b => 
+      b.category === 'eligibility' || 
+      b.plain_text.toLowerCase().includes('éligib')
+    );
+    
+    return {
+      criteria_found: eligibilityBlocks.length > 0,
+      full_criteria: eligibilityBlocks.map(b => b.plain_text).join('\n')
+    };
+  }
+
+  private extractContactInfo(blocks: any[]): any {
+    const allContacts: string[] = [];
+    blocks.forEach(block => {
+      if (block.semantic_data?.contains_contacts) {
+        allContacts.push(...block.semantic_data.contains_contacts);
+      }
+    });
+    
+    return {
+      contacts_found: [...new Set(allContacts)],
+      email: allContacts.find(c => c.includes('@')),
+      phone: allContacts.find(c => /\d{2}[.\s-]?\d{2}/.test(c))
+    };
+  }
+
+  private extractAllDocuments(blocks: any[]): any[] {
+    const documents: any[] = [];
+    
+    blocks.forEach(block => {
+      if (block.category === 'documents' || block.plain_text.includes('pdf')) {
+        // Extract document references from content
+        const docMatches = block.plain_text.match(/[\w\s-]+\.pdf/gi) || [];
+        docMatches.forEach(match => {
+          documents.push({
+            name: match.trim(),
+            type: 'pdf',
+            mentioned_in: block.id,
+            content_context: block.plain_text.substring(0, 200)
+          });
+        });
+      }
+    });
+    
+    return documents;
+  }
+
+  private findDeadline(dates: string[]): string | null {
+    // Look for dates mentioned with deadline context
+    return dates.find(date => date.includes('tard')) || dates[0] || null;
+  }
+
+  private findOpeningDate(dates: string[]): string | null {
+    return dates.find(date => date.includes('partir')) || null;
+  }
+
+  private findClosingDate(dates: string[]): string | null {
+    return dates.find(date => date.includes('jusqu')) || null;
+  }
     // Extract structured data for AI processing
     const summaryData = {
       core_identification: this.extractCoreInfo(blocks),

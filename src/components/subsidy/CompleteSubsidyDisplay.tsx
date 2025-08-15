@@ -22,17 +22,46 @@ interface CompleteSubsidyDisplayProps {
   data: RawSubsidyContent;
 }
 
-const parseSubsidyContent = (rawText: string, html?: string, sections?: any) => {
-  // Extract key information from the raw text using patterns
+interface ParsedSubsidyContent {
+  title: string;
+  presentation: string;
+  eligibility: string;
+  dates: string[];
+  amounts: string[];
+  contacts: string[];
+  procedures: string;
+  documents: any[];
+  fullSections: string[];
+  structuredSections?: any[];
+  summary?: any;
+  metadata?: any;
+}
+
+const parseSubsidyContent = (rawText: string, html?: string, sections?: any): ParsedSubsidyContent => {
+  // If we have structured sections from the enhanced processor, use those
+  if (sections?.content_sections) {
+    return {
+      title: sections.summary?.core_identification?.title || 'Aide FranceAgriMer',
+      presentation: '',
+      eligibility: '',
+      dates: sections.summary?.dates?.all_dates || [],
+      amounts: sections.summary?.funding?.amounts_found || [],
+      contacts: sections.summary?.contact?.contacts_found || [],
+      procedures: '',
+      documents: sections.attachments || [],
+      fullSections: sections.content_sections.map((section: any) => 
+        `${section.section_name}:\n${section.full_text}`
+      ),
+      structuredSections: sections.content_sections,
+      summary: sections.summary,
+      metadata: sections.metadata
+    };
+  }
+
+  // Fallback to pattern-based extraction for legacy data
   const patterns = {
     title: /^([^|]*?)(?:\s*\|\s*FranceAgriMer|\s*–|\s*-)/,
-    dates: {
-      publication: /Date de publication\s*:\s*(\d{2}\/\d{2}\/\d{4})/,
-      availability: /Disponible du\s*(\d{2}\/\d{2}\/\d{4})\s*au\s*(\d{2}\/\d{2}\/\d{4})/,
-      deposit: /Dépôt des demandes du\s*(\d{2})\s*(\w+)\s*au\s*(\d{2})\s*(\w+)\s*(\d{4})/,
-      deadline: /au plus tard le\s*(\d{2}\/\d{2}\/\d{4})/g,
-      versement: /au plus tard le\s*(\d{2}\/\d{2}\/\d{4})/g
-    },
+    dates: /\d{2}\/\d{2}\/\d{4}/g,
     amounts: /(\d+(?:\.\d+)?)\s*€(?:\s*\/\s*ha)?/g,
     percentages: /(\d+(?:\.\d+)?)\s*%/g,
     contact: {
@@ -60,55 +89,55 @@ const parseSubsidyContent = (rawText: string, html?: string, sections?: any) => 
     extracted.title = titleMatch[1].trim();
   }
 
-  // Split content into logical sections
-  const sectionMarkers = [
-    'Présentation',
-    'Pour qui ?',
-    'Quand ?',
-    'Comment ?',
-    'Modalités',
-    'Montant de l\'aide',
-    'Instruction des demandes',
-    'Éligibilité',
-    'Démarches',
-    'Documents associés'
-  ];
-
-  // Create sections from content
+  // Create flexible sections from ALL content
+  const allLines = rawText.split('\n').filter(line => line.trim().length > 0);
+  const contentSections: string[] = [];
   let currentSection = '';
   let currentContent = '';
   
-  const lines = rawText.split('\n').filter(line => line.trim());
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (const line of allLines) {
+    const trimmedLine = line.trim();
     
-    // Check if this line is a section marker
-    const isSection = sectionMarkers.some(marker => 
-      line.toLowerCase().includes(marker.toLowerCase()) && 
-      line.length < marker.length + 20
-    );
+    // Check if this might be a section header (short line, followed by content)
+    const mightBeHeader = trimmedLine.length < 50 && 
+                         (trimmedLine.includes('?') || 
+                          trimmedLine.toLowerCase().includes('présentation') ||
+                          trimmedLine.toLowerCase().includes('aide') ||
+                          trimmedLine.toLowerCase().includes('éligib') ||
+                          trimmedLine.toLowerCase().includes('procédure') ||
+                          trimmedLine.toLowerCase().includes('montant') ||
+                          trimmedLine.toLowerCase().includes('document'));
     
-    if (isSection) {
+    if (mightBeHeader && currentContent.length > 50) {
       // Save previous section
       if (currentSection && currentContent.trim()) {
-        extracted.fullSections.push(`${currentSection}:\n${currentContent.trim()}`);
+        contentSections.push(`${currentSection}:\n${currentContent.trim()}`);
       }
-      
-      currentSection = line;
+      currentSection = trimmedLine;
       currentContent = '';
     } else {
-      currentContent += line + '\n';
+      // Add to current content
+      if (!currentSection && contentSections.length === 0) {
+        currentSection = 'Informations principales';
+      }
+      currentContent += trimmedLine + '\n';
     }
   }
   
   // Save last section
   if (currentSection && currentContent.trim()) {
-    extracted.fullSections.push(`${currentSection}:\n${currentContent.trim()}`);
+    contentSections.push(`${currentSection}:\n${currentContent.trim()}`);
   }
+  
+  // If no sections were created, add all content as one section
+  if (contentSections.length === 0) {
+    contentSections.push(`Contenu complet:\n${rawText}`);
+  }
+  
+  extracted.fullSections = contentSections;
 
-  // Extract specific information
-  const dateMatches = rawText.match(/\d{2}\/\d{2}\/\d{4}/g);
+  // Extract specific information patterns
+  const dateMatches = rawText.match(patterns.dates);
   if (dateMatches) {
     extracted.dates = [...new Set(dateMatches)];
   }
@@ -204,6 +233,9 @@ export const CompleteSubsidyDisplay: React.FC<CompleteSubsidyDisplayProps> = ({ 
   const scrapedDate = new Date(data.scrape_date).toLocaleDateString('fr-FR');
   const wordCount = data.raw_text.split(/\s+/).length;
   
+  // Check if we have enhanced structured data
+  const hasStructuredData = parsed.structuredSections && parsed.structuredSections.length > 0;
+  
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -270,51 +302,150 @@ export const CompleteSubsidyDisplay: React.FC<CompleteSubsidyDisplayProps> = ({ 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* All Sections */}
-          {parsed.fullSections.map((section, index) => {
-            const [title, ...contentParts] = section.split(':\n');
-            const content = contentParts.join(':\n');
-            
-            // Choose appropriate icon based on section title
-            let icon = <FileText className="h-4 w-4 text-accent" />;
-            if (title.toLowerCase().includes('présentation')) {
-              icon = <Target className="h-4 w-4 text-accent" />;
-            } else if (title.toLowerCase().includes('qui')) {
-              icon = <Users className="h-4 w-4 text-accent" />;
-            } else if (title.toLowerCase().includes('quand')) {
-              icon = <Calendar className="h-4 w-4 text-accent" />;
-            } else if (title.toLowerCase().includes('comment') || title.toLowerCase().includes('modalité')) {
-              icon = <CheckCircle className="h-4 w-4 text-accent" />;
-            } else if (title.toLowerCase().includes('montant')) {
-              icon = <Euro className="h-4 w-4 text-accent" />;
-            }
-            
-            return (
-              <ContentSection
-                key={index}
-                title={title.trim()}
-                content={content}
-                icon={icon}
-              />
-            );
-          })}
+          {/* Enhanced Structured Sections */}
+          {hasStructuredData ? (
+            // Use structured sections with full content preservation
+            parsed.structuredSections.map((section: any, index: number) => {
+              const iconMap: Record<string, React.ReactNode> = {
+                'presentation': <Target className="h-4 w-4 text-accent" />,
+                'beneficiaries': <Users className="h-4 w-4 text-accent" />,
+                'timeline': <Calendar className="h-4 w-4 text-accent" />,
+                'procedure': <CheckCircle className="h-4 w-4 text-accent" />,
+                'funding': <Euro className="h-4 w-4 text-accent" />,
+                'eligibility': <Users className="h-4 w-4 text-accent" />,
+                'documents': <FileText className="h-4 w-4 text-accent" />,
+                'contact': <Phone className="h-4 w-4 text-accent" />
+              };
+              
+              return (
+                <Card key={index} className="border-l-4 border-l-accent">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      {iconMap[section.section_type] || <FileText className="h-4 w-4 text-accent" />}
+                      {section.section_name}
+                      {section.importance_score > 80 && (
+                        <Badge variant="secondary" className="ml-2">Important</Badge>
+                      )}
+                    </CardTitle>
+                    {section.contains_key_info && Object.keys(section.contains_key_info).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {section.contains_key_info.contains_dates?.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {section.contains_key_info.contains_dates.length} date(s)
+                          </Badge>
+                        )}
+                        {section.contains_key_info.contains_amounts?.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <Euro className="h-3 w-3 mr-1" />
+                            {section.contains_key_info.contains_amounts.length} montant(s)
+                          </Badge>
+                        )}
+                        {section.contains_key_info.contains_contacts?.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <Phone className="h-3 w-3 mr-1" />
+                            {section.contains_key_info.contains_contacts.length} contact(s)
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Display FULL text content - no information loss */}
+                    <div className="prose prose-sm max-w-none">
+                      {section.full_text.split('\n').filter((line: string) => line.trim()).map((paragraph: string, pIdx: number) => (
+                        <p key={pIdx} className="text-foreground/80 leading-relaxed mb-3">
+                          {paragraph.trim()}
+                        </p>
+                      ))}
+                    </div>
+                    
+                    {/* Show any specific key information extracted */}
+                    {section.contains_key_info && (
+                      <div className="mt-4 space-y-2">
+                        {section.contains_key_info.contains_dates?.length > 0 && (
+                          <div className="p-3 bg-accent/5 rounded-lg">
+                            <div className="text-sm font-medium text-accent mb-1">Dates identifiées:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {section.contains_key_info.contains_dates.map((date: string, dIdx: number) => (
+                                <Badge key={dIdx} variant="secondary" className="text-xs">{date}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {section.contains_key_info.contains_amounts?.length > 0 && (
+                          <div className="p-3 bg-accent/5 rounded-lg">
+                            <div className="text-sm font-medium text-accent mb-1">Montants identifiés:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {section.contains_key_info.contains_amounts.map((amount: string, aIdx: number) => (
+                                <Badge key={aIdx} variant="secondary" className="text-xs">{amount}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            // Fallback to basic section parsing for legacy data
+            parsed.fullSections.map((section, index) => {
+              const [title, ...contentParts] = section.split(':\n');
+              const content = contentParts.join(':\n');
+              
+              // Choose appropriate icon based on section title
+              let icon = <FileText className="h-4 w-4 text-accent" />;
+              if (title.toLowerCase().includes('présentation')) {
+                icon = <Target className="h-4 w-4 text-accent" />;
+              } else if (title.toLowerCase().includes('qui')) {
+                icon = <Users className="h-4 w-4 text-accent" />;
+              } else if (title.toLowerCase().includes('quand')) {
+                icon = <Calendar className="h-4 w-4 text-accent" />;
+              } else if (title.toLowerCase().includes('comment') || title.toLowerCase().includes('modalité')) {
+                icon = <CheckCircle className="h-4 w-4 text-accent" />;
+              } else if (title.toLowerCase().includes('montant')) {
+                icon = <Euro className="h-4 w-4 text-accent" />;
+              }
+              
+              return (
+                <ContentSection
+                  key={index}
+                  title={title.trim()}
+                  content={content}
+                  icon={icon}
+                />
+              );
+            })
+          )}
           
-          {/* Raw Content as Fallback */}
+          {/* Complete Raw Content as Ultimate Fallback */}
           {parsed.fullSections.length === 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-accent" />
                   Contenu intégral
+                  <Badge variant="outline" className="ml-2">Contenu brut préservé</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {formatContent(data.raw_text).map((paragraph, idx) => (
-                    <p key={idx} className="text-foreground/80 leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))}
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Affichage du contenu brut complet - aucune information n'est perdue.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="prose prose-sm max-w-none">
+                    {data.raw_text.split('\n').filter(line => line.trim()).map((line, idx) => (
+                      <p key={idx} className="text-foreground/80 leading-relaxed">
+                        {line.trim()}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
