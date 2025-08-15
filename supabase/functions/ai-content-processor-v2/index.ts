@@ -75,11 +75,33 @@ function validateSubsidyData(extractedData: any) {
   const warnings: string[] = [];
   const validated: any = {};
   
+  // Extract values from nested structure
+  const title = extractedData.core_identification?.title || extractedData.title;
+  const authority = extractedData.core_identification?.authority || extractedData.authority;
+  const description = extractedData.project_scope_objectives?.objectives_detailed || extractedData.description;
+  const eligibility = extractedData.eligibility?.eligible_entities || extractedData.eligibility;
+  const region = extractedData.eligibility?.geographic_eligibility || extractedData.region;
+  const sector = extractedData.core_identification?.sector || extractedData.sector;
+  const funding_type = extractedData.funding?.funding_type || extractedData.core_identification?.call_type || extractedData.funding_type;
+  const deadline = extractedData.dates?.closing_date || extractedData.dates?.application_deadline || extractedData.deadline;
+  
+  // Check required fields with nested structure support
+  const fieldsToValidate = {
+    title: title,
+    authority: authority,
+    description: description,
+    eligibility: eligibility,
+    region: region,
+    sector: sector,
+    funding_type: funding_type,
+    deadline: deadline
+  };
+  
   // Check required fields
   for (const field of SUBSIDY_SCHEMA.required) {
     try {
       const validator = SUBSIDY_SCHEMA.validators[field as keyof typeof SUBSIDY_SCHEMA.validators];
-      const value = extractedData[field];
+      const value = fieldsToValidate[field as keyof typeof fieldsToValidate];
       
       if (validator) {
         validated[field] = validator(value);
@@ -99,7 +121,7 @@ function validateSubsidyData(extractedData: any) {
   for (const field of SUBSIDY_SCHEMA.optional) {
     try {
       const validator = SUBSIDY_SCHEMA.validators[field as keyof typeof SUBSIDY_SCHEMA.validators];
-      const value = extractedData[field];
+      const value = fieldsToValidate[field as keyof typeof fieldsToValidate];
       
       if (value) {
         if (validator) {
