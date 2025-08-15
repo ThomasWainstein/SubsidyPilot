@@ -26,6 +26,7 @@ const ApplicationFormPage = lazy(() => import('@/pages/ApplicationFormPage'));
 const EUSubsidyPortalPage = lazy(() => import('@/pages/EUSubsidyPortalPage'));
 const SubsidyDetailPage = lazy(() => import('@/pages/SubsidyDetailPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const SubsidyDetailAdmin = lazy(() => import('@/pages/admin/SubsidyDetail'));
 const TestVerbatimPage = lazy(() => import('@/pages/TestVerbatimPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const DocumentReviewPage = lazy(() => import('@/pages/DocumentReviewPage'));
@@ -159,6 +160,10 @@ function App() {
                       
                       <Route path="/admin" element={
                         <ProtectedRouteWrapper><AdminPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/admin/subsidy/:id" element={
+                        <ProtectedRouteWrapper><SubsidyDetailAdmin /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/admin-panel" element={

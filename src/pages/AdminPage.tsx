@@ -18,6 +18,7 @@ import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard'
 import { AuditTrailViewer } from '@/components/admin/AuditTrailViewer';
 import { ManualPipelineDebugger } from '@/components/admin/ManualPipelineDebugger';
 import { AITestingControl } from '@/components/admin/AITestingControl';
+import { SubsidyTableWithView } from '@/components/admin/SubsidyTableWithView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FEATURES, IS_PRODUCTION } from '@/config/environment';
