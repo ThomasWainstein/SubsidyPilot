@@ -28,7 +28,17 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       return amount.join(', ');
     }
     if (typeof amount === 'string') return amount;
-    return t('subsidy.display.noAdditionalInfo');
+    if (typeof amount === 'object' && amount !== null) {
+      return JSON.stringify(amount);
+    }
+    return String(t('subsidy.display.noAdditionalInfo') || 'N/A');
+  };
+
+  const safeString = (value: any): string => {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
   };
 
   const categories = formatArray(subsidy.sectors || subsidy.categories);
@@ -69,11 +79,11 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.agency')}:</span>
-                <p className="text-foreground">{subsidy.agency || subsidy.issuing_body || 'N/A'}</p>
+                <p className="text-foreground">{safeString(subsidy.agency || subsidy.issuing_body)}</p>
               </div>
               <div>
                 <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.publicationDate')}:</span>
-                <p className="text-foreground">{subsidy.publication_date || subsidy.draft_date || 'N/A'}</p>
+                <p className="text-foreground">{safeString(subsidy.publication_date || subsidy.draft_date)}</p>
               </div>
             </div>
           </div>
@@ -110,11 +120,11 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
               <div>
                 <h3 className="font-medium text-foreground mb-2">{t('subsidy.display.amount')}</h3>
                 <p className="text-muted-foreground mb-3">{formatAmount(subsidy.amount || subsidy.funding_amount)}</p>
-                {subsidy.minimum_investment && (
-                  <p className="text-sm text-muted-foreground">
-                    {t('subsidy.display.minimumInvestment')}: {subsidy.minimum_investment}
-                  </p>
-                )}
+                 {subsidy.minimum_investment && (
+                   <p className="text-sm text-muted-foreground">
+                     {t('subsidy.display.minimumInvestment')}: {safeString(subsidy.minimum_investment)}
+                   </p>
+                 )}
               </div>
               {fundingRateDetails.length > 0 && (
                 <div>
@@ -227,11 +237,11 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
               </div>
               <div>
                 <span className="font-medium text-primary/80">{t('subsidy.display.deadline')}:</span>
-                <p className="text-primary/70">{subsidy.deadline || subsidy.application_deadline || 'N/A'}</p>
+                <p className="text-primary/70">{safeString(subsidy.deadline || subsidy.application_deadline)}</p>
               </div>
               <div>
                 <span className="font-medium text-primary/80">{t('subsidy.display.sector')}:</span>
-                <p className="text-primary/70">{categories[0] || 'N/A'}</p>
+                <p className="text-primary/70">{safeString(categories[0])}</p>
               </div>
             </div>
           </div>
@@ -242,12 +252,12 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
               <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.applicationPeriod')}</h3>
               <div className="bg-green-50 dark:bg-green-950/20 rounded p-3">
                 <div className="text-sm">
-                  {subsidy.application_window_start && (
-                    <p><span className="font-medium">{t('subsidy.display.start')}:</span> {subsidy.application_window_start}</p>
-                  )}
-                  {subsidy.application_window_end && (
-                    <p><span className="font-medium">{t('subsidy.display.end')}:</span> {subsidy.application_window_end}</p>
-                  )}
+                   {subsidy.application_window_start && (
+                     <p><span className="font-medium">{t('subsidy.display.start')}:</span> {safeString(subsidy.application_window_start)}</p>
+                   )}
+                   {subsidy.application_window_end && (
+                     <p><span className="font-medium">{t('subsidy.display.end')}:</span> {safeString(subsidy.application_window_end)}</p>
+                   )}
                 </div>
               </div>
             </div>
@@ -274,7 +284,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             <div>
               <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.geographicEligibility')}</h3>
               <div className="bg-purple-50 dark:bg-purple-950/20 rounded p-3">
-                <p className="text-sm text-purple-700 dark:text-purple-300">{subsidy.geographic_scope}</p>
+                <p className="text-sm text-purple-700 dark:text-purple-300">{safeString(subsidy.geographic_scope)}</p>
               </div>
             </div>
           )}
@@ -284,7 +294,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             <div>
               <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.beneficiaries')}</h3>
               <div className="bg-indigo-50 dark:bg-indigo-950/20 rounded p-3">
-                <p className="text-sm text-indigo-700 dark:text-indigo-300">{subsidy.legal_entity_type || subsidy.target_entities}</p>
+                <p className="text-sm text-indigo-700 dark:text-indigo-300">{safeString(subsidy.legal_entity_type || subsidy.target_entities)}</p>
               </div>
             </div>
           )}
@@ -313,8 +323,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
           <div className="border-t border-border pt-4">
             <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.contact')}</h3>
             <div className="text-sm text-muted-foreground">
-              <p className="font-medium">{subsidy.agency || subsidy.issuing_body || 'N/A'}</p>
-              {subsidy.program && <p>{subsidy.program}</p>}
+              <p className="font-medium">{safeString(subsidy.agency || subsidy.issuing_body)}</p>
+              {subsidy.program && <p>{safeString(subsidy.program)}</p>}
             </div>
           </div>
         </div>
