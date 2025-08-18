@@ -30,9 +30,9 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   return (
     <nav className={cn("flex items-center space-x-1 text-sm", className)}>
       {allItems.map((item, index) => (
-        <React.Fragment key={index}>
+        <div key={index} className="flex items-center">
           {index > 0 && (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground mr-1" />
           )}
           {item.path ? (
             <Button
@@ -50,7 +50,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
               {item.label}
             </span>
           )}
-        </React.Fragment>
+        </div>
       ))}
     </nav>
   );
