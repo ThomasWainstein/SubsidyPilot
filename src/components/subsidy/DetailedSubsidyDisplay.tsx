@@ -47,14 +47,14 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
           <div className="border-b border-border p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-3">
                   {getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy'}
                 </h1>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {categories.map((category, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm">
+                    <span key={index} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-sm">
                       {category}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -253,12 +253,38 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             </div>
           )}
 
+          {/* Funding Rates */}
+          {fundingRateDetails.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.fundingRates')}</h3>
+              <div className="space-y-2">
+                {fundingRateDetails.map((rate, index) => (
+                  <div key={index} className={`rounded p-3 ${index === 0 ? 'bg-yellow-50 dark:bg-yellow-950/20' : 'bg-orange-50 dark:bg-orange-950/20'}`}>
+                    <div className="text-sm">
+                      <p className={`text-sm ${index === 0 ? 'text-yellow-700 dark:text-yellow-300' : 'text-orange-700 dark:text-orange-300'}`}>{rate}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Geographic Scope */}
           {subsidy.geographic_scope && (
             <div>
               <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.geographicEligibility')}</h3>
               <div className="bg-purple-50 dark:bg-purple-950/20 rounded p-3">
                 <p className="text-sm text-purple-700 dark:text-purple-300">{subsidy.geographic_scope}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Target Entities / Beneficiaries */}
+          {(subsidy.legal_entity_type || subsidy.target_entities) && (
+            <div>
+              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.beneficiaries')}</h3>
+              <div className="bg-indigo-50 dark:bg-indigo-950/20 rounded p-3">
+                <p className="text-sm text-indigo-700 dark:text-indigo-300">{subsidy.legal_entity_type || subsidy.target_entities}</p>
               </div>
             </div>
           )}

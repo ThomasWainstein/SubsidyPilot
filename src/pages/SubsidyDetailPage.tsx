@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { useHybridExtraction } from '@/hooks/useHybridExtraction';
-import { SimpleSubsidyDisplay } from '@/components/subsidy/SimpleSubsidyDisplay';
-import { EnhancedSubsidyDisplay } from '@/components/subsidy/EnhancedSubsidyDisplay';
+import { DetailedSubsidyDisplay } from '@/components/subsidy/DetailedSubsidyDisplay';
 import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
 import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
 import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
@@ -172,54 +171,40 @@ const SubsidyDetailPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-grow">
-        <div className="container mx-auto max-w-6xl px-4 py-6">
-          {/* Header Navigation */}
-          <div className="mb-6">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/search')}
-              className="mb-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Search
-            </Button>
-          </div>
-
-          {/* Detect if this is enhanced format and display accordingly */}
-          <div className="space-y-6">
-            {isEnhancedSubsidy(subsidy) ? (
-              <EnhancedSubsidyDisplay subsidy={subsidy} />
-            ) : (
-              <>
-                <SimpleSubsidyDisplay subsidy={subsidy} />
-                
-                {/* Schema Extraction Status */}
-                <SchemaExtractionStatus
-                  subsidyId={subsidyId!}
-                  title="Application Form Schema"
-                  autoRefresh={true}
-                  showDetails={true}
-                />
-                
-                {/* Enhanced Data Extraction - Between Schema and Form */}
-                {subsidy?.url && (
-                  <EnhancedExtractionTrigger 
-                    subsidyUrl={subsidy.url}
-                    subsidyTitle={subsidy.title}
-                    onSuccess={() => navigate(0)}
-                  />
-                )}
-                
-                {/* Application Form Section */}
-                <ExtractedFormApplication
-                  subsidyId={subsidyId!}
-                  subsidyTitle={subsidy.title || 'Subsidy Program'}
-                  farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
-                />
-              </>
+        {/* Use the DetailedSubsidyDisplay for all subsidy formats */}
+        <DetailedSubsidyDisplay 
+          subsidy={subsidy} 
+          onBack={() => navigate('/search')}
+        />
+        
+        {/* Additional features for legacy subsidies */}
+        {!isEnhancedSubsidy(subsidy) && (
+          <div className="container mx-auto max-w-6xl px-4 py-6">
+            {/* Schema Extraction Status */}
+            <SchemaExtractionStatus
+              subsidyId={subsidyId!}
+              title="Application Form Schema"
+              autoRefresh={true}
+              showDetails={true}
+            />
+            
+            {/* Enhanced Data Extraction - Between Schema and Form */}
+            {subsidy?.url && (
+              <EnhancedExtractionTrigger 
+                subsidyUrl={subsidy.url}
+                subsidyTitle={subsidy.title}
+                onSuccess={() => navigate(0)}
+              />
             )}
+            
+            {/* Application Form Section */}
+            <ExtractedFormApplication
+              subsidyId={subsidyId!}
+              subsidyTitle={subsidy.title || 'Subsidy Program'}
+              farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
+            />
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
