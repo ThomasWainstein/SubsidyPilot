@@ -8,4 +8,13 @@ export type NavigationTranslationKey =
   | 'nav.searchSubsidies'
   | 'nav.calendar'
   | 'nav.regulations'
-  | 'nav.backToOverview';
+  | 'nav.backToOverview'
+  | 'navigation.home'
+  | 'navigation.dashboard'
+  | 'navigation.farms'
+  | 'navigation.subsidies'
+  | 'navigation.documents'
+  | 'navigation.calendar'
+  | 'navigation.profile'
+  | 'navigation.settings'
+  | 'navigation.logout';

@@ -1,0 +1,72 @@
+import { TranslationKey } from '../types';
+
+export const fr: Partial<Record<TranslationKey, string>> = {
+  // Home keys
+  'home.title': 'AgriTool - Plateforme de Gestion Agricole',
+  'home.subtitle': 'Gérez efficacement vos opérations agricoles',
+  
+  // Navigation keys
+  'navigation.home': 'Accueil',
+  'navigation.dashboard': 'Tableau de bord',
+  'navigation.farms': 'Fermes',
+  'navigation.subsidies': 'Subventions',
+  'navigation.documents': 'Documents',
+  'navigation.calendar': 'Calendrier',
+  'navigation.profile': 'Profil',
+  'navigation.settings': 'Paramètres',
+  'navigation.logout': 'Déconnexion',
+  
+  // Common keys
+  'common.loading': 'Chargement...',
+  'common.error': 'Erreur',
+  'common.save': 'Enregistrer',
+  'common.cancel': 'Annuler',
+  'common.delete': 'Supprimer',
+  'common.edit': 'Modifier',
+  'common.add': 'Ajouter',
+  'common.remove': 'Retirer',
+  'common.close': 'Fermer',
+  'common.open': 'Ouvrir',
+  'common.yes': 'Oui',
+  'common.no': 'Non',
+
+  // Subsidy Display Keys
+  'subsidy.display.title': 'Détails de la Subvention',
+  'subsidy.display.summary': 'Résumé',
+  'subsidy.display.agency': 'Agence',
+  'subsidy.display.publicationDate': 'Date de publication',
+  'subsidy.display.description': 'Description',
+  'subsidy.display.objectives': 'Objectifs',
+  'subsidy.display.fundingDetails': 'Détails du financement',
+  'subsidy.display.amount': 'Montant',
+  'subsidy.display.minimumInvestment': 'Investissement minimum',
+  'subsidy.display.fundingRates': 'Taux de financement',
+  'subsidy.display.eligibleActions': 'Actions éligibles',
+  'subsidy.display.ineligibleActions': 'Actions non éligibles',
+  'subsidy.display.requiredDocuments': 'Documents requis',
+  'subsidy.display.legalInformation': 'Informations légales',
+  'subsidy.display.referenceCode': 'Code de référence',
+  'subsidy.display.regulatoryReferences': 'Références réglementaires',
+  'subsidy.display.additionalInformation': 'Informations supplémentaires',
+  'subsidy.display.noAdditionalInfo': 'Aucune information supplémentaire disponible pour cette aide.',
+  'subsidy.display.keyInformation': 'Informations clés',
+  'subsidy.display.maxAmount': 'Montant max',
+  'subsidy.display.deadline': 'Date limite',
+  'subsidy.display.sector': 'Secteur',
+  'subsidy.display.applicationPeriod': 'Période de candidature',
+  'subsidy.display.start': 'Début',
+  'subsidy.display.end': 'Fin',
+  'subsidy.display.geographicEligibility': 'Éligibilité géographique',
+  'subsidy.display.beneficiaries': 'Bénéficiaires',
+  'subsidy.display.source': 'Source',
+  'subsidy.display.contact': 'Contact',
+  'subsidy.display.backToSearch': 'Retour à la recherche',
+
+  // Subsidy keys
+  'subsidies.title': 'Subventions et Aides',
+  'subsidies.subtitle': 'Trouvez et gérez les subventions agricoles',
+  'subsidies.deadline': 'Date limite',
+  'subsidies.viewDetails': 'Voir les détails',
+  'subsidies.noSubsidies': 'Aucune subvention trouvée',
+  'subsidies.searchResults': 'Résultats de recherche',
+};

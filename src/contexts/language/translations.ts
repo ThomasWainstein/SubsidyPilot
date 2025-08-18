@@ -7,7 +7,7 @@ import { ro } from './translations/ro';
 import { pl } from './translations/pl';
 
 // Define the translations
-export const translations: Record<Language, Record<TranslationKey, string>> = {
+export const translations: Record<Language, Partial<Record<TranslationKey, string>>> = {
   en,
   fr,
   es,

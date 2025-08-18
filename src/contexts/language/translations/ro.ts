@@ -1,0 +1,72 @@
+import { TranslationKey } from '../types';
+
+export const ro: Partial<Record<TranslationKey, string>> = {
+  // Home keys
+  'home.title': 'AgriTool - Platformă de Management Agricol',
+  'home.subtitle': 'Gestionează eficient operațiunile fermei tale',
+  
+  // Navigation keys
+  'navigation.home': 'Acasă',
+  'navigation.dashboard': 'Panou de control',
+  'navigation.farms': 'Ferme',
+  'navigation.subsidies': 'Subvenții',
+  'navigation.documents': 'Documente',
+  'navigation.calendar': 'Calendar',
+  'navigation.profile': 'Profil',
+  'navigation.settings': 'Setări',
+  'navigation.logout': 'Deconectare',
+  
+  // Common keys
+  'common.loading': 'Se încarcă...',
+  'common.error': 'Eroare',
+  'common.save': 'Salvează',
+  'common.cancel': 'Anulează',
+  'common.delete': 'Șterge',
+  'common.edit': 'Editează',
+  'common.add': 'Adaugă',
+  'common.remove': 'Elimină',
+  'common.close': 'Închide',
+  'common.open': 'Deschide',
+  'common.yes': 'Da',
+  'common.no': 'Nu',
+
+  // Subsidy Display Keys
+  'subsidy.display.title': 'Detalii Subvenție',
+  'subsidy.display.summary': 'Rezumat',
+  'subsidy.display.agency': 'Agenție',
+  'subsidy.display.publicationDate': 'Data publicării',
+  'subsidy.display.description': 'Descriere',
+  'subsidy.display.objectives': 'Obiective',
+  'subsidy.display.fundingDetails': 'Detalii finanțare',
+  'subsidy.display.amount': 'Sumă',
+  'subsidy.display.minimumInvestment': 'Investiție minimă',
+  'subsidy.display.fundingRates': 'Rate de finanțare',
+  'subsidy.display.eligibleActions': 'Acțiuni eligibile',
+  'subsidy.display.ineligibleActions': 'Acțiuni neeligibile',
+  'subsidy.display.requiredDocuments': 'Documente necesare',
+  'subsidy.display.legalInformation': 'Informații legale',
+  'subsidy.display.referenceCode': 'Cod de referință',
+  'subsidy.display.regulatoryReferences': 'Referințe normative',
+  'subsidy.display.additionalInformation': 'Informații suplimentare',
+  'subsidy.display.noAdditionalInfo': 'Nu sunt disponibile informații suplimentare pentru acest ajutor.',
+  'subsidy.display.keyInformation': 'Informații cheie',
+  'subsidy.display.maxAmount': 'Suma maximă',
+  'subsidy.display.deadline': 'Termen limită',
+  'subsidy.display.sector': 'Sector',
+  'subsidy.display.applicationPeriod': 'Perioada de aplicare',
+  'subsidy.display.start': 'Început',
+  'subsidy.display.end': 'Sfârșit',
+  'subsidy.display.geographicEligibility': 'Eligibilitate geografică',
+  'subsidy.display.beneficiaries': 'Beneficiari',
+  'subsidy.display.source': 'Sursă',
+  'subsidy.display.contact': 'Contact',
+  'subsidy.display.backToSearch': 'Înapoi la căutare',
+
+  // Subsidy keys
+  'subsidies.title': 'Subvenții și Granturi',
+  'subsidies.subtitle': 'Găsește și gestionează subvențiile agricole',
+  'subsidies.deadline': 'Termen limită',
+  'subsidies.viewDetails': 'Vezi detaliile',
+  'subsidies.noSubsidies': 'Nu s-au găsit subvenții',
+  'subsidies.searchResults': 'Rezultate căutare',
+};

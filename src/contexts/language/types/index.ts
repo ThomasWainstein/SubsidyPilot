@@ -16,6 +16,7 @@ import type { SimulationTranslationKey } from './simulation';
 import type { StatusTranslationKey } from './status';
 import type { SubsidiesTranslationKey } from './subsidies';
 import type { CalendarTranslationKey } from './calendar';
+import type { GeneralTranslationKey } from './general';
 
 export type TranslationKey =
   | ApplicationTranslationKey
@@ -34,4 +35,5 @@ export type TranslationKey =
   | SimulationTranslationKey
   | StatusTranslationKey
   | SubsidiesTranslationKey
-  | CalendarTranslationKey;
+  | CalendarTranslationKey
+  | GeneralTranslationKey;

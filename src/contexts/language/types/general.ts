@@ -1,0 +1,16 @@
+export type GeneralTranslationKey =
+  | 'farm.name'
+  | 'farm.address'
+  | 'dashboard.title'
+  | 'messages.success'
+  | 'messages.error'
+  | 'status.active'
+  | 'form.submit'
+  | 'calendar.title'
+  | 'application.title'
+  | 'features.title'
+  | 'footer.copyright'
+  | 'search.placeholder'
+  | 'simulation.title'
+  | 'extension.title'
+  | 'euportal.title';

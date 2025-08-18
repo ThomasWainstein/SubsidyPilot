@@ -1,4 +1,4 @@
 
 export type HomeTranslationKey =
   | 'home.title'
-  | 'home.tagline';
+  | 'home.subtitle';

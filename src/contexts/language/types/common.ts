@@ -100,4 +100,5 @@ export type CommonTranslationKey =
   | 'common.reExtract'
   | 'common.extracting'
   | 'common.extractionSuccess'
-  | 'common.extractionError';
+  | 'common.extractionError'
+  | 'common.open';

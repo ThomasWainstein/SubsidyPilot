@@ -1,0 +1,72 @@
+import { TranslationKey } from '../types';
+
+export const pl: Partial<Record<TranslationKey, string>> = {
+  // Home keys
+  'home.title': 'AgriTool - Platforma Zarządzania Rolnictwem',
+  'home.subtitle': 'Efektywnie zarządzaj swoimi operacjami rolniczymi',
+  
+  // Navigation keys
+  'navigation.home': 'Dom',
+  'navigation.dashboard': 'Panel kontrolny',
+  'navigation.farms': 'Farmy',
+  'navigation.subsidies': 'Dotacje',
+  'navigation.documents': 'Dokumenty',
+  'navigation.calendar': 'Kalendarz',
+  'navigation.profile': 'Profil',
+  'navigation.settings': 'Ustawienia',
+  'navigation.logout': 'Wyloguj',
+  
+  // Common keys
+  'common.loading': 'Ładowanie...',
+  'common.error': 'Błąd',
+  'common.save': 'Zapisz',
+  'common.cancel': 'Anuluj',
+  'common.delete': 'Usuń',
+  'common.edit': 'Edytuj',
+  'common.add': 'Dodaj',
+  'common.remove': 'Usuń',
+  'common.close': 'Zamknij',
+  'common.open': 'Otwórz',
+  'common.yes': 'Tak',
+  'common.no': 'Nie',
+
+  // Subsidy Display Keys
+  'subsidy.display.title': 'Szczegóły Dotacji',
+  'subsidy.display.summary': 'Podsumowanie',
+  'subsidy.display.agency': 'Agencja',
+  'subsidy.display.publicationDate': 'Data publikacji',
+  'subsidy.display.description': 'Opis',
+  'subsidy.display.objectives': 'Cele',
+  'subsidy.display.fundingDetails': 'Szczegóły finansowania',
+  'subsidy.display.amount': 'Kwota',
+  'subsidy.display.minimumInvestment': 'Minimalna inwestycja',
+  'subsidy.display.fundingRates': 'Stawki finansowania',
+  'subsidy.display.eligibleActions': 'Działania kwalifikowalne',
+  'subsidy.display.ineligibleActions': 'Działania niekwalifikowalne',
+  'subsidy.display.requiredDocuments': 'Wymagane dokumenty',
+  'subsidy.display.legalInformation': 'Informacje prawne',
+  'subsidy.display.referenceCode': 'Kod referencyjny',
+  'subsidy.display.regulatoryReferences': 'Odniesienia regulacyjne',
+  'subsidy.display.additionalInformation': 'Dodatkowe informacje',
+  'subsidy.display.noAdditionalInfo': 'Brak dodatkowych informacji dla tego wsparcia.',
+  'subsidy.display.keyInformation': 'Kluczowe informacje',
+  'subsidy.display.maxAmount': 'Maksymalna kwota',
+  'subsidy.display.deadline': 'Termin',
+  'subsidy.display.sector': 'Sektor',
+  'subsidy.display.applicationPeriod': 'Okres aplikacji',
+  'subsidy.display.start': 'Start',
+  'subsidy.display.end': 'Koniec',
+  'subsidy.display.geographicEligibility': 'Kwalifikowalność geograficzna',
+  'subsidy.display.beneficiaries': 'Beneficjenci',
+  'subsidy.display.source': 'Źródło',
+  'subsidy.display.contact': 'Kontakt',
+  'subsidy.display.backToSearch': 'Powrót do wyszukiwania',
+
+  // Subsidy keys
+  'subsidies.title': 'Dotacje i Granty',
+  'subsidies.subtitle': 'Znajdź i zarządzaj dotacjami rolniczymi',
+  'subsidies.deadline': 'Termin',
+  'subsidies.viewDetails': 'Zobacz szczegóły',
+  'subsidies.noSubsidies': 'Nie znaleziono dotacji',
+  'subsidies.searchResults': 'Wyniki wyszukiwania',
+};
