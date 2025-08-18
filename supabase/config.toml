@@ -124,3 +124,6 @@ verify_jwt = false
 
 [functions.ai-content-processor-v2]
 verify_jwt = false
+
+[functions.lesaides-scraper]
+verify_jwt = false

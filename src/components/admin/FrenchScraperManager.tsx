@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Square, RefreshCw, Download, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,25 +33,45 @@ export function FrenchScraperManager() {
   });
 
   const [config, setConfig] = useState({
+    agency: 'franceagrimer' as 'franceagrimer' | 'lesaides',
     maxPages: 20,
     dryRun: false,
     targetUrls: `https://www.franceagrimer.fr/aides-et-soutiens
 https://www.franceagrimer.fr/rechercher-une-aide`
   });
 
+  const agencyConfigs = {
+    franceagrimer: {
+      name: 'FranceAgriMer',
+      functionName: 'franceagrimer-scraper',
+      defaultUrls: `https://www.franceagrimer.fr/aides-et-soutiens
+https://www.franceagrimer.fr/rechercher-une-aide`,
+      description: 'Scraper officiel pour les aides FranceAgriMer'
+    },
+    lesaides: {
+      name: 'Les-Aides.fr',
+      functionName: 'lesaides-scraper', 
+      defaultUrls: `https://les-aides.fr/aides/?page=1`,
+      description: 'Scraper pour la base complète des aides françaises'
+    }
+  };
+
   const startScraping = async () => {
+    const selectedConfig = agencyConfigs[config.agency];
+    
     setSession(prev => ({
       ...prev,
       status: 'running',
       startTime: new Date(),
-      sessionId: `franceagrimer-${Date.now()}`
+      sessionId: `${config.agency}-${Date.now()}`
     }));
 
     try {
-      const { data, error } = await supabase.functions.invoke('franceagrimer-scraper', {
+      const { data, error } = await supabase.functions.invoke(selectedConfig.functionName, {
         body: {
           maxPages: config.maxPages,
-          dryRun: config.dryRun
+          dryRun: config.dryRun,
+          agency: config.agency
         }
       });
 
@@ -99,7 +120,7 @@ https://www.franceagrimer.fr/rechercher-une-aide`
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `franceagrimer-results-${session.sessionId}.json`;
+    a.download = `${config.agency}-results-${session.sessionId}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -119,31 +140,66 @@ https://www.franceagrimer.fr/rechercher-une-aide`
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <img src="https://flagcdn.com/w20/fr.png" alt="France" className="w-5 h-4" />
-            FranceAgriMer Scraper
+            Scraper Français - {agencyConfigs[config.agency].name}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Configuration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="maxPages">Pages maximales</Label>
-              <Input
-                id="maxPages"
-                type="number"
-                value={config.maxPages}
-                onChange={(e) => setConfig(prev => ({ ...prev, maxPages: parseInt(e.target.value) || 20 }))}
+              <Label htmlFor="agency">Agence à scraper</Label>
+              <Select 
+                value={config.agency} 
+                onValueChange={(value: 'franceagrimer' | 'lesaides') => {
+                  setConfig(prev => ({ 
+                    ...prev, 
+                    agency: value,
+                    targetUrls: agencyConfigs[value].defaultUrls 
+                  }));
+                }}
                 disabled={session.status === 'running'}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une agence" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="franceagrimer">
+                    <div className="flex flex-col">
+                      <span>FranceAgriMer</span>
+                      <span className="text-xs text-muted-foreground">Aides officielles agricoles</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="lesaides">
+                    <div className="flex flex-col">
+                      <span>Les-Aides.fr</span>
+                      <span className="text-xs text-muted-foreground">Base complète des aides françaises</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="dryRun"
-                checked={config.dryRun}
-                onChange={(e) => setConfig(prev => ({ ...prev, dryRun: e.target.checked }))}
-                disabled={session.status === 'running'}
-              />
-              <Label htmlFor="dryRun">Test à sec (sans sauvegarder)</Label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="maxPages">Pages maximales</Label>
+                <Input
+                  id="maxPages"
+                  type="number"
+                  value={config.maxPages}
+                  onChange={(e) => setConfig(prev => ({ ...prev, maxPages: parseInt(e.target.value) || 20 }))}
+                  disabled={session.status === 'running'}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="dryRun"
+                  checked={config.dryRun}
+                  onChange={(e) => setConfig(prev => ({ ...prev, dryRun: e.target.checked }))}
+                  disabled={session.status === 'running'}
+                />
+                <Label htmlFor="dryRun">Test à sec (sans sauvegarder)</Label>
+              </div>
             </div>
           </div>
 
