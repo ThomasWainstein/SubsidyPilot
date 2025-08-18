@@ -2,7 +2,7 @@
 
 COUNTRY_CONFIGS = {
     "france": {
-        "agencies": ["franceagrimer", "bpifrance"],
+        "agencies": ["franceagrimer", "bpifrance", "lesaides"],
         "languages": ["fr"],
         "rate_limits": {"requests_per_minute": 60},
         "document_types": ["pdf", "html"],
@@ -10,6 +10,7 @@ COUNTRY_CONFIGS = {
             "franceagrimer": "scrapers/configs/franceagrimer.json",
             "idf_chambres": "scrapers/configs/idf_chambres_listings.json",
             "idf_chambres_detail": "scrapers/configs/idf_chambres_detail.json",
+            "lesaides": "scrapers/configs/lesaides.json",
         },
     },
     "spain": {
@@ -54,11 +55,5 @@ COUNTRY_CONFIGS = {
         "agency_configs": {
             "ec_horizon_detail": "scrapers/configs/ec_horizon_detail.json",
         },
-    },
-    "romania": {
-        "agencies": ["afir"],
-        "languages": ["ro"],
-        "rate_limits": {"requests_per_minute": 40},
-        "document_types": ["pdf", "html"],
     },
 }

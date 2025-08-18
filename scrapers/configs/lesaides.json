@@ -1,0 +1,91 @@
+{
+  "name": "les-aides.fr",
+  "description": "Comprehensive French agricultural funding database",
+  "base_url": "https://les-aides.fr/aides/",
+  "pagination": {
+    "type": "query_parameter",
+    "parameter": "page",
+    "start_page": 1,
+    "max_pages": 50
+  },
+  "selectors": {
+    "aid_items": [
+      ".aide-item",
+      ".subsidy-card", 
+      ".funding-item",
+      "article",
+      ".card",
+      ".listing-item",
+      ".result-item"
+    ],
+    "title": [
+      "h2",
+      "h3", 
+      ".title",
+      ".aid-title",
+      "a[href*='/aide/']"
+    ],
+    "link": [
+      "a[href*='/aide/']",
+      "a"
+    ],
+    "description": [
+      ".description",
+      ".summary", 
+      ".excerpt",
+      "p"
+    ],
+    "amount": [
+      ".amount",
+      ".montant",
+      ".funding-amount"
+    ],
+    "deadline": [
+      ".deadline",
+      ".date-limite", 
+      ".date"
+    ],
+    "organization": [
+      ".organization",
+      ".organisme",
+      ".agency"
+    ],
+    "next_page": [
+      "a.next",
+      ".pagination-next", 
+      "a[rel='next']",
+      ".pagination a:contains('Suivant')",
+      ".pagination a:contains('>')"
+    ]
+  },
+  "detail_page_selectors": {
+    "full_description": [
+      ".content",
+      ".description-complete",
+      ".aide-description",
+      "main .text-content",
+      ".full-description"
+    ],
+    "eligibility": [
+      ".eligibility",
+      ".conditions",
+      ".criteres-eligibilite"
+    ],
+    "contact": [
+      ".contact",
+      ".contact-info", 
+      ".organisme-contact"
+    ]
+  },
+  "rate_limiting": {
+    "delay_seconds": 1.0,
+    "error_delay_seconds": 2.0,
+    "timeout_seconds": 30
+  },
+  "extraction_rules": {
+    "min_title_length": 5,
+    "max_description_length": 3000,
+    "required_fields": ["title"],
+    "skip_duplicates": true
+  }
+}
