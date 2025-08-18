@@ -221,7 +221,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       </div>
 
       {/* Right Sidebar Summary */}
-      <div className="fixed right-0 top-0 w-80 h-full bg-card shadow-lg border-l border-border p-6 overflow-y-auto">
+      <div className="fixed right-0 top-16 w-80 h-[calc(100vh-4rem)] bg-card shadow-lg border-l border-border p-6 overflow-y-auto">
         <div className="sticky top-0 bg-card pb-4 border-b border-border mb-4">
           <h2 className="text-xl font-bold text-foreground">{t('subsidy.display.summary')}</h2>
         </div>
