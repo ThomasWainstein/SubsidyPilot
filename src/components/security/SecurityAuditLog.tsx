@@ -25,8 +25,8 @@ const SecurityAuditLog: React.FC = () => {
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
-    eventType: '',
-    riskLevel: '',
+    eventType: 'all',
+    riskLevel: 'all',
     userId: ''
   });
 
@@ -46,10 +46,10 @@ const SecurityAuditLog: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (filter.eventType) {
+      if (filter.eventType && filter.eventType !== 'all') {
         query = query.eq('event_type', filter.eventType);
       }
-      if (filter.riskLevel) {
+      if (filter.riskLevel && filter.riskLevel !== 'all') {
         query = query.eq('risk_level', filter.riskLevel);
       }
       if (filter.userId) {
@@ -112,13 +112,13 @@ const SecurityAuditLog: React.FC = () => {
           />
           <Select
             value={filter.eventType}
-            onValueChange={(value) => setFilter({ ...filter, eventType: value })}
+            onValueChange={(value) => setFilter({ ...filter, eventType: value === 'all' ? '' : value })}
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Event type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All events</SelectItem>
+              <SelectItem value="all">All events</SelectItem>
               <SelectItem value="user_login">User Login</SelectItem>
               <SelectItem value="user_logout">User Logout</SelectItem>
               <SelectItem value="role_assigned">Role Assigned</SelectItem>
@@ -128,13 +128,13 @@ const SecurityAuditLog: React.FC = () => {
           </Select>
           <Select
             value={filter.riskLevel}
-            onValueChange={(value) => setFilter({ ...filter, riskLevel: value })}
+            onValueChange={(value) => setFilter({ ...filter, riskLevel: value === 'all' ? '' : value })}
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Risk level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All levels</SelectItem>
+              <SelectItem value="all">All levels</SelectItem>
               <SelectItem value="low">Low</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="high">High</SelectItem>
