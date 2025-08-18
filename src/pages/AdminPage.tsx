@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin, AdminProvider } from '@/contexts/AdminContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Database, Activity, Settings, Shield, Users, FileText } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatusDashboard } from '@/components/admin/StatusDashboard';
@@ -12,16 +12,18 @@ import EnhancedSubsidyManagement from '@/components/admin/EnhancedSubsidyManagem
 import EnhancedImportManagement from '@/components/admin/EnhancedImportManagement';
 import CanonicalValidationDashboard from '@/components/admin/CanonicalValidationDashboard';
 import EnhancedDualPipelineManager from '@/components/admin/EnhancedDualPipelineManager';
-import { AdvancedPipelineConfig } from '@/components/admin/AdvancedPipelineConfig';
-import RealTimePipelineMonitor from '@/components/admin/RealTimePipelineMonitor';
 import { SystemHealthDashboard } from '@/components/admin/SystemHealthDashboard';
 import { AuditTrailViewer } from '@/components/admin/AuditTrailViewer';
-import { ManualPipelineDebugger } from '@/components/admin/ManualPipelineDebugger';
-import { AITestingControl } from '@/components/admin/AITestingControl';
-import { SubsidyTableWithView } from '@/components/admin/SubsidyTableWithView';
+import UserRoleManager from '@/components/admin/UserRoleManager';
+import SecurityAuditLog from '@/components/security/SecurityAuditLog';
+import DocumentProcessingDemo from '@/components/test/DocumentProcessingDemo';
+import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
+import AIPrefillDemo from '@/components/test/AIPrefillDemo';
+import { QuickSchemaTest } from '@/components/test/QuickSchemaTest';
+import { FrenchScraperManager } from '@/components/admin/FrenchScraperManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FEATURES, IS_PRODUCTION } from '@/config/environment';
+import { IS_PRODUCTION } from '@/config/environment';
 
 const AdminPageContent = () => {
   const { user, loading } = useAuth();
@@ -112,114 +114,165 @@ const AdminPageContent = () => {
           </ErrorBoundary>
 
           {/* Main Admin Tabs */}
-          <Tabs defaultValue="health" className="w-full">
+          <Tabs defaultValue="overview" className="w-full">
             <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-11 h-12 min-w-max">
+              <TabsList className="grid w-full grid-cols-6 h-12">
+                <TabsTrigger value="overview" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="data" className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Data Management
+                </TabsTrigger>
+                <TabsTrigger value="security" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Security
+                </TabsTrigger>
+                <TabsTrigger value="users" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="testing" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Testing
+                </TabsTrigger>
                 <TabsTrigger value="system" className="flex items-center gap-2">
-                  🚀 System
-                </TabsTrigger>
-                <TabsTrigger value="health" className="flex items-center gap-2">
-                  🏥 Health
-                </TabsTrigger>
-                <TabsTrigger value="pipeline" className="flex items-center gap-2">
-                  🔄 Pipeline
-                </TabsTrigger>
-                <TabsTrigger value="debug" className="flex items-center gap-2">
-                  🐛 Debug
-                </TabsTrigger>
-                <TabsTrigger value="config" className="flex items-center gap-2">
-                  ⚙️ Config
-                </TabsTrigger>
-                <TabsTrigger value="monitoring" className="flex items-center gap-2">
-                  📊 Monitor
-                </TabsTrigger>
-                <TabsTrigger value="ai-control" className="flex items-center gap-2">
-                  🤖 AI Control
-                </TabsTrigger>
-                <TabsTrigger value="subsidies" className="flex items-center gap-2">
-                  📋 Subsidies
-                </TabsTrigger>
-                <TabsTrigger value="validation" className="flex items-center gap-2">
-                  ✅ Validation
-                </TabsTrigger>
-                <TabsTrigger value="audit" className="flex items-center gap-2">
-                  🔍 Audit
-                </TabsTrigger>
-                <TabsTrigger value="import" className="flex items-center gap-2">
-                  📤 Import
+                  <Settings className="h-4 w-4" />
+                  System
                 </TabsTrigger>
               </TabsList>
             </div>
             
-            <TabsContent value="system" className="mt-6">
+            <TabsContent value="overview" className="mt-6">
               <div className="space-y-6">
                 <ErrorBoundary>
-                  <ProductionReadinessCheck />
+                  <SystemHealthDashboard />
                 </ErrorBoundary>
                 <ErrorBoundary>
-                  <UniversalHarvesterTest />
+                  <ProductionReadinessCheck />
                 </ErrorBoundary>
               </div>
             </TabsContent>
             
-            <TabsContent value="health" className="mt-6">
-              <ErrorBoundary>
-                <SystemHealthDashboard />
-              </ErrorBoundary>
+            <TabsContent value="data" className="mt-6">
+              <div className="space-y-6">
+                <ErrorBoundary>
+                  <EnhancedSubsidyManagement />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <EnhancedDualPipelineManager />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <FrenchScraperManager />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <CanonicalValidationDashboard />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <EnhancedImportManagement />
+                </ErrorBoundary>
+              </div>
             </TabsContent>
             
-            <TabsContent value="pipeline" className="mt-6">
-              <ErrorBoundary>
-                <EnhancedDualPipelineManager />
-              </ErrorBoundary>
+            <TabsContent value="security" className="mt-6">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Security Audit Log</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Monitor security events and potential threats
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ErrorBoundary>
+                      <SecurityAuditLog />
+                    </ErrorBoundary>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Audit Trail</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Track system changes and user activities
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ErrorBoundary>
+                      <AuditTrailViewer />
+                    </ErrorBoundary>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
             
-            <TabsContent value="debug" className="mt-6">
-              <ErrorBoundary>
-                <ManualPipelineDebugger />
-              </ErrorBoundary>
+            <TabsContent value="users" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Role Management</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Manage user roles and permissions securely
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ErrorBoundary>
+                    <UserRoleManager />
+                  </ErrorBoundary>
+                </CardContent>
+              </Card>
             </TabsContent>
             
-            <TabsContent value="config" className="mt-6">
-              <ErrorBoundary>
-                <AdvancedPipelineConfig />
-              </ErrorBoundary>
+            <TabsContent value="testing" className="mt-6">
+              <div className="space-y-6">
+                <QuickSchemaTest />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Document Processing Pipeline</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Test document download, processing, and database operations
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ErrorBoundary>
+                      <DocumentProcessingDemo />
+                    </ErrorBoundary>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Schema Extraction Testing</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Extract and generate JSON schemas from form documents
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ErrorBoundary>
+                      <SchemaExtractionDemo />
+                    </ErrorBoundary>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>AI Form Prefill Testing</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Test AI-powered form prefilling with user profile data
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ErrorBoundary>
+                      <AIPrefillDemo />
+                    </ErrorBoundary>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
             
-            <TabsContent value="monitoring" className="mt-6">
-              <ErrorBoundary>
-                <RealTimePipelineMonitor />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="ai-control" className="mt-6">
-              <ErrorBoundary>
-                <AITestingControl />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="subsidies" className="mt-6">
-              <ErrorBoundary>
-                <EnhancedSubsidyManagement />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="validation" className="mt-6">
-              <ErrorBoundary>
-                <CanonicalValidationDashboard />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="audit" className="mt-6">
-              <ErrorBoundary>
-                <AuditTrailViewer />
-              </ErrorBoundary>
-            </TabsContent>
-            
-            <TabsContent value="import" className="mt-6">
-              <ErrorBoundary>
-                <EnhancedImportManagement />
-              </ErrorBoundary>
+            <TabsContent value="system" className="mt-6">
+              <div className="space-y-6">
+                <ErrorBoundary>
+                  <UniversalHarvesterTest />
+                </ErrorBoundary>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

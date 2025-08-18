@@ -16,11 +16,11 @@ const AdminPanelLink: React.FC = () => {
     <Button
       variant="outline"
       size="sm"
-      onClick={() => navigate('/admin-panel')}
+      onClick={() => navigate('/admin')}
       className="flex items-center gap-2"
     >
       <Settings className="h-4 w-4" />
-      Admin Tools
+      Admin Dashboard
     </Button>
   );
 };

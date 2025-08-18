@@ -33,26 +33,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const location = useLocation();
 
   const getDefaultBreadcrumbs = (): BreadcrumbItem[] => {
-    const path = location.pathname;
-    const breadcrumbs: BreadcrumbItem[] = [
-      { label: 'Admin', path: '/admin' }
+    return [
+      { label: 'Dashboard', path: '/dashboard' },
+      { label: 'Admin Panel', path: '/admin' }
     ];
-
-    if (path.includes('/admin')) {
-      if (path.includes('pipeline')) {
-        breadcrumbs.push({ label: 'Dual Pipeline' });
-      } else if (path.includes('subsidies')) {
-        breadcrumbs.push({ label: 'Subsidy Management' });
-      } else if (path.includes('validation')) {
-        breadcrumbs.push({ label: 'Canonical Validation' });
-      } else if (path.includes('quality')) {
-        breadcrumbs.push({ label: 'Data Quality' });
-      } else if (path.includes('import')) {
-        breadcrumbs.push({ label: 'Data Import' });
-      }
-    }
-
-    return breadcrumbs;
   };
 
   const breadcrumbs = customBreadcrumbs || getDefaultBreadcrumbs();

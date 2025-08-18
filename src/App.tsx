@@ -39,7 +39,6 @@ const FrenchSubsidiesPage = lazy(() => import('@/pages/FrenchSubsidiesPage'));
 const EmployeeDashboardPage = lazy(() => import('@/pages/EmployeeDashboardPage'));
 const ConsultantDashboardPage = lazy(() => import('@/pages/ConsultantDashboardPage'));
 const OrganizationDashboardPage = lazy(() => import('@/pages/OrganizationDashboardPage'));
-const AdminPanel = lazy(() => import('@/components/admin/AdminPanel'));
 const ScrapeRunsList = lazy(() => import('@/components/admin/ScrapeRunsList'));
 const ScrapeReportDashboard = lazy(() => import('@/components/admin/ScrapeReportDashboard'));
 const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'));
@@ -166,9 +165,6 @@ function App() {
                         <ProtectedRouteWrapper><SubsidyDetailAdmin /></ProtectedRouteWrapper>
                       } />
                       
-                      <Route path="/admin-panel" element={
-                        <ProtectedRouteWrapper><AdminPanel /></ProtectedRouteWrapper>
-                      } />
                       
                       <Route path="/data-quality" element={
                         <ProtectedRouteWrapper><EmployeeDashboardPage /></ProtectedRouteWrapper>
