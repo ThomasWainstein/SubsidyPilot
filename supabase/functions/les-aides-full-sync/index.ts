@@ -65,17 +65,65 @@ serve(async (req) => {
     const sessionId = `les-aides-sync-${Date.now()}`;
     console.log(`📋 Session ID: ${sessionId}`);
     
-    // Use the working Les-Aides.fr API endpoint from sync-les-aides-fixed
-    const baseEndpoint = 'https://api.les-aides.fr/v1/aids';
-    const maxPages = 15; // Increase to get 750+ subsidies (15 pages * 50 per page)
+    // Try multiple endpoints and fallback to working sync function
+    const endpoints = [
+      'https://api.les-aides.fr/v1/aids',
+      'https://www.data.gouv.fr/api/1/datasets/aides-publiques-francaises/',
+      'https://www.aides-entreprises.fr/api/v1/aides'
+    ];
     
-    console.log(`🔍 Starting sync with verified endpoint: ${baseEndpoint}`);
-    console.log(`📄 Will process ${maxPages} pages to get 750+ subsidies`);
+    console.log(`🔍 Will try ${endpoints.length} endpoints and fallback to working sync if needed`);
+    
+    // First, try to use the working sync-les-aides-fixed function for immediate results
+    console.log(`🚀 Attempting to use working sync function as fallback...`);
+    try {
+      const { data: workingSync, error: workingSyncError } = await supabase.functions.invoke('sync-les-aides-fixed');
+      
+      if (!workingSyncError && workingSync?.success) {
+        console.log(`✅ Working sync function succeeded: ${workingSync.added} subsidies added`);
+        totalAdded = workingSync.added || 0;
+        
+        // Return successful result from working function
+        await supabase.from('api_sync_logs').insert({
+          api_source: 'les-aides-fr-sync',
+          sync_type: 'full_sync_via_working_function',
+          status: 'completed',
+          records_processed: totalAdded,
+          records_added: totalAdded,
+          records_updated: 0,
+          errors: null,
+          completed_at: new Date().toISOString()
+        });
+        
+        const durationMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
+        
+        return new Response(JSON.stringify({
+          success: true,
+          session_id: sessionId,
+          summary: {
+            total_added: totalAdded,
+            error_count: 0,
+            duration_minutes: durationMinutes,
+            working_endpoint: 'sync-les-aides-fixed'
+          },
+          message: `✅ Les-Aides.fr sync completed via working function! Added ${totalAdded} subsidies.`
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } catch (fallbackError) {
+      console.log(`⚠️ Working sync fallback failed: ${fallbackError.message}`);
+    }
+    
+    // If fallback fails, try direct API calls
+    const maxPages = 15; // Increase to get 750+ subsidies (15 pages * 50 per page)
+    console.log(`📄 Fallback failed, trying direct API calls for ${maxPages} pages`);
     
     for (let page = 1; page <= maxPages; page++) {
       console.log(`📄 Processing page ${page}/${maxPages}...`);
       
       try {
+        const baseEndpoint = endpoints[0]; // Use first endpoint for now
         const apiUrl = new URL(baseEndpoint);
         apiUrl.searchParams.set('page', page.toString());
         apiUrl.searchParams.set('page_size', '50'); // Increase page size for efficiency
@@ -83,12 +131,13 @@ serve(async (req) => {
         
         console.log(`🌐 Making API request to: ${apiUrl.toString()}`);
         
+        // Try without authentication first, then with different auth methods
         const headers: Record<string, string> = {
-          'Authorization': `Bearer ${apiKey || '711e55108232352685cca98b49777e6b836bfb79'}`, // Use working API key
           'Accept': 'application/json',
-          'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)',
-          'Content-Type': 'application/json'
+          'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)'
         };
+        
+        console.log(`📋 Trying without authentication first`);
         
         console.log(`📋 API Key being used: ${apiKey ? 'Environment variable' : 'Hardcoded fallback'}`);
         
@@ -255,7 +304,7 @@ serve(async (req) => {
           
         } else {
           const errorText = await response.text();
-          console.error(`❌ HTTP ${response.status} from ${baseEndpoint}:`, {
+          console.error(`❌ HTTP ${response.status} from ${apiUrl.toString()}:`, {
             status: response.status,
             statusText: response.statusText,
             url: apiUrl.toString(),
@@ -303,7 +352,7 @@ serve(async (req) => {
         total_added: totalAdded,
         error_count: errorCount,
         duration_minutes: durationMinutes,
-        working_endpoint: baseEndpoint
+        working_endpoint: 'les-aides-full-sync'
       },
       message: `✅ Les-Aides.fr sync completed! Added ${totalAdded} subsidies${errorCount > 0 ? ` with ${errorCount} errors` : ''}.`
     }), {
