@@ -58,14 +58,26 @@ const SubsidyDetailPage = () => {
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First try subsidies_structured table
+      const { data: structuredData, error: structuredError } = await supabase
         .from('subsidies_structured')
         .select('*')
         .eq('id', subsidyId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      return data;
+      if (structuredData) return structuredData;
+
+      // If not found, try the subsidies table (API-sourced subsidies)
+      const { data: subsidyData, error: subsidyError } = await supabase
+        .from('subsidies')
+        .select('*')
+        .eq('id', subsidyId)
+        .maybeSingle();
+
+      if (subsidyData) return subsidyData;
+
+      // If not found in either table, throw error
+      throw new Error('Subsidy not found');
     },
     enabled: !!subsidyId
   });
@@ -73,42 +85,54 @@ const SubsidyDetailPage = () => {
   // Enhanced document extraction with AI
   useEffect(() => {
     const performExtraction = async () => {
-      if (!subsidy?.url) return;
+      if (!subsidy) return;
+      
+      // Get URL from either table structure
+      const subsidyUrl = (subsidy as any).url || (subsidy as any).application_url;
+      if (!subsidyUrl) return;
       
       setIsExtracting(true);
       try {
         // Parse document content first
-        const documentContent = await parseDocumentContent(subsidy.url);
+        const documentContent = await parseDocumentContent(subsidyUrl);
         
         if (documentContent?.meta?.extractedText) {
           // Use AI to extract comprehensive structured data
           const aiExtracted = await extractStructuredData(documentContent.meta.extractedText);
+          
+          // Get data from either table structure
+          const subsidyTitle = (subsidy as any).title || '';
+          const subsidyAgency = (subsidy as any).agency || '';
+          const subsidyAmount = (subsidy as any).amount || (subsidy as any).amount_min;
+          const subsidyDeadline = (subsidy as any).deadline;
+          const subsidyEligibility = (subsidy as any).eligibility || (subsidy as any).eligibility_criteria;
+          const subsidyDescription = (subsidy as any).description || '';
           
           // Merge all available data sources
           const mergedData: Partial<DocumentContent> = {
             ...documentContent,
             ...aiExtracted,
             // Enrich with subsidy data
-            programName: subsidy.title || aiExtracted.programName,
-            agency: subsidy.agency || aiExtracted.agency,
+            programName: subsidyTitle || aiExtracted.programName,
+            agency: subsidyAgency || aiExtracted.agency,
             funding: {
               ...aiExtracted.funding,
-              fundingDetails: (typeof subsidy.amount === 'string' ? subsidy.amount : JSON.stringify(subsidy.amount)) || aiExtracted.funding?.fundingDetails
+              fundingDetails: (typeof subsidyAmount === 'string' ? subsidyAmount : JSON.stringify(subsidyAmount)) || aiExtracted.funding?.fundingDetails
             },
             timeline: {
               ...aiExtracted.timeline,
               applicationPeriod: {
                 ...aiExtracted.timeline?.applicationPeriod,
-                end: subsidy.deadline || aiExtracted.timeline?.applicationPeriod?.end
+                end: subsidyDeadline || aiExtracted.timeline?.applicationPeriod?.end
               }
             },
-            eligibility: typeof subsidy.eligibility === 'string' ? 
-              { generalCriteria: subsidy.eligibility, eligibleEntities: [], legalEntityTypes: [], geographicScope: [] } : 
+            eligibility: typeof subsidyEligibility === 'string' ? 
+              { generalCriteria: subsidyEligibility, eligibleEntities: [], legalEntityTypes: [], geographicScope: [] } : 
               aiExtracted.eligibility,
-            description: subsidy.description || aiExtracted.description,
+            description: subsidyDescription || aiExtracted.description,
             meta: {
               ...aiExtracted.meta,
-              sourceUrl: subsidy.url
+              sourceUrl: subsidyUrl
             }
           };
           
@@ -129,7 +153,7 @@ const SubsidyDetailPage = () => {
     };
 
     performExtraction();
-  }, [subsidy?.url]);
+  }, [subsidy]);
 
   if (isLoading || isExtracting) {
     return (
@@ -189,10 +213,10 @@ const SubsidyDetailPage = () => {
             />
             
             {/* Enhanced Data Extraction - Between Schema and Form */}
-            {subsidy?.url && (
+            {((subsidy as any).url || (subsidy as any).application_url) && (
               <EnhancedExtractionTrigger 
-                subsidyUrl={subsidy.url}
-                subsidyTitle={subsidy.title}
+                subsidyUrl={(subsidy as any).url || (subsidy as any).application_url}
+                subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
                 onSuccess={() => navigate(0)}
               />
             )}
@@ -200,7 +224,7 @@ const SubsidyDetailPage = () => {
             {/* Application Form Section */}
             <ExtractedFormApplication
               subsidyId={subsidyId!}
-              subsidyTitle={subsidy.title || 'Subsidy Program'}
+              subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
               farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
             />
           </div>
