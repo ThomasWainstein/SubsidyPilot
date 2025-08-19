@@ -65,79 +65,126 @@ serve(async (req) => {
     const sessionId = `les-aides-sync-${Date.now()}`;
     console.log(`📋 Session ID: ${sessionId}`);
     
-    // Try multiple endpoints and fallback to working sync function
+    // Test multiple endpoints with different authentication methods
     const endpoints = [
       'https://api.les-aides.fr/v1/aids',
-      'https://www.data.gouv.fr/api/1/datasets/aides-publiques-francaises/',
-      'https://www.aides-entreprises.fr/api/v1/aides'
+      'https://les-aides.fr/api/aids',
+      'https://www.les-aides.fr/api/aides',
+      'https://api.les-aides.fr/aids'
     ];
     
-    console.log(`🔍 Will try ${endpoints.length} endpoints and fallback to working sync if needed`);
+    const authMethods = [
+      { 'Authorization': `Bearer ${apiKey || '711e55108232352685cca98b49777e6b836bfb79'}` },
+      { 'X-API-Key': apiKey || '711e55108232352685cca98b49777e6b836bfb79' },
+      { 'Authorization': `Token ${apiKey || '711e55108232352685cca98b49777e6b836bfb79'}` },
+      {} // No auth (public endpoint)
+    ];
     
-    // First, try to use the working sync-les-aides-fixed function for immediate results
-    console.log(`🚀 Attempting to use working sync function as fallback...`);
-    try {
-      const { data: workingSync, error: workingSyncError } = await supabase.functions.invoke('sync-les-aides-fixed');
-      
-      if (!workingSyncError && workingSync?.success) {
-        console.log(`✅ Working sync function succeeded: ${workingSync.added} subsidies added`);
-        totalAdded = workingSync.added || 0;
-        
-        // Return successful result from working function
-        await supabase.from('api_sync_logs').insert({
-          api_source: 'les-aides-fr-sync',
-          sync_type: 'full_sync_via_working_function',
-          status: 'completed',
-          records_processed: totalAdded,
-          records_added: totalAdded,
-          records_updated: 0,
-          errors: null,
-          completed_at: new Date().toISOString()
-        });
-        
-        const durationMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
-        
-        return new Response(JSON.stringify({
-          success: true,
-          session_id: sessionId,
-          summary: {
-            total_added: totalAdded,
-            error_count: 0,
-            duration_minutes: durationMinutes,
-            working_endpoint: 'sync-les-aides-fixed'
-          },
-          message: `✅ Les-Aides.fr sync completed via working function! Added ${totalAdded} subsidies.`
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+    console.log('🧪 Testing API connectivity with different endpoints...');
+    let workingEndpoint = '';
+    let workingAuth = {};
+    
+    // Test API connectivity first
+    for (const endpoint of endpoints) {
+      for (const authMethod of authMethods) {
+        try {
+          const testUrl = `${endpoint}?page=1&page_size=1&secteur=agriculture,elevage,agroalimentaire`;
+          console.log(`🔍 Testing: ${endpoint} with auth: ${JSON.stringify(authMethod)}`);
+          
+          const response = await fetch(testUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'AgriTool-Platform/1.0',
+              ...authMethod
+            }
+          });
+          
+          if (response.ok) {
+            const testData = await response.json();
+            if (testData.results?.length > 0 || testData.data?.length > 0 || Array.isArray(testData)) {
+              workingEndpoint = endpoint;
+              workingAuth = authMethod;
+              console.log(`✅ Found working endpoint: ${endpoint} with auth: ${JSON.stringify(authMethod)}`);
+              console.log(`📊 Test response has ${testData.results?.length || testData.data?.length || testData.length || 0} items`);
+              break;
+            }
+          }
+        } catch (error) {
+          console.log(`❌ Failed: ${endpoint} - ${error.message}`);
+          continue;
+        }
       }
-    } catch (fallbackError) {
-      console.log(`⚠️ Working sync fallback failed: ${fallbackError.message}`);
+      if (workingEndpoint) break;
     }
     
-    // If fallback fails, try direct API calls
-    const maxPages = 15; // Increase to get 750+ subsidies (15 pages * 50 per page)
-    console.log(`📄 Fallback failed, trying direct API calls for ${maxPages} pages`);
+    if (!workingEndpoint) {
+      console.log('⚠️ No working API endpoint found, trying fallback to working sync function...');
+      
+      // Fallback to working sync function
+      try {
+        const { data: workingSync, error: workingSyncError } = await supabase.functions.invoke('sync-les-aides-fixed');
+        
+        if (!workingSyncError && workingSync?.success) {
+          console.log(`✅ Working sync function succeeded: ${workingSync.added} subsidies added`);
+          totalAdded = workingSync.added || 0;
+          
+          await supabase.from('api_sync_logs').insert({
+            api_source: 'les-aides-fr-sync',
+            sync_type: 'full_sync_via_working_function',
+            status: 'completed',
+            records_processed: totalAdded,
+            records_added: totalAdded,
+            records_updated: 0,
+            errors: null,
+            completed_at: new Date().toISOString()
+          });
+          
+          const durationMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
+          
+          return new Response(JSON.stringify({
+            success: true,
+            session_id: sessionId,
+            summary: {
+              total_added: totalAdded,
+              error_count: 0,
+              duration_minutes: durationMinutes,
+              working_endpoint: 'sync-les-aides-fixed'
+            },
+            message: `✅ Les-Aides.fr sync completed via working function! Added ${totalAdded} subsidies.`
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (fallbackError) {
+        console.log(`⚠️ Working sync fallback failed: ${fallbackError.message}`);
+        throw new Error('No working API endpoint found and fallback sync failed');
+      }
+    }
+    
+    // Use the working endpoint and authentication
+    const maxPages = 2; // Start with 2 pages for testing (100 subsidies)
+    const pageSize = 50;
+    console.log(`🎯 Target: ${maxPages} pages × ${pageSize} subsidies = ${maxPages * pageSize} total subsidies`);
+    console.log(`📍 Using working endpoint: ${workingEndpoint}`);
     
     for (let page = 1; page <= maxPages; page++) {
       console.log(`📄 Processing page ${page}/${maxPages}...`);
       
       try {
-        const baseEndpoint = endpoints[0]; // Use first endpoint for now
-        const apiUrl = new URL(baseEndpoint);
+        const apiUrl = new URL(workingEndpoint);
         apiUrl.searchParams.set('page', page.toString());
-        apiUrl.searchParams.set('page_size', '50'); // Increase page size for efficiency
+        apiUrl.searchParams.set('page_size', pageSize.toString());
         apiUrl.searchParams.set('secteur', 'agriculture,elevage,agroalimentaire');
         
         console.log(`🌐 Making API request to: ${apiUrl.toString()}`);
         
-        // Try without authentication first, then with different auth methods
         const headers: Record<string, string> = {
           'Accept': 'application/json',
-          'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)'
+          'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)',
+          ...workingAuth
         };
         
-        console.log(`📋 Trying without authentication first`);
+        console.log(`📋 Using working authentication method`);
         
         console.log(`📋 API Key being used: ${apiKey ? 'Environment variable' : 'Hardcoded fallback'}`);
         
@@ -178,7 +225,7 @@ serve(async (req) => {
               continue; // Try next endpoint
             }
             
-            console.log(`✅ Endpoint ${baseEndpoint} is working for page ${page}`);
+            console.log(`✅ Endpoint ${workingEndpoint} is working for page ${page}`);
             
             // Process ALL subsidies from the page (not just 5)
             const subsidies = data.results || data.data || data || [];
@@ -203,35 +250,35 @@ serve(async (req) => {
                   hasZones: !!(subsidy.zones_geo?.length)
                 });
                 
+                // Fixed data structure to match database schema
                 const subsidyData = {
                   code: `les-aides-${subsidy.id || Math.random()}`,
                   external_id: (subsidy.id || Math.random()).toString(),
                   api_source: 'les-aides-fr',
-                  title: { fr: subsidy.titre || subsidy.nom || subsidy.title || 'French Subsidy' }, // JSONB format
-                  description: { fr: subsidy.description || 'French business/agricultural subsidy' }, // JSONB format
+                  title: subsidy.titre || subsidy.nom || subsidy.title || 'French Subsidy', // Plain TEXT
+                  description: subsidy.description || 'French business/agricultural subsidy', // Plain TEXT
                   amount_min: subsidy.montant_min || null,
                   amount_max: subsidy.montant_max || null,
                   currency: 'EUR',
-                  deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString().split('T')[0] : null, // Date format only
+                  deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString() : null, // Full timestamp
                   eligibility_criteria: {
                     secteurs: subsidy.secteurs || [],
                     beneficiaires: subsidy.beneficiaires || [],
                     conditions: subsidy.conditions || ''
                   },
                   application_url: subsidy.url_candidature || subsidy.url || '',
-                  source_url: subsidy.url || `https://les-aides.fr/aide/${subsidy.id}`,
-                  status: 'open',
-                  agency: 'Les-Aides.fr',
-                  language: ['fr'],
-                  region: ['France'],
-                  raw_data: subsidy
+                  status: 'active', // Use 'active' not 'open'
+                  raw_data: subsidy,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
                 };
                 
                 console.log(`💾 Inserting subsidy data:`, {
                   code: subsidyData.code,
                   title: subsidyData.title,
                   amounts: `${subsidyData.amount_min || 'N/A'} - ${subsidyData.amount_max || 'N/A'} ${subsidyData.currency}`,
-                  deadline: subsidyData.deadline || 'No deadline'
+                  deadline: subsidyData.deadline || 'No deadline',
+                  status: subsidyData.status
                 });
                 
                 const { data: insertedSubsidy, error } = await supabase
@@ -241,7 +288,7 @@ serve(async (req) => {
                   .single();
                 
                 if (error) {
-                  console.error(`❌ Database insert failed for "${subsidyData.title.fr}":`, {
+                  console.error(`❌ Database insert failed for "${subsidyData.title}":`, {
                     error: error.message,
                     code: error.code,
                     details: error.details,
@@ -352,7 +399,7 @@ serve(async (req) => {
         total_added: totalAdded,
         error_count: errorCount,
         duration_minutes: durationMinutes,
-        working_endpoint: 'les-aides-full-sync'
+        working_endpoint: workingEndpoint
       },
       message: `✅ Les-Aides.fr sync completed! Added ${totalAdded} subsidies${errorCount > 0 ? ` with ${errorCount} errors` : ''}.`
     }), {
