@@ -109,14 +109,12 @@ class OptimalLesAidesSync {
       api_source: 'les-aides-fr',
       sync_type: 'optimal_sync',
       status: 'running',
-      session_id: this.sessionId,
       records_processed: this.progress.dispositifs_processed,
       records_added: this.progress.dispositifs_added,
       records_updated: this.progress.dispositifs_updated,
       errors: { error_count: this.progress.errors, api_requests: this.progress.api_requests_made },
-      progress_data: this.progress,
       started_at: new Date(this.startTime).toISOString()
-    }, { onConflict: 'session_id' });
+    });
   }
 
   private async verifyApiConnectivity(): Promise<boolean> {
@@ -526,11 +524,10 @@ class OptimalLesAidesSync {
       // Final sync log
       const durationMinutes = Math.round((Date.now() - this.startTime) / (1000 * 60));
       
-      await this.supabase.from('api_sync_logs').upsert({
+      await this.supabase.from('api_sync_logs').insert({
         api_source: 'les-aides-fr',
         sync_type: 'optimal_sync',
         status: this.progress.errors === 0 ? 'completed' : 'completed_with_errors',
-        session_id: this.sessionId,
         records_processed: this.progress.dispositifs_processed,
         records_added: this.progress.dispositifs_added,
         records_updated: this.progress.dispositifs_updated,
@@ -539,8 +536,8 @@ class OptimalLesAidesSync {
           api_requests: this.progress.api_requests_made 
         } : null,
         completed_at: new Date().toISOString(),
-        progress_data: { ...this.progress, duration_minutes: durationMinutes }
-      }, { onConflict: 'session_id' });
+        started_at: new Date(this.startTime).toISOString()
+      });
 
       return {
         success: true,
@@ -557,14 +554,17 @@ class OptimalLesAidesSync {
     } catch (error) {
       console.error('❌ Sync failed:', error);
       
-      await this.supabase.from('api_sync_logs').upsert({
+      await this.supabase.from('api_sync_logs').insert({
         api_source: 'les-aides-fr',
         sync_type: 'optimal_sync',
         status: 'failed',
-        session_id: this.sessionId,
         errors: { error: error.message, stack: error.stack?.substring(0, 1000) },
-        completed_at: new Date().toISOString()
-      }, { onConflict: 'session_id' });
+        completed_at: new Date().toISOString(),
+        started_at: new Date(this.startTime).toISOString(),
+        records_processed: 0,
+        records_added: 0,
+        records_updated: 0
+      });
 
       throw error;
     }
