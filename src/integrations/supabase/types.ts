@@ -2571,6 +2571,114 @@ export type Database = {
         }
         Relationships: []
       }
+      subsidies_backup: {
+        Row: {
+          agency: string | null
+          amount_max: number | null
+          amount_min: number | null
+          api_source: string | null
+          application_docs: Json | null
+          application_schema: Json | null
+          application_url: string | null
+          categories: string[] | null
+          code: string | null
+          created_at: string | null
+          deadline: string | null
+          description: Json | null
+          documents: Json | null
+          domain: string | null
+          eligibility_criteria: Json | null
+          external_id: string | null
+          extraction_batch_id: string | null
+          funding_type: string | null
+          id: string | null
+          import_job_id: string | null
+          language: string[] | null
+          legal_entities: string[] | null
+          matching_tags: string[] | null
+          raw_content: Json | null
+          raw_data: Json | null
+          record_status: string | null
+          region: string[] | null
+          scrape_date: string | null
+          source_url: string | null
+          status: string | null
+          tags: string[] | null
+          title: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          agency?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          api_source?: string | null
+          application_docs?: Json | null
+          application_schema?: Json | null
+          application_url?: string | null
+          categories?: string[] | null
+          code?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          description?: Json | null
+          documents?: Json | null
+          domain?: string | null
+          eligibility_criteria?: Json | null
+          external_id?: string | null
+          extraction_batch_id?: string | null
+          funding_type?: string | null
+          id?: string | null
+          import_job_id?: string | null
+          language?: string[] | null
+          legal_entities?: string[] | null
+          matching_tags?: string[] | null
+          raw_content?: Json | null
+          raw_data?: Json | null
+          record_status?: string | null
+          region?: string[] | null
+          scrape_date?: string | null
+          source_url?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          agency?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          api_source?: string | null
+          application_docs?: Json | null
+          application_schema?: Json | null
+          application_url?: string | null
+          categories?: string[] | null
+          code?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          description?: Json | null
+          documents?: Json | null
+          domain?: string | null
+          eligibility_criteria?: Json | null
+          external_id?: string | null
+          extraction_batch_id?: string | null
+          funding_type?: string | null
+          id?: string | null
+          import_job_id?: string | null
+          language?: string[] | null
+          legal_entities?: string[] | null
+          matching_tags?: string[] | null
+          raw_content?: Json | null
+          raw_data?: Json | null
+          record_status?: string | null
+          region?: string[] | null
+          scrape_date?: string | null
+          source_url?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       subsidies_structured: {
         Row: {
           activity_sector_codes: string[] | null
@@ -3396,6 +3504,33 @@ export type Database = {
           },
         ]
       }
+      subsidy_categories_backup: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string | null
+          sector: string | null
+          subcategory: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          sector?: string | null
+          subcategory?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          sector?: string | null
+          subcategory?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: []
+      }
       subsidy_form_schema_errors: {
         Row: {
           created_at: string
@@ -3510,6 +3645,36 @@ export type Database = {
           },
         ]
       }
+      subsidy_locations_backup: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string | null
+          id: string | null
+          postal_codes: string[] | null
+          region: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string | null
+          postal_codes?: string[] | null
+          region?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string | null
+          postal_codes?: string[] | null
+          region?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: []
+      }
       subsidy_matches: {
         Row: {
           confidence: number
@@ -3557,6 +3722,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sync_progress: {
+        Row: {
+          api_source: string
+          completed_at: string | null
+          current_status: string | null
+          error_count: number | null
+          eta_minutes: number | null
+          id: string
+          pages_completed: number | null
+          started_at: string | null
+          subsidies_added: number | null
+          subsidies_processed: number | null
+          sync_session_id: string
+          total_pages: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_source: string
+          completed_at?: string | null
+          current_status?: string | null
+          error_count?: number | null
+          eta_minutes?: number | null
+          id?: string
+          pages_completed?: number | null
+          started_at?: string | null
+          subsidies_added?: number | null
+          subsidies_processed?: number | null
+          sync_session_id: string
+          total_pages?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_source?: string
+          completed_at?: string | null
+          current_status?: string | null
+          error_count?: number | null
+          eta_minutes?: number | null
+          id?: string
+          pages_completed?: number | null
+          started_at?: string | null
+          subsidies_added?: number | null
+          subsidies_processed?: number | null
+          sync_session_id?: string
+          total_pages?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_config: {
         Row: {
@@ -3997,6 +4210,10 @@ export type Database = {
       rollback_to_previous: {
         Args: { p_run_id: string }
         Returns: boolean
+      }
+      safe_data_purge: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       scrape_run_kpis: {
         Args: { p_run_id: string }
