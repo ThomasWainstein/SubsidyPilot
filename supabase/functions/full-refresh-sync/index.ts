@@ -132,9 +132,9 @@ async function fullRefreshSync(supabase: any) {
 
   // Configuration for full sync
   const SYNC_CONFIG = {
-    max_pages: 15,              // 15 pages × 50 = 750 subsidies
+    max_pages: 2,               // Start with 2 pages for testing (100 subsidies)
     page_size: 50,              // Maximum per page
-    base_url: 'https://www.les-aides.fr/api/aides/',
+    base_url: 'https://api.les-aides.fr/v1/aids/',
     api_key: Deno.env.get('LES_AIDES_API_KEY'),
     filters: {
       secteurs: ['agriculture', 'elevage', 'agroalimentaire', 'rural', 'entreprise'],
@@ -175,8 +175,9 @@ async function fullRefreshSync(supabase: any) {
         const response = await fetch(apiUrl.toString(), {
           headers: {
             'Authorization': `Bearer ${SYNC_CONFIG.api_key}`,
+            'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'User-Agent': 'AgriTool-Platform/1.0'
+            'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)'
           }
         });
 
@@ -185,7 +186,12 @@ async function fullRefreshSync(supabase: any) {
         }
 
         const data: LesAidesResponse = await response.json();
-        console.log(`📊 Page ${page}: Found ${data.results.length} subsidies`);
+        console.log(`📊 Page ${page}: Found ${data.results?.length || 0} subsidies`);
+        
+        // Log API response sample for debugging
+        if (data.results && data.results.length > 0) {
+          console.log('API Response sample:', JSON.stringify(data.results[0], null, 2));
+        }
 
         // Process subsidies from this page
         for (const subsidy of data.results) {
@@ -299,13 +305,13 @@ async function fullRefreshSync(supabase: any) {
 }
 
 async function processSubsidy(supabase: any, subsidy: LesAidesSubsidy) {
-  // Transform Les-Aides data to our schema
+  // Transform Les-Aides data to our schema with flexible field mapping
   const subsidyData = {
     code: `les-aides-${subsidy.id}`,
-    external_id: subsidy.id,
+    external_id: subsidy.id?.toString() || '',
     api_source: 'les-aides-fr',
-    title: subsidy.nom,
-    description: subsidy.description,
+    title: subsidy.titre || subsidy.nom || subsidy.title || 'Untitled Subsidy',
+    description: subsidy.description || '',
     amount_min: subsidy.montant_min || null,
     amount_max: subsidy.montant_max || null,
     currency: 'EUR',
@@ -315,8 +321,8 @@ async function processSubsidy(supabase: any, subsidy: LesAidesSubsidy) {
       conditions: subsidy.conditions || '',
       secteurs: subsidy.secteurs || []
     },
-    application_url: subsidy.url,
-    status: subsidy.statut === 'active' ? 'active' : 'inactive',
+    application_url: subsidy.url_candidature || subsidy.url || '',
+    status: 'active',
     raw_data: subsidy
   };
 
