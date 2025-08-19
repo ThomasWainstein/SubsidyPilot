@@ -92,12 +92,23 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     </button>
   );
 
-  const title = getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
+  // Extract les-aides.fr API data if available
+  const lesAidesData = (subsidy as any).raw_data?.fiche || null;
+  const organisme = lesAidesData?.organisme || null;
+  
+  // Use les-aides.fr data if available, otherwise fallback to basic fields
+  const title = lesAidesData?.nom || getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
   const description = getLocalizedContent(subsidy.description, language) || '';
-  const agency = safeString(subsidy.agency || subsidy.issuing_body);
+  const agency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
   const amount = formatAmount(subsidy.amount || subsidy.funding_amount);
   const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
   const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+
+  // Helper function to safely render HTML content
+  const renderHTMLContent = (htmlContent: string) => {
+    if (!htmlContent) return null;
+    return <div dangerouslySetInnerHTML={{ __html: htmlContent }} className="prose prose-sm max-w-none dark:prose-invert" />;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -183,12 +194,56 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
           <div className="lg:col-span-2">
             {activeTab === 'overview' && (
               <div className="space-y-6">
+                {/* Program Description */}
                 <div className="bg-card rounded-lg shadow-sm border p-6">
                   <h2 className="text-2xl font-bold mb-4">Program Description</h2>
-                  <p className="text-muted-foreground leading-relaxed">{description || 'This subsidy program provides financial support for eligible projects and activities.'}</p>
+                  {lesAidesData?.objet ? (
+                    renderHTMLContent(lesAidesData.objet)
+                  ) : (
+                    <p className="text-muted-foreground leading-relaxed">{description || 'This subsidy program provides financial support for eligible projects and activities.'}</p>
+                  )}
                 </div>
 
-                {objectives.length > 0 && (
+                {/* Funding Information */}
+                <div className="bg-card rounded-lg shadow-sm border p-6">
+                  <h3 className="text-xl font-semibold mb-4">Funding Information</h3>
+                  {lesAidesData?.montants ? (
+                    renderHTMLContent(lesAidesData.montants)
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2">Amount</h4>
+                        <p className="text-muted-foreground mb-3">{amount}</p>
+                        {subsidy.minimum_investment && (
+                          <p className="text-sm text-muted-foreground">
+                            Minimum Investment: {safeString(subsidy.minimum_investment)}
+                          </p>
+                        )}
+                      </div>
+                      {fundingRateDetails.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-foreground mb-2">Funding Rates</h4>
+                          <ul className="space-y-1">
+                            {fundingRateDetails.map((rate, index) => (
+                              <li key={index} className="text-muted-foreground text-sm">{rate}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Practical Information */}
+                {lesAidesData?.conseils && (
+                  <div className="bg-card rounded-lg shadow-sm border p-6">
+                    <h3 className="text-xl font-semibold mb-4">Practical Information</h3>
+                    {renderHTMLContent(lesAidesData.conseils)}
+                  </div>
+                )}
+
+                {/* Objectives - only show if no les-aides data */}
+                {!lesAidesData && objectives.length > 0 && (
                   <div className="bg-card rounded-lg shadow-sm border p-6">
                     <h3 className="text-xl font-semibold mb-4 flex items-center">
                       <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
@@ -204,78 +259,122 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                     </ul>
                   </div>
                 )}
-
-                {/* Funding Details */}
-                <div className="bg-card rounded-lg shadow-sm border p-6">
-                  <h3 className="text-xl font-semibold mb-4">Funding Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-medium text-foreground mb-2">Amount</h4>
-                      <p className="text-muted-foreground mb-3">{amount}</p>
-                      {subsidy.minimum_investment && (
-                        <p className="text-sm text-muted-foreground">
-                          Minimum Investment: {safeString(subsidy.minimum_investment)}
-                        </p>
-                      )}
-                    </div>
-                    {fundingRateDetails.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Funding Rates</h4>
-                        <ul className="space-y-1">
-                          {fundingRateDetails.map((rate, index) => (
-                            <li key={index} className="text-muted-foreground text-sm">{rate}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
             {activeTab === 'eligibility' && (
               <div className="bg-card rounded-lg shadow-sm border p-6">
-                <h2 className="text-2xl font-bold mb-4">Eligibility Criteria</h2>
+                <h2 className="text-2xl font-bold mb-6">Eligibility Criteria</h2>
                 
-                {eligibleActions.length > 0 ? (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">✓ Eligible Activities</h3>
-                    {eligibleActions.map((action, index) => (
-                      <div key={index} className="flex items-start bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{action}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                      <span className="text-muted-foreground">Applications from qualified entities are welcome</span>
-                    </div>
-                    <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                      <span className="text-muted-foreground">Must meet program-specific requirements</span>
-                    </div>
-                    {subsidy.legal_entity_type && (
-                      <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">Entity type: {safeString(subsidy.legal_entity_type)}</span>
-                      </div>
-                    )}
+                {/* Show les-aides.fr conditions if available */}
+                {lesAidesData?.conditions && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Conditions d'attribution</h3>
+                    {renderHTMLContent(lesAidesData.conditions)}
                   </div>
                 )}
 
-                {ineligibleActions.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">✗ Ineligible Activities</h3>
-                    {ineligibleActions.map((action, index) => (
-                      <div key={index} className="flex items-start bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                        <X className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{action}</span>
+                {/* Show eligibility criteria from les-aides.fr API */}
+                {lesAidesData?.criteres?.pour && lesAidesData.criteres.pour.length > 0 && (
+                  <div className="space-y-4 mb-6">
+                    <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">✓ Eligible Criteria</h3>
+                    {lesAidesData.criteres.pour.map((critere: any, index: number) => (
+                      <div key={index} className="flex items-start bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="text-muted-foreground">{critere.libelle}</span>
+                          {critere.enfants && critere.enfants.length > 0 && (
+                            <ul className="mt-2 ml-4 space-y-1">
+                              {critere.enfants.map((enfant: any, childIndex: number) => (
+                                <li key={childIndex} className="text-sm text-muted-foreground">• {enfant.libelle}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Show ineligible criteria from les-aides.fr API */}
+                {lesAidesData?.criteres?.contre && lesAidesData.criteres.contre.length > 0 && (
+                  <div className="space-y-4 mb-6">
+                    <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">✗ Ineligible Criteria</h3>
+                    {lesAidesData.criteres.contre.map((critere: any, index: number) => (
+                      <div key={index} className="flex items-start bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                        <X className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="text-muted-foreground">{critere.libelle}</span>
+                          {critere.enfants && critere.enfants.length > 0 && (
+                            <ul className="mt-2 ml-4 space-y-1">
+                              {critere.enfants.map((enfant: any, childIndex: number) => (
+                                <li key={childIndex} className="text-sm text-muted-foreground">• {enfant.libelle}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show restrictions from les-aides.fr API */}
+                {lesAidesData?.restrictions && lesAidesData.restrictions.length > 0 && (
+                  <div className="space-y-4 mb-6">
+                    <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400">⚠️ Restrictions</h3>
+                    {lesAidesData.restrictions.map((restriction: string, index: number) => (
+                      <div key={index} className="flex items-start bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                        <AlertCircle className="w-5 h-5 text-orange-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{restriction}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Fallback to basic eligibility data if no les-aides data */}
+                {!lesAidesData && (
+                  <>
+                    {eligibleActions.length > 0 ? (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">✓ Eligible Activities</h3>
+                        {eligibleActions.map((action, index) => (
+                          <div key={index} className="flex items-start bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                            <span className="text-muted-foreground">{action}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                          <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">Applications from qualified entities are welcome</span>
+                        </div>
+                        <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                          <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">Must meet program-specific requirements</span>
+                        </div>
+                        {subsidy.legal_entity_type && (
+                          <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                            <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                            <span className="text-muted-foreground">Entity type: {safeString(subsidy.legal_entity_type)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {ineligibleActions.length > 0 && (
+                      <div className="mt-6 space-y-4">
+                        <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">✗ Ineligible Activities</h3>
+                        {ineligibleActions.map((action, index) => (
+                          <div key={index} className="flex items-start bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                            <X className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                            <span className="text-muted-foreground">{action}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -334,44 +433,112 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             {activeTab === 'contact' && (
               <div className="bg-card rounded-lg shadow-sm border p-6">
                 <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
-                <div className="space-y-4">
-                  <div className="flex items-start">
-                    <Building className="w-5 h-5 text-muted-foreground mr-3 mt-1" />
-                    <div>
-                      <div className="font-medium text-foreground">{agency}</div>
-                      {subsidy.program && (
-                        <div className="text-muted-foreground">{safeString(subsidy.program)}</div>
-                      )}
+                
+                {/* Show les-aides.fr contact data if available */}
+                {organisme && (
+                  <div className="space-y-6">
+                    <div className="flex items-start">
+                      <Building className="w-5 h-5 text-muted-foreground mr-3 mt-1" />
+                      <div>
+                        <div className="font-medium text-foreground">{organisme.raison_sociale}</div>
+                        {organisme.sigle && (
+                          <div className="text-muted-foreground">({organisme.sigle})</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  
-                  {subsidy.contact_phone && (
-                    <div className="flex items-center">
-                      <Phone className="w-5 h-5 text-muted-foreground mr-3" />
-                      <a href={`tel:${subsidy.contact_phone}`} className="text-primary hover:text-primary/80 transition-colors">
-                        {subsidy.contact_phone}
-                      </a>
-                    </div>
-                  )}
-                  
-                  {subsidy.contact_email && (
-                    <div className="flex items-center">
-                      <Mail className="w-5 h-5 text-muted-foreground mr-3" />
-                      <a href={`mailto:${subsidy.contact_email}`} className="text-primary hover:text-primary/80 transition-colors">
-                        {subsidy.contact_email}
-                      </a>
-                    </div>
-                  )}
 
-                  {subsidy.url && (
-                    <div className="flex items-center">
-                      <ExternalLink className="w-5 h-5 text-muted-foreground mr-3" />
-                      <a href={subsidy.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors">
-                        Visit Official Page
-                      </a>
+                    {/* Contact addresses from les-aides.fr API */}
+                    {organisme.adresses && organisme.adresses.map((adresse: any, index: number) => (
+                      <div key={index} className="border-l-4 border-primary/20 pl-4 bg-muted/30 p-4 rounded-r-lg">
+                        {adresse.libelle && (
+                          <h4 className="font-semibold text-foreground mb-2">{adresse.libelle}</h4>
+                        )}
+                        {adresse.service && (
+                          <div className="text-sm text-muted-foreground mb-1">Service: {adresse.service}</div>
+                        )}
+                        {adresse.interlocuteur && (
+                          <div className="text-sm text-muted-foreground mb-2">Contact: {adresse.interlocuteur}</div>
+                        )}
+                        
+                        {adresse.adresse && (
+                          <div className="flex items-start mb-2">
+                            <MapPin className="w-4 h-4 text-muted-foreground mr-2 mt-1" />
+                            <div className="text-sm text-muted-foreground whitespace-pre-line">{adresse.adresse}</div>
+                          </div>
+                        )}
+                        
+                        {adresse.telephone && (
+                          <div className="flex items-center mb-2">
+                            <Phone className="w-4 h-4 text-muted-foreground mr-2" />
+                            <a href={`tel:${adresse.telephone}`} className="text-primary hover:text-primary/80 transition-colors text-sm">
+                              {adresse.telephone}
+                            </a>
+                          </div>
+                        )}
+                        
+                        {adresse.email && (
+                          <div className="flex items-center mb-2">
+                            <Mail className="w-4 h-4 text-muted-foreground mr-2" />
+                            <a href={`mailto:${adresse.email}`} className="text-primary hover:text-primary/80 transition-colors text-sm">
+                              {adresse.email}
+                            </a>
+                          </div>
+                        )}
+                        
+                        {adresse.web && (
+                          <div className="flex items-center">
+                            <ExternalLink className="w-4 h-4 text-muted-foreground mr-2" />
+                            <a href={adresse.web} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors text-sm">
+                              Visit Website
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Fallback to basic contact data if no les-aides data */}
+                {!organisme && (
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <Building className="w-5 h-5 text-muted-foreground mr-3 mt-1" />
+                      <div>
+                        <div className="font-medium text-foreground">{agency}</div>
+                        {subsidy.program && (
+                          <div className="text-muted-foreground">{safeString(subsidy.program)}</div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    
+                    {subsidy.contact_phone && (
+                      <div className="flex items-center">
+                        <Phone className="w-5 h-5 text-muted-foreground mr-3" />
+                        <a href={`tel:${subsidy.contact_phone}`} className="text-primary hover:text-primary/80 transition-colors">
+                          {subsidy.contact_phone}
+                        </a>
+                      </div>
+                    )}
+                    
+                    {subsidy.contact_email && (
+                      <div className="flex items-center">
+                        <Mail className="w-5 h-5 text-muted-foreground mr-3" />
+                        <a href={`mailto:${subsidy.contact_email}`} className="text-primary hover:text-primary/80 transition-colors">
+                          {subsidy.contact_email}
+                        </a>
+                      </div>
+                    )}
+
+                    {subsidy.url && (
+                      <div className="flex items-center">
+                        <ExternalLink className="w-5 h-5 text-muted-foreground mr-3" />
+                        <a href={subsidy.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors">
+                          Visit Official Page
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
