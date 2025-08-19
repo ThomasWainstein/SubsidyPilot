@@ -71,30 +71,33 @@ export function FrenchSubsidySearch() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
-        .eq('language', 'fr')
+        .eq('api_source', 'les-aides-fr')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedSubsidies = (data || []).map(item => ({
-        id: item.id,
-        title: item.title || 'Titre non disponible',
-        description: item.description || 'Description non disponible',
-        amount: item.amount,
-        deadline: item.deadline,
-        region: item.region,
-        sector: item.sector,
-        agency: item.agency || 'FranceAgriMer',
-        eligibility: item.eligibility || '',
-        program: item.program || '',
-        funding_type: item.funding_type || 'aide',
-        application_method: item.application_method || '',
-        documents: Array.isArray(item.documents) ? item.documents : [],
-        url: item.url || '',
-        language: item.language || 'fr'
-      }));
+      const formattedSubsidies = (data || []).map(item => {
+        const eligibilityCriteria = item.eligibility_criteria as any;
+        return {
+          id: item.id,
+          title: String(item.title || 'Titre non disponible'),
+          description: String(item.description || 'Description non disponible'),
+          amount: item.amount_min && item.amount_max ? [Number(item.amount_min), Number(item.amount_max)] : null,
+          deadline: item.deadline,
+          region: eligibilityCriteria?.regions || [],
+          sector: eligibilityCriteria?.domaines?.map((d: any) => `Domain ${d}`) || [],
+          agency: String(eligibilityCriteria?.organisme || 'Les-Aides.fr'),
+          eligibility: String(eligibilityCriteria?.conditions || ''),
+          program: String(item.code || ''),
+          funding_type: String(item.funding_type || 'aide'),
+          application_method: item.application_url ? 'En ligne' : 'Contact direct',
+          documents: Array.isArray(item.application_docs) ? item.application_docs : [],
+          url: String(item.application_url || ''),
+          language: 'fr'
+        };
+      });
 
       setSubsidies(formattedSubsidies);
 

@@ -71,10 +71,10 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
           }
         }
 
-        // Get all subsidies from structured table - always fetch regardless of farm presence
-        logger.debug('useSubsidyFiltering: Fetching subsidies from subsidies_structured...');
+        // Get all subsidies from subsidies table - always fetch regardless of farm presence
+        logger.debug('useSubsidyFiltering: Fetching subsidies from subsidies...');
         const { data: subsidiesData, error: subsidiesError } = await supabase
-          .from('subsidies_structured')
+          .from('subsidies')
           .select('*')
           .order('created_at', { ascending: false });
         
@@ -89,25 +89,38 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
         // Calculate match confidence for each subsidy
         const subsidiesWithMatches = (subsidiesData || []).map(subsidy => {
           const farmTags = farm?.matching_tags || [];
-          // For subsidies_structured, we'll do simple region/sector matching for now
+          // For subsidies table, adapt fields from the new structure
           const farmRegion = farm?.department || farm?.country || '';
-          const subsidyRegions = Array.isArray(subsidy.region) ? subsidy.region : (subsidy.region ? [subsidy.region] : []);
-          const subsidySectors = Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : []);
+          const eligibilityCriteria = subsidy.eligibility_criteria as any;
+          const subsidyRegions = eligibilityCriteria?.regions || [];
+          const subsidySectors = eligibilityCriteria?.domaines || [];
           
           let matchConfidence = 0;
           if (farm) {
-            // Basic region matching
-            if (farmRegion && subsidyRegions.some(region => region?.toLowerCase() === farmRegion.toLowerCase())) {
+            // Basic region matching - check if farm region matches any subsidy region
+            if (farmRegion && subsidyRegions.some((region: any) => region?.toLowerCase?.().includes(farmRegion.toLowerCase()))) {
               matchConfidence += 50;
+            }
+            // Check matching tags if available
+            if (farmTags.length > 0 && Array.isArray(subsidy.matching_tags) && subsidy.matching_tags?.some(tag => farmTags.includes(tag))) {
+              matchConfidence += 30;
             }
             // Add base confidence for having a farm profile
             matchConfidence += 20;
-            // Random factor for variety (replace with better matching later)
-            matchConfidence += Math.floor(Math.random() * 30);
           }
 
           return {
             ...subsidy,
+            // Map fields for compatibility with SubsidyWithMatch interface
+            title: String(subsidy.title || ''),
+            description: String(subsidy.description || ''),
+            region: subsidyRegions,
+            sector: subsidySectors.map((d: any) => `Domain ${d}`),
+            amount: subsidy.amount_min && subsidy.amount_max ? [Number(subsidy.amount_min), Number(subsidy.amount_max)] : null,
+            url: String(subsidy.application_url || ''),
+            agency: String(eligibilityCriteria?.organisme || ''),
+            eligibility: String(eligibilityCriteria?.conditions || ''),
+            program: String(subsidy.code || ''),
             matchConfidence: Math.min(matchConfidence, 100)
           };
         });
