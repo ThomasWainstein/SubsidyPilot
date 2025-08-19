@@ -19,13 +19,20 @@ serve(async (req) => {
     console.log(`🔑 API key format: ${lesAidesApiKey.substring(0, 10)}...${lesAidesApiKey.substring(-10)}`);
     console.log(`🔑 API key is hex: ${/^[0-9a-f]+$/i.test(lesAidesApiKey)}`);
     
-    // Try different domain codes to find which ones work
+    // Try proper 2-digit APE division codes with various domain codes
     const testCalls = [
-      { name: 'Test domain 11', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=11&format=json' },
-      { name: 'Test domain 20', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=20&format=json' },
-      { name: 'Test domain 30', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=30&format=json' },
-      { name: 'Test domain 50', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=50&format=json' },
-      { name: 'Test domain 100', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=100&format=json' }
+      // Agricultural sectors (most relevant)
+      { name: 'Agriculture APE 01', url: 'https://api.les-aides.fr/aides/?ape=01&domaine[]=1&format=json' },
+      { name: 'Agriculture APE 01 domain 11', url: 'https://api.les-aides.fr/aides/?ape=01&domaine[]=11&format=json' },
+      { name: 'Food Manufacturing APE 10', url: 'https://api.les-aides.fr/aides/?ape=10&domaine[]=1&format=json' },
+      
+      // Business sectors
+      { name: 'Construction APE 41', url: 'https://api.les-aides.fr/aides/?ape=41&domaine[]=1&format=json' },
+      { name: 'Trade APE 45', url: 'https://api.les-aides.fr/aides/?ape=45&domaine[]=1&format=json' },
+      { name: 'Professional Services APE 68', url: 'https://api.les-aides.fr/aides/?ape=68&domaine[]=1&format=json' },
+      
+      // Test without domain to see if it's still required
+      { name: 'Agriculture APE 01 no domain', url: 'https://api.les-aides.fr/aides/?ape=01&format=json' }
     ];
     
     const results = [];
