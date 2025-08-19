@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { RefreshCw, Database, CheckCircle, AlertCircle, Activity, Zap } from 'lucide-react';
+import { RefreshCw, Database, CheckCircle, AlertCircle, Activity, Zap, RefreshCcw } from 'lucide-react';
 import { ChangeDetectionDashboard } from './ChangeDetectionDashboard';
+import { FullRefreshDashboard } from './FullRefreshDashboard';
 
 export const ApiSyncDashboard: React.FC = () => {
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -55,10 +56,14 @@ export const ApiSyncDashboard: React.FC = () => {
       </div>
 
       <Tabs defaultValue="smart-detection" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="smart-detection" className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
             Smart Detection
+          </TabsTrigger>
+          <TabsTrigger value="full-refresh" className="flex items-center gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            Full Refresh
           </TabsTrigger>
           <TabsTrigger value="manual-sync" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -68,6 +73,10 @@ export const ApiSyncDashboard: React.FC = () => {
 
         <TabsContent value="smart-detection" className="mt-6">
           <ChangeDetectionDashboard />
+        </TabsContent>
+
+        <TabsContent value="full-refresh" className="mt-6">
+          <FullRefreshDashboard />
         </TabsContent>
 
         <TabsContent value="manual-sync" className="mt-6 space-y-6">

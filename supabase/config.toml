@@ -139,3 +139,6 @@ verify_jwt = false
 
 [functions.sync-les-aides-fixed]
 verify_jwt = false
+
+[functions.full-refresh-sync]
+verify_jwt = false
