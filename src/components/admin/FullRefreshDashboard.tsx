@@ -136,10 +136,18 @@ export const FullRefreshDashboard: React.FC = () => {
       console.log('🔍 About to call les-aides-full-sync function...');
       const { data: syncData, error: syncError } = await supabase.functions.invoke('les-aides-full-sync');
       console.log('📊 Function response:', { syncData, syncError });
+      console.log('📋 Raw syncData:', JSON.stringify(syncData, null, 2));
       
       if (syncError) {
         console.error('❌ Function call error:', syncError);
         throw syncError;
+      }
+
+      console.log('✅ Function call completed, checking results...');
+      
+      if (!syncData) {
+        console.error('❌ No data returned from function');
+        throw new Error('No response from les-aides-full-sync function');
       }
 
       if (syncData?.success) {
