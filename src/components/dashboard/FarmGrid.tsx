@@ -1,6 +1,6 @@
 
 import React, { useMemo, useCallback } from 'react';
-import ProfessionalFarmCard from '@/components/dashboard/ProfessionalFarmCard';
+import FarmIntelligenceCard from '@/components/dashboard/FarmIntelligenceCard';
 import { FarmCardSkeleton } from '@/components/ui/loading-skeleton';
 import EmptyState from '@/components/states/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ interface Farm {
   status?: string;
   region?: string;
   tags?: string[];
+  livestock?: any;
+  land_use_types?: string[];
 }
 
 interface FarmGridProps {
@@ -40,7 +42,9 @@ const FarmGrid: React.FC<FarmGridProps> = React.memo(({ farms }) => {
       created_at: farm.created_at,
       updated_at: farm.updated_at,
       status: (farm.status as 'Profile Complete' | 'Incomplete' | 'Pending') || 'Profile Complete',
-      certifications: []
+      tags: farm.tags || [],
+      livestock: farm.livestock,
+      land_use_types: farm.land_use_types || []
     }));
   }, [farms]);
 
@@ -61,26 +65,16 @@ const FarmGrid: React.FC<FarmGridProps> = React.memo(({ farms }) => {
     );
   }
 
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {transformedFarms.map(farm => {
-          // Calculate real status indicators from actual data
-          const hasUrgentIssues = farm.status === 'Incomplete';
-          const documentsComplete = farm.status === 'Profile Complete';
-          const fundingOpportunities = 0; // This would come from real subsidy matches
-          
-          return (
-            <ProfessionalFarmCard 
-              key={farm.id} 
-              farm={farm}
-              hasUrgentIssues={hasUrgentIssues}
-              documentsComplete={documentsComplete}
-              fundingOpportunities={fundingOpportunities}
-            />
-          );
-        })}
-      </div>
-    );
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {transformedFarms.map(farm => (
+        <FarmIntelligenceCard 
+          key={farm.id} 
+          farm={farm}
+        />
+      ))}
+    </div>
+  );
 });
 
 FarmGrid.displayName = 'FarmGrid';

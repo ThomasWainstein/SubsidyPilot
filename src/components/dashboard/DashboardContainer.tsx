@@ -17,6 +17,8 @@ import { logger } from '@/lib/logger';
 import { prodLogger } from '@/utils/productionLogger';
 import EnhancedDashboardHeader from '@/components/dashboard/EnhancedDashboardHeader';
 import FarmStatusOverview from '@/components/dashboard/FarmStatusOverview';
+import IntelligentAlertsPanel from '@/components/dashboard/IntelligentAlertsPanel';
+import QuickActionsPanel from '@/components/dashboard/QuickActionsPanel';
 
 interface Farm {
   id: string;
@@ -317,10 +319,15 @@ const DashboardContainer = () => {
               {/* Farm Status Overview */}
               <FarmStatusOverview farms={farms} />
 
-              {/* Alerts and actions */}
-              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Alerts and Actions">
-                <EnhancedAlertsActions farmIds={farms.map(f => f.id)} />
-              </EnhancedErrorBoundary>
+              {/* Intelligent Alerts System */}
+              <IntelligentAlertsPanel farmIds={farms.map(f => f.id)} />
+              
+              {/* Quick Actions Panel */}
+              <QuickActionsPanel 
+                farmCount={farms.length}
+                hasIncompleteProfiles={farms.some(f => f.status === 'Incomplete')}
+                highValueOpportunities={farms.length > 0 ? 3 : 0}
+              />
             </aside>
           </div>
         </div>
