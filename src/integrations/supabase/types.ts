@@ -3746,23 +3746,6 @@ export type Database = {
       }
     }
     Views: {
-      change_detection_dashboard: {
-        Row: {
-          api_currently_available: boolean | null
-          api_source: string | null
-          change_summary: string | null
-          check_frequency: string | null
-          failure_count: number | null
-          hours_since_last_check: number | null
-          last_check: string | null
-          last_check_had_changes: boolean | null
-          last_response_time: number | null
-          next_check: string | null
-          polling_enabled: boolean | null
-          status: string | null
-        }
-        Relationships: []
-      }
       review_queue_stats: {
         Row: {
           active_reviewers: number | null
@@ -3884,6 +3867,23 @@ export type Database = {
           api_source: string
           hours_overdue: number
           priority: number
+        }[]
+      }
+      get_change_detection_dashboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          api_currently_available: boolean
+          api_source: string
+          change_summary: string
+          check_frequency: string
+          failure_count: number
+          hours_since_last_check: number
+          last_check: string
+          last_check_had_changes: boolean
+          last_response_time: number
+          next_check: string
+          polling_enabled: boolean
+          status: string
         }[]
       }
       get_data_summary: {

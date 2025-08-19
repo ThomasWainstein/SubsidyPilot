@@ -130,3 +130,12 @@ verify_jwt = false
 
 [functions.sync-les-aides]
 verify_jwt = false
+
+[functions.smart-change-detector]
+verify_jwt = false
+
+[functions.change-detection-scheduler]
+verify_jwt = false
+
+[functions.sync-les-aides-fixed]
+verify_jwt = false
