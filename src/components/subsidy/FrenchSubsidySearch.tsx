@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Filter, RefreshCw } from "lucide-react";
+import { Search, Filter, RefreshCw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FrenchSubsidyCard } from "./FrenchSubsidyCard";
 import { toast } from "sonner";
@@ -133,6 +133,28 @@ export function FrenchSubsidySearch() {
     }
   };
 
+  const purgeData = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer toutes les données d\'aides ? Cette action ne peut pas être annulée.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('data-purge');
+
+      if (error) throw error;
+
+      toast.success('Données purgées avec succès');
+      await loadSubsidies(); // Reload after purging
+
+    } catch (error) {
+      console.error('Purge error:', error);
+      toast.error('Erreur lors de la purge des données');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const applyFilters = () => {
     let filtered = [...subsidies];
 
@@ -199,14 +221,25 @@ export function FrenchSubsidySearch() {
             Recherchez et découvrez les aides de FranceAgriMer
           </p>
         </div>
-        <Button 
-          onClick={runScraper} 
-          disabled={scraperRunning}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${scraperRunning ? 'animate-spin' : ''}`} />
-          {scraperRunning ? 'Mise à jour...' : 'Actualiser les données'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={purgeData} 
+            disabled={loading}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Purger les données
+          </Button>
+          <Button 
+            onClick={runScraper} 
+            disabled={scraperRunning}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${scraperRunning ? 'animate-spin' : ''}`} />
+            {scraperRunning ? 'Mise à jour...' : 'Actualiser les données'}
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
