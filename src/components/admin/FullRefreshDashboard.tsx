@@ -133,8 +133,14 @@ export const FullRefreshDashboard: React.FC = () => {
         description: "Starting sync with Les-Aides.fr...",
       });
 
+      console.log('🔍 About to call les-aides-full-sync function...');
       const { data: syncData, error: syncError } = await supabase.functions.invoke('les-aides-full-sync');
-      if (syncError) throw syncError;
+      console.log('📊 Function response:', { syncData, syncError });
+      
+      if (syncError) {
+        console.error('❌ Function call error:', syncError);
+        throw syncError;
+      }
 
       if (syncData?.success) {
         toast({
