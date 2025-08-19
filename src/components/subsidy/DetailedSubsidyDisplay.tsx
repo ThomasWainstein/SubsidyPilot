@@ -115,12 +115,60 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     if (lesAidesData?.montants) {
       // Try to extract amount from HTML content
       const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      const euroMatch = montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/);
-      if (euroMatch) {
-        return `€${euroMatch[1]}`;
+      // Look for various amount patterns
+      const euroMatches = [
+        montantsText.match(/(\d+(?:\s?\d+)*)\s*€/), // "1 200 €" or "1200 €"
+        montantsText.match(/€\s*(\d+(?:[.,]\d+)*)/), // "€ 1200" or "€1,200"
+        montantsText.match(/(\d+(?:[.,]\d+)*)\s*euros?/i) // "1200 euros"
+      ].find(match => match);
+      
+      if (euroMatches) {
+        return `€${euroMatches[1].replace(/\s/g, '')}`;
       }
     }
     return formatAmount(subsidy.amount || subsidy.funding_amount);
+  };
+
+  // Extract region from les-aides data
+  const getRegion = () => {
+    if (organisme?.raison_sociale) {
+      // Extract region from organization name
+      const orgName = organisme.raison_sociale.toLowerCase();
+      if (orgName.includes('hauts-de-france') || orgName.includes('hauts de france')) {
+        return 'Hauts-de-France';
+      }
+      if (orgName.includes('région')) {
+        // Try to extract region name after "région"
+        const regionMatch = orgName.match(/région\s+([^,]+)/);
+        if (regionMatch) {
+          return regionMatch[1].trim();
+        }
+      }
+    }
+    
+    // Check if description mentions a region
+    const descText = (lesAidesData?.objet || description || '').toLowerCase();
+    if (descText.includes('hauts-de-france') || descText.includes('hauts de france')) {
+      return 'Hauts-de-France';
+    }
+    
+    return safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+  };
+
+  // Extract category from les-aides domaines
+  const getCategory = () => {
+    if (lesAidesData?.domaines && lesAidesData.domaines.length > 0) {
+      // Map domain IDs to readable categories (you might want to create a proper mapping)
+      const domainId = lesAidesData.domaines[0];
+      const domainMappings: { [key: number]: string } = {
+        798: 'Commerce & Services',
+        790: 'Industry & Production',
+        802: 'Innovation & Technology',
+        // Add more mappings as needed
+      };
+      return domainMappings[domainId] || 'Business Support';
+    }
+    return categories[0] || 'General';
   };
 
   return (
@@ -166,7 +214,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 {getStatusBadge(getStatus())}
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-white/20 text-white">
                   <MapPin className="w-4 h-4 mr-1" />
-                  {region}
+                  {getRegion()}
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
@@ -580,15 +628,15 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
               <div className="space-y-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Maximum Amount</div>
-                  <div className="font-semibold text-lg">{amount}</div>
+                  <div className="font-semibold text-lg">{getFundingAmount()}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Region</div>
-                  <div className="font-medium">{region}</div>
+                  <div className="font-medium">{getRegion()}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Category</div>
-                  <div className="font-medium">{categories[0] || 'General'}</div>
+                  <div className="font-medium">{getCategory()}</div>
                 </div>
                 {deadline && (
                   <div>
