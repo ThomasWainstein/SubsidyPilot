@@ -102,98 +102,26 @@ serve(async (req) => {
     const searchEndpoint = '/aides/';
     const ficheEndpoint = '/aide/';
     
-    // Step 1: Load agricultural domains dynamically
-    console.log('🔍 Loading agricultural domains from API...');
-    const domainsResponse = await fetch(`${baseApiUrl}/liste/domaines/`, {
-      headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'X-IDC': lesAidesApiKey,
-      }
-    });
+    // Simplified approach: Use broad search criteria to get ALL subsidies
+    console.log('🔍 Using broad search to get ALL subsidies from Les-Aides.fr...');
     
-    let agriculturalDomains = [790, 793, 798]; // Fallback
-    if (domainsResponse.ok) {
-      const domainsData = await domainsResponse.json();
-      console.log(`📋 All available domains (first 10):`, domainsData.slice(0, 10));
-      
-      // Filter for agriculture-related domains
-      agriculturalDomains = domainsData
-        .filter((d: any) => 
-          d.libelle?.toLowerCase().includes('agricole') ||
-          d.libelle?.toLowerCase().includes('rural') ||
-          d.libelle?.toLowerCase().includes('environnement') ||
-          d.libelle?.toLowerCase().includes('développement durable') ||
-          d.libelle?.toLowerCase().includes('forêt') ||
-          d.numero === 790 || d.numero === 793 || d.numero === 798
-        )
-        .map((d: any) => d.numero);
-      
-      console.log(`✅ Found ${agriculturalDomains.length} relevant domains:`, agriculturalDomains);
-      
-      // If no agriculture domains found, use broader search
-      if (agriculturalDomains.length === 0) {
-        console.log('⚠️ No agriculture domains found, using broader search...');
-        agriculturalDomains = domainsData.slice(0, 5).map((d: any) => d.numero); // Use first 5 domains
-        console.log('📊 Using first 5 domains:', agriculturalDomains);
-      }
-      
-      totalRequests++;
-    } else {
-      console.log('⚠️ Could not load domains, using defaults');
-    }
+    // Use very broad APE codes and domains to get maximum coverage
+    const broadApes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U'];
+    const broadDomains = [790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805];
     
-    // Step 2: Load agricultural APE codes dynamically  
-    console.log('🔍 Loading agricultural APE codes from API...');
-    const nafResponse = await fetch(`${baseApiUrl}/liste/naf/`, {
-      headers: {
-        'Accept': 'application/json', 
-        'Accept-Encoding': 'gzip',
-        'X-IDC': lesAidesApiKey,
-      }
-    });
-    
-    let agriculturalApes = ['A', '01']; // Fallback to broad categories
-    if (nafResponse.ok) {
-      const nafData = await nafResponse.json();
-      // Extract agricultural APE codes (Section A)
-      const agricultureSection = nafData.find((section: any) => section.code === 'A');
-      if (agricultureSection) {
-        agriculturalApes = ['A']; // Start with broad category
-        // Add level 2 codes (01, 02, 03...)
-        if (agricultureSection.activites) {
-          agricultureSection.activites.forEach((div: any) => {
-            agriculturalApes.push(div.code);
-            // Add some specific level 4 codes for precision
-            if (div.activites) {
-              div.activites.forEach((group: any) => {
-                if (group.activites) {
-                  agriculturalApes.push(...group.activites.slice(0, 2).map((c: any) => c.code));
-                }
-              });
-            }
-          });
-        }
-      }
-      console.log(`✅ Found ${agriculturalApes.length} agricultural APE codes`);
-      totalRequests++;
-    } else {
-      console.log('⚠️ Could not load NAF codes, using defaults');
-    }
+    console.log(`🎯 Will search ${broadApes.length} APE codes with ${broadDomains.length} domains`);
+    console.log(`📊 This will cast a wide net to get ALL available subsidies`);
     
     const requestLimit = 100; // Stay well under the 720 daily limit
     
-    console.log(`🎯 Will search ${agriculturalApes.length} APE codes with combined domains`);
-    console.log(`📊 Estimated requests: ${agriculturalApes.length * 2} (search + fiche loading)`);
-    
-    // Search for aids using efficient domain combination
-    for (const ape of agriculturalApes) {
+    // Search for aids using broad criteria to get ALL subsidies
+    for (const ape of broadApes) {
         if (totalRequests >= requestLimit) {
           console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        console.log(`🔍 Searching APE ${ape} across all agricultural domains...`);
+        console.log(`🔍 Searching APE ${ape} across ALL domains...`);
         
         try {
           // Build search URL with combined domains (more efficient)
@@ -203,7 +131,7 @@ serve(async (req) => {
           });
           
           // Add multiple domains efficiently
-          agriculturalDomains.forEach(domain => {
+          broadDomains.forEach(domain => {
             searchParams.append('domaine[]', domain.toString());
           });
           
@@ -271,7 +199,7 @@ serve(async (req) => {
           console.log(`📋 IDR: ${searchData.idr}`);
           
           if (searchData.nb_dispositifs === 0) {
-            console.log('⚠️ No dispositifs found for this APE code');
+            console.log(`⚠️ No dispositifs found for APE ${ape} with broad domains ${broadDomains.slice(0, 5)}...`);
             continue;
           }
           
@@ -378,7 +306,7 @@ serve(async (req) => {
                   fiche: ficheData,
                   search_context: { 
                     ape: ape, 
-                    domains: agriculturalDomains,
+                    domains: broadDomains,
                     idr: searchData.idr 
                   }
                 },
@@ -449,8 +377,8 @@ serve(async (req) => {
                   const locationData = {
                     subsidy_id: insertedSubsidy.id,
                     country_code: 'FR',
-                    region: dispositif.implantation === 'N' ? 'National' : 
-                           dispositif.implantation === 'E' ? 'European' : 'Territorial'
+                    region: ficheData.implantation === 'N' ? 'National' : 
+                           ficheData.implantation === 'E' ? 'European' : 'Territorial'
                   };
                   
                   const { error: locationError } = await supabase
