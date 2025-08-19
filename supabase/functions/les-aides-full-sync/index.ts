@@ -143,12 +143,12 @@ serve(async (req) => {
                 code: `les-aides-${subsidy.id}`,
                 external_id: subsidy.id.toString(),
                 api_source: 'les-aides-fr-mock',
-                title: subsidy.titre,
-                description: subsidy.description,
+                title: { fr: subsidy.titre }, // JSONB format for multilingual
+                description: { fr: subsidy.description }, // JSONB format for multilingual
                 amount_min: subsidy.montant_min || null,
                 amount_max: subsidy.montant_max || null,
                 currency: 'EUR',
-                deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString() : null,
+                deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString().split('T')[0] : null, // Date format only
                 eligibility_criteria: {
                   secteurs: subsidy.secteurs || [],
                   beneficiaires: subsidy.beneficiaires || [],
@@ -156,7 +156,10 @@ serve(async (req) => {
                 },
                 application_url: subsidy.url || '',
                 source_url: subsidy.url || `https://les-aides.fr/aide/${subsidy.id}`,
-                status: 'active',
+                status: 'open',
+                agency: 'Les-Aides.fr',
+                language: ['fr'],
+                region: ['France'],
                 raw_data: subsidy
               };
               
@@ -250,12 +253,12 @@ serve(async (req) => {
                   code: `les-aides-${subsidy.id || Math.random()}`,
                   external_id: (subsidy.id || Math.random()).toString(),
                   api_source: 'les-aides-fr',
-                  title: subsidy.titre || subsidy.nom || subsidy.title || 'French Subsidy',
-                  description: subsidy.description || 'French business/agricultural subsidy',
+                  title: { fr: subsidy.titre || subsidy.nom || subsidy.title || 'French Subsidy' }, // JSONB format
+                  description: { fr: subsidy.description || 'French business/agricultural subsidy' }, // JSONB format
                   amount_min: subsidy.montant_min || null,
                   amount_max: subsidy.montant_max || null,
                   currency: 'EUR',
-                  deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString() : null,
+                  deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString().split('T')[0] : null, // Date format only
                   eligibility_criteria: {
                     secteurs: subsidy.secteurs || [],
                     beneficiaires: subsidy.beneficiaires || [],
@@ -263,7 +266,10 @@ serve(async (req) => {
                   },
                   application_url: subsidy.url_candidature || subsidy.url || '',
                   source_url: subsidy.url || `https://les-aides.fr/aide/${subsidy.id}`,
-                  status: 'active',
+                  status: 'open',
+                  agency: 'Les-Aides.fr',
+                  language: ['fr'],
+                  region: ['France'],
                   raw_data: subsidy
                 };
                 
