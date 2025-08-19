@@ -152,6 +152,9 @@ const AdminPageContent = () => {
             <TabsContent value="overview" className="mt-6">
               <div className="space-y-6">
                 <ErrorBoundary>
+                  <ApiSyncDashboard />
+                </ErrorBoundary>
+                <ErrorBoundary>
                   <SystemHealthDashboard />
                 </ErrorBoundary>
                 <ErrorBoundary>
