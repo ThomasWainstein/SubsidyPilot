@@ -127,3 +127,6 @@ verify_jwt = false
 
 [functions.lesaides-scraper]
 verify_jwt = false
+
+[functions.sync-les-aides]
+verify_jwt = false
