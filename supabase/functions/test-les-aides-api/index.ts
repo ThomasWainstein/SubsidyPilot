@@ -19,20 +19,19 @@ serve(async (req) => {
     console.log(`🔑 API key format: ${lesAidesApiKey.substring(0, 10)}...${lesAidesApiKey.substring(-10)}`);
     console.log(`🔑 API key is hex: ${/^[0-9a-f]+$/i.test(lesAidesApiKey)}`);
     
-    // Try proper 2-digit APE division codes with various domain codes
+    // Use the EXACT domain codes from the official documentation examples
     const testCalls = [
-      // Agricultural sectors (most relevant)
-      { name: 'Agriculture APE 01', url: 'https://api.les-aides.fr/aides/?ape=01&domaine[]=1&format=json' },
-      { name: 'Agriculture APE 01 domain 11', url: 'https://api.les-aides.fr/aides/?ape=01&domaine[]=11&format=json' },
-      { name: 'Food Manufacturing APE 10', url: 'https://api.les-aides.fr/aides/?ape=10&domaine[]=1&format=json' },
+      // Using domain 798 (from all documentation examples)
+      { name: 'APE A + domain 798', url: 'https://api.les-aides.fr/aides/?ape=A&domaine=798&format=json' },
+      { name: 'APE J + domain 798', url: 'https://api.les-aides.fr/aides/?ape=J&domaine=798&format=json' },
+      { name: 'APE C + domain 798', url: 'https://api.les-aides.fr/aides/?ape=C&domaine=798&format=json' },
       
-      // Business sectors
-      { name: 'Construction APE 41', url: 'https://api.les-aides.fr/aides/?ape=41&domaine[]=1&format=json' },
-      { name: 'Trade APE 45', url: 'https://api.les-aides.fr/aides/?ape=45&domaine[]=1&format=json' },
-      { name: 'Professional Services APE 68', url: 'https://api.les-aides.fr/aides/?ape=68&domaine[]=1&format=json' },
+      // Using domains 790, 793 (from documentation examples)
+      { name: 'APE A + domain 790', url: 'https://api.les-aides.fr/aides/?ape=A&domaine=790&format=json' },
+      { name: 'APE A + domain 793', url: 'https://api.les-aides.fr/aides/?ape=A&domaine=793&format=json' },
       
-      // Test without domain to see if it's still required
-      { name: 'Agriculture APE 01 no domain', url: 'https://api.les-aides.fr/aides/?ape=01&format=json' }
+      // Multiple domains (from documentation examples)
+      { name: 'APE A + domains 790,793', url: 'https://api.les-aides.fr/aides/?ape=A&domaine[]=790&domaine[]=793&format=json' }
     ];
     
     const results = [];
