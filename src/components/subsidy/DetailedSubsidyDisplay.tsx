@@ -115,15 +115,18 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     if (lesAidesData?.montants) {
       // Try to extract amount from HTML content
       const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      // Look for various amount patterns
+      // Look for various amount patterns (French format with spaces)
       const euroMatches = [
-        montantsText.match(/(\d+(?:\s?\d+)*)\s*€/), // "1 200 €" or "1200 €"
-        montantsText.match(/€\s*(\d+(?:[.,]\d+)*)/), // "€ 1200" or "€1,200"
-        montantsText.match(/(\d+(?:[.,]\d+)*)\s*euros?/i) // "1200 euros"
+        montantsText.match(/(\d+(?:\s+\d+)*)\s*€/), // "1 200 €" (French format)
+        montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/), // "1200 €" or "1,200 €"
+        montantsText.match(/€\s*(\d+(?:[.,\s]\d+)*)/), // "€ 1200" or "€1,200"
+        montantsText.match(/valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "valeur de 1 200 €"
+        montantsText.match(/(\d+(?:\s+\d+)*)\s*euros?\s+HT/i) // "1 200 euros HT"
       ].find(match => match);
       
       if (euroMatches) {
-        return `€${euroMatches[1].replace(/\s/g, '')}`;
+        const amount = euroMatches[1].replace(/\s/g, ','); // Convert French spacing to comma
+        return `€${amount}`;
       }
     }
     return formatAmount(subsidy.amount || subsidy.funding_amount);
