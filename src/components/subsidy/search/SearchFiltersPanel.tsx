@@ -46,14 +46,14 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">
+        <CardHeader className="pb-3 px-4">
+          <CardTitle className="text-lg font-semibold text-foreground break-words">
             {t('search.filters.title')}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 px-4">
+        <CardContent className="space-y-4 px-4 min-w-0">
           <SavedFilterSets 
             filterSets={savedFilterSets}
             onApplyFilterSet={onApplyFilterSet}

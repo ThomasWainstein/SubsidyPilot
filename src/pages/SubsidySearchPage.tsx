@@ -159,8 +159,10 @@ const SubsidySearchPage = () => {
 
                 {/* Desktop layout */}
                 <div className="hidden lg:grid lg:grid-cols-4 gap-6">
-                  <div className="lg:col-span-1">
-                    <FiltersContent />
+                  <div className="lg:col-span-1 min-w-0">
+                    <div className="sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                      <FiltersContent />
+                    </div>
                   </div>
                   <div className="lg:col-span-3">
                     <SearchResultsPanel

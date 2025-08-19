@@ -57,5 +57,6 @@ export type SearchTranslationKey =
   | 'search.filters.enterFilterSetName'
   | 'search.filters.save'
   | 'search.filters.cancel'
+  | 'search.filters.apply'
   | 'search.actions.attached'
   | 'search.actions.attach';

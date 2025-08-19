@@ -52,9 +52,9 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
   });
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">
+    <div className="space-y-3 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-medium text-foreground truncate flex-1">
           {t('search.filters.savedFilters')}
         </h4>
         <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
@@ -104,22 +104,22 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
       </div>
 
       {filterSets.length === 0 ? (
-        <div className="text-sm text-gray-500 py-2 text-center">
+        <div className="text-sm text-muted-foreground py-2 text-center">
           {t('search.filters.noMatches')}
         </div>
       ) : (
         <div className="space-y-2">
           {filterSets.map((set) => (
-            <Card key={set.id} className="border border-gray-200">
+            <Card key={set.id} className="border border-border">
               <CardContent className="p-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="flex-1 min-w-0">
-                    <h5 className="text-sm font-medium text-gray-900 truncate">
+                    <h5 className="text-sm font-medium text-foreground truncate">
                       {set.name}
                     </h5>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Filter className="w-3 h-3 text-gray-400" />
-                      <Badge variant="secondary" className="text-xs">
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      <Filter className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <Badge variant="secondary" className="text-xs whitespace-nowrap">
                         {(Object.values(set.filters) as any[]).reduce((count: number, filterValue: any) => {
                           if (Array.isArray(filterValue)) {
                             return count + filterValue.length;
@@ -131,20 +131,20 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex gap-1 ml-2">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => onApplyFilterSet(set)}
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 whitespace-nowrap"
                     >
-                      Apply
+                      {t('search.filters.apply')}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onRemoveFilterSet(set.id)}
-                      className="text-xs px-2 py-1 text-red-600 hover:text-red-700"
+                      className="text-xs px-2 py-1 text-destructive hover:text-destructive/80"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

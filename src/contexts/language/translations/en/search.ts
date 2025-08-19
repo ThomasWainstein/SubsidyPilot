@@ -1,6 +1,6 @@
 
 export const search = {
-  'search.filters.title': 'Filter Subsidies',
+  'search.filters.title': 'Search Filters',
   'search.filters.geographicEligibility': 'Geographic Eligibility',
   'search.filters.region': 'Region',
   'search.filters.eligibleCountry': 'Eligible Country',
@@ -53,10 +53,11 @@ export const search = {
   'search.noResultsDesc': 'No subsidies match your filters. Try broadening your criteria.',
   'search.filters.noMatches': 'No saved filter sets yet',
   'search.filters.saveFilterSet': 'Save Filter Set',
-  'search.filters.savedFilters': 'Saved Filters',
+  'search.filters.savedFilters': 'Saved Filter Sets',
   'search.filters.enterFilterSetName': 'Enter filter set name',
   'search.filters.save': 'Save',
   'search.filters.cancel': 'Cancel',
+  'search.filters.apply': 'Apply',
   'search.actions.attached': 'Attached',
   'search.actions.attach': 'Attach to Farm'
 } as const;
