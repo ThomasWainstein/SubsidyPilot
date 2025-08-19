@@ -139,6 +139,45 @@ export type Database = {
         }
         Relationships: []
       }
+      api_sync_logs: {
+        Row: {
+          api_source: string
+          completed_at: string | null
+          errors: Json | null
+          id: string
+          records_added: number | null
+          records_processed: number | null
+          records_updated: number | null
+          started_at: string | null
+          status: string | null
+          sync_type: string | null
+        }
+        Insert: {
+          api_source: string
+          completed_at?: string | null
+          errors?: Json | null
+          id?: string
+          records_added?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string | null
+          status?: string | null
+          sync_type?: string | null
+        }
+        Update: {
+          api_source?: string
+          completed_at?: string | null
+          errors?: Json | null
+          id?: string
+          records_added?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string | null
+          status?: string | null
+          sync_type?: string | null
+        }
+        Relationships: []
+      }
       application_form_instances: {
         Row: {
           auto_population_config: Json | null
@@ -2268,6 +2307,7 @@ export type Database = {
           agency: string | null
           amount_max: number | null
           amount_min: number | null
+          api_source: string | null
           application_docs: Json | null
           application_schema: Json | null
           categories: string[] | null
@@ -2278,6 +2318,7 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
+          external_id: string | null
           extraction_batch_id: string | null
           funding_type: string | null
           id: string
@@ -2286,6 +2327,7 @@ export type Database = {
           legal_entities: string[] | null
           matching_tags: string[] | null
           raw_content: Json | null
+          raw_data: Json | null
           record_status: string | null
           region: string[] | null
           scrape_date: string | null
@@ -2299,6 +2341,7 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          api_source?: string | null
           application_docs?: Json | null
           application_schema?: Json | null
           categories?: string[] | null
@@ -2309,6 +2352,7 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          external_id?: string | null
           extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
@@ -2317,6 +2361,7 @@ export type Database = {
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          raw_data?: Json | null
           record_status?: string | null
           region?: string[] | null
           scrape_date?: string | null
@@ -2330,6 +2375,7 @@ export type Database = {
           agency?: string | null
           amount_max?: number | null
           amount_min?: number | null
+          api_source?: string | null
           application_docs?: Json | null
           application_schema?: Json | null
           categories?: string[] | null
@@ -2340,6 +2386,7 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          external_id?: string | null
           extraction_batch_id?: string | null
           funding_type?: string | null
           id?: string
@@ -2348,6 +2395,7 @@ export type Database = {
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
+          raw_data?: Json | null
           record_status?: string | null
           region?: string[] | null
           scrape_date?: string | null
@@ -3149,6 +3197,41 @@ export type Database = {
           },
         ]
       }
+      subsidy_categories: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          sector: string | null
+          subcategory: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          sector?: string | null
+          subcategory?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          sector?: string | null
+          subcategory?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidy_categories_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subsidy_form_schema_errors: {
         Row: {
           created_at: string
@@ -3221,6 +3304,44 @@ export type Database = {
             columns: ["subsidy_id"]
             isOneToOne: false
             referencedRelation: "subsidies_structured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsidy_locations: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string | null
+          id: string
+          postal_codes: string[] | null
+          region: string | null
+          subsidy_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          postal_codes?: string[] | null
+          region?: string | null
+          subsidy_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          postal_codes?: string[] | null
+          region?: string | null
+          subsidy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsidy_locations_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
             referencedColumns: ["id"]
           },
         ]

@@ -36,6 +36,7 @@ const SupportedFileTypesPage = lazy(() => import('@/pages/SupportedFileTypesPage
 const ReviewWorkflowDocsPage = lazy(() => import('@/pages/ReviewWorkflowDocsPage'));
 const TrainingPipelinePage = lazy(() => import('@/pages/TrainingPipelinePage'));
 const FrenchSubsidiesPage = lazy(() => import('@/pages/FrenchSubsidiesPage'));
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const EmployeeDashboardPage = lazy(() => import('@/pages/EmployeeDashboardPage'));
 const ConsultantDashboardPage = lazy(() => import('@/pages/ConsultantDashboardPage'));
 const OrganizationDashboardPage = lazy(() => import('@/pages/OrganizationDashboardPage'));
@@ -159,6 +160,10 @@ function App() {
                       
                       <Route path="/admin" element={
                         <ProtectedRouteWrapper><AdminPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/admin/api-sync" element={
+                        <ProtectedRouteWrapper><AdminDashboard /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/admin/subsidy/:id" element={

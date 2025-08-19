@@ -1,49 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { RefreshCw, Database, Clock, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
-
-interface SyncLog {
-  id: string;
-  api_source: string;
-  sync_type: string;
-  status: string;
-  records_processed: number;
-  records_added: number;
-  records_updated: number;
-  errors: any;
-  started_at: string;
-  completed_at: string | null;
-}
+import { RefreshCw, Database, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const ApiSyncDashboard: React.FC = () => {
-  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
-  const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchSyncLogs();
-  }, []);
-
-  const fetchSyncLogs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('api_sync_logs')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setSyncLogs(data || []);
-    } catch (error) {
-      console.error('Error fetching sync logs:', error);
-      toast.error('Failed to load sync logs');
-    }
-  };
+  const [lastSyncResult, setLastSyncResult] = useState<any>(null);
 
   const triggerSync = async (apiSource: string) => {
     setSyncing(apiSource);
@@ -54,12 +19,11 @@ export const ApiSyncDashboard: React.FC = () => {
 
       if (error) throw error;
 
+      setLastSyncResult(data);
       toast.success(`${apiSource} sync completed successfully`, {
         description: `Processed: ${data.processed}, Added: ${data.added}, Updated: ${data.updated}`
       });
 
-      // Refresh logs after sync
-      await fetchSyncLogs();
     } catch (error) {
       console.error(`Error syncing ${apiSource}:`, error);
       toast.error(`Failed to sync ${apiSource}`, {
@@ -70,40 +34,6 @@ export const ApiSyncDashboard: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Completed
-        </Badge>;
-      case 'running':
-        return <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200">
-          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-          Running
-        </Badge>;
-      case 'completed_with_errors':
-        return <Badge variant="destructive" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          With Errors
-        </Badge>;
-      case 'failed':
-        return <Badge variant="destructive">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          Failed
-        </Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const formatDuration = (startTime: string, endTime: string | null) => {
-    if (!endTime) return 'Running...';
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const duration = Math.round((end.getTime() - start.getTime()) / 1000);
-    return `${duration}s`;
-  };
 
   return (
     <div className="space-y-6">
@@ -114,10 +44,6 @@ export const ApiSyncDashboard: React.FC = () => {
             Manage external API synchronization and monitor data ingestion
           </p>
         </div>
-        <Button onClick={fetchSyncLogs} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
       </div>
 
       {/* API Source Cards */}
@@ -215,87 +141,65 @@ export const ApiSyncDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Sync History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Recent Sync History
-          </CardTitle>
-          <CardDescription>
-            Monitor API synchronization jobs and their results
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {syncLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No sync history available</p>
-              <p className="text-sm">Trigger a sync to see results here</p>
+      {/* Last Sync Result */}
+      {lastSyncResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Last Sync Result
+            </CardTitle>
+            <CardDescription>
+              Results from the most recent synchronization
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{lastSyncResult.processed}</div>
+                <div className="text-sm text-muted-foreground">Processed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{lastSyncResult.added}</div>
+                <div className="text-sm text-muted-foreground">Added</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{lastSyncResult.updated}</div>
+                <div className="text-sm text-muted-foreground">Updated</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {lastSyncResult.errors ? lastSyncResult.errors.length : 0}
+                </div>
+                <div className="text-sm text-muted-foreground">Errors</div>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {syncLogs.map((log) => (
-                <div key={log.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-medium capitalize">{log.api_source}</h4>
-                      {getStatusBadge(log.status)}
+            
+            {lastSyncResult.errors && lastSyncResult.errors.length > 0 && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-800">
+                    {lastSyncResult.errors.length} Error(s) occurred
+                  </span>
+                </div>
+                <div className="text-xs text-red-700 space-y-1">
+                  {lastSyncResult.errors.slice(0, 3).map((error: any, index: number) => (
+                    <div key={index}>
+                      {error.subsidy}: {error.error}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatDuration(log.started_at, log.completed_at)}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Processed:</span>
-                      <div className="font-medium">{log.records_processed}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Added:</span>
-                      <div className="font-medium text-green-600">{log.records_added}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Updated:</span>
-                      <div className="font-medium text-blue-600">{log.records_updated}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Started:</span>
-                      <div className="font-medium">
-                        {new Date(log.started_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {log.errors && log.errors.length > 0 && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlertCircle className="w-4 h-4 text-red-600" />
-                        <span className="text-sm font-medium text-red-800">
-                          {log.errors.length} Error(s)
-                        </span>
-                      </div>
-                      <div className="text-xs text-red-700 space-y-1">
-                        {log.errors.slice(0, 3).map((error: any, index: number) => (
-                          <div key={index}>
-                            {error.subsidy}: {error.error}
-                          </div>
-                        ))}
-                        {log.errors.length > 3 && (
-                          <div className="text-red-600">
-                            ... and {log.errors.length - 3} more errors
-                          </div>
-                        )}
-                      </div>
+                  ))}
+                  {lastSyncResult.errors.length > 3 && (
+                    <div className="text-red-600">
+                      ... and {lastSyncResult.errors.length - 3} more errors
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
