@@ -115,11 +115,11 @@ export const ApiSyncDashboard: React.FC = () => {
                 <span className="font-medium text-green-600">✅ API Authenticated</span>
               </div>
               <Button 
-                onClick={() => triggerSync('les-aides')}
-                disabled={syncing === 'les-aides'}
+                onClick={() => triggerSync('les-aides-fixed')}
+                disabled={syncing === 'les-aides-fixed'}
                 className="w-full"
               >
-                {syncing === 'les-aides' ? (
+                {syncing === 'les-aides-fixed' ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     Syncing...

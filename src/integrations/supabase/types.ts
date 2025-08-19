@@ -3343,7 +3343,7 @@ export type Database = {
           {
             foreignKeyName: "subsidy_locations_subsidy_id_fkey"
             columns: ["subsidy_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "subsidies"
             referencedColumns: ["id"]
           },
