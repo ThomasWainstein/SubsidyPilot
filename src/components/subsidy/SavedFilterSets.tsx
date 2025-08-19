@@ -55,7 +55,7 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
     <div className="space-y-3 min-w-0">
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-medium text-foreground truncate flex-1">
-          {t('search.filters.savedFilters')}
+          Your Saved Searches
         </h4>
         <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
           <DialogTrigger asChild>
@@ -66,16 +66,16 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
               className="text-xs"
             >
               <Save className="w-3 h-3 mr-1" />
-              {t('search.filters.save')}
+              Save Filters
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>{t('search.filters.saveFilterSet')}</DialogTitle>
+              <DialogTitle>Save These Filters</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <Input
-                placeholder={t('search.filters.enterFilterSetName')}
+                placeholder="Name this filter set (e.g., 'Livestock grants €25K+')"
                 value={filterSetName}
                 onChange={(e) => setFilterSetName(e.target.value)}
                 onKeyDown={(e) => {
@@ -89,13 +89,13 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
                   variant="outline" 
                   onClick={() => setShowSaveDialog(false)}
                 >
-                  {t('search.filters.cancel')}
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleSaveFilterSet}
                   disabled={!filterSetName.trim()}
                 >
-                  {t('search.filters.save')}
+                  Save Filters
                 </Button>
               </div>
             </div>
@@ -105,7 +105,7 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
 
       {filterSets.length === 0 ? (
         <div className="text-sm text-muted-foreground py-2 text-center">
-          {t('search.filters.noMatches')}
+          No saved filter sets yet
         </div>
       ) : (
         <div className="space-y-2">
@@ -138,7 +138,7 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
                       onClick={() => onApplyFilterSet(set)}
                       className="text-xs px-2 py-1 whitespace-nowrap"
                     >
-                      {t('search.filters.apply')}
+                      Apply Filters
                     </Button>
                     <Button
                       variant="ghost"

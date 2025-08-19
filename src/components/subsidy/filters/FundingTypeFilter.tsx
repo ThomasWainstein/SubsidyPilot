@@ -26,7 +26,7 @@ const FundingTypeFilter: React.FC<FundingTypeFilterProps> = ({
   return (
     <FilterSection title="search.filters.fundingType">
       <div className="mb-4 min-w-0">
-        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.fundingSource')}</h4>
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">Funding Source</h4>
         <div className="space-y-2">
           {availableFundingTypes.map(fundingType => (
             <FilterCheckbox
@@ -39,13 +39,13 @@ const FundingTypeFilter: React.FC<FundingTypeFilterProps> = ({
             />
           ))}
           {availableFundingTypes.length === 0 && (
-            <p className="text-sm text-muted-foreground">No funding types available</p>
+            <p className="text-sm text-muted-foreground">No funding sources available</p>
           )}
         </div>
       </div>
 
       <div className="min-w-0">
-        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.fundingInstrument')}</h4>
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">Type of Support</h4>
         <div className="flex flex-wrap gap-2 min-w-0">
           {[
             { value: 'grant', key: 'search.filters.fundingInstrument.grant' },

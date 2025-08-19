@@ -15,13 +15,29 @@ interface FilterTagButtonProps {
 const FilterTagButton: React.FC<FilterTagButtonProps> = ({ value, active, onClick, translationKey }) => {
   const { t } = useLanguage();
   
-  // Get the display text - handle translation keys properly
+  // Hardcoded farmer-friendly translations to fix broken translation system
   const getDisplayText = () => {
     if (typeof translationKey === 'string') {
-      if (translationKey.startsWith('search.filters.')) {
-        return t(translationKey as TranslationKey);
-      }
-      return translationKey;
+      const translations: Record<string, string> = {
+        'search.filters.fundingInstrument.grant': 'Grants & Direct Payments',
+        'search.filters.fundingInstrument.subsidy': 'Subsidies & Support',
+        'search.filters.fundingInstrument.taxCredit': 'Tax Credits & Breaks',
+        'search.filters.fundingInstrument.loan': 'Loans & Financing',
+        'search.filters.fundingInstrument.technicalAssistance': 'Training & Support',
+        'search.filters.documentsRequired.businessPlan': 'Business/Farm Plan',
+        'search.filters.documentsRequired.sustainabilityReport': 'Environmental Report',
+        'search.filters.documentsRequired.carbonAssessment': 'Carbon Assessment',
+        'search.filters.documentsRequired.euFarmId': 'EU Farm Registration',
+        'search.filters.documentsRequired.digitalCertification': 'Digital Certificates',
+        'search.filters.documentsRequired.previousGrantRecord': 'Previous Funding History',
+        'search.filters.sustainabilityGoals.organicTransition': 'Go Organic',
+        'search.filters.sustainabilityGoals.waterEfficiency': 'Water Conservation',
+        'search.filters.sustainabilityGoals.emissionReduction': 'Reduce Carbon Footprint',
+        'search.filters.sustainabilityGoals.soilHealth': 'Improve Soil Health',
+        'search.filters.sustainabilityGoals.biodiversity': 'Protect Wildlife & Biodiversity',
+        'search.filters.sustainabilityGoals.climateAdaptation': 'Climate-Resilient Farming'
+      };
+      return translations[translationKey] || translationKey;
     }
     return value;
   };

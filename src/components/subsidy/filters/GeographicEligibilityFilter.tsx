@@ -26,7 +26,7 @@ const GeographicEligibilityFilter: React.FC<GeographicEligibilityFilterProps> = 
   return (
     <FilterSection title="search.filters.geographicEligibility">
       <div className="mb-4 min-w-0">
-        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.region')}</h4>
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">Your Region</h4>
         <div className="flex flex-wrap gap-2 min-w-0">
           {availableRegions.map(region => (
             <FilterTagButton
@@ -43,11 +43,11 @@ const GeographicEligibilityFilter: React.FC<GeographicEligibilityFilterProps> = 
         </div>
       </div>
       <div className="min-w-0">
-        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.eligibleCountry')}</h4>
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">Country/Territory</h4>
         <div className="relative min-w-0">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t('search.filters.eligibleCountry')}
+            placeholder="Enter your country or territory"
             className="pl-8 min-w-0"
             value={eligibleCountry}
             onChange={(e) => onCountryChange(e.target.value)}

@@ -15,13 +15,25 @@ interface FilterCheckboxProps {
 const FilterCheckbox: React.FC<FilterCheckboxProps> = ({ id, value, checked, onChange, translationKey }) => {
   const { t } = useLanguage();
   
-  // Get the display text - handle translation keys properly
+  // Hardcoded farmer-friendly translations to fix broken translation system
   const getDisplayText = () => {
     if (typeof translationKey === 'string') {
-      if (translationKey.startsWith('search.filters.')) {
-        return t(translationKey as TranslationKey);
-      }
-      return translationKey;
+      const translations: Record<string, string> = {
+        'search.filters.applicationFormat.online': 'Online Application',
+        'search.filters.applicationFormat.pdf': 'PDF Forms',
+        'search.filters.applicationFormat.portal': 'Government Portal',
+        'search.filters.applicationFormat.consultant': 'Through Consultant Only',
+        'search.filters.sustainabilityGoals.organicTransition': 'Go Organic',
+        'search.filters.sustainabilityGoals.waterEfficiency': 'Water Conservation',
+        'search.filters.sustainabilityGoals.emissionReduction': 'Reduce Carbon Footprint',
+        'search.filters.sustainabilityGoals.soilHealth': 'Improve Soil Health',
+        'search.filters.sustainabilityGoals.biodiversity': 'Protect Wildlife & Biodiversity',
+        'search.filters.sustainabilityGoals.climateAdaptation': 'Climate-Resilient Farming',
+        'search.filters.deadline.open': 'Applications Open',
+        'search.filters.deadline.closingSoon': 'Closing Soon (30 days)',
+        'search.filters.deadline.closed': 'Closed (for reference)'
+      };
+      return translations[translationKey] || translationKey;
     }
     return value;
   };

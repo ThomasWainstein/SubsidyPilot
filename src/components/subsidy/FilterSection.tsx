@@ -19,12 +19,25 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
+  // Hardcoded farmer-friendly translations to fix broken translation system
+  const getTitle = (key: string) => {
+    const titles: Record<string, string> = {
+      'search.filters.geographicEligibility': 'Location & Eligibility',
+      'search.filters.agriculturalSector': 'Farm Type & Crops',
+      'search.filters.fundingType': 'Funding Options',
+      'search.filters.applicationRequirements': 'Application Requirements',
+      'search.filters.strategicAlignment': 'Farm Goals & Sustainability',
+      'search.filters.deadlineStatus': 'Application Timeline'
+    };
+    return titles[key] || title;
+  };
+
   return (
     <div className="mb-6 min-w-0">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex items-center justify-between py-2 min-w-0">
           <h4 className="text-sm font-medium text-foreground truncate flex-1">
-            {title.startsWith('search.filters.') ? t(title as TranslationKey) : title}
+            {title.startsWith('search.filters.') ? getTitle(title) : title}
           </h4>
           <CollapsibleTrigger asChild>
             <button className="hover:bg-accent p-1 rounded-md transition-colors flex-shrink-0 ml-2">
