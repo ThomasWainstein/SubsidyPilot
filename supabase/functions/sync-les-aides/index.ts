@@ -16,13 +16,24 @@ interface LesAidesResponse {
     date_limite?: string;
     url_candidature: string;
     criteres_eligibilite: any;
-    localisation: any;
-    categories?: string[];
-    secteur?: string;
+    localisation: {
+      pays?: string;
+      region?: string;
+      ville?: string;
+      code_postal?: string;
+    };
+    secteur_activite: string[];
+    type_aide: string[];
+    beneficiaires: string[];
+    organisme_porteur: string;
+    date_creation: string;
+    date_maj: string;
   }>;
   meta: {
     total: number;
     page: number;
+    per_page: number;
+    total_pages: number;
   };
 }
 
@@ -37,13 +48,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('Starting Les-Aides.fr sync...')
+    console.log('🚀 Starting Les-Aides.fr API sync with REAL credentials...')
 
-    // Start sync log
+    // API credentials
+    const API_KEY = '711e55108232352685cca98b49777e6b836bfb79'
+    const API_BASE_URL = 'https://api.les-aides.fr'
+
+    // Create sync log
     const { data: syncLog, error: syncLogError } = await supabase
       .from('api_sync_logs')
       .insert({
-        api_source: 'les-aides',
+        api_source: 'les-aides-fr',
         sync_type: 'incremental',
         status: 'running'
       })
@@ -51,212 +66,169 @@ serve(async (req) => {
       .single()
 
     if (syncLogError) {
-      console.error('Failed to create sync log:', syncLogError)
       throw new Error(`Failed to create sync log: ${syncLogError.message}`)
     }
 
-    console.log('Created sync log:', syncLog.id)
+    console.log(`Created sync log: ${syncLog.id}`)
 
     let totalProcessed = 0
     let totalAdded = 0
     let totalUpdated = 0
+    let page = 1
+    const maxPages = 10
     const errors: any[] = []
 
-    // Use mock data for testing since API format needs to be verified
-    const mockData = {
-      data: [
-        {
-          id: "fr-agri-001",
-          titre: "Aide à la modernisation des exploitations agricoles", 
-          description: "Subvention pour moderniser les équipements agricoles et améliorer la compétitivité des exploitations.",
-          montant_min: 5000,
-          montant_max: 50000,
-          date_limite: "2024-12-31",
-          criteres_eligibilite: {
-            "anciennete_min": 2,
-            "superficie_min": 5,
-            "type_exploitation": ["cereales", "elevage", "maraichage"]
-          },
-          url_candidature: "https://les-aides.fr/modernisation-agricole",
-          localisation: {
-            pays: "FR",
-            region: "Occitanie"  
-          },
-          categories: ["agriculture", "modernisation"],
-          secteur: "agriculture"
-        },
-        {
-          id: "fr-bio-002",
-          titre: "Aide à la conversion en agriculture biologique",
-          description: "Soutien financier pour les agriculteurs souhaitant convertir leur exploitation vers l'agriculture biologique.",
-          montant_min: 2000,
-          montant_max: 25000,
-          date_limite: "2025-06-30",
-          criteres_eligibilite: {
-            "formation_bio": true,
-            "conversion_bio": true,
-            "type_exploitation": ["cereales", "fruits", "legumes"]
-          },
-          url_candidature: "https://les-aides.fr/conversion-bio",
-          localisation: {
-            pays: "FR",
-            region: "Nouvelle-Aquitaine"
-          },
-          categories: ["agriculture", "bio"],
-          secteur: "agriculture"
-        },
-        {
-          id: "fr-jeune-003",
-          titre: "Dotation Jeunes Agriculteurs (DJA)",
-          description: "Aide à l'installation pour les jeunes agriculteurs de moins de 40 ans souhaitant s'installer.",
-          montant_min: 8000,
-          montant_max: 80000,
-          date_limite: "2024-10-15",
-          criteres_eligibilite: {
-            "age_max": 40,
-            "diplome_agricole": true,
-            "stage_preparation": true
-          },
-          url_candidature: "https://les-aides.fr/jeunes-agriculteurs",
-          localisation: {
-            pays: "FR"
-          },
-          categories: ["agriculture", "jeunes"],
-          secteur: "agriculture"
-        }
-      ],
-      meta: { total: 3, page: 1 }
-    }
+    while (page <= maxPages) {
+      console.log(`📡 Fetching page ${page} from Les-Aides.fr...`)
 
-    console.log('Processing subsidies from mock data...')
-    
-    for (const aid of mockData.data) {
       try {
-        // Transform Les-Aides data to our schema
-        const subsidyData = {
-          code: aid.id, // Use the aid ID as the code
-          external_id: `les-aides-${aid.id}`,
-          api_source: 'les-aides',
-          title: aid.titre,
-          description: aid.description,
-          amount_min: aid.montant_min,
-          amount_max: aid.montant_max,
-          deadline: aid.date_limite ? aid.date_limite : null,
-          eligibility_criteria: aid.criteres_eligibilite,
-          application_url: aid.url_candidature,
-          status: 'active',
-          raw_data: aid,
-          updated_at: new Date().toISOString()
-        }
+        const apiUrl = `${API_BASE_URL}/v1/aids?page=${page}&limit=50&secteur=agriculture`
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Accept': 'application/json',
+            'User-Agent': 'AgriTool-Platform/1.0',
+            'X-API-Key': API_KEY
+          }
+        })
 
-        console.log('Processing subsidy:', subsidyData.title)
+        console.log(`📊 Les-Aides.fr Response: ${response.status} ${response.statusText}`)
 
-        // Check if subsidy already exists
-        const { data: existingSubsidy } = await supabase
-          .from('subsidies')
-          .select('id')
-          .eq('external_id', subsidyData.external_id)
-          .maybeSingle()
-
-        let subsidyId: string
-
-        if (existingSubsidy) {
-          // Update existing subsidy
-          const { data: updatedSubsidy, error: updateError } = await supabase
-            .from('subsidies')
-            .update(subsidyData)
-            .eq('external_id', subsidyData.external_id)
-            .select('id')
-            .single()
-
-          if (updateError) {
-            console.error('Update error:', updateError)
-            errors.push({ subsidy: aid.id, error: updateError.message })
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`❌ API Error: ${response.status} - ${errorText}`)
+          
+          if (response.status === 401) {
+            throw new Error('Les-Aides.fr API authentication failed. Check API key.')
+          }
+          
+          if (response.status === 429) {
+            console.log('⚠️ Rate limit hit, waiting 30 seconds...')
+            await new Promise(resolve => setTimeout(resolve, 30000))
             continue
           }
-
-          subsidyId = updatedSubsidy.id
-          totalUpdated++
-        } else {
-          // Insert new subsidy
-          const { data: newSubsidy, error: insertError } = await supabase
-            .from('subsidies')
-            .insert(subsidyData)
-            .select('id')
-            .single()
-
-          if (insertError) {
-            console.error('Insert error:', insertError)
-            errors.push({ subsidy: aid.id, error: insertError.message })
-            continue
-          }
-
-          subsidyId = newSubsidy.id
-          totalAdded++
+          
+          errors.push({ page, error: `${response.status} ${response.statusText}` })
+          break
         }
 
-        // Handle location data if it exists
-        if (aid.localisation && subsidyId) {
-          const locationData = {
-            subsidy_id: subsidyId,
-            country_code: aid.localisation.pays || 'FR',
-            region: aid.localisation.region,
-            city: aid.localisation.ville
-          }
+        const data: LesAidesResponse = await response.json()
+        console.log(`✅ Received ${data.data?.length || 0} aids (Total: ${data.meta?.total || 'unknown'})`)
 
-          const { error: locationError } = await supabase
-            .from('subsidy_locations')
-            .upsert(locationData, { 
-              onConflict: 'subsidy_id'
-            })
-
-          if (locationError) {
-            console.error('Location error:', locationError)
-            errors.push({ subsidy: aid.id, error: `Location: ${locationError.message}` })
-          }
+        if (!data.data || data.data.length === 0) {
+          console.log('🏁 No more results from Les-Aides.fr')
+          break
         }
 
-        // Handle categories if they exist
-        if (aid.categories && subsidyId) {
-          // Delete existing categories for this subsidy
-          await supabase
-            .from('subsidy_categories')
-            .delete()
-            .eq('subsidy_id', subsidyId)
+        // Process each aid from Les-Aides.fr
+        for (const aid of data.data) {
+          try {
+            console.log(`🔄 Processing: ${aid.titre}`)
 
-          // Insert new categories
-          for (const category of aid.categories) {
-            const categoryData = {
-              subsidy_id: subsidyId,
-              category: category,
-              sector: aid.secteur || 'agriculture'
+            const subsidyData = {
+              code: `les-aides-${aid.id}`,
+              external_id: `les-aides-${aid.id}`,
+              api_source: 'les-aides-fr',
+              title: { fr: aid.titre || 'Aide aux entreprises' },
+              description: { fr: aid.description || '' },
+              funding_type: aid.type_aide?.join(', ') || 'grant',
+              status: 'open',
+              deadline: aid.date_limite ? new Date(aid.date_limite).toISOString() : null,
+              eligibility_criteria: {
+                fr: JSON.stringify({
+                  secteur_activite: aid.secteur_activite || [],
+                  type_aide: aid.type_aide || [],
+                  beneficiaires: aid.beneficiaires || [],
+                  criteres: aid.criteres_eligibilite || {}
+                })
+              },
+              source_url: aid.url_candidature || '',
+              agency: aid.organisme_porteur || 'Les-Aides.fr',
+              tags: aid.secteur_activite || [],
+              region: aid.localisation?.region ? [aid.localisation.region] : null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             }
 
-            const { error: categoryError } = await supabase
-              .from('subsidy_categories')
-              .insert(categoryData)
+            // Check if aid already exists
+            const { data: existingAid } = await supabase
+              .from('subsidies')
+              .select('id')
+              .eq('code', subsidyData.code)
+              .maybeSingle()
 
-            if (categoryError) {
-              console.error('Category error:', categoryError)
-              errors.push({ subsidy: aid.id, error: `Category: ${categoryError.message}` })
+            if (existingAid) {
+              const { error: updateError } = await supabase
+                .from('subsidies')
+                .update(subsidyData)
+                .eq('code', subsidyData.code)
+
+              if (updateError) {
+                console.error(`❌ Update error for ${aid.id}:`, updateError)
+                errors.push({ aid: aid.id, error: updateError.message })
+                continue
+              }
+              totalUpdated++
+            } else {
+              const { error: insertError } = await supabase
+                .from('subsidies')
+                .insert(subsidyData)
+
+              if (insertError) {
+                console.error(`❌ Insert error for ${aid.id}:`, insertError)
+                errors.push({ aid: aid.id, error: insertError.message })
+                continue
+              }
+              totalAdded++
             }
+
+            totalProcessed++
+
+            if (totalProcessed % 25 === 0) {
+              console.log(`📊 Progress: ${totalProcessed} processed`)
+            }
+
+          } catch (error) {
+            console.error(`💥 Error processing aid ${aid.id}:`, error)
+            errors.push({ aid: aid.id, error: error.message })
           }
         }
 
-        totalProcessed++
-        console.log(`Processed ${totalProcessed} subsidies`)
+        if (data.meta && page >= data.meta.total_pages) {
+          console.log('🏁 Reached last page')
+          break
+        }
 
-      } catch (error) {
-        console.error('Error processing subsidy:', aid.id, error)
-        errors.push({ subsidy: aid.id, error: error.message })
+        page++
+
+        if (page <= maxPages) {
+          console.log('⏱️ Waiting 2 seconds to respect rate limits...')
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+
+      } catch (pageError) {
+        console.error(`💥 Page ${page} failed:`, pageError)
+        errors.push({ page, error: pageError.message })
+        
+        if (pageError.message.includes('429')) {
+          console.log('⏱️ Rate limited, waiting 60 seconds...')
+          await new Promise(resolve => setTimeout(resolve, 60000))
+          continue
+        }
+        
+        break
       }
     }
 
-    // Update sync log with results
-    const { error: updateSyncError } = await supabase
+    // Update sync log with final results
+    const finalStatus = errors.length > 0 ? 'completed_with_errors' : 'completed'
+    
+    await supabase
       .from('api_sync_logs')
       .update({
-        status: errors.length > 0 ? 'completed_with_errors' : 'completed',
+        status: finalStatus,
         records_processed: totalProcessed,
         records_added: totalAdded,
         records_updated: totalUpdated,
@@ -265,37 +237,37 @@ serve(async (req) => {
       })
       .eq('id', syncLog.id)
 
-    if (updateSyncError) {
-      console.error('Failed to update sync log:', updateSyncError)
-    }
-
-    console.log('Les-Aides sync completed:', {
+    const result = {
+      success: true,
+      source: 'les-aides-fr',
       processed: totalProcessed,
       added: totalAdded,
       updated: totalUpdated,
-      errors: errors.length
-    })
+      pages_processed: page - 1,
+      errors: errors.length > 0 ? errors : null,
+      sync_log_id: syncLog.id
+    }
+
+    console.log('🎉 Les-Aides.fr sync completed:', result)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        processed: totalProcessed,
-        added: totalAdded,
-        updated: totalUpdated,
-        errors: errors.length > 0 ? errors : null,
-        sync_log_id: syncLog.id
-      }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('Sync error:', error)
+    console.error('💥 Les-Aides.fr sync failed:', error)
+    
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: error.message,
-        success: false 
+        source: 'les-aides-fr'
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })

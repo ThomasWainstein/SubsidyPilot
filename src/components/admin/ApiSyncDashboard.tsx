@@ -93,14 +93,15 @@ export const ApiSyncDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="opacity-50">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5" />
               Les-Aides.fr
+              <Badge variant="default" className="bg-green-600 text-white">Live API</Badge>
             </CardTitle>
             <CardDescription>
-              French agricultural funding (requires API registration)
+              French business subsidies with detailed amounts & criteria
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -111,10 +112,21 @@ export const ApiSyncDashboard: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span>Status:</span>
-                <span className="font-medium">Need API Key</span>
+                <span className="font-medium text-green-600">✅ API Authenticated</span>
               </div>
-              <Button disabled className="w-full">
-                Coming Soon
+              <Button 
+                onClick={() => triggerSync('les-aides')}
+                disabled={syncing === 'les-aides'}
+                className="w-full"
+              >
+                {syncing === 'les-aides' ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  'Sync Now'
+                )}
               </Button>
             </div>
           </CardContent>
