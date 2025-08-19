@@ -46,13 +46,29 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    console.log('🚀 Full refresh function called');
+    
+    // Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const lesAidesKey = Deno.env.get('LES_AIDES_API_KEY');
+    
+    console.log('🔧 Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey,
+      hasLesAidesKey: !!lesAidesKey
+    });
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const url = new URL(req.url);
     const action = url.searchParams.get('action') || 'full_refresh';
+    
+    console.log(`📋 Action requested: ${action}`);
 
     switch (action) {
       case 'purge_data':
