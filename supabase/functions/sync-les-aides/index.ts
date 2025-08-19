@@ -102,6 +102,7 @@ serve(async (req) => {
           try {
             // Transform Les-Aides data to our schema
             const subsidyData = {
+              code: aid.id, // Use the aid ID as the code
               external_id: `les-aides-${aid.id}`,
               api_source: 'les-aides',
               title: aid.titre,
