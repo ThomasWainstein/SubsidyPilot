@@ -142,6 +142,7 @@ serve(async (req) => {
                     conditions: subsidy.conditions || ''
                   },
                   application_url: subsidy.url_candidature || subsidy.url || '',
+                  source_url: subsidy.url || `https://les-aides.fr/aide/${subsidy.id}`,
                   status: 'active',
                   raw_data: subsidy
                 };
