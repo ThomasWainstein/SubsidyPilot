@@ -20,21 +20,29 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium mb-2">
-          {title.startsWith('search.filters.') ? t(title as TranslationKey) : title}
-        </h3>
-        <CollapsibleTrigger asChild>
-          <button className="hover:bg-gray-100 p-1 rounded-md">
-            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent>
-        <div className="mt-2">{children}</div>
-      </CollapsibleContent>
-    </Collapsible>
+    <div className="mb-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between py-2">
+          <h4 className="text-sm font-medium text-gray-700">
+            {title.startsWith('search.filters.') ? t(title as TranslationKey) : title}
+          </h4>
+          <CollapsibleTrigger asChild>
+            <button className="hover:bg-gray-100 p-1 rounded-md transition-colors">
+              {isOpen ? (
+                <ChevronUp className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              )}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          <div className="pt-2 space-y-2">
+            {children}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 };
 

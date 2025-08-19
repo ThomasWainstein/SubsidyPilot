@@ -1,11 +1,12 @@
 
-import React from 'react';
-import { useLanguage } from '@/contexts/language';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useLanguage } from '@/contexts/language';
+import { Save, Trash2, Filter } from 'lucide-react';
 
 export interface FilterSet {
   id: string;
@@ -29,79 +30,131 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
   onSaveCurrentFilters
 }) => {
   const { t } = useLanguage();
-  const [saveDialogOpen, setSaveDialogOpen] = React.useState(false);
-  const [filterSetName, setFilterSetName] = React.useState('');
-  
-  // Check if we have any active filters
-  const hasActiveFilters = Object.values(currentFilters).some(value => 
-    (Array.isArray(value) && value.length > 0) || 
-    (typeof value === 'string' && value)
-  );
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [filterSetName, setFilterSetName] = useState('');
+
+  const handleSaveFilterSet = () => {
+    if (filterSetName.trim()) {
+      onSaveCurrentFilters(filterSetName.trim());
+      setFilterSetName('');
+      setShowSaveDialog(false);
+    }
+  };
+
+  // Check if there are active filters to save
+  const hasActiveFilters = Object.values(currentFilters).some((filterValue: any) => {
+    if (Array.isArray(filterValue)) {
+      return filterValue.length > 0;
+    } else if (typeof filterValue === 'string') {
+      return filterValue.trim() !== '';
+    }
+    return false;
+  });
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium">{t('search.filters.savedFilters')}</h3>
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-xs h-8"
-          disabled={!hasActiveFilters}
-          onClick={() => setSaveDialogOpen(true)}
-        >
-          {t('search.filters.saveFilterSet')}
-        </Button>
-      </div>
-      
-      {filterSets.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {filterSets.map(set => (
-            <Badge
-              key={set.id}
-              variant="outline"
-              className="px-3 py-1 cursor-pointer hover:bg-gray-100 flex items-center gap-1"
-            >
-              <span onClick={() => onApplyFilterSet(set)}>{set.name}</span>
-              <X
-                className="h-3 w-3 hover:text-red-500"
-                onClick={() => onRemoveFilterSet(set.id)}
-              />
-            </Badge>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-gray-500">{t('search.filters.noMatches')}</p>
-      )}
-      
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogTitle>{t('search.filters.saveFilterSet')}</DialogTitle>
-          <div className="py-4">
-            <Input
-              placeholder={t('search.filters.enterFilterSetName')}
-              value={filterSetName}
-              onChange={(e) => setFilterSetName(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              {t('search.filters.cancel')}
-            </Button>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('search.filters.savedFilters')}
+        </h4>
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogTrigger asChild>
             <Button 
-              onClick={() => {
-                if (filterSetName.trim()) {
-                  onSaveCurrentFilters(filterSetName);
-                  setFilterSetName('');
-                  setSaveDialogOpen(false);
-                }
-              }}
-              disabled={!filterSetName.trim()}
+              variant="outline" 
+              size="sm"
+              disabled={!hasActiveFilters}
+              className="text-xs"
             >
+              <Save className="w-3 h-3 mr-1" />
               {t('search.filters.save')}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('search.filters.saveFilterSet')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder={t('search.filters.enterFilterSetName')}
+                value={filterSetName}
+                onChange={(e) => setFilterSetName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveFilterSet();
+                  }
+                }}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowSaveDialog(false)}
+                >
+                  {t('search.filters.cancel')}
+                </Button>
+                <Button 
+                  onClick={handleSaveFilterSet}
+                  disabled={!filterSetName.trim()}
+                >
+                  {t('search.filters.save')}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {filterSets.length === 0 ? (
+        <div className="text-sm text-gray-500 py-2 text-center">
+          {t('search.filters.noMatches')}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filterSets.map((set) => (
+            <Card key={set.id} className="border border-gray-200">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h5 className="text-sm font-medium text-gray-900 truncate">
+                      {set.name}
+                    </h5>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Filter className="w-3 h-3 text-gray-400" />
+                      <Badge variant="secondary" className="text-xs">
+                        {Object.values(set.filters).reduce((count: number, filterValue: any) => {
+                          if (Array.isArray(filterValue)) {
+                            return count + filterValue.length;
+                          } else if (typeof filterValue === 'string' && filterValue) {
+                            return count + 1;
+                          }
+                          return count;
+                        }, 0)} filters
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onApplyFilterSet(set)}
+                      className="text-xs px-2 py-1"
+                    >
+                      Apply
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveFilterSet(set.id)}
+                      className="text-xs px-2 py-1 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

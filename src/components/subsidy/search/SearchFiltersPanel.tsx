@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/language';
 import SubsidyFilters from '../SubsidyFilters';
 import SavedFilterSets, { FilterSet } from '../SavedFilterSets';
 
@@ -42,43 +43,49 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
   availableCategories,
   availableFundingTypes
 }) => {
-  return (
-    <Card>
-      <CardHeader className="py-4">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <SavedFilterSets 
-          filterSets={savedFilterSets}
-          onApplyFilterSet={onApplyFilterSet}
-          onRemoveFilterSet={onRemoveFilterSet}
-          currentFilters={filters}
-          onSaveCurrentFilters={onSaveCurrentFilters}
-        />
+  const { t } = useLanguage();
 
-        <SubsidyFilters 
-          filters={{
-            regions: filters.regions,
-            eligibleCountry: filters.eligibleCountry,
-            farmingTypes: filters.farmingTypes,
-            fundingSources: filters.fundingSources,
-            fundingInstruments: filters.fundingInstruments,
-            documentsRequired: filters.documentsRequired,
-            applicationFormats: filters.applicationFormats,
-            sustainabilityGoals: filters.sustainabilityGoals,
-            deadlineStatuses: filters.deadlineStatuses,
-          }}
-          setFilters={setFilters}
-          onClearFilters={onClearFilters}
-          availableRegions={availableRegions}
-          availableCountries={[]} // Can be populated from database if needed
-          availableFundingTypes={availableFundingTypes}
-          availableCategories={availableCategories}
-        />
-      </CardContent>
-    </Card>
+  return (
+    <div className="w-full">
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold">
+            {t('search.filters.title')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 px-4">
+          <SavedFilterSets 
+            filterSets={savedFilterSets}
+            onApplyFilterSet={onApplyFilterSet}
+            onRemoveFilterSet={onRemoveFilterSet}
+            currentFilters={filters}
+            onSaveCurrentFilters={onSaveCurrentFilters}
+          />
+
+          <div className="border-t pt-4">
+            <SubsidyFilters 
+              filters={{
+                regions: filters.regions,
+                eligibleCountry: filters.eligibleCountry,
+                farmingTypes: filters.farmingTypes,
+                fundingSources: filters.fundingSources,
+                fundingInstruments: filters.fundingInstruments,
+                documentsRequired: filters.documentsRequired,
+                applicationFormats: filters.applicationFormats,
+                sustainabilityGoals: filters.sustainabilityGoals,
+                deadlineStatuses: filters.deadlineStatuses,
+              }}
+              setFilters={setFilters}
+              onClearFilters={onClearFilters}
+              availableRegions={availableRegions}
+              availableCountries={[]}
+              availableFundingTypes={availableFundingTypes}
+              availableCategories={availableCategories}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
