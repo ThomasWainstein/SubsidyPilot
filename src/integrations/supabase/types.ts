@@ -2475,6 +2475,7 @@ export type Database = {
           categories: string[] | null
           code: string
           created_at: string | null
+          currency: string | null
           deadline: string | null
           description: Json
           documents: Json | null
@@ -2510,6 +2511,7 @@ export type Database = {
           categories?: string[] | null
           code: string
           created_at?: string | null
+          currency?: string | null
           deadline?: string | null
           description: Json
           documents?: Json | null
@@ -2545,6 +2547,7 @@ export type Database = {
           categories?: string[] | null
           code?: string
           created_at?: string | null
+          currency?: string | null
           deadline?: string | null
           description?: Json
           documents?: Json | null
