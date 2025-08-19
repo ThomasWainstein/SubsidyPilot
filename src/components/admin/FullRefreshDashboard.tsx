@@ -134,8 +134,8 @@ export const FullRefreshDashboard: React.FC = () => {
         description: "Starting sync with Les-Aides.fr...",
       });
 
-      console.log('🔍 About to call les-aides-full-sync function...');
-      const { data: syncData, error: syncError } = await supabase.functions.invoke('les-aides-full-sync');
+      console.log('🔍 About to call sync-les-aides-optimal function...');
+      const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-les-aides-optimal');
       console.log('📊 Function response:', { syncData, syncError });
       console.log('📋 Raw syncData:', JSON.stringify(syncData, null, 2));
       
@@ -148,13 +148,13 @@ export const FullRefreshDashboard: React.FC = () => {
       
       if (!syncData) {
         console.error('❌ No data returned from function');
-        throw new Error('No response from les-aides-full-sync function');
+        throw new Error('No response from sync-les-aides-optimal function');
       }
 
       if (syncData?.success) {
         toast({
           title: "Full Refresh Completed! 🎉",
-          description: `Successfully added ${syncData.summary?.total_added || 0} subsidies from Les-Aides.fr!`,
+          description: `Successfully added ${syncData.summary?.dispositifs_added || 0} subsidies from Les-Aides.fr!`,
         });
         
         await fetchSubsidyCount(); // Refresh count
@@ -177,14 +177,14 @@ export const FullRefreshDashboard: React.FC = () => {
   const handleTestApi = async () => {
     setIsTesting(true);
     try {
-      console.log('🧪 About to call test-les-aides-api function...');
+      console.log('🧪 Testing Les-Aides.fr API by running a small sync...');
       
       toast({
         title: "Testing Les-Aides.fr API",
-        description: "Running diagnostic tests on the API endpoints...",
+        description: "Running a small test sync to verify API connectivity...",
       });
 
-      const { data, error } = await supabase.functions.invoke('test-les-aides-api');
+      const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal');
       
       console.log('🧪 Function response:', { data, error });
       
@@ -195,23 +195,19 @@ export const FullRefreshDashboard: React.FC = () => {
 
       console.log('🧪 API Test Results:', data);
       
-      if (data?.success && data?.test_results) {
-        const successfulTests = data.working_configs?.length || 0;
-        const totalTests = data.summary?.total_tested || 0;
-        const foundSubsidies = data.working_configs?.some((config: any) => config.nb_dispositifs > 0);
+      if (data?.success) {
+        const addedCount = data.summary?.dispositifs_added || 0;
+        const requestCount = data.summary?.api_requests_made || 0;
         
         toast({
-          title: successfulTests > 0 ? "Found Working Domain Codes!" : "No Working Domains Found",
-          description: `${successfulTests}/${totalTests} API calls successful. ${foundSubsidies ? 'Found subsidies!' : 'No subsidies found.'} Check console for details.`,
-          variant: successfulTests > 0 ? "default" : "destructive",
+          title: "API Test Successful! ✅",
+          description: `API is working! Made ${requestCount} requests and found ${addedCount} subsidies.`,
         });
         
-        console.log('🧪 Domain test summary:', data.summary);
-        console.log('🧪 Working configurations:', data.working_configs);
-      } else if (data?.success === false) {
-        throw new Error(data.message || 'Test function failed');
+        console.log('🧪 Test sync completed successfully:', data.summary);
+        await fetchSubsidyCount(); // Refresh count
       } else {
-        throw new Error('Test function returned unexpected format');
+        throw new Error(data?.message || 'API test failed');
       }
 
     } catch (error: any) {
