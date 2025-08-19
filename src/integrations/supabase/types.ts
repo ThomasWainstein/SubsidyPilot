@@ -139,6 +139,45 @@ export type Database = {
         }
         Relationships: []
       }
+      api_health: {
+        Row: {
+          api_source: string
+          check_timestamp: string | null
+          error_message: string | null
+          id: string
+          is_available: boolean
+          rate_limit_remaining: number | null
+          rate_limit_reset: string | null
+          response_time_ms: number | null
+          status_code: number | null
+          total_records_available: number | null
+        }
+        Insert: {
+          api_source: string
+          check_timestamp?: string | null
+          error_message?: string | null
+          id?: string
+          is_available: boolean
+          rate_limit_remaining?: number | null
+          rate_limit_reset?: string | null
+          response_time_ms?: number | null
+          status_code?: number | null
+          total_records_available?: number | null
+        }
+        Update: {
+          api_source?: string
+          check_timestamp?: string | null
+          error_message?: string | null
+          id?: string
+          is_available?: boolean
+          rate_limit_remaining?: number | null
+          rate_limit_reset?: string | null
+          response_time_ms?: number | null
+          status_code?: number | null
+          total_records_available?: number | null
+        }
+        Relationships: []
+      }
       api_sync_logs: {
         Row: {
           api_source: string
@@ -407,6 +446,92 @@ export type Database = {
             columns: ["subsidy_id"]
             isOneToOne: false
             referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_detection_state: {
+        Row: {
+          api_source: string
+          auto_sync_enabled: boolean | null
+          change_summary: string | null
+          changes_detected: boolean | null
+          created_at: string | null
+          detection_method: string | null
+          id: string
+          last_check: string | null
+          last_known_state: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_source: string
+          auto_sync_enabled?: boolean | null
+          change_summary?: string | null
+          changes_detected?: boolean | null
+          created_at?: string | null
+          detection_method?: string | null
+          id?: string
+          last_check?: string | null
+          last_known_state?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_source?: string
+          auto_sync_enabled?: boolean | null
+          change_summary?: string | null
+          changes_detected?: boolean | null
+          created_at?: string | null
+          detection_method?: string | null
+          id?: string
+          last_check?: string | null
+          last_known_state?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      change_history: {
+        Row: {
+          api_source: string
+          change_details: Json | null
+          change_type: string | null
+          changes_detected: boolean
+          check_timestamp: string | null
+          current_state: Json | null
+          id: string
+          previous_state: Json | null
+          sync_log_id: string | null
+          sync_triggered: boolean | null
+        }
+        Insert: {
+          api_source: string
+          change_details?: Json | null
+          change_type?: string | null
+          changes_detected: boolean
+          check_timestamp?: string | null
+          current_state?: Json | null
+          id?: string
+          previous_state?: Json | null
+          sync_log_id?: string | null
+          sync_triggered?: boolean | null
+        }
+        Update: {
+          api_source?: string
+          change_details?: Json | null
+          change_type?: string | null
+          changes_detected?: boolean
+          check_timestamp?: string | null
+          current_state?: Json | null
+          id?: string
+          previous_state?: Json | null
+          sync_log_id?: string | null
+          sync_triggered?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_history_sync_log_id_fkey"
+            columns: ["sync_log_id"]
+            isOneToOne: false
+            referencedRelation: "api_sync_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -1835,6 +1960,42 @@ export type Database = {
           table_name?: unknown | null
           using_expr?: string | null
           with_check_expr?: string | null
+        }
+        Relationships: []
+      }
+      polling_schedule: {
+        Row: {
+          api_source: string
+          check_frequency: string
+          enabled: boolean | null
+          failure_count: number | null
+          id: string
+          last_check: string | null
+          max_failures: number | null
+          next_check: string
+          priority: number | null
+        }
+        Insert: {
+          api_source: string
+          check_frequency: string
+          enabled?: boolean | null
+          failure_count?: number | null
+          id?: string
+          last_check?: string | null
+          max_failures?: number | null
+          next_check: string
+          priority?: number | null
+        }
+        Update: {
+          api_source?: string
+          check_frequency?: string
+          enabled?: boolean | null
+          failure_count?: number | null
+          id?: string
+          last_check?: string | null
+          max_failures?: number | null
+          next_check?: string
+          priority?: number | null
         }
         Relationships: []
       }
@@ -3585,6 +3746,23 @@ export type Database = {
       }
     }
     Views: {
+      change_detection_dashboard: {
+        Row: {
+          api_currently_available: boolean | null
+          api_source: string | null
+          change_summary: string | null
+          check_frequency: string | null
+          failure_count: number | null
+          hours_since_last_check: number | null
+          last_check: string | null
+          last_check_had_changes: boolean | null
+          last_response_time: number | null
+          next_check: string | null
+          polling_enabled: boolean | null
+          status: string | null
+        }
+        Relationships: []
+      }
       review_queue_stats: {
         Row: {
           active_reviewers: number | null
@@ -3698,6 +3876,14 @@ export type Database = {
           run_id: string
           source_url: string
           stage: string
+        }[]
+      }
+      get_apis_due_for_check: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          api_source: string
+          hours_overdue: number
+          priority: number
         }[]
       }
       get_data_summary: {
