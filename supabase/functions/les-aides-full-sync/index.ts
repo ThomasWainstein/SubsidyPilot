@@ -115,6 +115,8 @@ serve(async (req) => {
     let agriculturalDomains = [790, 793, 798]; // Fallback
     if (domainsResponse.ok) {
       const domainsData = await domainsResponse.json();
+      console.log(`📋 All available domains (first 10):`, domainsData.slice(0, 10));
+      
       // Filter for agriculture-related domains
       agriculturalDomains = domainsData
         .filter((d: any) => 
@@ -128,6 +130,14 @@ serve(async (req) => {
         .map((d: any) => d.numero);
       
       console.log(`✅ Found ${agriculturalDomains.length} relevant domains:`, agriculturalDomains);
+      
+      // If no agriculture domains found, use broader search
+      if (agriculturalDomains.length === 0) {
+        console.log('⚠️ No agriculture domains found, using broader search...');
+        agriculturalDomains = domainsData.slice(0, 5).map((d: any) => d.numero); // Use first 5 domains
+        console.log('📊 Using first 5 domains:', agriculturalDomains);
+      }
+      
       totalRequests++;
     } else {
       console.log('⚠️ Could not load domains, using defaults');
