@@ -2310,6 +2310,7 @@ export type Database = {
           api_source: string | null
           application_docs: Json | null
           application_schema: Json | null
+          application_url: string | null
           categories: string[] | null
           code: string
           created_at: string | null
@@ -2344,6 +2345,7 @@ export type Database = {
           api_source?: string | null
           application_docs?: Json | null
           application_schema?: Json | null
+          application_url?: string | null
           categories?: string[] | null
           code: string
           created_at?: string | null
@@ -2378,6 +2380,7 @@ export type Database = {
           api_source?: string | null
           application_docs?: Json | null
           application_schema?: Json | null
+          application_url?: string | null
           categories?: string[] | null
           code?: string
           created_at?: string | null

@@ -57,211 +57,179 @@ serve(async (req) => {
 
     console.log('Created sync log:', syncLog.id)
 
-    // For demo purposes, we'll simulate Les-Aides data since we don't have the actual API key
-    // In production, you would use: const lesAidesApiKey = Deno.env.get('LES_AIDES_API_KEY')
+    // Use real Les-Aides.fr API
+    const lesAidesApiKey = Deno.env.get('LES_AIDES_API_KEY')
+    if (!lesAidesApiKey) {
+      throw new Error('LES_AIDES_API_KEY not configured')
+    }
     
     let totalProcessed = 0
     let totalAdded = 0
     let totalUpdated = 0
     const errors: any[] = []
+    let page = 1
 
-    // Simulate API response with realistic French agricultural subsidies
-    const mockLesAidesData: LesAidesResponse[] = [
-      {
-        data: [
-          {
-            id: 'fr-agri-001',
-            titre: 'Aide à la modernisation des exploitations agricoles',
-            description: 'Subvention pour moderniser les équipements agricoles et améliorer la productivité des exploitations.',
-            montant_min: 5000,
-            montant_max: 50000,
-            date_limite: '2024-12-31',
-            url_candidature: 'https://les-aides.fr/modernisation-agricole',
-            criteres_eligibilite: {
-              'type_exploitation': ['elevage', 'cultures', 'maraichage'],
-              'superficie_min': 5,
-              'anciennete_min': 2
-            },
-            localisation: {
-              pays: 'FR',
-              region: 'Nouvelle-Aquitaine',
-              ville: null
-            },
-            categories: ['equipement', 'modernisation'],
-            secteur: 'agriculture'
-          },
-          {
-            id: 'fr-bio-002',
-            titre: 'Aide à la conversion en agriculture biologique',
-            description: 'Soutien financier pour les agriculteurs souhaitant convertir leur exploitation vers l\'agriculture biologique.',
-            montant_min: 2000,
-            montant_max: 25000,
-            date_limite: '2025-06-30',
-            url_candidature: 'https://les-aides.fr/conversion-bio',
-            criteres_eligibilite: {
-              'type_exploitation': ['cultures', 'elevage', 'maraichage'],
-              'conversion_bio': true,
-              'formation_bio': true
-            },
-            localisation: {
-              pays: 'FR',
-              region: 'Occitanie',
-              ville: null
-            },
-            categories: ['bio', 'conversion', 'environnement'],
-            secteur: 'agriculture'
-          },
-          {
-            id: 'fr-jeune-003',
-            titre: 'Dotation Jeunes Agriculteurs (DJA)',
-            description: 'Aide à l\'installation pour les jeunes agriculteurs de moins de 40 ans.',
-            montant_min: 8000,
-            montant_max: 80000,
-            date_limite: '2024-10-15',
-            url_candidature: 'https://les-aides.fr/jeunes-agriculteurs',
-            criteres_eligibilite: {
-              'age_max': 40,
-              'diplome_agricole': true,
-              'stage_preparation': true
-            },
-            localisation: {
-              pays: 'FR',
-              region: 'Auvergne-Rhône-Alpes',
-              ville: null
-            },
-            categories: ['installation', 'jeunes'],
-            secteur: 'agriculture'
+    console.log('Starting API requests to les-aides.fr...')
+
+    while (page <= 5) { // Limit to 5 pages for initial sync
+      try {
+        console.log(`Fetching page ${page}...`)
+        
+        const response = await fetch(`https://api.les-aides.fr/v1/aids?page=${page}&limit=50`, {
+          headers: {
+            'Authorization': `Bearer ${lesAidesApiKey}`,
+            'Accept': 'application/json',
+            'User-Agent': 'AgriTool-API-Client/1.0'
           }
-        ],
-        meta: {
-          total: 3,
-          page: 1
+        })
+
+        if (!response.ok) {
+          console.error(`API error: ${response.status} ${response.statusText}`)
+          if (response.status === 401) {
+            throw new Error('Invalid API key - please check LES_AIDES_API_KEY')
+          }
+          throw new Error(`Les-Aides API error: ${response.statusText}`)
         }
-      }
-    ];
 
-    for (const pageData of mockLesAidesData) {
-      if (!pageData.data || pageData.data.length === 0) continue
+        const data: LesAidesResponse = await response.json()
+        console.log(`Received ${data.data?.length || 0} records from page ${page}`)
+        
+        if (!data.data || data.data.length === 0) {
+          console.log('No more data available, stopping pagination')
+          break
+        }
+        for (const aid of data.data) {
+          try {
+            // Transform Les-Aides data to our schema
+            const subsidyData = {
+              external_id: `les-aides-${aid.id}`,
+              api_source: 'les-aides',
+              title: aid.titre,
+              description: aid.description,
+              amount_min: aid.montant_min,
+              amount_max: aid.montant_max,
+              deadline: aid.date_limite ? aid.date_limite : null,
+              eligibility_criteria: aid.criteres_eligibilite,
+              application_url: aid.url_candidature,
+              status: 'active',
+              raw_data: aid,
+              updated_at: new Date().toISOString()
+            }
 
-      for (const aid of pageData.data) {
-        try {
-          // Transform Les-Aides data to our schema
-          const subsidyData = {
-            external_id: `les-aides-${aid.id}`,
-            api_source: 'les-aides',
-            title: aid.titre,
-            description: aid.description,
-            amount_min: aid.montant_min,
-            amount_max: aid.montant_max,
-            deadline: aid.date_limite ? aid.date_limite : null,
-            eligibility_criteria: aid.criteres_eligibilite,
-            application_url: aid.url_candidature,
-            status: 'active',
-            raw_data: aid,
-            updated_at: new Date().toISOString()
-          }
+            console.log('Processing subsidy:', subsidyData.title)
 
-          console.log('Processing subsidy:', subsidyData.title)
-
-          // Check if subsidy already exists
-          const { data: existingSubsidy } = await supabase
-            .from('subsidies')
-            .select('id')
-            .eq('external_id', subsidyData.external_id)
-            .single()
-
-          let subsidyId: string
-
-          if (existingSubsidy) {
-            // Update existing subsidy
-            const { data: updatedSubsidy, error: updateError } = await supabase
+            // Check if subsidy already exists
+            const { data: existingSubsidy } = await supabase
               .from('subsidies')
-              .update(subsidyData)
+              .select('id')
               .eq('external_id', subsidyData.external_id)
-              .select('id')
-              .single()
+              .maybeSingle()
 
-            if (updateError) {
-              console.error('Update error:', updateError)
-              errors.push({ subsidy: aid.id, error: updateError.message })
-              continue
+            let subsidyId: string
+
+            if (existingSubsidy) {
+              // Update existing subsidy
+              const { data: updatedSubsidy, error: updateError } = await supabase
+                .from('subsidies')
+                .update(subsidyData)
+                .eq('external_id', subsidyData.external_id)
+                .select('id')
+                .single()
+
+              if (updateError) {
+                console.error('Update error:', updateError)
+                errors.push({ subsidy: aid.id, error: updateError.message })
+                continue
+              }
+
+              subsidyId = updatedSubsidy.id
+              totalUpdated++
+            } else {
+              // Insert new subsidy
+              const { data: newSubsidy, error: insertError } = await supabase
+                .from('subsidies')
+                .insert(subsidyData)
+                .select('id')
+                .single()
+
+              if (insertError) {
+                console.error('Insert error:', insertError)
+                errors.push({ subsidy: aid.id, error: insertError.message })
+                continue
+              }
+
+              subsidyId = newSubsidy.id
+              totalAdded++
             }
 
-            subsidyId = updatedSubsidy.id
-            totalUpdated++
-          } else {
-            // Insert new subsidy
-            const { data: newSubsidy, error: insertError } = await supabase
-              .from('subsidies')
-              .insert(subsidyData)
-              .select('id')
-              .single()
-
-            if (insertError) {
-              console.error('Insert error:', insertError)
-              errors.push({ subsidy: aid.id, error: insertError.message })
-              continue
-            }
-
-            subsidyId = newSubsidy.id
-            totalAdded++
-          }
-
-          // Handle location data if it exists
-          if (aid.localisation && subsidyId) {
-            const locationData = {
-              subsidy_id: subsidyId,
-              country_code: aid.localisation.pays || 'FR',
-              region: aid.localisation.region,
-              city: aid.localisation.ville
-            }
-
-            const { error: locationError } = await supabase
-              .from('subsidy_locations')
-              .upsert(locationData, { 
-                onConflict: 'subsidy_id'
-              })
-
-            if (locationError) {
-              console.error('Location error:', locationError)
-              errors.push({ subsidy: aid.id, error: `Location: ${locationError.message}` })
-            }
-          }
-
-          // Handle categories if they exist
-          if (aid.categories && subsidyId) {
-            // Delete existing categories for this subsidy
-            await supabase
-              .from('subsidy_categories')
-              .delete()
-              .eq('subsidy_id', subsidyId)
-
-            // Insert new categories
-            for (const category of aid.categories) {
-              const categoryData = {
+            // Handle location data if it exists
+            if (aid.localisation && subsidyId) {
+              const locationData = {
                 subsidy_id: subsidyId,
-                category: category,
-                sector: aid.secteur || 'agriculture'
+                country_code: aid.localisation.pays || 'FR',
+                region: aid.localisation.region,
+                city: aid.localisation.ville
               }
 
-              const { error: categoryError } = await supabase
-                .from('subsidy_categories')
-                .insert(categoryData)
+              const { error: locationError } = await supabase
+                .from('subsidy_locations')
+                .upsert(locationData, { 
+                  onConflict: 'subsidy_id'
+                })
 
-              if (categoryError) {
-                console.error('Category error:', categoryError)
-                errors.push({ subsidy: aid.id, error: `Category: ${categoryError.message}` })
+              if (locationError) {
+                console.error('Location error:', locationError)
+                errors.push({ subsidy: aid.id, error: `Location: ${locationError.message}` })
               }
             }
+
+            // Handle categories if they exist
+            if (aid.categories && subsidyId) {
+              // Delete existing categories for this subsidy
+              await supabase
+                .from('subsidy_categories')
+                .delete()
+                .eq('subsidy_id', subsidyId)
+
+              // Insert new categories
+              for (const category of aid.categories) {
+                const categoryData = {
+                  subsidy_id: subsidyId,
+                  category: category,
+                  sector: aid.secteur || 'agriculture'
+                }
+
+                const { error: categoryError } = await supabase
+                  .from('subsidy_categories')
+                  .insert(categoryData)
+
+                if (categoryError) {
+                  console.error('Category error:', categoryError)
+                  errors.push({ subsidy: aid.id, error: `Category: ${categoryError.message}` })
+                }
+              }
+            }
+
+            totalProcessed++
+            console.log(`Processed ${totalProcessed} subsidies from page ${page}`)
+
+          } catch (error) {
+            console.error('Error processing subsidy:', aid.id, error)
+            errors.push({ subsidy: aid.id, error: error.message })
           }
-
-          totalProcessed++
-          console.log(`Processed ${totalProcessed} subsidies`)
-
-        } catch (error) {
-          console.error('Error processing subsidy:', aid.id, error)
-          errors.push({ subsidy: aid.id, error: error.message })
         }
+
+        page++
+        
+        // Add delay between requests to respect rate limits
+        if (page <= 5) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+
+      } catch (error) {
+        console.error(`Error fetching page ${page}:`, error)
+        errors.push({ page: page, error: error.message })
+        break // Stop on API errors
       }
     }
 
