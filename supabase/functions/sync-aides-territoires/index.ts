@@ -89,13 +89,54 @@ serve(async (req) => {
       try {
         console.log(`Fetching page ${page} from Aides-Territoires...`)
         
-        // Real API call to Aides-Territoires
-        const response = await fetch(`https://aides-territoires.beta.gouv.fr/api/aids/?page=${page}&page_size=50&status=published`, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'AgriTool-API-Client/1.0'
+        // Try authenticated request first, fallback to public
+        let response;
+        const apiUrl = `https://aides-territoires.beta.gouv.fr/api/aids/?page=${page}&page_size=50`;
+        
+        // Check if we have authentication credentials
+        const username = Deno.env.get('AIDES_TERRITOIRES_USERNAME');
+        const password = Deno.env.get('AIDES_TERRITOIRES_PASSWORD');
+        
+        if (username && password) {
+          console.log('🔐 Attempting authenticated request...');
+          
+          // First get auth token
+          const authResponse = await fetch('https://aides-territoires.beta.gouv.fr/api/auth/login/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+          });
+          
+          if (authResponse.ok) {
+            const authData = await authResponse.json();
+            response = await fetch(apiUrl, {
+              headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${authData.token}`,
+                'User-Agent': 'AgriTool-API-Client/1.0'
+              }
+            });
+          } else {
+            console.log('⚠️ Auth failed, trying public access...');
+            response = await fetch(apiUrl, {
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'AgriTool-API-Client/1.0'
+              }
+            });
           }
-        })
+        } else {
+          console.log('🌐 Using public request (no credentials provided)...');
+          response = await fetch(apiUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'AgriTool-API-Client/1.0'
+            }
+          });
+        }
 
         if (!response.ok) {
           console.error(`Aides-Territoires API error: ${response.status} ${response.statusText}`)
