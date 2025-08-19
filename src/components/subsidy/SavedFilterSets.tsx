@@ -120,7 +120,7 @@ const SavedFilterSets: React.FC<SavedFilterSetsProps> = ({
                     <div className="flex items-center gap-1 mt-1">
                       <Filter className="w-3 h-3 text-gray-400" />
                       <Badge variant="secondary" className="text-xs">
-                        {Object.values(set.filters).reduce((count: number, filterValue: any) => {
+                        {(Object.values(set.filters) as any[]).reduce((count: number, filterValue: any) => {
                           if (Array.isArray(filterValue)) {
                             return count + filterValue.length;
                           } else if (typeof filterValue === 'string' && filterValue) {
