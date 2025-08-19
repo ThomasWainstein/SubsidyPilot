@@ -195,17 +195,19 @@ export const FullRefreshDashboard: React.FC = () => {
 
       console.log('🧪 API Test Results:', data);
       
-      if (data?.success && data?.test_result) {
-        const testResult = data.test_result;
-        const isSuccessful = testResult.status === 200;
+      if (data?.success && data?.test_results) {
+        const successfulTests = data.working_configs?.length || 0;
+        const totalTests = data.summary?.total_tested || 0;
+        const foundSubsidies = data.working_configs?.some((config: any) => config.nb_dispositifs > 0);
         
         toast({
-          title: isSuccessful ? "API Test Successful!" : "API Test Issues Found",
-          description: `Status: ${testResult.status}, Found ${testResult.nb_dispositifs || 0} subsidies. Check console for details.`,
-          variant: isSuccessful ? "default" : "destructive",
+          title: successfulTests > 0 ? "Found Working Domain Codes!" : "No Working Domains Found",
+          description: `${successfulTests}/${totalTests} API calls successful. ${foundSubsidies ? 'Found subsidies!' : 'No subsidies found.'} Check console for details.`,
+          variant: successfulTests > 0 ? "default" : "destructive",
         });
         
-        console.log('🧪 Detailed test results:', testResult);
+        console.log('🧪 Domain test summary:', data.summary);
+        console.log('🧪 Working configurations:', data.working_configs);
       } else if (data?.success === false) {
         throw new Error(data.message || 'Test function failed');
       } else {
