@@ -66,15 +66,16 @@ serve(async (req) => {
     const sessionId = `les-aides-sync-${Date.now()}`;
     console.log(`📋 Session ID: ${sessionId}`);
     
-    // Try different endpoint formats and add mock data for testing
+    // Real API endpoints only - no mock data
     const endpoints = [
       'https://api.les-aides.fr/v1/aids',
       'https://www.les-aides.fr/api/aides', 
-      'https://les-aides.fr/api/aids',
-      'MOCK_DATA' // Fallback to generate test data
+      'https://les-aides.fr/api/aids'
     ];
     
     let workingEndpoint = '';
+    
+    console.log(`🔍 Testing ${endpoints.length} API endpoints for real data only`);
     
     for (let page = 1; page <= maxPages; page++) {
       console.log(`📄 Processing page ${page}/${maxPages}...`);
@@ -86,128 +87,6 @@ serve(async (req) => {
           continue; // Skip if we already found a working endpoint
         }
         
-        // Handle mock data fallback
-        if (baseEndpoint === 'MOCK_DATA') {
-          console.log('🎭 Using mock data - Les-Aides.fr API not accessible');
-          workingEndpoint = 'MOCK_DATA';
-          
-          // Generate mock French subsidies for testing
-          const mockSubsidies = [
-            {
-              id: `mock-${page}-1`,
-              titre: `Aide à la modernisation agricole - Page ${page}`,
-              description: 'Subvention pour l\'amélioration des équipements agricoles et la modernisation des exploitations.',
-              montant_min: 5000,
-              montant_max: 50000,
-              date_limite: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days from now
-              url: `https://les-aides.fr/aide/mock-${page}-1`,
-              secteurs: ['agriculture', 'elevage'],
-              beneficiaires: ['exploitants agricoles', 'EARL', 'GAEC'],
-              conditions: 'Exploitation en activité depuis plus de 2 ans',
-              zones_geo: ['France entière', 'Métropole']
-            },
-            {
-              id: `mock-${page}-2`,
-              titre: `Soutien à l\'agriculture biologique - Page ${page}`,
-              description: 'Aide financière pour la conversion vers l\'agriculture biologique et le maintien des pratiques bio.',
-              montant_min: 3000,
-              montant_max: 25000,
-              date_limite: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString(), // 120 days from now
-              url: `https://les-aides.fr/aide/mock-${page}-2`,
-              secteurs: ['agriculture biologique', 'environnement'],
-              beneficiaires: ['agriculteurs bio', 'exploitants en conversion'],
-              conditions: 'Certification bio en cours ou obtenue',
-              zones_geo: ['France entière']
-            },
-            {
-              id: `mock-${page}-3`,
-              titre: `Investissement dans les énergies renouvelables agricoles - Page ${page}`,
-              description: 'Financement pour l\'installation de panneaux solaires, éoliennes ou méthaniseurs sur exploitations agricoles.',
-              montant_min: 10000,
-              montant_max: 100000,
-              date_limite: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days from now
-              url: `https://les-aides.fr/aide/mock-${page}-3`,
-              secteurs: ['energie renouvelable', 'agriculture'],
-              beneficiaires: ['exploitants agricoles', 'SAS agricoles'],
-              conditions: 'Projet d\'investissement validé par les services techniques',
-              zones_geo: ['France entière', 'DOM-TOM']
-            }
-          ];
-          
-          console.log(`✅ Generated ${mockSubsidies.length} mock subsidies for page ${page}`);
-          
-          // Process mock subsidies using the same logic
-          for (const subsidy of mockSubsidies) {
-            try {
-              const subsidyData = {
-                code: `les-aides-${subsidy.id}`,
-                external_id: subsidy.id.toString(),
-                api_source: 'les-aides-fr-mock',
-                title: { fr: subsidy.titre }, // JSONB format for multilingual
-                description: { fr: subsidy.description }, // JSONB format for multilingual
-                amount_min: subsidy.montant_min || null,
-                amount_max: subsidy.montant_max || null,
-                currency: 'EUR',
-                deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString().split('T')[0] : null, // Date format only
-                eligibility_criteria: {
-                  secteurs: subsidy.secteurs || [],
-                  beneficiaires: subsidy.beneficiaires || [],
-                  conditions: subsidy.conditions || ''
-                },
-                application_url: subsidy.url || '',
-                source_url: subsidy.url || `https://les-aides.fr/aide/${subsidy.id}`,
-                status: 'open',
-                agency: 'Les-Aides.fr',
-                language: ['fr'],
-                region: ['France'],
-                raw_data: subsidy
-              };
-              
-              const { data: insertedSubsidy, error } = await supabase
-                .from('subsidies')
-                .insert(subsidyData)
-                .select('id')
-                .single();
-              
-              if (error) {
-                console.error(`❌ Insert error for ${subsidyData.title}:`, error);
-                errorCount++;
-              } else {
-                totalAdded++;
-                console.log(`✅ Added: ${subsidyData.title}`);
-                
-                // Add geographic data
-                if (subsidy.zones_geo && subsidy.zones_geo.length > 0) {
-                  const locationData = subsidy.zones_geo.map(zone => ({
-                    subsidy_id: insertedSubsidy.id,
-                    country_code: 'FR',
-                    region: zone,
-                  }));
-                  
-                  await supabase.from('subsidy_locations').insert(locationData);
-                }
-                
-                // Add category data
-                if (subsidy.secteurs && subsidy.secteurs.length > 0) {
-                  const categoryData = subsidy.secteurs.map(secteur => ({
-                    subsidy_id: insertedSubsidy.id,
-                    category: secteur,
-                    sector: 'agriculture'
-                  }));
-                  
-                  await supabase.from('subsidy_categories').insert(categoryData);
-                }
-              }
-            } catch (subError) {
-              console.error('❌ Mock subsidy processing error:', subError);
-              errorCount++;
-            }
-          }
-          
-          success = true;
-          break; // Exit endpoint loop
-        }
-        
         try {
           const apiUrl = new URL(baseEndpoint);
           apiUrl.searchParams.set('page', page.toString());
@@ -215,9 +94,12 @@ serve(async (req) => {
           
           if (apiKey) {
             apiUrl.searchParams.set('secteur', 'agriculture,elevage,agroalimentaire');
+            console.log(`🔑 Using API key for authenticated request`);
+          } else {
+            console.log(`⚠️ No API key provided - trying unauthenticated request`);
           }
           
-          console.log(`🔍 Trying endpoint: ${apiUrl.toString()}`);
+          console.log(`🌐 Making API request to: ${apiUrl.toString()}`);
           
           const headers: Record<string, string> = {
             'Accept': 'application/json',
@@ -228,27 +110,71 @@ serve(async (req) => {
             headers['Authorization'] = `Bearer ${apiKey}`;
           }
           
-          const response = await fetch(apiUrl.toString(), { headers });
+          console.log(`📋 Request headers:`, JSON.stringify(headers, null, 2));
           
-          console.log(`📊 Response: ${response.status} ${response.statusText}`);
+          const requestStart = Date.now();
+          const response = await fetch(apiUrl.toString(), { headers });
+          const requestDuration = Date.now() - requestStart;
+          
+          console.log(`📊 API Response: ${response.status} ${response.statusText} (${requestDuration}ms)`);
+          console.log(`📋 Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
           
           if (response.ok) {
-            const data = await response.json();
-            console.log(`✅ Found ${data.results?.length || data.data?.length || 0} subsidies`);
-            console.log(`📋 Data structure:`, Object.keys(data));
+            const responseText = await response.text();
+            console.log(`📄 Raw response length: ${responseText.length} characters`);
             
-            // Log API response sample for debugging
-            if (data.results && data.results.length > 0) {
-              console.log('API Response sample:', JSON.stringify(data.results[0], null, 2));
+            let data;
+            try {
+              data = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error(`❌ JSON parsing failed:`, parseError.message);
+              console.log(`📄 Response text preview:`, responseText.substring(0, 500));
+              continue; // Try next endpoint
             }
             
-            workingEndpoint = baseEndpoint; // Remember this endpoint works
+            const subsidyCount = data.results?.length || data.data?.length || data.length || 0;
+            console.log(`✅ Successfully parsed response with ${subsidyCount} subsidies`);
+            console.log(`📋 Response structure:`, Object.keys(data));
+            
+            if (data.count) console.log(`📊 Total available records: ${data.count}`);
+            if (data.next) console.log(`🔗 Next page available: ${data.next}`);
+            
+            // Enhanced API response sample logging
+            if (subsidyCount > 0) {
+              const sampleData = data.results?.[0] || data.data?.[0] || data[0];
+              console.log(`📋 Sample subsidy structure:`, Object.keys(sampleData));
+              console.log(`📋 Sample subsidy data:`, JSON.stringify(sampleData, null, 2));
+            } else {
+              console.log(`⚠️ No subsidies found in response`);
+              continue; // Try next endpoint
+            }
+            
+            workingEndpoint = baseEndpoint;
+            console.log(`✅ Endpoint ${baseEndpoint} is working - will use for remaining pages`);
             
             // Process the subsidies
-            const subsidies = data.results || data.data || [];
+            const subsidies = data.results || data.data || data || [];
+            console.log(`🔄 Processing ${Math.min(subsidies.length, 5)} subsidies from page ${page}`);
             
-            for (const subsidy of subsidies.slice(0, 5)) { // Limit to 5 per page for testing
+            let pageAddedCount = 0;
+            let pageErrorCount = 0;
+            
+            for (const [index, subsidy] of subsidies.slice(0, 5).entries()) {
+              console.log(`📋 Processing subsidy ${index + 1}/5: ${subsidy.titre || subsidy.nom || subsidy.title || 'Untitled'}`);
+              
               try {
+                console.log(`🔍 Extracting data from subsidy:`, {
+                  id: subsidy.id,
+                  titre: subsidy.titre,
+                  nom: subsidy.nom,
+                  title: subsidy.title,
+                  hasDescription: !!subsidy.description,
+                  hasAmounts: !!(subsidy.montant_min || subsidy.montant_max),
+                  hasDeadline: !!subsidy.date_limite,
+                  hasSectors: !!(subsidy.secteurs?.length),
+                  hasZones: !!(subsidy.zones_geo?.length)
+                });
+                
                 const subsidyData = {
                   code: `les-aides-${subsidy.id || Math.random()}`,
                   external_id: (subsidy.id || Math.random()).toString(),
@@ -273,6 +199,13 @@ serve(async (req) => {
                   raw_data: subsidy
                 };
                 
+                console.log(`💾 Inserting subsidy data:`, {
+                  code: subsidyData.code,
+                  title: subsidyData.title,
+                  amounts: `${subsidyData.amount_min || 'N/A'} - ${subsidyData.amount_max || 'N/A'} ${subsidyData.currency}`,
+                  deadline: subsidyData.deadline || 'No deadline'
+                });
+                
                 const { data: insertedSubsidy, error } = await supabase
                   .from('subsidies')
                   .insert(subsidyData)
@@ -280,53 +213,94 @@ serve(async (req) => {
                   .single();
                 
                 if (error) {
-                  console.error(`❌ Insert error for ${subsidyData.title}:`, error);
+                  console.error(`❌ Database insert failed for "${subsidyData.title.fr}":`, {
+                    error: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint
+                  });
+                  pageErrorCount++;
                   errorCount++;
                 } else {
+                  pageAddedCount++;
                   totalAdded++;
-                  console.log(`✅ Added: ${subsidyData.title}`);
+                  console.log(`✅ Successfully inserted subsidy ID: ${insertedSubsidy.id}`);
                   
                   // Add geographic data if available
                   if (subsidy.zones_geo && subsidy.zones_geo.length > 0) {
+                    console.log(`📍 Adding ${subsidy.zones_geo.length} geographic locations`);
                     const locationData = subsidy.zones_geo.map(zone => ({
                       subsidy_id: insertedSubsidy.id,
                       country_code: 'FR',
                       region: zone,
                     }));
                     
-                    await supabase.from('subsidy_locations').insert(locationData);
+                    const { error: locationError } = await supabase.from('subsidy_locations').insert(locationData);
+                    if (locationError) {
+                      console.error(`⚠️ Location insert failed:`, locationError.message);
+                    } else {
+                      console.log(`✅ Added ${locationData.length} locations`);
+                    }
                   }
                   
                   // Add category data if available
                   if (subsidy.secteurs && subsidy.secteurs.length > 0) {
+                    console.log(`🏷️ Adding ${subsidy.secteurs.length} categories`);
                     const categoryData = subsidy.secteurs.map(secteur => ({
                       subsidy_id: insertedSubsidy.id,
                       category: secteur,
                       sector: 'agriculture'
                     }));
                     
-                    await supabase.from('subsidy_categories').insert(categoryData);
+                    const { error: categoryError } = await supabase.from('subsidy_categories').insert(categoryData);
+                    if (categoryError) {
+                      console.error(`⚠️ Category insert failed:`, categoryError.message);
+                    } else {
+                      console.log(`✅ Added ${categoryData.length} categories`);
+                    }
                   }
                 }
               } catch (subError) {
-                console.error('❌ Subsidy processing error:', subError);
+                console.error(`❌ Subsidy processing failed for index ${index}:`, {
+                  error: subError.message,
+                  stack: subError.stack,
+                  subsidyId: subsidy.id,
+                  subsidyTitle: subsidy.titre || subsidy.nom || subsidy.title
+                });
+                pageErrorCount++;
                 errorCount++;
               }
             }
+            
+            console.log(`📊 Page ${page} summary: ${pageAddedCount} added, ${pageErrorCount} errors`);
             
             success = true;
             break; // Exit endpoint loop if successful
           } else {
             const errorText = await response.text();
-            console.log(`❌ Endpoint ${apiUrl.toString()} failed: ${response.status} - ${errorText}`);
+            console.error(`❌ HTTP ${response.status} from ${baseEndpoint}:`, {
+              status: response.status,
+              statusText: response.statusText,
+              url: apiUrl.toString(),
+              errorBody: errorText.substring(0, 500),
+              responseHeaders: Object.fromEntries(response.headers.entries())
+            });
           }
         } catch (endpointError) {
-          console.log(`❌ Endpoint error:`, endpointError.message);
+          console.error(`❌ Network/Fetch error for ${baseEndpoint}:`, {
+            message: endpointError.message,
+            name: endpointError.name,
+            stack: endpointError.stack?.substring(0, 500)
+          });
         }
       }
       
       if (!success) {
-        console.log(`⚠️ All endpoints failed for page ${page}`);
+        console.error(`💥 ALL ${endpoints.length} API endpoints failed for page ${page}:`);
+        endpoints.forEach((endpoint, i) => {
+          console.error(`  ${i + 1}. ${endpoint} - Failed`);
+        });
+        console.error(`🛑 Stopping sync after page ${page - 1} due to API failures`);
         break;
       }
       
