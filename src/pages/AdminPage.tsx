@@ -116,8 +116,8 @@ const AdminPageContent = () => {
 
           {/* Main Admin Tabs */}
           <Tabs defaultValue="overview" className="w-full">
-            <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-7 h-12">
+            <div className="overflow-x-auto mb-6">
+              <TabsList className="grid w-full grid-cols-7 h-16 text-base gap-1 p-1">
                 <TabsTrigger value="overview" className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
                   Overview
