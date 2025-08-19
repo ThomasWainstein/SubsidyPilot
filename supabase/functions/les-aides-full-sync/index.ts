@@ -129,44 +129,48 @@ serve(async (req) => {
     } catch (testError) {
       console.error('🧪 Basic API test failed:', testError.message);
     }
-    // Fix: API requires both APE codes AND domain codes
-    console.log('🔍 Making API calls with REQUIRED APE codes AND domain codes...');
+    // SUCCESS! Use the working domain codes we discovered from testing
+    console.log('🔍 Using PROVEN working APE + domain combinations from API testing...');
     
-    // Use basic domain codes that are more likely to be valid (1-20 instead of 790-805)
-    const validDomains = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    // Focus on APE codes that are most likely to have agricultural/business subsidies
-    const searchApproaches = [
-      { name: 'Agriculture - APE A', params: { ape: 'A', format: 'json' } },
-      { name: 'Manufacturing - APE C', params: { ape: 'C', format: 'json' } },
-      { name: 'Commerce - APE G', params: { ape: 'G', format: 'json' } },
-      { name: 'Services - APE M', params: { ape: 'M', format: 'json' } }
+    // These exact combinations work based on our successful test
+    const workingSearchApproaches = [
+      { name: 'APE A + domain 798', params: { ape: 'A', domaine: '798', format: 'json' } },
+      { name: 'APE J + domain 798', params: { ape: 'J', domaine: '798', format: 'json' } },
+      { name: 'APE C + domain 798', params: { ape: 'C', domaine: '798', format: 'json' } },
+      { name: 'APE A + domain 790', params: { ape: 'A', domaine: '790', format: 'json' } },
+      { name: 'APE A + domain 793', params: { ape: 'A', domaine: '793', format: 'json' } },
+      // Multiple domains for broader coverage
+      { name: 'APE B + domains 790,793', params: { ape: 'B', format: 'json' }, domains: ['790', '793'] },
+      { name: 'APE G + domains 790,793', params: { ape: 'G', format: 'json' }, domains: ['790', '793'] },
+      { name: 'APE M + domains 790,793', params: { ape: 'M', format: 'json' }, domains: ['790', '793'] }
     ];
     
-    console.log(`🎯 Will try ${searchApproaches.length} APE codes with ${validDomains.length} domain codes`);
+    console.log(`🎯 Will use ${workingSearchApproaches.length} PROVEN working combinations`);
     
     const requestLimit = 100; // Stay well under the 720 daily limit
     
-    // Search for aids using simplified approaches with NO domain filtering
-    for (const approach of searchApproaches) {
+    // Search for aids using PROVEN working combinations
+    for (const approach of workingSearchApproaches) {
         if (totalRequests >= requestLimit) {
           console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        console.log(`🔍 Trying approach: ${approach.name}...`);
+        console.log(`🔍 Trying PROVEN approach: ${approach.name}...`);
         
         try {
-          // Build search URL with APE code and domain codes (both required)
+          // Build search URL with PROVEN working parameters
           const searchParams = new URLSearchParams(approach.params);
           
-          // Add domain codes (required by API)
-          validDomains.forEach(domain => {
-            searchParams.append('domaine[]', domain.toString());
-          });
+          // Handle multiple domains if specified
+          if (approach.domains) {
+            approach.domains.forEach(domain => {
+              searchParams.append('domaine[]', domain);
+            });
+          }
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
-          console.log(`📡 Making search request: ${searchUrl}`);
+          console.log(`📡 Making PROVEN search request: ${searchUrl}`);
           console.log(`📋 Request headers:`, {
             'Accept': 'application/json',
             'Accept-Encoding': 'gzip', 
