@@ -90,6 +90,7 @@ serve(async (req) => {
     let totalAdded = 0;
     let totalUpdated = 0;
     let errorCount = 0;
+    let totalRequests = 0; // Initialize request counter
     const startTime = Date.now();
     
     const sessionId = `les-aides-sync-${Date.now()}`;
@@ -101,53 +102,99 @@ serve(async (req) => {
     const searchEndpoint = '/aides/';
     const ficheEndpoint = '/aide/';
     
-    // Agricultural domains to search (from documentation)
-    const agriculturalDomains = [
-      790, // Création Reprise
-      793, // Cession Transmission  
-      798, // Développement commercial
-    ];
+    // Step 1: Load agricultural domains dynamically
+    console.log('🔍 Loading agricultural domains from API...');
+    const domainsResponse = await fetch(`${baseApiUrl}/liste/domaines/`, {
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-IDC': lesAidesApiKey,
+      }
+    });
     
-    // Agricultural APE codes (from NAF nomenclature)
-    const agriculturalApes = [
-      'A',     // Agriculture, sylviculture et pêche (broad category)
-      '01',    // Culture et production animale, chasse et services annexes
-      '0111Z', // Culture de céréales
-      '0112Z', // Culture du riz
-      '0113Z', // Culture de légumes, melons, racines
-      '0116Z', // Culture de plantes à fibres
-      '0121Z', // Culture de la vigne
-      '0141Z', // Élevage de vaches laitières
-      '0142Z', // Élevage d'autres bovins et de buffles
-      '0143Z', // Élevage de chevaux et d'autres équidés
-      '0144Z', // Élevage de chameaux et d'autres camélidés
-      '0145Z', // Élevage d'ovins et de caprins
-      '0146Z', // Élevage de porcins
-      '0147Z', // Élevage de volailles
-    ];
+    let agriculturalDomains = [790, 793, 798]; // Fallback
+    if (domainsResponse.ok) {
+      const domainsData = await domainsResponse.json();
+      // Filter for agriculture-related domains
+      agriculturalDomains = domainsData
+        .filter((d: any) => 
+          d.libelle?.toLowerCase().includes('agricole') ||
+          d.libelle?.toLowerCase().includes('rural') ||
+          d.libelle?.toLowerCase().includes('environnement') ||
+          d.libelle?.toLowerCase().includes('développement durable') ||
+          d.libelle?.toLowerCase().includes('forêt') ||
+          d.numero === 790 || d.numero === 793 || d.numero === 798
+        )
+        .map((d: any) => d.numero);
+      
+      console.log(`✅ Found ${agriculturalDomains.length} relevant domains:`, agriculturalDomains);
+      totalRequests++;
+    } else {
+      console.log('⚠️ Could not load domains, using defaults');
+    }
     
-    let totalRequests = 0;
+    // Step 2: Load agricultural APE codes dynamically  
+    console.log('🔍 Loading agricultural APE codes from API...');
+    const nafResponse = await fetch(`${baseApiUrl}/liste/naf/`, {
+      headers: {
+        'Accept': 'application/json', 
+        'Accept-Encoding': 'gzip',
+        'X-IDC': lesAidesApiKey,
+      }
+    });
+    
+    let agriculturalApes = ['A', '01']; // Fallback to broad categories
+    if (nafResponse.ok) {
+      const nafData = await nafResponse.json();
+      // Extract agricultural APE codes (Section A)
+      const agricultureSection = nafData.find((section: any) => section.code === 'A');
+      if (agricultureSection) {
+        agriculturalApes = ['A']; // Start with broad category
+        // Add level 2 codes (01, 02, 03...)
+        if (agricultureSection.activites) {
+          agricultureSection.activites.forEach((div: any) => {
+            agriculturalApes.push(div.code);
+            // Add some specific level 4 codes for precision
+            if (div.activites) {
+              div.activites.forEach((group: any) => {
+                if (group.activites) {
+                  agriculturalApes.push(...group.activites.slice(0, 2).map((c: any) => c.code));
+                }
+              });
+            }
+          });
+        }
+      }
+      console.log(`✅ Found ${agriculturalApes.length} agricultural APE codes`);
+      totalRequests++;
+    } else {
+      console.log('⚠️ Could not load NAF codes, using defaults');
+    }
+    
     const requestLimit = 100; // Stay well under the 720 daily limit
     
-    console.log(`🎯 Will search ${agriculturalDomains.length} domains × ${agriculturalApes.length} APE codes`);
-    console.log(`📊 Estimated requests: ${agriculturalDomains.length * agriculturalApes.length} (limit: ${requestLimit})`);
+    console.log(`🎯 Will search ${agriculturalApes.length} APE codes with combined domains`);
+    console.log(`📊 Estimated requests: ${agriculturalApes.length * 2} (search + fiche loading)`);
     
-    // Search for aids across different domain/APE combinations
-    for (const domain of agriculturalDomains) {
-      for (const ape of agriculturalApes) {
+    // Search for aids using efficient domain combination
+    for (const ape of agriculturalApes) {
         if (totalRequests >= requestLimit) {
           console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        console.log(`🔍 Searching domain ${domain} + APE ${ape}...`);
+        console.log(`🔍 Searching APE ${ape} across all agricultural domains...`);
         
         try {
-          // Build search URL with parameters
+          // Build search URL with combined domains (more efficient)
           const searchParams = new URLSearchParams({
             ape: ape,
-            domaine: domain.toString(),
             format: 'json'
+          });
+          
+          // Add multiple domains efficiently
+          agriculturalDomains.forEach(domain => {
+            searchParams.append('domaine[]', domain.toString());
           });
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
@@ -183,11 +230,17 @@ serve(async (req) => {
             
             try {
               const errorData = JSON.parse(errorText);
-              console.log(`📋 Error details:`, errorData);
+              console.log(`📋 Structured error:`, {
+                exception: errorData.exception,
+                field: errorData.field,
+                api: errorData.api,
+                args: errorData.args
+              });
               
-              if (errorData.exception?.includes('APE') || errorData.exception?.includes('domaine')) {
-                console.log(`⚠️ Invalid parameter combination: domain ${domain} + APE ${ape}, skipping...`);
-                continue; // Skip this combination and try next
+              // Use structured error information
+              if (errorData.field === 'ape' || errorData.field === 'domaine') {
+                console.log(`⚠️ Invalid parameter - ${errorData.field}: ${errorData.exception}, skipping APE ${ape}...`);
+                continue;
               }
             } catch (parseError) {
               console.log('Could not parse error response');
@@ -203,17 +256,19 @@ serve(async (req) => {
           
           const searchData: LesAidesResponse = await searchResponse.json();
           
-          console.log(`✅ Search successful for domain ${domain} + APE ${ape}:`);
+          console.log(`✅ Search successful for APE ${ape}:`);
           console.log(`📊 Found ${searchData.nb_dispositifs} dispositifs (depassement: ${searchData.depassement})`);
           console.log(`📋 IDR: ${searchData.idr}`);
           
           if (searchData.nb_dispositifs === 0) {
-            console.log('⚠️ No dispositifs found for this combination');
+            console.log('⚠️ No dispositifs found for this APE code');
             continue;
           }
           
           if (searchData.depassement) {
-            console.log('⚠️ Too many results (>200), should refine search criteria');
+            console.log('🚨 Too many results (>200) - API truncated results!');
+            console.log('💡 Consider using more specific APE codes for better coverage');
+            // Still process the truncated results
           }
           
           // Process each dispositif
@@ -311,7 +366,11 @@ serve(async (req) => {
                 raw_data: {
                   dispositif: dispositif,
                   fiche: ficheData,
-                  search_context: { domain, ape, idr: searchData.idr }
+                  search_context: { 
+                    ape: ape, 
+                    domains: agriculturalDomains,
+                    idr: searchData.idr 
+                  }
                 },
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
@@ -407,15 +466,12 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, 2000));
           
         } catch (searchError) {
-          console.error(`❌ Search error for domain ${domain} + APE ${ape}:`, searchError.message);
+          console.error(`❌ Search error for APE ${ape}:`, searchError.message);
           errorCount++;
         }
         
         if (totalRequests >= requestLimit) break;
       }
-      
-      if (totalRequests >= requestLimit) break;
-    }
     
     // Log sync results
     const durationMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
