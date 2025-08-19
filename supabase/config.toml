@@ -125,34 +125,19 @@ verify_jwt = false
 [functions.ai-content-processor-v2]
 verify_jwt = false
 
-[functions.lesaides-scraper]
-verify_jwt = false
-
-[functions.sync-les-aides]
-verify_jwt = false
-
 [functions.smart-change-detector]
 verify_jwt = false
 
 [functions.change-detection-scheduler]
 verify_jwt = false
 
-[functions.sync-les-aides-fixed]
-verify_jwt = false
-
 [functions.data-purge]
-verify_jwt = false
-
-[functions.les-aides-full-sync]
 verify_jwt = false
 
 [functions.sync-progress]
 verify_jwt = false
 
 [functions.claude-mcp-server]
-verify_jwt = false
-
-[functions.test-les-aides-api]
 verify_jwt = false
 
 [functions.sync-les-aides-optimal]
