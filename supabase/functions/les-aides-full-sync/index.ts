@@ -129,37 +129,121 @@ serve(async (req) => {
     } catch (testError) {
       console.error('🧪 Basic API test failed:', testError.message);
     }
-    // SUCCESS! Use the working domain codes we discovered from testing
-    console.log('🔍 Using PROVEN working APE + domain combinations from API testing...');
+    // COMPREHENSIVE API CONFIGURATION - Using official documentation
+    console.log('🔍 Using COMPREHENSIVE APE + domain combinations from official documentation...');
     
-    // These exact combinations work based on our successful test
-    const workingSearchApproaches = [
+    // Complete domain list from official API documentation
+    const DOMAINS = [
+      { numero: 893, libelle: 'Crise énergétique' },
+      { numero: 883, libelle: 'France 2030' },
+      { numero: 877, libelle: 'Plan Résilience' },
+      { numero: 790, libelle: 'Création Reprise' },
+      { numero: 793, libelle: 'Cession Transmission' },
+      { numero: 798, libelle: 'Développement commercial' },
+      { numero: 802, libelle: 'Investissement' },
+      { numero: 805, libelle: 'Implantation Immobilier' },
+      { numero: 862, libelle: 'Numérique' },
+      { numero: 807, libelle: 'Innovation' },
+      { numero: 810, libelle: 'International' },
+      { numero: 813, libelle: 'Transition écologique' },
+      { numero: 816, libelle: 'Ressources Humaines' },
+      { numero: 820, libelle: 'Soutien à l\'ESS' },
+      { numero: 818, libelle: 'Difficultés de trésorerie' }
+    ];
+
+    // Complete intervention methods from official API documentation  
+    const MOYENS = [
+      { numero: 822, libelle: 'Intervention en fonds propres' },
+      { numero: 827, libelle: 'Avance − Prêts − Garanties' },
+      { numero: 833, libelle: 'Subvention' },
+      { numero: 837, libelle: 'Prise en charge des coûts' },
+      { numero: 840, libelle: 'Allègement des charges sociales' },
+      { numero: 845, libelle: 'Allègement des charges fiscales' }
+    ];
+
+    // Priority APE codes for systematic coverage
+    const APE_CODES = [
+      { code: 'A', libelle: 'Agriculture, sylviculture et pêche' },
+      { code: 'C', libelle: 'Industrie manufacturière' },
+      { code: 'F', libelle: 'Construction' },
+      { code: 'G', libelle: 'Commerce de gros et de détail' },
+      { code: 'J', libelle: 'Information et communication' },
+      { code: 'M', libelle: 'Activités spécialisées, scientifiques et techniques' },
+      { code: 'N', libelle: 'Activités de services administratifs et de soutien' }
+    ];
+    
+    // Generate comprehensive search approaches using all combinations
+    const workingSearchApproaches = [];
+    
+    // First, add proven working combinations (highest priority)
+    const provenConfigs = [
       { name: 'APE A + domain 798', params: { ape: 'A', domaine: '798', format: 'json' } },
       { name: 'APE J + domain 798', params: { ape: 'J', domaine: '798', format: 'json' } },
       { name: 'APE C + domain 798', params: { ape: 'C', domaine: '798', format: 'json' } },
       { name: 'APE A + domain 790', params: { ape: 'A', domaine: '790', format: 'json' } },
-      { name: 'APE A + domain 793', params: { ape: 'A', domaine: '793', format: 'json' } },
-      // Multiple domains for broader coverage
-      { name: 'APE B + domains 790,793', params: { ape: 'B', format: 'json' }, domains: ['790', '793'] },
-      { name: 'APE G + domains 790,793', params: { ape: 'G', format: 'json' }, domains: ['790', '793'] },
-      { name: 'APE M + domains 790,793', params: { ape: 'M', format: 'json' }, domains: ['790', '793'] }
+      { name: 'APE A + domain 793', params: { ape: 'A', domaine: '793', format: 'json' } }
     ];
+    workingSearchApproaches.push(...provenConfigs);
     
-    console.log(`🎯 Will use ${workingSearchApproaches.length} PROVEN working combinations`);
+    // Then add systematic coverage of all domains with agriculture (most relevant)
+    for (const domain of DOMAINS) {
+      const configName = `APE A + domain ${domain.numero}`;
+      if (!workingSearchApproaches.some(config => config.name === configName)) {
+        workingSearchApproaches.push({
+          name: `APE A + ${domain.libelle}`,
+          params: { ape: 'A', domaine: domain.numero.toString(), format: 'json' }
+        });
+      }
+    }
     
-    const requestLimit = 100; // Stay well under the 720 daily limit
+    // Add key business sectors with high-impact domains
+    const businessSectors = ['C', 'F', 'G', 'J', 'M', 'N'];
+    const highImpactDomains = [790, 793, 798, 802, 807, 813]; // Creation, transmission, development, investment, innovation, ecological transition
     
-    // Search for aids using PROVEN working combinations
+    for (const apeCode of businessSectors) {
+      for (const domainNum of highImpactDomains) {
+        const domain = DOMAINS.find(d => d.numero === domainNum);
+        if (domain) {
+          const configName = `APE ${apeCode} + ${domain.libelle}`;
+          if (!workingSearchApproaches.some(config => config.name === configName)) {
+            workingSearchApproaches.push({
+              name: configName,
+              params: { ape: apeCode, domaine: domainNum.toString(), format: 'json' }
+            });
+          }
+        }
+      }
+    }
+    
+    // Add multi-domain searches for comprehensive coverage
+    const multiDomainConfigs = [
+      { name: 'APE A + Création/Transmission', params: { ape: 'A', format: 'json' }, domains: ['790', '793'] },
+      { name: 'APE A + Innovation/Numérique', params: { ape: 'A', format: 'json' }, domains: ['807', '862'] },
+      { name: 'APE G + Commerce/Développement', params: { ape: 'G', format: 'json' }, domains: ['798', '802'] },
+      { name: 'APE C + Innovation/Investissement', params: { ape: 'C', format: 'json' }, domains: ['807', '802'] }
+    ];
+    workingSearchApproaches.push(...multiDomainConfigs);
+    
+    console.log(`🎯 COMPREHENSIVE COVERAGE: ${workingSearchApproaches.length} search configurations generated:`);
+    console.log(`   ├─ ${provenConfigs.length} proven working configurations (priority)`);
+    console.log(`   ├─ ${DOMAINS.length} agriculture + domain combinations`);
+    console.log(`   ├─ ${businessSectors.length * highImpactDomains.length} business sector combinations`);
+    console.log(`   └─ ${multiDomainConfigs.length} multi-domain strategies`);
+    console.log(`📊 Available parameter space: ${APE_CODES.length} APE codes × ${DOMAINS.length} domains × ${MOYENS.length} intervention methods`);
+    
+    const requestLimit = 150; // Increased limit for comprehensive coverage
+    
+    // Search for aids using comprehensive approach
     for (const approach of workingSearchApproaches) {
         if (totalRequests >= requestLimit) {
           console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        console.log(`🔍 Trying PROVEN approach: ${approach.name}...`);
+        console.log(`🔍 Trying comprehensive approach: ${approach.name}...`);
         
         try {
-          // Build search URL with PROVEN working parameters
+          // Build search URL with comprehensive parameters
           const searchParams = new URLSearchParams(approach.params);
           
           // Handle multiple domains if specified
@@ -170,7 +254,7 @@ serve(async (req) => {
           }
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
-          console.log(`📡 Making PROVEN search request: ${searchUrl}`);
+          console.log(`📡 Making comprehensive search request: ${searchUrl}`);
           console.log(`📋 Request headers:`, {
             'Accept': 'application/json',
             'Accept-Encoding': 'gzip', 
