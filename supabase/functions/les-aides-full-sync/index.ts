@@ -137,7 +137,13 @@ serve(async (req) => {
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
           console.log(`📡 Making search request: ${searchUrl}`);
-          
+          console.log(`📋 Request headers:`, {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip', 
+            'X-IDC': `${lesAidesApiKey.substring(0, 10)}...${lesAidesApiKey.substring(-10)}`,
+            'User-Agent': 'AgriTool-Platform/1.0 API les-aides.fr'
+          });
+
           const searchResponse = await fetch(searchUrl, {
             method: 'GET',
             headers: {
@@ -153,6 +159,7 @@ serve(async (req) => {
           
           if (searchResponse.status === 401) {
             console.error('❌ Authentication failed - check IDC key');
+            console.error('🔑 IDC being used:', `${lesAidesApiKey.substring(0, 15)}...${lesAidesApiKey.substring(-15)}`);
             return new Response(JSON.stringify({
               error: 'Authentication failed',
               message: 'IDC key is invalid or expired. Check your Les-Aides.fr account.'
@@ -185,14 +192,30 @@ serve(async (req) => {
             }
             continue;
           }
-          
           if (!searchResponse.ok) {
             const errorText = await searchResponse.text();
-            console.error(`❌ HTTP ${searchResponse.status}: ${errorText.substring(0, 200)}`);
+            console.error(`❌ HTTP ${searchResponse.status}: ${errorText.substring(0, 500)}`);
             continue;
           }
           
-          const searchData: LesAidesResponse = await searchResponse.json();
+          const rawResponseText = await searchResponse.text();
+          console.log(`📄 Raw response (first 500 chars): ${rawResponseText.substring(0, 500)}`);
+          
+          let searchData: LesAidesResponse;
+          try {
+            searchData = JSON.parse(rawResponseText);
+            console.log(`✅ JSON parsed successfully`);
+            console.log(`📊 Response structure:`, {
+              hasIdr: !!searchData.idr,
+              hasDispositifs: !!searchData.dispositifs,
+              nbDispositifs: searchData.nb_dispositifs,
+              hasDepassement: searchData.depassement
+            });
+          } catch (parseError) {
+            console.error(`❌ JSON parse error:`, parseError);
+            console.log(`📄 Could not parse response as JSON: ${rawResponseText}`);
+            continue;
+          }
           
           console.log(`✅ Search successful for APE ${ape}:`);
           console.log(`📊 Found ${searchData.nb_dispositifs} dispositifs (depassement: ${searchData.depassement})`);
