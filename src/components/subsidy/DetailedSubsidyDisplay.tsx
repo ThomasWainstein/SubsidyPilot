@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ExternalLink, Check, X } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Euro, FileText, AlertCircle, CheckCircle, Clock, Building, Phone, Mail, ExternalLink, Download, Heart, Share2, Check, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { getLocalizedContent } from '@/utils/language';
 
@@ -15,6 +15,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   onBack 
 }) => {
   const { t, language } = useLanguage();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isFavorited, setIsFavorited] = useState(false);
 
   // Extract data with proper formatting
   const formatArray = (data: any): string[] => {
@@ -31,11 +33,11 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     if (typeof amount === 'object' && amount !== null) {
       return JSON.stringify(amount);
     }
-    return String(t('subsidy.display.noAdditionalInfo') || 'N/A');
+    return 'Amount not specified';
   };
 
   const safeString = (value: any): string => {
-    if (value === null || value === undefined) return 'N/A';
+    if (value === null || value === undefined) return 'Not specified';
     if (typeof value === 'string') return value;
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
@@ -48,283 +50,388 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const requiredDocuments = formatArray(subsidy.required_documents);
   const fundingRateDetails = formatArray(subsidy.funding_rate_details);
 
+  // Get status based on available data
+  const getStatus = () => {
+    const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
+    if (deadline) {
+      const deadlineDate = new Date(deadline);
+      const now = new Date();
+      return deadlineDate > now ? 'active' : 'expired';
+    }
+    return 'active'; // Default to active if no deadline info
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      active: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', icon: CheckCircle, text: 'Active' },
+      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200', icon: Clock, text: 'Pending' },
+      expired: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200', icon: AlertCircle, text: 'Expired' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+    const IconComponent = config.icon;
+    
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+        <IconComponent className="w-4 h-4 mr-1" />
+        {config.text}
+      </span>
+    );
+  };
+
+  const TabButton = ({ id, label, isActive, onClick }: { id: string; label: string; isActive: boolean; onClick: (id: string) => void }) => (
+    <button
+      onClick={() => onClick(id)}
+      className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+        isActive 
+          ? 'border-primary text-primary bg-primary/5' 
+          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  const title = getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
+  const description = getLocalizedContent(subsidy.description, language) || '';
+  const agency = safeString(subsidy.agency || subsidy.issuing_body);
+  const amount = formatAmount(subsidy.amount || subsidy.funding_amount);
+  const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
+  const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Main Content Area */}
-      <div className="flex-1 max-w-4xl mx-auto p-6 mr-80">
-        <div className="bg-card rounded-lg shadow-sm border border-border">
-          {/* Header Section */}
-          <div className="border-b border-border p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground mb-3">
-                  {getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy'}
-                </h1>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {categories.map((category, index) => (
-                    <span key={index} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-sm">
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-card shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center space-x-4">
               {onBack && (
-                <Button variant="outline" onClick={onBack} className="ml-4">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  {t('subsidy.display.backToSearch')}
-                </Button>
+                <button 
+                  onClick={onBack}
+                  className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  Back to Search
+                </button>
               )}
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.agency')}:</span>
-                <p className="text-foreground">{safeString(subsidy.agency || subsidy.issuing_body)}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.publicationDate')}:</span>
-                <p className="text-foreground">{safeString(subsidy.publication_date || subsidy.draft_date)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Description Section */}
-          {subsidy.description && (
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.description')}</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {getLocalizedContent(subsidy.description, language)}
-              </p>
-            </div>
-          )}
-
-          {/* Objectives Section */}
-          {objectives.length > 0 && (
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.objectives')}</h2>
-              <ul className="space-y-2">
-                {objectives.map((objective, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="text-primary mr-2">•</span>
-                    <span className="text-muted-foreground">{objective}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Funding Details Section */}
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.fundingDetails')}</h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium text-foreground mb-2">{t('subsidy.display.amount')}</h3>
-                <p className="text-muted-foreground mb-3">{formatAmount(subsidy.amount || subsidy.funding_amount)}</p>
-                 {subsidy.minimum_investment && (
-                   <p className="text-sm text-muted-foreground">
-                     {t('subsidy.display.minimumInvestment')}: {safeString(subsidy.minimum_investment)}
-                   </p>
-                 )}
-              </div>
-              {fundingRateDetails.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-foreground mb-2">{t('subsidy.display.fundingRates')}</h3>
-                  <ul className="space-y-1">
-                    {fundingRateDetails.map((rate, index) => (
-                      <li key={index} className="text-muted-foreground text-sm">{rate}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Eligible Actions */}
-          {eligibleActions.length > 0 && (
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.eligibleActions')}</h2>
-              <div className="space-y-2">
-                {eligibleActions.map((action, index) => (
-                  <div key={index} className="flex items-start">
-                    <Check className="text-green-500 mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground text-sm">{action}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Ineligible Actions */}
-          {ineligibleActions.length > 0 && (
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.ineligibleActions')}</h2>
-              <div className="space-y-2">
-                {ineligibleActions.map((action, index) => (
-                  <div key={index} className="flex items-start">
-                    <X className="text-destructive mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground text-sm">{action}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Documents Section */}
-          {requiredDocuments.length > 0 && (
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.requiredDocuments')}</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {requiredDocuments.map((doc, index) => (
-                  <div key={index} className="p-3 bg-muted rounded border">
-                    <span className="text-sm text-muted-foreground">{doc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Legal Information */}
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.legalInformation')}</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {subsidy.reference_code && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.referenceCode')}:</span>
-                  <p className="text-foreground">{subsidy.reference_code}</p>
-                </div>
-              )}
-              {subsidy.regulatory_references && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">{t('subsidy.display.regulatoryReferences')}:</span>
-                  <p className="text-foreground">{subsidy.regulatory_references}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-3">{t('subsidy.display.additionalInformation')}</h2>
-            <div className="bg-muted rounded-lg p-4 min-h-[100px]">
-              {subsidy.additional_information ? (
-                <div className="text-muted-foreground leading-relaxed">
-                  {getLocalizedContent(subsidy.additional_information, language)}
-                </div>
-              ) : (
-                <div className="text-muted-foreground/60 italic text-sm">
-                  {t('subsidy.display.noAdditionalInfo')}
-                </div>
-              )}
+            <div className="flex items-center space-x-3">
+              <button 
+                onClick={() => setIsFavorited(!isFavorited)}
+                className={`p-2 rounded-full transition-colors ${
+                  isFavorited ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
+              </button>
+              <button className="p-2 bg-muted text-muted-foreground rounded-full hover:bg-muted/80 transition-colors">
+                <Share2 className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Sidebar Summary */}
-      <div className="fixed right-0 top-16 w-80 h-[calc(100vh-4rem)] bg-card shadow-lg border-l border-border p-6 overflow-y-auto">
-        <div className="sticky top-0 bg-card pb-4 border-b border-border mb-4">
-          <h2 className="text-xl font-bold text-foreground">{t('subsidy.display.summary')}</h2>
-        </div>
-        
-        <div className="space-y-6">
-          {/* Quick Info */}
-          <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
-            <h3 className="font-semibold text-primary mb-2">{t('subsidy.display.keyInformation')}</h3>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium text-primary/80">{t('subsidy.display.maxAmount')}:</span>
-                <p className="text-primary/70">{formatAmount(subsidy.amount)}</p>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-4">
+                {getStatusBadge(getStatus())}
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-white/20 text-white">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  {region}
+                </span>
               </div>
-              <div>
-                <span className="font-medium text-primary/80">{t('subsidy.display.deadline')}:</span>
-                <p className="text-primary/70">{safeString(subsidy.deadline || subsidy.application_deadline)}</p>
-              </div>
-              <div>
-                <span className="font-medium text-primary/80">{t('subsidy.display.sector')}:</span>
-                <p className="text-primary/70">{safeString(categories[0])}</p>
+              <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
+              <p className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">{description || 'Detailed information about this subsidy program.'}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 md:ml-8 md:min-w-[300px]">
+              <div className="text-center">
+                <div className="text-3xl font-bold mb-2">{amount}</div>
+                <div className="text-sm text-primary-foreground/80 mb-4">Maximum Amount</div>
+                {deadline && (
+                  <div className="flex items-center justify-center text-sm text-primary-foreground/80">
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Deadline: {new Date(deadline).toLocaleDateString()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Application Period */}
-          {(subsidy.application_window_start || subsidy.application_window_end) && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.applicationPeriod')}</h3>
-              <div className="bg-green-50 dark:bg-green-950/20 rounded p-3">
-                <div className="text-sm">
-                   {subsidy.application_window_start && (
-                     <p><span className="font-medium">{t('subsidy.display.start')}:</span> {safeString(subsidy.application_window_start)}</p>
-                   )}
-                   {subsidy.application_window_end && (
-                     <p><span className="font-medium">{t('subsidy.display.end')}:</span> {safeString(subsidy.application_window_end)}</p>
-                   )}
+      {/* Navigation Tabs */}
+      <div className="bg-card border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <TabButton id="overview" label="Overview" isActive={activeTab === 'overview'} onClick={setActiveTab} />
+            <TabButton id="eligibility" label="Eligibility" isActive={activeTab === 'eligibility'} onClick={setActiveTab} />
+            <TabButton id="documents" label="Documents" isActive={activeTab === 'documents'} onClick={setActiveTab} />
+            <TabButton id="contact" label="Contact" isActive={activeTab === 'contact'} onClick={setActiveTab} />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div className="bg-card rounded-lg shadow-sm border p-6">
+                  <h2 className="text-2xl font-bold mb-4">Program Description</h2>
+                  <p className="text-muted-foreground leading-relaxed">{description || 'This subsidy program provides financial support for eligible projects and activities.'}</p>
+                </div>
+
+                {objectives.length > 0 && (
+                  <div className="bg-card rounded-lg shadow-sm border p-6">
+                    <h3 className="text-xl font-semibold mb-4 flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                      Program Objectives
+                    </h3>
+                    <ul className="space-y-3">
+                      {objectives.map((objective, index) => (
+                        <li key={index} className="flex items-start">
+                          <div className="w-2 h-2 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <span className="text-muted-foreground">{objective}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Funding Details */}
+                <div className="bg-card rounded-lg shadow-sm border p-6">
+                  <h3 className="text-xl font-semibold mb-4">Funding Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium text-foreground mb-2">Amount</h4>
+                      <p className="text-muted-foreground mb-3">{amount}</p>
+                      {subsidy.minimum_investment && (
+                        <p className="text-sm text-muted-foreground">
+                          Minimum Investment: {safeString(subsidy.minimum_investment)}
+                        </p>
+                      )}
+                    </div>
+                    {fundingRateDetails.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2">Funding Rates</h4>
+                        <ul className="space-y-1">
+                          {fundingRateDetails.map((rate, index) => (
+                            <li key={index} className="text-muted-foreground text-sm">{rate}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Funding Rates */}
-          {fundingRateDetails.length > 0 && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.fundingRates')}</h3>
-              <div className="space-y-2">
-                {fundingRateDetails.map((rate, index) => (
-                  <div key={index} className={`rounded p-3 ${index === 0 ? 'bg-yellow-50 dark:bg-yellow-950/20' : 'bg-orange-50 dark:bg-orange-950/20'}`}>
-                    <div className="text-sm">
-                      <p className={`text-sm ${index === 0 ? 'text-yellow-700 dark:text-yellow-300' : 'text-orange-700 dark:text-orange-300'}`}>{rate}</p>
+            {activeTab === 'eligibility' && (
+              <div className="bg-card rounded-lg shadow-sm border p-6">
+                <h2 className="text-2xl font-bold mb-4">Eligibility Criteria</h2>
+                
+                {eligibleActions.length > 0 ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">✓ Eligible Activities</h3>
+                    {eligibleActions.map((action, index) => (
+                      <div key={index} className="flex items-start bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Applications from qualified entities are welcome</span>
+                    </div>
+                    <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">Must meet program-specific requirements</span>
+                    </div>
+                    {subsidy.legal_entity_type && (
+                      <div className="flex items-start bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-muted-foreground">Entity type: {safeString(subsidy.legal_entity_type)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {ineligibleActions.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">✗ Ineligible Activities</h3>
+                    {ineligibleActions.map((action, index) => (
+                      <div key={index} className="flex items-start bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                        <X className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{action}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'documents' && (
+              <div className="bg-card rounded-lg shadow-sm border p-6">
+                <h2 className="text-2xl font-bold mb-6">Required Documents</h2>
+                <div className="space-y-3">
+                  {requiredDocuments.length > 0 ? (
+                    requiredDocuments.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-primary mr-3" />
+                          <span className="text-muted-foreground">{doc}</span>
+                        </div>
+                        <button className="text-primary hover:text-primary/80 transition-colors">
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-primary mr-3" />
+                          <span className="text-muted-foreground">Application Form</span>
+                        </div>
+                        <button className="text-primary hover:text-primary/80 transition-colors">
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-primary mr-3" />
+                          <span className="text-muted-foreground">Business Plan</span>
+                        </div>
+                        <button className="text-primary hover:text-primary/80 transition-colors">
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-primary mr-3" />
+                          <span className="text-muted-foreground">Financial Statements</span>
+                        </div>
+                        <button className="text-primary hover:text-primary/80 transition-colors">
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'contact' && (
+              <div className="bg-card rounded-lg shadow-sm border p-6">
+                <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <Building className="w-5 h-5 text-muted-foreground mr-3 mt-1" />
+                    <div>
+                      <div className="font-medium text-foreground">{agency}</div>
+                      {subsidy.program && (
+                        <div className="text-muted-foreground">{safeString(subsidy.program)}</div>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  
+                  {subsidy.contact_phone && (
+                    <div className="flex items-center">
+                      <Phone className="w-5 h-5 text-muted-foreground mr-3" />
+                      <a href={`tel:${subsidy.contact_phone}`} className="text-primary hover:text-primary/80 transition-colors">
+                        {subsidy.contact_phone}
+                      </a>
+                    </div>
+                  )}
+                  
+                  {subsidy.contact_email && (
+                    <div className="flex items-center">
+                      <Mail className="w-5 h-5 text-muted-foreground mr-3" />
+                      <a href={`mailto:${subsidy.contact_email}`} className="text-primary hover:text-primary/80 transition-colors">
+                        {subsidy.contact_email}
+                      </a>
+                    </div>
+                  )}
 
-          {/* Geographic Scope */}
-          {subsidy.geographic_scope && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.geographicEligibility')}</h3>
-              <div className="bg-purple-50 dark:bg-purple-950/20 rounded p-3">
-                <p className="text-sm text-purple-700 dark:text-purple-300">{safeString(subsidy.geographic_scope)}</p>
+                  {subsidy.url && (
+                    <div className="flex items-center">
+                      <ExternalLink className="w-5 h-5 text-muted-foreground mr-3" />
+                      <a href={subsidy.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors">
+                        Visit Official Page
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Target Entities / Beneficiaries */}
-          {(subsidy.legal_entity_type || subsidy.target_entities) && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.beneficiaries')}</h3>
-              <div className="bg-indigo-50 dark:bg-indigo-950/20 rounded p-3">
-                <p className="text-sm text-indigo-700 dark:text-indigo-300">{safeString(subsidy.legal_entity_type || subsidy.target_entities)}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Source Link */}
-          <div className="border-t border-border pt-4">
-            <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.source')}</h3>
-            <div className="bg-muted rounded p-3 mb-4">
-              {subsidy.url ? (
-                <a 
-                  href={subsidy.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:text-primary/80 underline break-all inline-flex items-center gap-1"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {subsidy.url}
-                </a>
-              ) : (
-                <span className="text-sm text-muted-foreground">N/A</span>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Contact */}
-          <div className="border-t border-border pt-4">
-            <h3 className="font-semibold text-foreground mb-2">{t('subsidy.display.contact')}</h3>
-            <div className="text-sm text-muted-foreground">
-              <p className="font-medium">{safeString(subsidy.agency || subsidy.issuing_body)}</p>
-              {subsidy.program && <p>{safeString(subsidy.program)}</p>}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-card rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <Button className="w-full">
+                  Apply Now
+                </Button>
+                <Button variant="outline" className="w-full">
+                  Download Guide
+                </Button>
+                <Button variant="outline" className="w-full">
+                  Check Eligibility
+                </Button>
+              </div>
+            </div>
+
+            {/* Key Information */}
+            <div className="bg-card rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4">Key Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Maximum Amount</div>
+                  <div className="font-semibold text-lg">{amount}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Region</div>
+                  <div className="font-medium">{region}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Category</div>
+                  <div className="font-medium">{categories[0] || 'General'}</div>
+                </div>
+                {deadline && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Deadline</div>
+                    <div className="font-medium">{new Date(deadline).toLocaleDateString()}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Related Subsidies */}
+            <div className="bg-card rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4">Related Programs</h3>
+              <div className="space-y-3">
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="font-medium text-sm">Innovation Support Program</div>
+                  <div className="text-xs text-muted-foreground">Up to €90,000</div>
+                </div>
+                <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="font-medium text-sm">Regional Development Aid</div>
+                  <div className="text-xs text-muted-foreground">Up to €25,000</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
