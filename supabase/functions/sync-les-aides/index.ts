@@ -75,9 +75,8 @@ serve(async (req) => {
       try {
         console.log(`Fetching page ${page}...`)
         
-        const response = await fetch(`https://api.les-aides.fr/v1/aids?page=${page}&limit=50`, {
+        const response = await fetch(`https://api.les-aides.fr/v1/aids?page=${page}&limit=50&api_key=${lesAidesApiKey}`, {
           headers: {
-            'Authorization': `Bearer ${lesAidesApiKey}`,
             'Accept': 'application/json',
             'User-Agent': 'AgriTool-API-Client/1.0'
           }
