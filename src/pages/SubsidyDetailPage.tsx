@@ -201,34 +201,36 @@ const SubsidyDetailPage = () => {
           onBack={() => navigate('/search')}
         />
         
-        {/* Additional features for legacy subsidies */}
-        {!isEnhancedSubsidy(subsidy) && (
-          <div className="container mx-auto max-w-6xl px-4 py-6">
-            {/* Schema Extraction Status */}
-            <SchemaExtractionStatus
-              subsidyId={subsidyId!}
-              title="Application Form Schema"
-              autoRefresh={true}
-              showDetails={true}
-            />
-            
-            {/* Enhanced Data Extraction - Between Schema and Form */}
-            {((subsidy as any).url || (subsidy as any).application_url) && (
-              <EnhancedExtractionTrigger 
-                subsidyUrl={(subsidy as any).url || (subsidy as any).application_url}
-                subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
-                onSuccess={() => navigate(0)}
+        {/* Additional content sections - positioned below the detailed display */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Schema Extraction Status */}
+              <SchemaExtractionStatus
+                subsidyId={subsidyId!}
+                title="Application Form Schema"
+                autoRefresh={true}
+                showDetails={true}
               />
-            )}
-            
-            {/* Application Form Section */}
-            <ExtractedFormApplication
-              subsidyId={subsidyId!}
-              subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
-              farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
-            />
+              
+              {/* Enhanced Data Extraction */}
+              {((subsidy as any).url || (subsidy as any).application_url) && (
+                <EnhancedExtractionTrigger 
+                  subsidyUrl={(subsidy as any).url || (subsidy as any).application_url}
+                  subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
+                  onSuccess={() => navigate(0)}
+                />
+              )}
+              
+              {/* Application Form Section */}
+              <ExtractedFormApplication
+                subsidyId={subsidyId!}
+                subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
+                farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
+              />
+            </div>
           </div>
-        )}
+        </div>
       </main>
     </div>
   );

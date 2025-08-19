@@ -110,77 +110,85 @@ export const EnhancedExtractionTrigger: React.FC<EnhancedExtractionTriggerProps>
   };
 
   return (
-    <Card className="border-border bg-card">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Enhanced Data Extraction</CardTitle>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            AI-Powered
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground">
-          <p className="mb-2">
-            Current data appears incomplete. Use enhanced extraction to capture:
-          </p>
-          <ul className="text-xs space-y-1 ml-4 list-disc">
-            <li>Complete presentation and objectives</li>
-            <li>Detailed application process steps</li>
-            <li>All downloadable documents with metadata</li>
-            <li>Contact information and deadlines</li>
-            <li>Full eligibility criteria and requirements</li>
-            <li>Funding details and payment terms</li>
-          </ul>
-        </div>
+    <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Enhanced Data Extraction</h3>
+        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+          AI-Powered
+        </Badge>
+      </div>
 
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-background border">
-          {getStatusIcon()}
-          <span className="text-sm font-medium">{getStatusText()}</span>
-          <Badge className={`ml-auto text-xs ${getStatusColor()}`}>
-            {extractionStatus.toUpperCase()}
-          </Badge>
-        </div>
+      {/* Description */}
+      <div className="text-sm text-muted-foreground">
+        <p className="mb-3">
+          Current data appears incomplete. Use enhanced extraction to capture:
+        </p>
+        <ul className="space-y-1 ml-2 text-xs">
+          <li>• Complete presentation and objectives</li>
+          <li>• Detailed application process steps</li>
+          <li>• All downloadable documents with metadata</li>
+          <li>• Contact information and deadlines</li>
+          <li>• Full eligibility criteria and requirements</li>
+          <li>• Funding details and payment terms</li>
+        </ul>
+      </div>
 
-        {extractionStats && extractionStatus === 'success' && (
-          <div className="grid grid-cols-3 gap-2 p-3 bg-success/10 rounded-lg border border-success/20">
-            <div className="text-center">
-              <div className="text-lg font-bold text-success">{extractionStats.sections_found || 0}</div>
-              <div className="text-xs text-success/70">Sections</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-success">{extractionStats.documents_found || 0}</div>
-              <div className="text-xs text-success/70">Documents</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-success">{extractionStats.completeness_score || 0}%</div>
-              <div className="text-xs text-success/70">Complete</div>
-            </div>
+      {/* Status Indicator */}
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-background border">
+        {getStatusIcon()}
+        <span className="text-sm font-medium flex-1">{getStatusText()}</span>
+        <Badge className={`text-xs px-2 py-1 ${
+          extractionStatus === 'idle' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 
+          extractionStatus === 'processing' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+          extractionStatus === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+        }`}>
+          {extractionStatus.toUpperCase()}
+        </Badge>
+      </div>
+
+      {/* Success Stats */}
+      {extractionStats && extractionStatus === 'success' && (
+        <div className="grid grid-cols-3 gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-700 dark:text-green-300">{extractionStats.sections_found || 0}</div>
+            <div className="text-xs text-green-600 dark:text-green-400">Sections</div>
           </div>
-        )}
-
-        <Button 
-          onClick={triggerEnhancedExtraction}
-          disabled={isExtracting}
-          className="w-full"
-        >
-          {isExtracting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing Enhanced Extraction...
-            </>
-          ) : (
-            <>
-              <Zap className="w-4 h-4 mr-2" />
-              Run Enhanced Extraction
-            </>
-          )}
-        </Button>
-
-        <div className="text-xs text-muted-foreground text-center">
-          This will extract comprehensive data from the source page using advanced AI processing
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-700 dark:text-green-300">{extractionStats.documents_found || 0}</div>
+            <div className="text-xs text-green-600 dark:text-green-400">Documents</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-700 dark:text-green-300">{extractionStats.completeness_score || 0}%</div>
+            <div className="text-xs text-green-600 dark:text-green-400">Complete</div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Action Button */}
+      <Button 
+        onClick={triggerEnhancedExtraction}
+        disabled={isExtracting}
+        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+      >
+        {isExtracting ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Processing Enhanced Extraction...
+          </>
+        ) : (
+          <>
+            <Zap className="w-4 h-4 mr-2" />
+            Run Enhanced Extraction
+          </>
+        )}
+      </Button>
+
+      {/* Footer Text */}
+      <p className="text-xs text-muted-foreground text-center">
+        This will extract comprehensive data from the source page using advanced AI processing
+      </p>
+    </div>
   );
 };
