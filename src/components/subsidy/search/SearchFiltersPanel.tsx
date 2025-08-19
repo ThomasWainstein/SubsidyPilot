@@ -50,7 +50,7 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3 px-4">
           <CardTitle className="text-lg font-semibold text-foreground break-words">
-            {t('search.filters.title')}
+            Search & Filter Options
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 px-4 min-w-0">
