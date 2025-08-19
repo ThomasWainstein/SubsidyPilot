@@ -16,9 +16,9 @@ serve(async (req) => {
     const lesAidesApiKey = Deno.env.get('LES_AIDES_API_KEY') || '711e55108232352685cca98b49777e6b836bfb79';
     console.log(`🔑 Using API key: ${lesAidesApiKey.substring(0, 10)}...`);
     
-    // Just test one simple API call first
-    const testUrl = 'https://api.les-aides.fr/aides/?format=json';
-    console.log(`🔍 Testing: ${testUrl}`);
+    // Test with APE code (required parameter)
+    const testUrl = 'https://api.les-aides.fr/aides/?ape=A&format=json';
+    console.log(`🔍 Testing with required APE code: ${testUrl}`);
     
     const response = await fetch(testUrl, {
       method: 'GET',

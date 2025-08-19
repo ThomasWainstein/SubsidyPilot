@@ -129,19 +129,19 @@ serve(async (req) => {
     } catch (testError) {
       console.error('🧪 Basic API test failed:', testError.message);
     }
-    // Simplified approach: Make basic API calls with no filtering to get ALL subsidies
-    console.log('🔍 Making basic API calls with NO FILTERING to get ALL subsidies from Les-Aides.fr...');
+    // Fix: API requires APE codes - test with specific APE codes that should have subsidies
+    console.log('🔍 Making API calls with REQUIRED APE codes (API requires APE parameter)...');
     
-    // Test multiple simple approaches to get subsidies
+    // Focus on APE codes that are most likely to have agricultural/business subsidies
     const searchApproaches = [
-      { name: 'Basic call with just format', params: { format: 'json' } },
-      { name: 'APE A only', params: { ape: 'A', format: 'json' } },
-      { name: 'APE M only', params: { ape: 'M', format: 'json' } },
-      { name: 'APE C only', params: { ape: 'C', format: 'json' } }
+      { name: 'Agriculture - APE A (Agriculture)', params: { ape: 'A', format: 'json' } },
+      { name: 'Manufacturing - APE C (Manufacturing)', params: { ape: 'C', format: 'json' } },
+      { name: 'Commerce - APE G (Commerce)', params: { ape: 'G', format: 'json' } },
+      { name: 'Services - APE M (Professional services)', params: { ape: 'M', format: 'json' } },
+      { name: 'Information - APE J (Information/Communication)', params: { ape: 'J', format: 'json' } }
     ];
     
-    console.log(`🎯 Will try ${searchApproaches.length} different approaches with NO domain filtering`);
-    console.log(`📊 This should get all available subsidies without invalid parameters`);
+    console.log(`🎯 Will try ${searchApproaches.length} APE codes that commonly have subsidies`);
     
     const requestLimit = 100; // Stay well under the 720 daily limit
     
