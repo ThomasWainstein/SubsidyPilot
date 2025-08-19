@@ -41,52 +41,57 @@ interface SyncProgress {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Full refresh function called');
+    console.log('🚀 Full refresh function started');
     
-    // Check environment variables
+    // Basic environment check
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const lesAidesKey = Deno.env.get('LES_AIDES_API_KEY');
-    
-    console.log('🔧 Environment check:', {
-      hasSupabaseUrl: !!supabaseUrl,
-      hasSupabaseKey: !!supabaseKey,
-      hasLesAidesKey: !!lesAidesKey
-    });
     
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing required Supabase environment variables');
+      console.error('❌ Missing environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Missing environment variables' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-
     const url = new URL(req.url);
     const action = url.searchParams.get('action') || 'full_refresh';
     
-    console.log(`📋 Action requested: ${action}`);
+    console.log(`📋 Processing action: ${action}`);
 
     switch (action) {
       case 'purge_data':
+        console.log('🗑️ Starting purge operation');
         return await purgeData(supabase);
       case 'full_refresh':
+        console.log('🔄 Starting full refresh operation');
         return await fullRefreshSync(supabase);
       case 'get_progress':
+        console.log('📊 Getting progress');
         return await getSyncProgress(supabase, url.searchParams.get('session_id') || '');
       default:
+        console.log(`❌ Invalid action: ${action}`);
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
   } catch (error) {
-    console.error('Full refresh sync error:', error);
+    console.error('❌ Function error:', error);
+    console.error('❌ Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        details: error.stack || 'No stack trace available'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
