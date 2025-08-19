@@ -336,6 +336,18 @@ class OptimalLesAidesSync {
         return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
       };
 
+      // Extract region/country information
+      const regions = ['France']; // Default to France for les-aides.fr
+      const organisme = fiche?.organisme?.raison_sociale || '';
+      
+      // Extract additional regional info from organisme if available
+      if (organisme.includes('Région')) {
+        const regionMatch = organisme.match(/Région\s+([A-Za-z\s-]+)/);
+        if (regionMatch && regionMatch[1]) {
+          regions.push(regionMatch[1].trim());
+        }
+      }
+
       const subsidyData = {
         code: `les-aides-${dispositif.numero}`,
         external_id: externalId,
@@ -348,6 +360,8 @@ class OptimalLesAidesSync {
         amount_max: amounts.max,
         currency: 'EUR',
         deadline: null, // Les-Aides.fr doesn't provide standardized deadlines
+        region: regions, // Now properly populated
+        tags: dispositif.domaines ? dispositif.domaines.map(d => `Domain ${d}`) : ['General'],
         eligibility_criteria: {
           domaines: dispositif.domaines || [],
           moyens: dispositif.moyens || [],
@@ -356,7 +370,7 @@ class OptimalLesAidesSync {
           criteres_pour: fiche?.criteres?.pour || [],
           criteres_contre: fiche?.criteres?.contre || [],
           restrictions: fiche?.restrictions || [],
-          organisme: fiche?.organisme?.raison_sociale || ''
+          organisme: organisme
         },
         application_url: fiche?.organisme?.adresses?.[0]?.web || dispositif.uri || '',
         status: 'active',
@@ -378,6 +392,8 @@ class OptimalLesAidesSync {
             description: subsidyData.description,
             amount_min: subsidyData.amount_min,
             amount_max: subsidyData.amount_max,
+            region: subsidyData.region,
+            tags: subsidyData.tags,
             eligibility_criteria: subsidyData.eligibility_criteria,
             application_url: subsidyData.application_url,
             raw_data: subsidyData.raw_data,

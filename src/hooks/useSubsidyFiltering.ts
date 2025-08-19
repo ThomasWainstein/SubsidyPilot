@@ -32,6 +32,7 @@ interface SubsidyWithMatch {
   program: string | null;
   matchConfidence: number;
   created_at?: string;
+  api_source?: string; // Added for country filtering
   // Legacy fields for backward compatibility
   categories?: string[];
   amount_min?: number;
@@ -114,13 +115,14 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
             // Map fields for compatibility with SubsidyWithMatch interface
             title: String(subsidy.title || ''),
             description: String(subsidy.description || ''),
-            region: subsidyRegions,
+            region: subsidy.region || [], // Use the actual region field from database
             sector: subsidySectors.map((d: any) => `Domain ${d}`),
             amount: subsidy.amount_min && subsidy.amount_max ? [Number(subsidy.amount_min), Number(subsidy.amount_max)] : null,
             url: String(subsidy.application_url || ''),
             agency: String(eligibilityCriteria?.organisme || ''),
             eligibility: String(eligibilityCriteria?.conditions || ''),
             program: String(subsidy.code || ''),
+            api_source: subsidy.api_source, // Include api_source for country filtering
             matchConfidence: Math.min(matchConfidence, 100)
           };
         });
@@ -154,6 +156,18 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
       filtered = filtered.filter(s => {
         const regions = Array.isArray(s.region) ? s.region : (s.region ? [s.region] : []);
         return regions.some(region => filters.regions.includes(region));
+      });
+    }
+
+    // Apply country filter via eligibleCountry
+    if (filters.eligibleCountry.trim()) {
+      const country = filters.eligibleCountry.toLowerCase();
+      filtered = filtered.filter(s => {
+        const regions = Array.isArray(s.region) ? s.region : (s.region ? [s.region] : []);
+        const agency = s.agency || '';
+        return regions.some(region => region?.toLowerCase().includes(country)) ||
+               agency.toLowerCase().includes(country) ||
+               (country === 'france' && s.api_source === 'les-aides-fr');
       });
     }
 
