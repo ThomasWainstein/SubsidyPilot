@@ -151,3 +151,6 @@ verify_jwt = false
 
 [functions.claude-mcp-server]
 verify_jwt = false
+
+[functions.test-les-aides-api]
+verify_jwt = false

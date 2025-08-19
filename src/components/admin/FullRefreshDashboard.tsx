@@ -32,6 +32,7 @@ interface SyncProgress {
 export const FullRefreshDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [subsidyCount, setSubsidyCount] = useState<number>(0);
@@ -173,6 +174,44 @@ export const FullRefreshDashboard: React.FC = () => {
     }
   };
 
+  const handleTestApi = async () => {
+    setIsTesting(true);
+    try {
+      toast({
+        title: "Testing Les-Aides.fr API",
+        description: "Running diagnostic tests on the API endpoints...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('test-les-aides-api');
+      
+      if (error) throw error;
+
+      console.log('🧪 API Test Results:', data);
+      
+      if (data?.success && data?.results) {
+        const successfulCalls = data.results.filter((r: any) => r.status === 200).length;
+        const totalCalls = data.results.length;
+        
+        toast({
+          title: "API Test Completed",
+          description: `${successfulCalls}/${totalCalls} API calls successful. Check console for detailed results.`,
+        });
+      } else {
+        throw new Error('Test function returned no results');
+      }
+
+    } catch (error: any) {
+      console.error('Error testing API:', error);
+      toast({
+        title: "API Test Failed",
+        description: error.message || 'Unknown error occurred',
+        variant: "destructive",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   useEffect(() => {
     fetchSubsidyCount();
   }, []);
@@ -301,8 +340,8 @@ export const FullRefreshDashboard: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Card className="flex-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
@@ -315,7 +354,7 @@ export const FullRefreshDashboard: React.FC = () => {
           <CardContent>
             <Button 
               onClick={handleFullRefresh}
-              disabled={isRefreshing || isPurging}
+              disabled={isRefreshing || isPurging || isTesting}
               className="w-full"
               size="lg"
             >
@@ -334,7 +373,40 @@ export const FullRefreshDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="flex-1">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Test API Connection
+            </CardTitle>
+            <CardDescription>
+              Run diagnostic tests on Les-Aides.fr API endpoints
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={handleTestApi}
+              disabled={isRefreshing || isPurging || isTesting}
+              variant="outline"
+              className="w-full"
+              size="lg"
+            >
+              {isTesting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Testing API...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Test API Connection
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5" />
@@ -347,7 +419,7 @@ export const FullRefreshDashboard: React.FC = () => {
           <CardContent>
             <Button 
               onClick={handlePurgeData}
-              disabled={isRefreshing || isPurging}
+              disabled={isRefreshing || isPurging || isTesting}
               variant="destructive"
               className="w-full"
               size="lg"
