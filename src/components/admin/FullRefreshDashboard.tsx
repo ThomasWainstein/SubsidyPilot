@@ -52,8 +52,8 @@ export const FullRefreshDashboard: React.FC = () => {
 
   const pollProgress = async (sessionId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('full-refresh-sync', {
-        body: { action: 'get_progress', session_id: sessionId }
+      const { data, error } = await supabase.functions.invoke('sync-progress', {
+        body: { session_id: sessionId }
       });
 
       if (error) throw error;
@@ -61,14 +61,14 @@ export const FullRefreshDashboard: React.FC = () => {
       setProgress(data);
 
       // Continue polling if still in progress
-      if (data.current_status !== 'completed' && data.current_status !== 'failed') {
+      if (data?.current_status !== 'completed' && data?.current_status !== 'failed') {
         setTimeout(() => pollProgress(sessionId), 2000); // Poll every 2 seconds
       } else {
         setIsRefreshing(false);
         setCurrentSession(null);
         await fetchSubsidyCount(); // Refresh count when done
         
-        if (data.current_status === 'completed') {
+        if (data?.current_status === 'completed') {
           toast({
             title: "Full Refresh Completed! 🎉",
             description: `Successfully added ${data.subsidies_added} real French subsidies to your database.`,

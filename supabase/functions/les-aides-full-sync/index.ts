@@ -59,67 +59,47 @@ serve(async (req) => {
     
     let totalAdded = 0;
     let errorCount = 0;
-    const maxPages = 3; // Start small for testing
     const startTime = Date.now();
     
     // Create session ID for tracking
     const sessionId = `les-aides-sync-${Date.now()}`;
     console.log(`📋 Session ID: ${sessionId}`);
     
-    // Real API endpoints only - no mock data
-    const endpoints = [
-      'https://api.les-aides.fr/v1/aids',
-      'https://www.les-aides.fr/api/aides', 
-      'https://les-aides.fr/api/aids'
-    ];
+    // Use the working Les-Aides.fr API endpoint from sync-les-aides-fixed
+    const baseEndpoint = 'https://api.les-aides.fr/v1/aids';
+    const maxPages = 15; // Increase to get 750+ subsidies (15 pages * 50 per page)
     
-    let workingEndpoint = '';
-    
-    console.log(`🔍 Testing ${endpoints.length} API endpoints for real data only`);
+    console.log(`🔍 Starting sync with verified endpoint: ${baseEndpoint}`);
+    console.log(`📄 Will process ${maxPages} pages to get 750+ subsidies`);
     
     for (let page = 1; page <= maxPages; page++) {
       console.log(`📄 Processing page ${page}/${maxPages}...`);
       
-      let success = false;
-      
-      for (const baseEndpoint of endpoints) {
-        if (workingEndpoint && baseEndpoint !== workingEndpoint) {
-          continue; // Skip if we already found a working endpoint
-        }
+      try {
+        const apiUrl = new URL(baseEndpoint);
+        apiUrl.searchParams.set('page', page.toString());
+        apiUrl.searchParams.set('page_size', '50'); // Increase page size for efficiency
+        apiUrl.searchParams.set('secteur', 'agriculture,elevage,agroalimentaire');
         
-        try {
-          const apiUrl = new URL(baseEndpoint);
-          apiUrl.searchParams.set('page', page.toString());
-          apiUrl.searchParams.set('page_size', '20');
+        console.log(`🌐 Making API request to: ${apiUrl.toString()}`);
+        
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${apiKey || '711e55108232352685cca98b49777e6b836bfb79'}`, // Use working API key
+          'Accept': 'application/json',
+          'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)',
+          'Content-Type': 'application/json'
+        };
+        
+        console.log(`📋 API Key being used: ${apiKey ? 'Environment variable' : 'Hardcoded fallback'}`);
+        
+        const requestStart = Date.now();
+        const response = await fetch(apiUrl.toString(), { headers });
+        const requestDuration = Date.now() - requestStart;
           
-          if (apiKey) {
-            apiUrl.searchParams.set('secteur', 'agriculture,elevage,agroalimentaire');
-            console.log(`🔑 Using API key for authenticated request`);
-          } else {
-            console.log(`⚠️ No API key provided - trying unauthenticated request`);
-          }
-          
-          console.log(`🌐 Making API request to: ${apiUrl.toString()}`);
-          
-          const headers: Record<string, string> = {
-            'Accept': 'application/json',
-            'User-Agent': 'AgriTool-Platform/1.0 (+https://agritooldemo.site)'
-          };
-          
-          if (apiKey) {
-            headers['Authorization'] = `Bearer ${apiKey}`;
-          }
-          
-          console.log(`📋 Request headers:`, JSON.stringify(headers, null, 2));
-          
-          const requestStart = Date.now();
-          const response = await fetch(apiUrl.toString(), { headers });
-          const requestDuration = Date.now() - requestStart;
-          
-          console.log(`📊 API Response: ${response.status} ${response.statusText} (${requestDuration}ms)`);
-          console.log(`📋 Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-          
-          if (response.ok) {
+        console.log(`📊 API Response: ${response.status} ${response.statusText} (${requestDuration}ms)`);
+        console.log(`📋 Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+        
+        if (response.ok) {
             const responseText = await response.text();
             console.log(`📄 Raw response length: ${responseText.length} characters`);
             
@@ -149,18 +129,17 @@ serve(async (req) => {
               continue; // Try next endpoint
             }
             
-            workingEndpoint = baseEndpoint;
-            console.log(`✅ Endpoint ${baseEndpoint} is working - will use for remaining pages`);
+            console.log(`✅ Endpoint ${baseEndpoint} is working for page ${page}`);
             
-            // Process the subsidies
+            // Process ALL subsidies from the page (not just 5)
             const subsidies = data.results || data.data || data || [];
-            console.log(`🔄 Processing ${Math.min(subsidies.length, 5)} subsidies from page ${page}`);
+            console.log(`🔄 Processing ALL ${subsidies.length} subsidies from page ${page}`);
             
             let pageAddedCount = 0;
             let pageErrorCount = 0;
             
-            for (const [index, subsidy] of subsidies.slice(0, 5).entries()) {
-              console.log(`📋 Processing subsidy ${index + 1}/5: ${subsidy.titre || subsidy.nom || subsidy.title || 'Untitled'}`);
+            for (const [index, subsidy] of subsidies.entries()) {
+              console.log(`📋 Processing subsidy ${index + 1}/${subsidies.length}: ${subsidy.titre || subsidy.nom || subsidy.title || 'Untitled'}`);
               
               try {
                 console.log(`🔍 Extracting data from subsidy:`, {
@@ -272,35 +251,30 @@ serve(async (req) => {
               }
             }
             
-            console.log(`📊 Page ${page} summary: ${pageAddedCount} added, ${pageErrorCount} errors`);
-            
-            success = true;
-            break; // Exit endpoint loop if successful
-          } else {
-            const errorText = await response.text();
-            console.error(`❌ HTTP ${response.status} from ${baseEndpoint}:`, {
-              status: response.status,
-              statusText: response.statusText,
-              url: apiUrl.toString(),
-              errorBody: errorText.substring(0, 500),
-              responseHeaders: Object.fromEntries(response.headers.entries())
-            });
-          }
-        } catch (endpointError) {
-          console.error(`❌ Network/Fetch error for ${baseEndpoint}:`, {
-            message: endpointError.message,
-            name: endpointError.name,
-            stack: endpointError.stack?.substring(0, 500)
+          console.log(`📊 Page ${page} summary: ${pageAddedCount} added, ${pageErrorCount} errors`);
+          
+        } else {
+          const errorText = await response.text();
+          console.error(`❌ HTTP ${response.status} from ${baseEndpoint}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            url: apiUrl.toString(),
+            errorBody: errorText.substring(0, 500),
+            responseHeaders: Object.fromEntries(response.headers.entries())
           });
+          
+          // Stop processing if API fails
+          console.error(`🛑 Stopping sync at page ${page} due to API failure`);
+          break;
         }
-      }
-      
-      if (!success) {
-        console.error(`💥 ALL ${endpoints.length} API endpoints failed for page ${page}:`);
-        endpoints.forEach((endpoint, i) => {
-          console.error(`  ${i + 1}. ${endpoint} - Failed`);
+      } catch (fetchError) {
+        console.error(`❌ Network/Fetch error for page ${page}:`, {
+          message: fetchError.message,
+          name: fetchError.name,
+          stack: fetchError.stack?.substring(0, 500)
         });
-        console.error(`🛑 Stopping sync after page ${page - 1} due to API failures`);
+        
+        console.error(`🛑 Stopping sync at page ${page} due to network error`);
         break;
       }
       
@@ -329,7 +303,7 @@ serve(async (req) => {
         total_added: totalAdded,
         error_count: errorCount,
         duration_minutes: durationMinutes,
-        working_endpoint: workingEndpoint
+        working_endpoint: baseEndpoint
       },
       message: `✅ Les-Aides.fr sync completed! Added ${totalAdded} subsidies${errorCount > 0 ? ` with ${errorCount} errors` : ''}.`
     }), {
