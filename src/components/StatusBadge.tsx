@@ -57,7 +57,15 @@ const StatusBadge = ({ status, className, size = 'md' }: StatusBadgeProps) => {
     return sizeMap[size] || 'px-2 py-0.5 text-xs';
   };
   
-  const displayStatus = t(getStatusKey(status));
+  const displayStatus = status === 'Profile Complete' ? 'Profile Complete' :
+                     status === 'Incomplete' ? 'Needs Update' :
+                     status === 'Pending' ? 'In Progress' :
+                     status === 'In Progress' ? 'In Progress' :
+                     status === 'Submitted' ? 'Submitted' :
+                     status === 'Approved' ? 'Approved' :
+                     status === 'In Review' ? 'In Review' :
+                     status === 'Needs Update' ? 'Needs Update' :
+                     status || 'Active';
   
   return (
     <span

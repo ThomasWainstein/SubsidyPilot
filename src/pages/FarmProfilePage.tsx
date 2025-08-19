@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { useFarm } from '@/hooks/useFarms';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
 import { CalendarDays, Loader2, Edit } from 'lucide-react';
-import { ProfileTabContent } from '@/components/farm/ProfileTabContent';
-import DocumentsTabContent from '@/components/farm/DocumentsTabContent';
-import { SubsidiesTabContent } from '@/components/farm/SubsidiesTabContent';
+import { EnhancedProfileTabContent } from '@/components/farm/EnhancedProfileTabContent';
+import SimplifiedDocumentsTab from '@/components/farm/SimplifiedDocumentsTab';
+import { FarmerFriendlySubsidiesTab } from '@/components/farm/FarmerFriendlySubsidiesTab';
 import { ApplicationsTabContent } from '@/components/farm/ApplicationsTabContent';
 import { countries } from '@/schemas/farmValidation';
 import PageErrorBoundary from '@/components/error/PageErrorBoundary';
@@ -83,8 +83,8 @@ const FarmProfilePage = () => {
     id: supabaseFarm.id,
     name: supabaseFarm.name,
     region: supabaseFarm.country ? 
-      `${supabaseFarm.department || 'Unknown'}, ${countries.find(c => c.code === supabaseFarm.country)?.name || supabaseFarm.country}` : 
-      supabaseFarm.department || 'Unknown',
+      `${supabaseFarm.department || 'Location not specified'}, ${countries.find(c => c.code === supabaseFarm.country)?.name || supabaseFarm.country}` : 
+      supabaseFarm.department || 'Location not specified',
     status: 'Profile Complete' as const,
     updatedAt: supabaseFarm.updated_at ? new Date(supabaseFarm.updated_at).toLocaleDateString() : 
                 supabaseFarm.created_at ? new Date(supabaseFarm.created_at).toLocaleDateString() : '',
@@ -140,7 +140,7 @@ const FarmProfilePage = () => {
                       <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 flex items-center">
                         <CalendarDays size={14} className="inline mr-1 flex-shrink-0" />
                         <span className="truncate">
-                          {t('common.lastUpdated')}: {transformedFarm.updatedAt}
+                          Last Updated: {transformedFarm.updatedAt}
                         </span>
                       </span>
                     </div>
@@ -178,7 +178,7 @@ const FarmProfilePage = () => {
                   aria-controls="profile-panel"
                   aria-selected="true"
                 >
-                  {t('common.profile')}
+                  Profile
                 </TabsTrigger>
                 <TabsTrigger 
                   value="documents" 
@@ -186,7 +186,7 @@ const FarmProfilePage = () => {
                   role="tab"
                   aria-controls="documents-panel"
                 >
-                  {t('common.documents')}
+                  Documents
                 </TabsTrigger>
                 <TabsTrigger 
                   value="subsidies" 
@@ -194,7 +194,7 @@ const FarmProfilePage = () => {
                   role="tab"
                   aria-controls="subsidies-panel"
                 >
-                  {t('common.subsidies')}
+                  Funding
                 </TabsTrigger>
                 <TabsTrigger 
                   value="applications" 
@@ -202,7 +202,7 @@ const FarmProfilePage = () => {
                   role="tab"
                   aria-controls="applications-panel"
                 >
-                  {t('common.applications')}
+                  Applications
                 </TabsTrigger>
               </TabsList>
               
@@ -213,7 +213,7 @@ const FarmProfilePage = () => {
                 id="profile-panel"
                 aria-labelledby="profile-tab"
               >
-                <ProfileTabContent farmId={transformedFarm.id} />
+                <EnhancedProfileTabContent farmId={transformedFarm.id} />
               </TabsContent>
               
               <TabsContent 
@@ -223,7 +223,7 @@ const FarmProfilePage = () => {
                 id="documents-panel"
                 aria-labelledby="documents-tab"
               >
-                <DocumentsTabContent farmId={transformedFarm.id} />
+                <SimplifiedDocumentsTab farmId={transformedFarm.id} />
               </TabsContent>
               
               <TabsContent 
@@ -233,7 +233,7 @@ const FarmProfilePage = () => {
                 id="subsidies-panel"
                 aria-labelledby="subsidies-tab"
               >
-                <SubsidiesTabContent farmId={transformedFarm.id} />
+                <FarmerFriendlySubsidiesTab farmId={transformedFarm.id} />
               </TabsContent>
               
               <TabsContent 

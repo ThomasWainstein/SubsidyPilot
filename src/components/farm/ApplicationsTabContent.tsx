@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,12 @@ export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t('common.applications')}</CardTitle>
+          <CardTitle>Applications</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-32">
             <Loader2 className="animate-spin mr-2" />
-            <span>{t('common.loading')}</span>
+            <span>Loading...</span>
           </div>
         </CardContent>
       </Card>
@@ -37,7 +37,7 @@ export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t('common.applications')}</CardTitle>
+          <CardTitle>Applications</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
@@ -68,19 +68,19 @@ export const ApplicationsTabContent: React.FC<ApplicationsTabContentProps> = ({ 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText size={20} />
-          {t('common.applications')}
+          Applications
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!applications || applications.length === 0 ? (
           <div className="text-center py-8">
             <FileText className="mx-auto mb-4 text-gray-400" size={48} />
-            <h3 className="text-lg font-medium mb-2 dark:text-white">No Applications Yet</h3>
+            <h3 className="text-lg font-medium mb-2 dark:text-white">Ready to Apply for Funding?</h3>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              You haven't submitted any subsidy applications for this farm.
+              You haven't submitted any funding applications yet, but we've found opportunities that match your farm.
             </p>
-            <Button>
-              Browse Available Subsidies
+            <Button onClick={() => navigate(`/farm/${farmId}#subsidies`)}>
+              Explore Funding Opportunities
             </Button>
           </div>
         ) : (
