@@ -107,7 +107,20 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   // Helper function to safely render HTML content
   const renderHTMLContent = (htmlContent: string) => {
     if (!htmlContent) return null;
-    return <div dangerouslySetInnerHTML={{ __html: htmlContent }} className="prose prose-sm max-w-none dark:prose-invert" />;
+    return <div dangerouslySetInnerHTML={{ __html: htmlContent }} className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:text-muted-foreground" />;
+  };
+
+  // Extract funding amount from les-aides data if available
+  const getFundingAmount = () => {
+    if (lesAidesData?.montants) {
+      // Try to extract amount from HTML content
+      const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const euroMatch = montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/);
+      if (euroMatch) {
+        return `€${euroMatch[1]}`;
+      }
+    }
+    return formatAmount(subsidy.amount || subsidy.funding_amount);
   };
 
   return (
@@ -161,7 +174,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 md:ml-8 md:min-w-[300px]">
               <div className="text-center">
-                <div className="text-3xl font-bold mb-2">{amount}</div>
+                <div className="text-3xl font-bold mb-2">{getFundingAmount()}</div>
                 <div className="text-sm text-primary-foreground/80 mb-4">Maximum Amount</div>
                 {deadline && (
                   <div className="flex items-center justify-center text-sm text-primary-foreground/80">
