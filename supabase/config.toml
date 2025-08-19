@@ -140,5 +140,11 @@ verify_jwt = false
 [functions.sync-les-aides-fixed]
 verify_jwt = false
 
-[functions.full-refresh-sync]
+[functions.data-purge]
+verify_jwt = false
+
+[functions.les-aides-full-sync]
+verify_jwt = false
+
+[functions.sync-progress]
 verify_jwt = false

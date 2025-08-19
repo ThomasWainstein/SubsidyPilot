@@ -87,23 +87,21 @@ export const FullRefreshDashboard: React.FC = () => {
 
     setIsPurging(true);
     try {
-      const { data, error } = await supabase.functions.invoke('full-refresh-sync', {
-        body: { action: 'purge_data' }
-      });
+      const { data, error } = await supabase.functions.invoke('data-purge');
 
       if (error) throw error;
 
       toast({
         title: "Data Purged Successfully",
-        description: `Backed up ${data.backup_info.backed_up_subsidies} subsidies. Ready for fresh sync.`,
+        description: `Backed up ${data.backup_info?.backed_up_subsidies || 0} subsidies. Ready for fresh sync.`,
       });
 
       await fetchSubsidyCount();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error purging data:', error);
       toast({
         title: "Purge Failed",
-        description: error.message,
+        description: error.message || 'Unknown error occurred',
         variant: "destructive",
       });
     } finally {
@@ -113,37 +111,50 @@ export const FullRefreshDashboard: React.FC = () => {
 
   const handleFullRefresh = async () => {
     if (subsidyCount > 0) {
-      if (!confirm(`You currently have ${subsidyCount} subsidies. This will replace them with 750+ fresh data from Les-Aides.fr. Continue?`)) {
+      if (!confirm(`You currently have ${subsidyCount} subsidies. This will replace them with fresh data from Les-Aides.fr. Continue?`)) {
         return;
       }
     }
 
     setIsRefreshing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('full-refresh-sync', {
-        body: { action: 'full_refresh' }
-      });
-
-      if (error) throw error;
-
-      const sessionId = data.session_id;
-      setCurrentSession(sessionId);
-      
+      // Step 1: Purge old data
       toast({
-        title: "Full Refresh Started",
-        description: "Fetching all 750+ subsidies from Les-Aides.fr...",
+        title: "Starting Full Refresh",
+        description: "Backing up and purging old data...",
       });
 
-      // Start polling for progress
-      setTimeout(() => pollProgress(sessionId), 1000);
+      const { data: purgeData, error: purgeError } = await supabase.functions.invoke('data-purge');
+      if (purgeError) throw purgeError;
 
-    } catch (error) {
+      // Step 2: Start sync
+      toast({
+        title: "Data Purged",
+        description: "Starting sync with Les-Aides.fr...",
+      });
+
+      const { data: syncData, error: syncError } = await supabase.functions.invoke('les-aides-full-sync');
+      if (syncError) throw syncError;
+
+      if (syncData?.success) {
+        toast({
+          title: "Full Refresh Completed! 🎉",
+          description: `Successfully added ${syncData.summary?.total_added || 0} subsidies from Les-Aides.fr!`,
+        });
+        
+        await fetchSubsidyCount(); // Refresh count
+      } else {
+        throw new Error(syncData?.error || 'Sync failed');
+      }
+
+    } catch (error: any) {
       console.error('Error starting full refresh:', error);
       toast({
         title: "Full Refresh Failed",
-        description: error.message,
+        description: error.message || 'Unknown error occurred',
         variant: "destructive",
       });
+    } finally {
       setIsRefreshing(false);
     }
   };
