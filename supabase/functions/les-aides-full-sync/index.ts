@@ -129,19 +129,21 @@ serve(async (req) => {
     } catch (testError) {
       console.error('🧪 Basic API test failed:', testError.message);
     }
-    // Fix: API requires APE codes - test with specific APE codes that should have subsidies
-    console.log('🔍 Making API calls with REQUIRED APE codes (API requires APE parameter)...');
+    // Fix: API requires both APE codes AND domain codes
+    console.log('🔍 Making API calls with REQUIRED APE codes AND domain codes...');
+    
+    // Use basic domain codes that are more likely to be valid (1-20 instead of 790-805)
+    const validDomains = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     
     // Focus on APE codes that are most likely to have agricultural/business subsidies
     const searchApproaches = [
-      { name: 'Agriculture - APE A (Agriculture)', params: { ape: 'A', format: 'json' } },
-      { name: 'Manufacturing - APE C (Manufacturing)', params: { ape: 'C', format: 'json' } },
-      { name: 'Commerce - APE G (Commerce)', params: { ape: 'G', format: 'json' } },
-      { name: 'Services - APE M (Professional services)', params: { ape: 'M', format: 'json' } },
-      { name: 'Information - APE J (Information/Communication)', params: { ape: 'J', format: 'json' } }
+      { name: 'Agriculture - APE A', params: { ape: 'A', format: 'json' } },
+      { name: 'Manufacturing - APE C', params: { ape: 'C', format: 'json' } },
+      { name: 'Commerce - APE G', params: { ape: 'G', format: 'json' } },
+      { name: 'Services - APE M', params: { ape: 'M', format: 'json' } }
     ];
     
-    console.log(`🎯 Will try ${searchApproaches.length} APE codes that commonly have subsidies`);
+    console.log(`🎯 Will try ${searchApproaches.length} APE codes with ${validDomains.length} domain codes`);
     
     const requestLimit = 100; // Stay well under the 720 daily limit
     
@@ -155,8 +157,13 @@ serve(async (req) => {
         console.log(`🔍 Trying approach: ${approach.name}...`);
         
         try {
-          // Build search URL with simple parameters only
+          // Build search URL with APE code and domain codes (both required)
           const searchParams = new URLSearchParams(approach.params);
+          
+          // Add domain codes (required by API)
+          validDomains.forEach(domain => {
+            searchParams.append('domaine[]', domain.toString());
+          });
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
           console.log(`📡 Making search request: ${searchUrl}`);

@@ -19,9 +19,9 @@ serve(async (req) => {
     console.log(`🔑 API key format: ${lesAidesApiKey.substring(0, 10)}...${lesAidesApiKey.substring(-10)}`);
     console.log(`🔑 API key is hex: ${/^[0-9a-f]+$/i.test(lesAidesApiKey)}`);
     
-    // Test with APE code (required parameter)  
-    const testUrl = 'https://api.les-aides.fr/aides/?ape=A&format=json';
-    console.log(`🔍 Testing with required APE code: ${testUrl}`);
+    // Test with both APE and valid domain codes (both are required)
+    const testUrl = 'https://api.les-aides.fr/aides/?ape=A&domaine[]=1&format=json';
+    console.log(`🔍 Testing with APE + domain: ${testUrl}`);
     
     const response = await fetch(testUrl, {
       method: 'GET',
