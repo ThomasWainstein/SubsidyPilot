@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin, AdminProvider } from '@/contexts/AdminContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { AlertTriangle, Database, Activity, Settings, Shield, Users, FileText } from 'lucide-react';
+import { AlertTriangle, Database, Activity, Settings, Shield, Users, FileText, Zap } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { StatusDashboard } from '@/components/admin/StatusDashboard';
@@ -21,6 +21,7 @@ import SchemaExtractionDemo from '@/components/test/SchemaExtractionDemo';
 import AIPrefillDemo from '@/components/test/AIPrefillDemo';
 import { QuickSchemaTest } from '@/components/test/QuickSchemaTest';
 import { FrenchScraperManager } from '@/components/admin/FrenchScraperManager';
+import { ApiSyncDashboard } from '@/components/admin/ApiSyncDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IS_PRODUCTION } from '@/config/environment';
@@ -116,10 +117,14 @@ const AdminPageContent = () => {
           {/* Main Admin Tabs */}
           <Tabs defaultValue="overview" className="w-full">
             <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-6 h-12">
+              <TabsList className="grid w-full grid-cols-7 h-12">
                 <TabsTrigger value="overview" className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
                   Overview
+                </TabsTrigger>
+                <TabsTrigger value="api-sync" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  API Sync
                 </TabsTrigger>
                 <TabsTrigger value="data" className="flex items-center gap-2">
                   <Database className="h-4 w-4" />
@@ -153,6 +158,12 @@ const AdminPageContent = () => {
                   <ProductionReadinessCheck />
                 </ErrorBoundary>
               </div>
+            </TabsContent>
+
+            <TabsContent value="api-sync" className="mt-6">
+              <ErrorBoundary>
+                <ApiSyncDashboard />
+              </ErrorBoundary>
             </TabsContent>
             
             <TabsContent value="data" className="mt-6">
