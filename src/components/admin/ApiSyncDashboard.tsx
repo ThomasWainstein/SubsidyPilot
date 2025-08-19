@@ -13,21 +13,28 @@ export const ApiSyncDashboard: React.FC = () => {
   const triggerSync = async (apiSource: string) => {
     setSyncing(apiSource);
     try {
+      console.log(`Starting sync for ${apiSource}...`);
+      
       const { data, error } = await supabase.functions.invoke(`sync-${apiSource}`, {
         body: { sync_type: 'incremental' }
       });
 
-      if (error) throw error;
+      console.log('Sync response:', { data, error });
+
+      if (error) {
+        console.error('Sync error:', error);
+        throw error;
+      }
 
       setLastSyncResult(data);
       toast.success(`${apiSource} sync completed successfully`, {
-        description: `Processed: ${data.processed}, Added: ${data.added}, Updated: ${data.updated}`
+        description: `Processed: ${data?.processed || 0}, Added: ${data?.added || 0}, Updated: ${data?.updated || 0}`
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error syncing ${apiSource}:`, error);
       toast.error(`Failed to sync ${apiSource}`, {
-        description: error.message
+        description: error?.message || 'Unknown error occurred'
       });
     } finally {
       setSyncing(null);
@@ -156,15 +163,15 @@ export const ApiSyncDashboard: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{lastSyncResult.processed}</div>
+                <div className="text-2xl font-bold text-blue-600">{lastSyncResult.processed || 0}</div>
                 <div className="text-sm text-muted-foreground">Processed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{lastSyncResult.added}</div>
+                <div className="text-2xl font-bold text-green-600">{lastSyncResult.added || 0}</div>
                 <div className="text-sm text-muted-foreground">Added</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{lastSyncResult.updated}</div>
+                <div className="text-2xl font-bold text-yellow-600">{lastSyncResult.updated || 0}</div>
                 <div className="text-sm text-muted-foreground">Updated</div>
               </div>
               <div className="text-center">
@@ -195,6 +202,12 @@ export const ApiSyncDashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {lastSyncResult.sync_log_id && (
+              <div className="mt-3 text-xs text-muted-foreground">
+                Sync Log ID: {lastSyncResult.sync_log_id}
               </div>
             )}
           </CardContent>
