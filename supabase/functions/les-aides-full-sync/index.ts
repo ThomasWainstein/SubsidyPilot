@@ -102,38 +102,34 @@ serve(async (req) => {
     const searchEndpoint = '/aides/';
     const ficheEndpoint = '/aide/';
     
-    // Simplified approach: Use broad search criteria to get ALL subsidies
-    console.log('🔍 Using broad search to get ALL subsidies from Les-Aides.fr...');
+    // Simplified approach: Make basic API calls with no filtering to get ALL subsidies
+    console.log('🔍 Making basic API calls with NO FILTERING to get ALL subsidies from Les-Aides.fr...');
     
-    // Use very broad APE codes and domains to get maximum coverage
-    const broadApes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U'];
-    const broadDomains = [790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805];
+    // Test multiple simple approaches to get subsidies
+    const searchApproaches = [
+      { name: 'Basic call with just format', params: { format: 'json' } },
+      { name: 'APE A only', params: { ape: 'A', format: 'json' } },
+      { name: 'APE M only', params: { ape: 'M', format: 'json' } },
+      { name: 'APE C only', params: { ape: 'C', format: 'json' } }
+    ];
     
-    console.log(`🎯 Will search ${broadApes.length} APE codes with ${broadDomains.length} domains`);
-    console.log(`📊 This will cast a wide net to get ALL available subsidies`);
+    console.log(`🎯 Will try ${searchApproaches.length} different approaches with NO domain filtering`);
+    console.log(`📊 This should get all available subsidies without invalid parameters`);
     
     const requestLimit = 100; // Stay well under the 720 daily limit
     
-    // Search for aids using broad criteria to get ALL subsidies
-    for (const ape of broadApes) {
+    // Search for aids using simplified approaches with NO domain filtering
+    for (const approach of searchApproaches) {
         if (totalRequests >= requestLimit) {
           console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        console.log(`🔍 Searching APE ${ape} across ALL domains...`);
+        console.log(`🔍 Trying approach: ${approach.name}...`);
         
         try {
-          // Build search URL with combined domains (more efficient)
-          const searchParams = new URLSearchParams({
-            ape: ape,
-            format: 'json'
-          });
-          
-          // Add multiple domains efficiently
-          broadDomains.forEach(domain => {
-            searchParams.append('domaine[]', domain.toString());
-          });
+          // Build search URL with simple parameters only
+          const searchParams = new URLSearchParams(approach.params);
           
           const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
           console.log(`📡 Making search request: ${searchUrl}`);
@@ -184,7 +180,7 @@ serve(async (req) => {
               
               // Use structured error information
               if (errorData.field === 'ape' || errorData.field === 'domaine') {
-                console.log(`⚠️ Invalid parameter - ${errorData.field}: ${errorData.exception}, skipping APE ${ape}...`);
+                console.log(`⚠️ Invalid parameter - ${errorData.field}: ${errorData.exception}, skipping approach: ${approach.name}...`);
                 continue;
               }
             } catch (parseError) {
@@ -217,12 +213,12 @@ serve(async (req) => {
             continue;
           }
           
-          console.log(`✅ Search successful for APE ${ape}:`);
+          console.log(`✅ Search successful for approach: ${approach.name}`);
           console.log(`📊 Found ${searchData.nb_dispositifs} dispositifs (depassement: ${searchData.depassement})`);
           console.log(`📋 IDR: ${searchData.idr}`);
           
           if (searchData.nb_dispositifs === 0) {
-            console.log(`⚠️ No dispositifs found for APE ${ape} with broad domains ${broadDomains.slice(0, 5)}...`);
+            console.log(`⚠️ No dispositifs found for approach: ${approach.name}`);
             continue;
           }
           
@@ -328,8 +324,8 @@ serve(async (req) => {
                   dispositif: dispositif,
                   fiche: ficheData,
                   search_context: { 
-                    ape: ape, 
-                    domains: broadDomains,
+                    approach: approach.name,
+                    params: approach.params,
                     idr: searchData.idr 
                   }
                 },
@@ -427,7 +423,7 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, 2000));
           
         } catch (searchError) {
-          console.error(`❌ Search error for APE ${ape}:`, searchError.message);
+          console.error(`❌ Search error for approach: ${approach.name}:`, searchError.message);
           errorCount++;
         }
         
