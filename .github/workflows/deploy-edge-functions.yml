@@ -54,6 +54,6 @@ jobs:
 
       - name: Deploy edge functions
         run: |
-          for fn in classify-document extract-canonical-subsidy extract-document-data improve-subsidy-titles training-pipeline upload-farm-document ai-content-processor ai-test-single-page data-purge les-aides-full-sync sync-les-aides-fixed sync-progress smart-change-detector; do
+          for fn in classify-document extract-canonical-subsidy extract-document-data improve-subsidy-titles training-pipeline upload-farm-document ai-content-processor ai-test-single-page data-purge les-aides-full-sync sync-les-aides-fixed sync-progress smart-change-detector claude-mcp-server; do
             supabase functions deploy "$fn"
           done

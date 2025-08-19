@@ -148,3 +148,6 @@ verify_jwt = false
 
 [functions.sync-progress]
 verify_jwt = false
+
+[functions.claude-mcp-server]
+verify_jwt = false
