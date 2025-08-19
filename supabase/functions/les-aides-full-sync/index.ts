@@ -73,6 +73,9 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Les-Aides.fr API sync started (with official documentation)');
+    console.log('🔍 ENVIRONMENT DEBUG - Function is executing');
+    console.log('🔍 ENVIRONMENT DEBUG - Date:', new Date().toISOString());
+    console.log('🔍 ENVIRONMENT DEBUG - Timestamp:', Date.now());
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -102,6 +105,30 @@ serve(async (req) => {
     const searchEndpoint = '/aides/';
     const ficheEndpoint = '/aide/';
     
+    // Test basic API connectivity first
+    console.log('🌐 Testing basic API connectivity...');
+    try {
+      const testUrl = `${baseApiUrl}/aides/?format=json`;
+      console.log(`🧪 Test URL: ${testUrl}`);
+      
+      const testResponse = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-IDC': lesAidesApiKey,
+          'User-Agent': 'AgriTool-Platform/1.0 API les-aides.fr',
+        }
+      });
+      
+      console.log(`🧪 Test response: ${testResponse.status} ${testResponse.statusText}`);
+      console.log(`🧪 Test response headers:`, Object.fromEntries(testResponse.headers.entries()));
+      
+      const testText = await testResponse.text();
+      console.log(`🧪 Test response body (first 200 chars): ${testText.substring(0, 200)}`);
+      
+    } catch (testError) {
+      console.error('🧪 Basic API test failed:', testError.message);
+    }
     // Simplified approach: Make basic API calls with no filtering to get ALL subsidies
     console.log('🔍 Making basic API calls with NO FILTERING to get ALL subsidies from Les-Aides.fr...');
     
@@ -149,6 +176,11 @@ serve(async (req) => {
               'User-Agent': 'AgriTool-Platform/1.0 API les-aides.fr',
             }
           });
+          
+          console.log(`🔍 RESPONSE DEBUG - Status: ${searchResponse.status}`);
+          console.log(`🔍 RESPONSE DEBUG - Status Text: ${searchResponse.statusText}`);
+          console.log(`🔍 RESPONSE DEBUG - Headers:`, Object.fromEntries(searchResponse.headers.entries()));
+          console.log(`🔍 RESPONSE DEBUG - URL: ${searchResponse.url}`);
           
           totalRequests++;
           console.log(`📊 Search response: ${searchResponse.status} ${searchResponse.statusText}`);
