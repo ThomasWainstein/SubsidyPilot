@@ -19,8 +19,8 @@ const AgriculturalSectorFilter: React.FC<AgriculturalSectorFilterProps> = ({
 
   return (
     <FilterSection title="search.filters.agriculturalSector">
-      <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.farmingType')}</h4>
-      <div className="flex flex-wrap">
+      <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.farmingType')}</h4>
+      <div className="flex flex-wrap gap-2 min-w-0">
         {availableCategories.map(category => (
           <FilterTagButton
             key={category}
@@ -31,7 +31,7 @@ const AgriculturalSectorFilter: React.FC<AgriculturalSectorFilterProps> = ({
           />
         ))}
         {availableCategories.length === 0 && (
-          <p className="text-sm text-gray-400">No categories available</p>
+          <p className="text-sm text-muted-foreground">No categories available</p>
         )}
       </div>
     </FilterSection>

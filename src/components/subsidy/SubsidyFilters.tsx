@@ -74,11 +74,11 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
     <div className="space-y-6">
       {activeFilterCount > 0 && (
         <div className="flex justify-between items-center mb-4">
-          <Badge variant="secondary" className="px-2 py-1">
+          <Badge variant="secondary" className="px-2 py-1 bg-primary/10 text-primary border-primary/20">
             {activeFilterCount} {activeFilterCount === 1 ? 'filter' : 'filters'} active
           </Badge>
           <button 
-            className="text-sm text-gray-500 hover:text-gray-800"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             onClick={onClearFilters}
           >
             {t('common.clear')}

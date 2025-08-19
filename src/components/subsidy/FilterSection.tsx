@@ -20,24 +20,24 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
   return (
-    <div className="mb-4">
+    <div className="mb-6 min-w-0">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex items-center justify-between py-2">
-          <h4 className="text-sm font-medium text-gray-700">
+        <div className="flex items-center justify-between py-2 min-w-0">
+          <h4 className="text-sm font-medium text-foreground truncate flex-1">
             {title.startsWith('search.filters.') ? t(title as TranslationKey) : title}
           </h4>
           <CollapsibleTrigger asChild>
-            <button className="hover:bg-gray-100 p-1 rounded-md transition-colors">
+            <button className="hover:bg-accent p-1 rounded-md transition-colors flex-shrink-0 ml-2">
               {isOpen ? (
-                <ChevronUp className="w-4 h-4 text-gray-500" />
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
           </CollapsibleTrigger>
         </div>
         <CollapsibleContent>
-          <div className="pt-2 space-y-2">
+          <div className="pt-2 space-y-3 min-w-0">
             {children}
           </div>
         </CollapsibleContent>

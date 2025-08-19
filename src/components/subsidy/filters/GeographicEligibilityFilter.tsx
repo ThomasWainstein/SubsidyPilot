@@ -25,9 +25,9 @@ const GeographicEligibilityFilter: React.FC<GeographicEligibilityFilterProps> = 
 
   return (
     <FilterSection title="search.filters.geographicEligibility">
-      <div className="mb-4">
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.region')}</h4>
-        <div className="flex flex-wrap">
+      <div className="mb-4 min-w-0">
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.region')}</h4>
+        <div className="flex flex-wrap gap-2 min-w-0">
           {availableRegions.map(region => (
             <FilterTagButton
               key={region}
@@ -38,23 +38,23 @@ const GeographicEligibilityFilter: React.FC<GeographicEligibilityFilterProps> = 
             />
           ))}
           {availableRegions.length === 0 && (
-            <p className="text-sm text-gray-400">No regions available</p>
+            <p className="text-sm text-muted-foreground">No regions available</p>
           )}
         </div>
       </div>
-      <div>
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.eligibleCountry')}</h4>
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+      <div className="min-w-0">
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.eligibleCountry')}</h4>
+        <div className="relative min-w-0">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t('search.filters.eligibleCountry')}
-            className="pl-8"
+            className="pl-8 min-w-0"
             value={eligibleCountry}
             onChange={(e) => onCountryChange(e.target.value)}
           />
           {eligibleCountry && (
             <button 
-              className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
               onClick={() => onCountryChange('')}
             >
               <X className="h-4 w-4" />

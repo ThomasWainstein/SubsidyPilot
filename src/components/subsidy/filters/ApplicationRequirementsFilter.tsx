@@ -22,9 +22,9 @@ const ApplicationRequirementsFilter: React.FC<ApplicationRequirementsFilterProps
 
   return (
     <FilterSection title="search.filters.applicationRequirements">
-      <div className="mb-4">
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.documentsRequired')}</h4>
-        <div className="flex flex-wrap">
+      <div className="mb-4 min-w-0">
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.documentsRequired')}</h4>
+        <div className="flex flex-wrap gap-2 min-w-0">
           {[
             { value: 'businessPlan', key: 'search.filters.documentsRequired.businessPlan' },
             { value: 'sustainabilityReport', key: 'search.filters.documentsRequired.sustainabilityReport' },
@@ -44,9 +44,9 @@ const ApplicationRequirementsFilter: React.FC<ApplicationRequirementsFilterProps
         </div>
       </div>
 
-      <div>
-        <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.applicationFormat')}</h4>
-        <div>
+      <div className="min-w-0">
+        <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.applicationFormat')}</h4>
+        <div className="space-y-2">
           {[
             { value: 'online', key: 'search.filters.applicationFormat.online' },
             { value: 'pdf', key: 'search.filters.applicationFormat.pdf' },

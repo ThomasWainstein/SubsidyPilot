@@ -17,8 +17,8 @@ const DeadlineStatusFilter: React.FC<DeadlineStatusFilterProps> = ({
 
   return (
     <FilterSection title="search.filters.deadlineStatus">
-      <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.deadline')}</h4>
-      <div>
+      <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.deadline')}</h4>
+      <div className="space-y-2 min-w-0">
         {[
           { value: 'open', key: 'search.filters.deadline.open' },
           { value: 'closingSoon', key: 'search.filters.deadline.closingSoon' },

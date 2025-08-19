@@ -142,13 +142,13 @@ const SubsidySearchPage = () => {
               <div className="space-y-4">
                 {/* Mobile filters as sheet */}
                 <div className="lg:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" className="w-full flex items-center gap-2 min-h-[44px]">
-                        <Filter size={16} />
-                        Filters & Search
-                      </Button>
-                    </SheetTrigger>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" className="w-full flex items-center gap-2 min-h-[44px]">
+                          <Filter size={16} />
+                          Search & Filter Options
+                        </Button>
+                      </SheetTrigger>
                     <SheetContent side="left" className="w-full sm:w-80 p-0">
                       <div className="h-full overflow-y-auto p-4">
                         <FiltersContent />

@@ -17,8 +17,8 @@ const StrategicAlignmentFilter: React.FC<StrategicAlignmentFilterProps> = ({
 
   return (
     <FilterSection title="search.filters.strategicAlignment">
-      <h4 className="text-xs text-gray-500 mb-2">{t('search.filters.sustainabilityGoals')}</h4>
-      <div>
+      <h4 className="text-xs text-muted-foreground mb-2 font-medium">{t('search.filters.sustainabilityGoals')}</h4>
+      <div className="space-y-2 min-w-0">
         {[
           { value: 'organicTransition', key: 'search.filters.sustainabilityGoals.organicTransition' },
           { value: 'waterEfficiency', key: 'search.filters.sustainabilityGoals.waterEfficiency' },
