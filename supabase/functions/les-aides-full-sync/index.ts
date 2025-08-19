@@ -6,46 +6,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface LesAidesSubsidy {
-  id?: string;
-  titre?: string;
-  nom?: string;
-  title?: string;
-  description?: string;
-  montant_min?: number;
-  montant_max?: number;
-  date_limite?: string;
-  url_candidature?: string;
-  url?: string;
-  secteurs?: string[];
-  beneficiaires?: string[];
-  conditions?: string;
-  zones_geo?: string[];
-  [key: string]: any;
+interface LesAidesDispositif {
+  numero: number;
+  nom: string;
+  sigle?: string;
+  revision?: number;
+  generation?: string;
+  validation?: string;
+  nouveau?: boolean;
+  implantation?: string; // "E", "N", "T"
+  uri?: string;
+  aps?: boolean;
+  domaines?: number[];
+  moyens?: number[];
+  resume?: string;
 }
 
 interface LesAidesResponse {
-  count?: number;
-  next?: string | null;
-  previous?: string | null;
-  results?: LesAidesSubsidy[];
-  data?: LesAidesSubsidy[];
-  [key: string]: any;
+  idr: number;
+  depassement: boolean;
+  nb_dispositifs: number;
+  date: string;
+  dispositifs: LesAidesDispositif[];
+  etablissement?: any;
+  localisation?: any;
 }
 
-interface SyncProgress {
-  session_id: string;
-  status: 'processing' | 'completed' | 'failed';
-  pages_completed: number;
-  total_pages: number;
-  subsidies_processed: number;
-  subsidies_added: number;
-  subsidies_updated: number;
-  error_count: number;
-  start_time: string;
-  estimated_completion?: string;
-  current_action: string;
-  errors?: any[];
+interface LesAidesFicheDispositif extends LesAidesDispositif {
+  auteur?: string;
+  organisme?: {
+    numero: number;
+    sigle: string;
+    raison_sociale: string;
+    implantation: string;
+    adresses?: Array<{
+      libelle: string;
+      interlocuteur?: string;
+      adresse?: string;
+      email?: string;
+      service?: string;
+      telephone?: string;
+      telecopie?: string;
+      web?: string;
+    }>;
+  };
+  objet?: string;
+  conditions?: string;
+  montants?: string;
+  conseils?: string;
+  references?: string;
+  restrictions?: string[];
+  criteres?: {
+    pour?: Array<{ libelle: string; enfants?: any[] }>;
+    contre?: Array<{ libelle: string; enfants?: any[] }>;
+  };
+  particularites?: Array<{
+    titre: string;
+    texte: string;
+  }>;
 }
 
 serve(async (req) => {
@@ -54,7 +72,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Les-Aides.fr Enhanced Sync Started');
+    console.log('🚀 Les-Aides.fr API sync started (with official documentation)');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -69,298 +87,233 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Initialize tracking variables
     let totalAdded = 0;
     let totalUpdated = 0;
     let errorCount = 0;
-    let processedCount = 0;
     const startTime = Date.now();
-    const sessionId = `les-aides-sync-${startTime}`;
-    const errors: any[] = [];
     
+    const sessionId = `les-aides-sync-${Date.now()}`;
     console.log(`📋 Session ID: ${sessionId}`);
-    console.log(`🔧 Environment check: { hasSupabaseUrl: ${!!supabaseUrl}, hasSupabaseKey: ${!!supabaseKey}, hasApiKey: ${!!lesAidesApiKey} }`);
+    console.log(`🔑 Using IDC: ${lesAidesApiKey.substring(0, 10)}...${lesAidesApiKey.substring(-10)}`);
     
-    // Circuit breaker - stop if too many errors
-    const MAX_ERROR_RATE = 0.5; // 50% error rate
-    const MIN_SAMPLES = 10;
+    // Official Les-Aides.fr API endpoints from documentation
+    const baseApiUrl = 'https://api.les-aides.fr';
+    const searchEndpoint = '/aides/';
+    const ficheEndpoint = '/aide/';
     
-    const checkCircuitBreaker = () => {
-      if (processedCount >= MIN_SAMPLES) {
-        const errorRate = errorCount / processedCount;
-        if (errorRate > MAX_ERROR_RATE) {
-          console.log(`🛑 Circuit breaker triggered! Error rate: ${(errorRate * 100).toFixed(1)}%`);
-          return true;
-        }
-      }
-      return false;
-    };
-
-    // Update progress in database
-    const updateProgress = async (update: Partial<SyncProgress>) => {
-      try {
-        const progress: SyncProgress = {
-          session_id: sessionId,
-          status: 'processing',
-          pages_completed: 0,
-          total_pages: 1,
-          subsidies_processed: processedCount,
-          subsidies_added: totalAdded,
-          subsidies_updated: totalUpdated,
-          error_count: errorCount,
-          start_time: new Date(startTime).toISOString(),
-          current_action: 'Initializing...',
-          ...update
-        };
-
-        // Calculate ETA
-        if (processedCount > 0 && progress.total_pages > 0) {
-          const elapsedMs = Date.now() - startTime;
-          const avgTimePerItem = elapsedMs / processedCount;
-          const remainingItems = (progress.total_pages * 50) - processedCount; // Assume 50 items per page
-          const estimatedRemainingMs = remainingItems * avgTimePerItem;
-          progress.estimated_completion = new Date(Date.now() + estimatedRemainingMs).toISOString();
-        }
-
-        if (errors.length > 0) {
-          progress.errors = errors.slice(-5); // Keep last 5 errors
-        }
-
-        await supabase
-          .from('sync_progress')
-          .upsert(progress, { onConflict: 'session_id' });
-      } catch (progressError) {
-        console.log('⚠️ Progress update failed:', progressError.message);
-      }
-    };
-
-    await updateProgress({ current_action: 'Testing API connectivity...' });
-
-    // Comprehensive API endpoint discovery
-    console.log('🧪 Testing API connectivity with different endpoints...');
-    const baseUrls = [
-      'https://api.les-aides.fr/',
-      'https://les-aides.fr/api/',
-      'https://www.les-aides.fr/api/',
-      'https://api.les-aides.fr/'
+    // Agricultural domains to search (from documentation)
+    const agriculturalDomains = [
+      790, // Création Reprise
+      793, // Cession Transmission  
+      798, // Développement commercial
     ];
     
-    const endpointPatterns = ['aides', 'dispositifs', 'aids', 'search', 'api/aides', 'v1/aides'];
-    const authMethods = [
-      { 'Authorization': `Bearer ${lesAidesApiKey}` },
-      { 'X-API-Key': lesAidesApiKey },
-      { 'Authorization': `Token ${lesAidesApiKey}` },
-      {}
+    // Agricultural APE codes (from NAF nomenclature)
+    const agriculturalApes = [
+      'A',     // Agriculture, sylviculture et pêche (broad category)
+      '01',    // Culture et production animale, chasse et services annexes
+      '0111Z', // Culture de céréales
+      '0112Z', // Culture du riz
+      '0113Z', // Culture de légumes, melons, racines
+      '0116Z', // Culture de plantes à fibres
+      '0121Z', // Culture de la vigne
+      '0141Z', // Élevage de vaches laitières
+      '0142Z', // Élevage d'autres bovins et de buffles
+      '0143Z', // Élevage de chevaux et d'autres équidés
+      '0144Z', // Élevage de chameaux et d'autres camélidés
+      '0145Z', // Élevage d'ovins et de caprins
+      '0146Z', // Élevage de porcins
+      '0147Z', // Élevage de volailles
     ];
     
-    let workingEndpoint = '';
-    let workingAuth = {};
-    let responseData: LesAidesResponse | null = null;
-    let totalPages = 1;
+    let totalRequests = 0;
+    const requestLimit = 100; // Stay well under the 720 daily limit
     
-    // Test combinations systematically
-    testLoop: for (const baseUrl of baseUrls) {
-      for (const pattern of endpointPatterns) {
-        for (const auth of authMethods) {
-          const testUrl = `${baseUrl}${pattern}`;
-          console.log(`🔍 Testing: ${testUrl} with auth: ${JSON.stringify(auth)}`);
-          
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-            
-            const response = await fetch(testUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'User-Agent': 'AgriTool-Platform/1.0',
-                ...auth
-              },
-              signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-              const responseText = await response.text();
-              
-              try {
-                const data = JSON.parse(responseText) as LesAidesResponse;
-                const subsidies = data.results || data.data || (Array.isArray(data) ? data : []);
-                
-                if (subsidies.length > 0 || (data.count !== undefined && data.count >= 0)) {
-                  console.log(`✅ Found working endpoint: ${testUrl}`);
-                  console.log(`📊 Data structure: count=${data.count}, results=${subsidies.length}`);
-                  
-                  workingEndpoint = testUrl;
-                  workingAuth = auth;
-                  responseData = data;
-                  
-                  // Calculate total pages (assume 50 items per page if not specified)
-                  if (data.count) {
-                    totalPages = Math.ceil(data.count / 50);
-                  }
-                  
-                  break testLoop;
-                }
-              } catch (parseError) {
-                // Continue testing
-              }
-            }
-          } catch (fetchError) {
-            // Continue testing
-          }
-          
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-    }
+    console.log(`🎯 Will search ${agriculturalDomains.length} domains × ${agriculturalApes.length} APE codes`);
+    console.log(`📊 Estimated requests: ${agriculturalDomains.length * agriculturalApes.length} (limit: ${requestLimit})`);
     
-    // Fallback to working sync function if no endpoint found
-    if (!workingEndpoint) {
-      console.log('⚠️ No working API endpoint found, trying fallback to working sync function...');
-      await updateProgress({ current_action: 'Falling back to working sync function...' });
-      
-      try {
-        const fallbackResponse = await supabase.functions.invoke('sync-les-aides-fixed');
-        if (fallbackResponse.data) {
-          console.log('✅ Fallback sync completed');
-          return new Response(JSON.stringify({
-            success: true,
-            session_id: sessionId,
-            fallback_used: true,
-            data: fallbackResponse.data
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-      } catch (fallbackError) {
-        console.log('❌ Fallback also failed:', fallbackError.message);
-      }
-    }
-
-    if (!workingEndpoint || !responseData) {
-      const finalError = 'No working API endpoint found and fallback failed';
-      await updateProgress({ 
-        status: 'failed', 
-        current_action: finalError,
-        errors: [{ message: finalError, timestamp: new Date().toISOString() }]
-      });
-      
-      return new Response(JSON.stringify({
-        success: false,
-        error: finalError,
-        session_id: sessionId
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    console.log(`📍 Using working endpoint: ${workingEndpoint}`);
-    console.log(`🎯 Target: ${totalPages} pages × 50 subsidies = ${totalPages * 50} total subsidies`);
-    
-    await updateProgress({ 
-      total_pages: totalPages,
-      current_action: 'Processing subsidies...' 
-    });
-
-    // Process pages with pagination support
-    for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
-      if (checkCircuitBreaker()) {
-        console.log(`🛑 Stopping sync at page ${currentPage} due to high error rate`);
-        break;
-      }
-      
-      console.log(`📄 Processing page ${currentPage}/${totalPages}...`);
-      await updateProgress({ 
-        pages_completed: currentPage - 1,
-        current_action: `Processing page ${currentPage}/${totalPages}` 
-      });
-      
-      try {
-        // Construct paginated URL
-        const pageUrl = workingEndpoint.includes('?') 
-          ? `${workingEndpoint}&page=${currentPage}`
-          : `${workingEndpoint}?page=${currentPage}`;
-        
-        const response = await fetch(pageUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'AgriTool-Platform/1.0',
-            ...workingAuth
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = JSON.parse(await response.text()) as LesAidesResponse;
-        const subsidies = data.results || data.data || (Array.isArray(data) ? data : []);
-        
-        if (subsidies.length === 0) {
-          console.log(`📄 Page ${currentPage} has no subsidies, stopping pagination`);
+    // Search for aids across different domain/APE combinations
+    for (const domain of agriculturalDomains) {
+      for (const ape of agriculturalApes) {
+        if (totalRequests >= requestLimit) {
+          console.log(`⚠️ Reached request limit (${requestLimit}), stopping to avoid API quota`);
           break;
         }
         
-        // Process subsidies in batches for better performance
-        const BATCH_SIZE = 10;
-        const subsidyBatches = [];
-        for (let i = 0; i < subsidies.length; i += BATCH_SIZE) {
-          subsidyBatches.push(subsidies.slice(i, i + BATCH_SIZE));
-        }
+        console.log(`🔍 Searching domain ${domain} + APE ${ape}...`);
         
-        for (const batch of subsidyBatches) {
-          const batchPromises = batch.map(async (subsidy, batchIndex) => {
-            const subsidyIndex = processedCount + batchIndex + 1;
-            console.log(`📋 Processing subsidy ${subsidyIndex} - Page ${currentPage}`);
+        try {
+          // Build search URL with parameters
+          const searchParams = new URLSearchParams({
+            ape: ape,
+            domaine: domain.toString(),
+            format: 'json'
+          });
+          
+          const searchUrl = `${baseApiUrl}${searchEndpoint}?${searchParams.toString()}`;
+          console.log(`📡 Making search request: ${searchUrl}`);
+          
+          const searchResponse = await fetch(searchUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Accept-Encoding': 'gzip',
+              'X-IDC': lesAidesApiKey, // Using X-IDC as documented
+              'User-Agent': 'AgriTool-Platform/1.0 API les-aides.fr',
+            }
+          });
+          
+          totalRequests++;
+          console.log(`📊 Search response: ${searchResponse.status} ${searchResponse.statusText}`);
+          
+          if (searchResponse.status === 401) {
+            console.error('❌ Authentication failed - check IDC key');
+            return new Response(JSON.stringify({
+              error: 'Authentication failed',
+              message: 'IDC key is invalid or expired. Check your Les-Aides.fr account.'
+            }), {
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          if (searchResponse.status === 403) {
+            const errorText = await searchResponse.text();
+            console.error(`❌ API Error 403:`, errorText);
             
             try {
-              // Validate and extract data
-              const title = subsidy.titre || subsidy.nom || subsidy.title || `Aide ${subsidy.id || subsidyIndex}`;
-              const externalId = subsidy.id?.toString() || `les-aides-${startTime}-${subsidyIndex}`;
+              const errorData = JSON.parse(errorText);
+              console.log(`📋 Error details:`, errorData);
               
-              if (!title.trim() || title.length < 3) {
-                throw new Error(`Invalid title: "${title}"`);
+              if (errorData.exception?.includes('APE') || errorData.exception?.includes('domaine')) {
+                console.log(`⚠️ Invalid parameter combination: domain ${domain} + APE ${ape}, skipping...`);
+                continue; // Skip this combination and try next
+              }
+            } catch (parseError) {
+              console.log('Could not parse error response');
+            }
+            continue;
+          }
+          
+          if (!searchResponse.ok) {
+            const errorText = await searchResponse.text();
+            console.error(`❌ HTTP ${searchResponse.status}: ${errorText.substring(0, 200)}`);
+            continue;
+          }
+          
+          const searchData: LesAidesResponse = await searchResponse.json();
+          
+          console.log(`✅ Search successful for domain ${domain} + APE ${ape}:`);
+          console.log(`📊 Found ${searchData.nb_dispositifs} dispositifs (depassement: ${searchData.depassement})`);
+          console.log(`📋 IDR: ${searchData.idr}`);
+          
+          if (searchData.nb_dispositifs === 0) {
+            console.log('⚠️ No dispositifs found for this combination');
+            continue;
+          }
+          
+          if (searchData.depassement) {
+            console.log('⚠️ Too many results (>200), should refine search criteria');
+          }
+          
+          // Process each dispositif
+          for (const [index, dispositif] of searchData.dispositifs.entries()) {
+            if (totalRequests >= requestLimit) {
+              console.log(`⚠️ Reached request limit, stopping dispositif processing`);
+              break;
+            }
+            
+            console.log(`📋 Processing dispositif ${index + 1}/${searchData.dispositifs.length}: "${dispositif.nom}"`);
+            
+            try {
+              // Load full fiche for this dispositif
+              const ficheParams = new URLSearchParams({
+                requete: searchData.idr.toString(),
+                dispositif: dispositif.numero.toString(),
+                format: 'json'
+              });
+              
+              const ficheUrl = `${baseApiUrl}${ficheEndpoint}?${ficheParams.toString()}`;
+              console.log(`📄 Loading fiche: ${ficheUrl}`);
+              
+              const ficheResponse = await fetch(ficheUrl, {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json',
+                  'Accept-Encoding': 'gzip',
+                  'X-IDC': lesAidesApiKey,
+                  'User-Agent': 'AgriTool-Platform/1.0 API les-aides.fr',
+                }
+              });
+              
+              totalRequests++;
+              
+              if (!ficheResponse.ok) {
+                console.error(`❌ Fiche load failed: ${ficheResponse.status}`);
+                continue;
               }
               
-              // Check for existing subsidy with better error handling
-              const { data: existingSubsidy, error: existingError } = await supabase
+              const ficheData: LesAidesFicheDispositif = await ficheResponse.json();
+              console.log(`✅ Loaded fiche for dispositif ${dispositif.numero}`);
+              
+              // Check if dispositif already exists
+              const externalId = dispositif.numero.toString();
+              const { data: existingSubsidy } = await supabase
                 .from('subsidies')
                 .select('id')
                 .eq('external_id', externalId)
                 .eq('api_source', 'les-aides-fr')
                 .maybeSingle();
               
-              if (existingError && existingError.code !== 'PGRST116') {
-                throw existingError;
+              // Extract amount information from HTML montants field
+              let amountMin = null;
+              let amountMax = null;
+              if (ficheData.montants) {
+                // Simple regex to extract euro amounts
+                const amountMatches = ficheData.montants.match(/(\d+(?:[\s,]\d{3})*(?:\.\d{2})?)\s*€/g);
+                if (amountMatches && amountMatches.length > 0) {
+                  const amounts = amountMatches.map(match => {
+                    const num = match.replace(/[€\s,]/g, '').replace('.', '');
+                    return parseInt(num);
+                  }).filter(num => !isNaN(num));
+                  
+                  if (amounts.length > 0) {
+                    amountMin = Math.min(...amounts);
+                    amountMax = Math.max(...amounts);
+                  }
+                }
               }
               
               // Prepare subsidy data
               const subsidyData = {
-                code: `les-aides-${externalId}`,
+                code: `les-aides-${dispositif.numero}`,
                 external_id: externalId,
                 api_source: 'les-aides-fr',
-                title: title.trim(),
-                description: subsidy.description?.trim() || 'Aide aux entreprises françaises',
-                amount_min: typeof subsidy.montant_min === 'number' ? subsidy.montant_min : null,
-                amount_max: typeof subsidy.montant_max === 'number' ? subsidy.montant_max : null,
+                title: dispositif.nom,
+                description: ficheData.objet ? 
+                  ficheData.objet.replace(/<[^>]*>/g, '').substring(0, 1000) : // Strip HTML
+                  dispositif.resume || 'Aide aux entreprises françaises',
+                amount_min: amountMin,
+                amount_max: amountMax,
                 currency: 'EUR',
-                deadline: subsidy.date_limite ? new Date(subsidy.date_limite).toISOString() : null,
+                deadline: null, // Les-Aides.fr doesn't seem to have standardized deadlines
                 eligibility_criteria: {
-                  secteurs: Array.isArray(subsidy.secteurs) ? subsidy.secteurs : [],
-                  beneficiaires: Array.isArray(subsidy.beneficiaires) ? subsidy.beneficiaires : [],
-                  conditions: subsidy.conditions || '',
-                  zones_geo: Array.isArray(subsidy.zones_geo) ? subsidy.zones_geo : []
+                  domaines: dispositif.domaines || [],
+                  moyens: dispositif.moyens || [],
+                  implantation: dispositif.implantation,
+                  conditions: ficheData.conditions ? ficheData.conditions.replace(/<[^>]*>/g, '') : '',
+                  criteres_pour: ficheData.criteres?.pour || [],
+                  criteres_contre: ficheData.criteres?.contre || [],
+                  restrictions: ficheData.restrictions || []
                 },
-                application_url: subsidy.url_candidature || subsidy.url || '',
+                application_url: ficheData.organisme?.adresses?.[0]?.web || dispositif.uri || '',
                 status: 'active',
-                raw_data: subsidy,
+                raw_data: {
+                  dispositif: dispositif,
+                  fiche: ficheData,
+                  search_context: { domain, ape, idr: searchData.idr }
+                },
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               };
               
@@ -368,187 +321,140 @@ serve(async (req) => {
                 // Update existing
                 const { error: updateError } = await supabase
                   .from('subsidies')
-                  .update(subsidyData)
+                  .update({
+                    title: subsidyData.title,
+                    description: subsidyData.description,
+                    amount_min: subsidyData.amount_min,
+                    amount_max: subsidyData.amount_max,
+                    eligibility_criteria: subsidyData.eligibility_criteria,
+                    application_url: subsidyData.application_url,
+                    raw_data: subsidyData.raw_data,
+                    updated_at: subsidyData.updated_at
+                  })
                   .eq('id', existingSubsidy.id);
                 
                 if (updateError) {
-                  // Handle specific database errors gracefully
-                  if (updateError.code === '23505') { // Unique constraint violation
-                    console.log(`⚠️ Duplicate detected for ${title}, skipping`);
-                    return 'duplicate';
-                  }
-                  throw updateError;
+                  console.error(`❌ Update failed:`, updateError.message);
+                  errorCount++;
+                } else {
+                  totalUpdated++;
+                  console.log(`🔄 Updated dispositif ${dispositif.numero}`);
                 }
-                
-                totalUpdated++;
-                console.log(`🔄 Updated: ${title}`);
-                return 'updated';
               } else {
-                // Insert new with creation timestamp
-                const insertData = { ...subsidyData, created_at: new Date().toISOString() };
-                
+                // Insert new
                 const { data: insertedSubsidy, error: insertError } = await supabase
                   .from('subsidies')
-                  .insert(insertData)
+                  .insert(subsidyData)
                   .select('id')
                   .single();
                 
                 if (insertError) {
-                  if (insertError.code === '23505') { // Unique constraint violation
-                    console.log(`⚠️ Duplicate detected for ${title}, skipping`);
-                    return 'duplicate';
+                  console.error(`❌ Insert failed:`, {
+                    error: insertError.message,
+                    code: insertError.code,
+                    title: subsidyData.title
+                  });
+                  errorCount++;
+                } else {
+                  totalAdded++;
+                  console.log(`✅ Inserted dispositif ${dispositif.numero} as subsidy ID: ${insertedSubsidy.id}`);
+                  
+                  // Add categories based on domains
+                  if (dispositif.domaines?.length > 0) {
+                    const categoryData = dispositif.domaines.map((domainId: number) => ({
+                      subsidy_id: insertedSubsidy.id,
+                      category: `domain-${domainId}`,
+                      sector: 'agriculture'
+                    }));
+                    
+                    const { error: categoryError } = await supabase
+                      .from('subsidy_categories')
+                      .insert(categoryData);
+                    
+                    if (!categoryError) {
+                      console.log(`🏷️ Added ${categoryData.length} domain categories`);
+                    }
                   }
-                  throw insertError;
-                }
-                
-                totalAdded++;
-                console.log(`✅ Added: ${title}`);
-                
-                // Add related data in parallel
-                const relationPromises = [];
-                
-                if (subsidy.zones_geo?.length > 0) {
-                  const locationData = subsidy.zones_geo.map((zone: string) => ({
+                  
+                  // Add location (France by default, could be more specific based on implantation)
+                  const locationData = {
                     subsidy_id: insertedSubsidy.id,
                     country_code: 'FR',
-                    region: zone.trim()
-                  }));
+                    region: dispositif.implantation === 'N' ? 'National' : 
+                           dispositif.implantation === 'E' ? 'European' : 'Territorial'
+                  };
                   
-                  relationPromises.push(
-                    supabase.from('subsidy_locations').insert(locationData)
-                      .then(() => console.log(`📍 Added ${locationData.length} locations`))
-                      .catch(err => console.log(`⚠️ Location insert error: ${err.message}`))
-                  );
-                }
-                
-                if (subsidy.secteurs?.length > 0) {
-                  const categoryData = subsidy.secteurs.map((secteur: string) => ({
-                    subsidy_id: insertedSubsidy.id,
-                    category: secteur.trim(),
-                    sector: 'business'
-                  }));
+                  const { error: locationError } = await supabase
+                    .from('subsidy_locations')
+                    .insert(locationData);
                   
-                  relationPromises.push(
-                    supabase.from('subsidy_categories').insert(categoryData)
-                      .then(() => console.log(`🏷️ Added ${categoryData.length} categories`))
-                      .catch(err => console.log(`⚠️ Category insert error: ${err.message}`))
-                  );
+                  if (!locationError) {
+                    console.log(`📍 Added location: ${locationData.region}`);
+                  }
                 }
-                
-                // Wait for all relations to complete
-                if (relationPromises.length > 0) {
-                  await Promise.allSettled(relationPromises);
-                }
-                
-                return 'inserted';
               }
-            } catch (subsidyError) {
+              
+              // Rate limiting between fiche requests
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+            } catch (dispositifError) {
+              console.error(`❌ Dispositif processing error for ${dispositif.numero}:`, dispositifError.message);
               errorCount++;
-              const error = {
-                message: subsidyError.message,
-                subsidy_title: subsidy.titre || subsidy.nom || 'Unknown',
-                subsidy_id: subsidy.id,
-                timestamp: new Date().toISOString()
-              };
-              errors.push(error);
-              console.error(`❌ Subsidy error:`, error);
-              return 'error';
             }
-          });
+          }
           
-          // Process batch and update counters
-          const results = await Promise.allSettled(batchPromises);
-          processedCount += batch.length;
+          // Rate limiting between search requests
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Update progress after each batch
-          await updateProgress({
-            subsidies_processed: processedCount,
-            current_action: `Processed ${processedCount} subsidies from page ${currentPage}`
-          });
+        } catch (searchError) {
+          console.error(`❌ Search error for domain ${domain} + APE ${ape}:`, searchError.message);
+          errorCount++;
         }
         
-        // Rate limiting between pages
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-      } catch (pageError) {
-        errorCount++;
-        const error = {
-          message: pageError.message,
-          page: currentPage,
-          timestamp: new Date().toISOString()
-        };
-        errors.push(error);
-        console.error(`❌ Network/Fetch error for page ${currentPage}:`, error);
-        
-        if (pageError.message.includes('Invalid URL')) {
-          console.log(`🛑 Stopping sync at page ${currentPage} due to network error`);
-          break;
-        }
+        if (totalRequests >= requestLimit) break;
       }
+      
+      if (totalRequests >= requestLimit) break;
     }
     
-    // Final statistics and logging
+    // Log sync results
     const durationMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
-    const finalStatus = errorCount === 0 ? 'completed' : (processedCount > 0 ? 'completed_with_errors' : 'failed');
     
-    console.log(`📊 Sync Summary: ${totalAdded} added, ${totalUpdated} updated, ${errorCount} errors in ${durationMinutes}min`);
-    
-    // Log to api_sync_logs
     await supabase.from('api_sync_logs').insert({
       api_source: 'les-aides-fr',
-      sync_type: 'full_sync',
-      status: finalStatus,
-      records_processed: processedCount,
+      sync_type: 'manual_sync',
+      status: errorCount === 0 ? 'completed' : 'completed_with_errors',
+      records_processed: totalAdded + totalUpdated + errorCount,
       records_added: totalAdded,
       records_updated: totalUpdated,
-      errors: errors.length > 0 ? { errors: errors.slice(-10) } : null, // Keep last 10 errors
+      errors: errorCount > 0 ? { error_count: errorCount, total_requests: totalRequests } : null,
       completed_at: new Date().toISOString()
     });
     
-    // Final progress update
-    await updateProgress({
-      status: finalStatus,
-      pages_completed: totalPages,
-      current_action: `Sync completed: ${totalAdded} added, ${totalUpdated} updated`,
-      estimated_completion: new Date().toISOString()
-    });
+    console.log(`📊 Final summary: ${totalAdded} added, ${totalUpdated} updated, ${errorCount} errors`);
+    console.log(`📡 Total API requests made: ${totalRequests}/${requestLimit}`);
     
     return new Response(JSON.stringify({
-      success: finalStatus !== 'failed',
+      success: true,
       session_id: sessionId,
       summary: {
         total_added: totalAdded,
         total_updated: totalUpdated,
         error_count: errorCount,
-        records_processed: processedCount,
         duration_minutes: durationMinutes,
-        working_endpoint: workingEndpoint,
-        api_source: 'les-aides-fr',
-        status: finalStatus
+        api_requests_made: totalRequests,
+        api_requests_limit: requestLimit,
+        working_endpoint: `${baseApiUrl}${searchEndpoint}`,
+        api_source: 'les-aides-fr'
       },
-      message: `✅ Les-Aides.fr sync ${finalStatus}! Added ${totalAdded}, updated ${totalUpdated} subsidies${errorCount > 0 ? ` with ${errorCount} errors` : ''}.`,
-      errors: errors.slice(-5) // Return last 5 errors for debugging
+      message: `✅ Les-Aides.fr sync completed! Added ${totalAdded}, updated ${totalUpdated} subsidies with ${totalRequests} API requests.`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('❌ Critical sync error:', error);
-    
-    // Update progress with failure
-    try {
-      const sessionId = `les-aides-sync-${Date.now()}`;
-      await updateProgress({
-        status: 'failed',
-        current_action: `Critical error: ${error.message}`,
-        errors: [{ message: error.message, timestamp: new Date().toISOString() }]
-      });
-    } catch (progressError) {
-      // Ignore progress update errors in critical error handler
-    }
-    
+    console.error('❌ Les-Aides.fr sync error:', error);
     return new Response(JSON.stringify({ 
-      success: false,
       error: error.message,
       details: error.stack?.substring(0, 1000) || 'No stack trace available'
     }), {
