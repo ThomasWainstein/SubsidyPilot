@@ -1,6 +1,6 @@
 
 import React, { useMemo, useCallback } from 'react';
-import EnhancedFarmCard from '@/components/dashboard/EnhancedFarmCard';
+import ProfessionalFarmCard from '@/components/dashboard/ProfessionalFarmCard';
 import { FarmCardSkeleton } from '@/components/ui/loading-skeleton';
 import EmptyState from '@/components/states/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -61,13 +61,26 @@ const FarmGrid: React.FC<FarmGridProps> = React.memo(({ farms }) => {
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {transformedFarms.map(farm => (
-        <EnhancedFarmCard key={farm.id} farm={farm} />
-      ))}
-    </div>
-  );
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {transformedFarms.map(farm => {
+          // Calculate real status indicators from actual data
+          const hasUrgentIssues = farm.status === 'Incomplete';
+          const documentsComplete = farm.status === 'Profile Complete';
+          const fundingOpportunities = 0; // This would come from real subsidy matches
+          
+          return (
+            <ProfessionalFarmCard 
+              key={farm.id} 
+              farm={farm}
+              hasUrgentIssues={hasUrgentIssues}
+              documentsComplete={documentsComplete}
+              fundingOpportunities={fundingOpportunities}
+            />
+          );
+        })}
+      </div>
+    );
 });
 
 FarmGrid.displayName = 'FarmGrid';

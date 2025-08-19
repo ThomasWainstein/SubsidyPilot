@@ -15,7 +15,8 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import EnhancedErrorBoundary from '@/components/error/EnhancedErrorBoundary';
 import { logger } from '@/lib/logger';
 import { prodLogger } from '@/utils/productionLogger';
-import SkipLink from '@/components/accessibility/SkipLink';
+import EnhancedDashboardHeader from '@/components/dashboard/EnhancedDashboardHeader';
+import FarmStatusOverview from '@/components/dashboard/FarmStatusOverview';
 
 interface Farm {
   id: string;
@@ -56,6 +57,7 @@ const DashboardContainer = () => {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   // Fetch farms from Supabase
   useEffect(() => {
@@ -243,8 +245,6 @@ const DashboardContainer = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SkipLink href="#main-content">Skip to main content</SkipLink>
-      <SkipLink href="#dashboard-filters">Skip to filters</SkipLink>
       <Navbar />
       
       <main 
@@ -255,12 +255,12 @@ const DashboardContainer = () => {
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
-            <h1 
-              className="text-2xl font-bold text-gray-900 dark:text-white"
-              id="dashboard-title"
-            >
-              {typeof t === 'function' ? t('dashboard.clientFarmDashboard') : 'Farm Dashboard'}
-            </h1>
+            <EnhancedDashboardHeader 
+              farmCount={farms.length}
+              onAddFarm={handleAddFarm}
+              hasIssues={alerts && alerts.length > 0}
+              completionRate={farms.filter(f => f.status === 'Profile Complete').length / (farms.length || 1) * 100}
+            />
           </div>
           
           <div 
@@ -308,31 +308,14 @@ const DashboardContainer = () => {
               )}
             </div>
 
-            {/* Right sidebar - All metrics and secondary info */}
+            {/* Right sidebar - Enhanced with real status overview */}
             <aside 
               className="col-span-12 lg:col-span-4 space-y-6"
               role="complementary"
               aria-label="Farm statistics and actions"
             >
-              {/* Simple farm summary */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Farm Summary</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300">Total Farms:</span>
-                    <span className="font-medium">{farms.length}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300">Filtered Results:</span>
-                    <span className="font-medium">{sortedFarms.length}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dashboard Overview in sidebar */}
-              <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Dashboard Overview">
-                <DashboardOverview farmCount={farms.length} />
-              </EnhancedErrorBoundary>
+              {/* Farm Status Overview */}
+              <FarmStatusOverview farms={farms} />
 
               {/* Alerts and actions */}
               <EnhancedErrorBoundary fallback={DashboardErrorFallback} context="Alerts and Actions">

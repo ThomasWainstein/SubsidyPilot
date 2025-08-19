@@ -55,13 +55,13 @@ const DashboardFilters = ({
             size={18} 
             aria-hidden="true"
           />
-          <Input
-            placeholder={t('common.searchFarms')}
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label={t('common.searchFarms')}
-          />
+            <Input
+              placeholder="Search your farms..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search your farms"
+            />
         </div>
         
         <div className="flex space-x-2">
@@ -70,37 +70,37 @@ const DashboardFilters = ({
               <Button 
                 variant="outline" 
                 className="flex items-center"
-                aria-label={`Sort farms by: ${sortOption === 'name' ? t('common.name') : 
-                    sortOption === 'region' ? t('common.region') : 
-                    sortOption === 'status' ? t('common.status') : 
-                    t('common.lastUpdated')}`}
+                aria-label={`Sort farms by: ${sortOption === 'name' ? 'Name' : 
+                    sortOption === 'region' ? 'Region' : 
+                    sortOption === 'status' ? 'Status' : 
+                    'Last Updated'}`}
               >
-                {t('dashboard.sortBy')}: {sortOption === 'name' ? t('common.name') : 
-                    sortOption === 'region' ? t('common.region') : 
-                    sortOption === 'status' ? t('common.status') : 
-                    t('common.lastUpdated')}
+                Sort by: {sortOption === 'name' ? 'Name' : 
+                    sortOption === 'region' ? 'Region' : 
+                    sortOption === 'status' ? 'Status' : 
+                    'Last Updated'}
                 <ChevronDown size={16} className="ml-2" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{t('dashboard.sortBy')}</DropdownMenuLabel>
+              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuRadioGroup value={sortOption} onValueChange={(value) => setSortOption(value)}>
-                <DropdownMenuRadioItem value="name">{t('common.name')}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="region">{t('common.region')}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="status">{t('common.status')}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="updated">{t('common.lastUpdated')}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="region">Region</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="status">Status</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="updated">Last Updated</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           
           <Button 
             onClick={onAddFarm} 
-            className="flex items-center bg-purple-600 hover:bg-purple-700"
-            aria-label={t('common.addNewClientFarm')}
+            className="flex items-center bg-primary hover:bg-primary/90"
+            aria-label="Add New Farm"
           >
             <Plus size={16} className="mr-2" aria-hidden="true" />
-            {t('common.addNewClientFarm')}
+            Add New Farm
           </Button>
         </div>
       </div>
@@ -117,10 +117,10 @@ const DashboardFilters = ({
             className="flex items-center mb-2"
             aria-expanded={isFiltersOpen}
             aria-controls="dashboard-filters-content"
-            aria-label={isFiltersOpen ? t('common.hideFilters') : t('common.showFilters')}
+            aria-label={isFiltersOpen ? 'Hide filters' : 'Show filters'}
           >
             <SlidersHorizontal size={16} className="mr-2" aria-hidden="true" />
-            {isFiltersOpen ? t('common.hideFilters') : t('common.showFilters')}
+            {isFiltersOpen ? 'Hide filters' : 'Show filters'}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent id="dashboard-filters-content">
@@ -130,7 +130,7 @@ const DashboardFilters = ({
             aria-label="Farm filtering options"
           >
             <div>
-              <h3 className="font-medium mb-3" id="status-filter-label">{t('dashboard.filterByStatus')}</h3>
+              <h3 className="font-medium mb-3" id="status-filter-label">Filter by Status</h3>
               <div 
                 className="flex flex-wrap gap-2"
                 role="radiogroup"
@@ -142,9 +142,9 @@ const DashboardFilters = ({
                   onClick={() => setStatusFilter('all')}
                   role="radio"
                   aria-checked={statusFilter === 'all'}
-                  aria-label={`Filter by: ${t('dashboard.allFarms')}`}
+                  aria-label={`Filter by: All Farms`}
                 >
-                  {t('dashboard.allFarms')}
+                  All Farms
                 </Button>
                 <Button
                   variant={statusFilter === 'active' ? 'default' : 'outline'}
@@ -152,9 +152,9 @@ const DashboardFilters = ({
                   onClick={() => setStatusFilter('active')}
                   role="radio"
                   aria-checked={statusFilter === 'active'}
-                  aria-label={`Filter by: ${t('status.active')}`}
+                  aria-label={`Filter by: Active`}
                 >
-                  {t('status.active')}
+                  Active
                 </Button>
                 <Button
                   variant={statusFilter === 'pending' ? 'default' : 'outline'}
@@ -162,9 +162,9 @@ const DashboardFilters = ({
                   onClick={() => setStatusFilter('pending')}
                   role="radio"
                   aria-checked={statusFilter === 'pending'}
-                  aria-label={`Filter by: ${t('status.pending')}`}
+                  aria-label={`Filter by: Pending`}
                 >
-                  {t('status.pending')}
+                  Pending
                 </Button>
                 <Button
                   variant={statusFilter === 'archived' ? 'default' : 'outline'}
@@ -172,9 +172,9 @@ const DashboardFilters = ({
                   onClick={() => setStatusFilter('archived')}
                   role="radio"
                   aria-checked={statusFilter === 'archived'}
-                  aria-label={`Filter by: ${t('status.archived')}`}
+                  aria-label={`Filter by: Archived`}
                 >
-                  {t('status.archived')}
+                  Archived
                 </Button>
                 <Button
                   variant={statusFilter === 'needsUpdate' ? 'default' : 'outline'}
@@ -182,15 +182,15 @@ const DashboardFilters = ({
                   onClick={() => setStatusFilter('needsUpdate')}
                   role="radio"
                   aria-checked={statusFilter === 'needsUpdate'}
-                  aria-label={`Filter by: ${t('status.needsUpdate')}`}
+                  aria-label={`Filter by: Needs Update`}
                 >
-                  {t('status.needsUpdate')}
+                  Needs Update
                 </Button>
               </div>
             </div>
             
             <div>
-              <h3 className="font-medium mb-3" id="region-filter-label">{t('dashboard.filterByRegion')}</h3>
+              <h3 className="font-medium mb-3" id="region-filter-label">Filter by Region</h3>
               <div 
                 className="grid grid-cols-2 gap-2"
                 role="group"
