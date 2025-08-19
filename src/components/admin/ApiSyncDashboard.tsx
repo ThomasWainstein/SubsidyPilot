@@ -59,10 +59,10 @@ export const ApiSyncDashboard: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5" />
-              Les-Aides.fr
+              Aides-Territoires
             </CardTitle>
             <CardDescription>
-              French agricultural funding database
+              French government subsidies & public funding (3,000+ active aids)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -73,14 +73,14 @@ export const ApiSyncDashboard: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span>Categories:</span>
-                <span className="font-medium">Agriculture, Bio, Equipment</span>
+                <span className="font-medium">All sectors, No API key needed</span>
               </div>
               <Button 
-                onClick={() => triggerSync('les-aides')}
-                disabled={syncing === 'les-aides'}
+                onClick={() => triggerSync('aides-territoires')}
+                disabled={syncing === 'aides-territoires'}
                 className="w-full"
               >
-                {syncing === 'les-aides' ? (
+                {syncing === 'aides-territoires' ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                     Syncing...
@@ -88,6 +88,33 @@ export const ApiSyncDashboard: React.FC = () => {
                 ) : (
                   'Sync Now'
                 )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="opacity-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Les-Aides.fr
+            </CardTitle>
+            <CardDescription>
+              French agricultural funding (requires API registration)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span>Coverage:</span>
+                <span className="font-medium">France</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Status:</span>
+                <span className="font-medium">Need API Key</span>
+              </div>
+              <Button disabled className="w-full">
+                Coming Soon
               </Button>
             </div>
           </CardContent>
