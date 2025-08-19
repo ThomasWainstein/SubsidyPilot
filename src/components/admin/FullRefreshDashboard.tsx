@@ -177,6 +177,8 @@ export const FullRefreshDashboard: React.FC = () => {
   const handleTestApi = async () => {
     setIsTesting(true);
     try {
+      console.log('🧪 About to call test-les-aides-api function...');
+      
       toast({
         title: "Testing Les-Aides.fr API",
         description: "Running diagnostic tests on the API endpoints...",
@@ -184,24 +186,34 @@ export const FullRefreshDashboard: React.FC = () => {
 
       const { data, error } = await supabase.functions.invoke('test-les-aides-api');
       
-      if (error) throw error;
+      console.log('🧪 Function response:', { data, error });
+      
+      if (error) {
+        console.error('🧪 Function call error:', error);
+        throw error;
+      }
 
       console.log('🧪 API Test Results:', data);
       
-      if (data?.success && data?.results) {
-        const successfulCalls = data.results.filter((r: any) => r.status === 200).length;
-        const totalCalls = data.results.length;
+      if (data?.success && data?.test_result) {
+        const testResult = data.test_result;
+        const isSuccessful = testResult.status === 200;
         
         toast({
-          title: "API Test Completed",
-          description: `${successfulCalls}/${totalCalls} API calls successful. Check console for detailed results.`,
+          title: isSuccessful ? "API Test Successful!" : "API Test Issues Found",
+          description: `Status: ${testResult.status}, Found ${testResult.nb_dispositifs || 0} subsidies. Check console for details.`,
+          variant: isSuccessful ? "default" : "destructive",
         });
+        
+        console.log('🧪 Detailed test results:', testResult);
+      } else if (data?.success === false) {
+        throw new Error(data.message || 'Test function failed');
       } else {
-        throw new Error('Test function returned no results');
+        throw new Error('Test function returned unexpected format');
       }
 
     } catch (error: any) {
-      console.error('Error testing API:', error);
+      console.error('🧪 Error testing API:', error);
       toast({
         title: "API Test Failed",
         description: error.message || 'Unknown error occurred',
