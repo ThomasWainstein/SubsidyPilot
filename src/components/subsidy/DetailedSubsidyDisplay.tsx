@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, MapPin, Euro, FileText, AlertCircle, CheckCircle, Clock, Building, Phone, Mail, ExternalLink, Download, Heart, Share2, Check, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { getLocalizedContent } from '@/utils/language';
+import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
 
 interface DetailedSubsidyDisplayProps {
   subsidy: any;

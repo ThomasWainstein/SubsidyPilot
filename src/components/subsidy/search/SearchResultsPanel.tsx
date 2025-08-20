@@ -24,6 +24,7 @@ interface Subsidy {
   amount?: number; // Added for subsidies_structured
   agency?: string; // Added for subsidies_structured
   matchConfidence: number;
+  raw_data?: any; // Added for enhanced parsing
 }
 
 interface SearchResultsPanelProps {
@@ -40,7 +41,7 @@ interface SearchResultsPanelProps {
   onClearFilters?: () => void;
 }
 
-import { formatFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplayString, formatFilterLabel } from '@/utils/subsidyFormatting';
+import { formatFundingAmount, parseEnhancedFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplayString, formatFilterLabel } from '@/utils/subsidyFormatting';
 
 const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const navigate = useNavigate();
@@ -86,6 +87,16 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
 
   // Get funding display with proper context and clarity
   const getFundingDisplay = () => {
+    // Use enhanced parsing first
+    const enhancedAmount = parseEnhancedFundingAmount(subsidy, subsidy.raw_data?.fiche ? { montants: subsidy.raw_data.fiche.montants } : null);
+    if (enhancedAmount && enhancedAmount !== 'Not specified') {
+      return {
+        amount: enhancedAmount,
+        context: 'per application',
+        type: 'enhanced'
+      };
+    }
+
     if (subsidy.amount) {
       // Try to infer context from description or title
       const isPerHectare = getSubsidyDescription(subsidy).toLowerCase().includes('hectare') || 

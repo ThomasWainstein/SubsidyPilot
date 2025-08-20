@@ -35,6 +35,105 @@ export const formatFundingAmount = (amount: number[] | number | null): string =>
 };
 
 /**
+ * Enhanced funding amount parser that extracts amounts from French text
+ */
+export const parseEnhancedFundingAmount = (subsidy: any, lesAidesData?: any): string => {
+  // First check if we have raw_data.fiche content (enhanced extraction data)
+  if (subsidy.raw_data?.fiche) {
+    const ficheText = typeof subsidy.raw_data.fiche === 'string' 
+      ? subsidy.raw_data.fiche 
+      : JSON.stringify(subsidy.raw_data.fiche);
+    
+    const cleanText = ficheText.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&euro;/g, '€')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Look for range patterns first (more specific)
+    const rangePatterns = [
+      /entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i,
+      /de\s+(\d+(?:\s+\d+)*)\s*€\s+à\s+(\d+(?:\s+\d+)*)\s*€/i,
+      /(\d+(?:\s+\d+)*)\s*€\s+à\s+(\d+(?:\s+\d+)*)\s*€/i,
+    ];
+    
+    for (const pattern of rangePatterns) {
+      const match = cleanText.match(pattern);
+      if (match) {
+        const minAmount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+        const maxAmount = parseInt(match[2].replace(/\s/g, '')).toLocaleString('fr-FR');
+        return `€${minAmount} - €${maxAmount}`;
+      }
+    }
+    
+    // Look for maximum amount patterns
+    const maxPatterns = [
+      { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+      { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" },
+      { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+      { pattern: /plafonnée\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+      { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }
+    ];
+    
+    for (const { pattern, prefix } of maxPatterns) {
+      const match = cleanText.match(pattern);
+      if (match) {
+        const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+        return `${prefix}${amount}`;
+      }
+    }
+  }
+
+  // Check lesAidesData montants field
+  if (lesAidesData?.montants) {
+    const montantsText = lesAidesData.montants
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&euro;/g, '€')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Look for maximum amount patterns
+    const maxPatterns = [
+      { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }, 
+      { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" },
+      { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+      { pattern: /plafonnée\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+      { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }
+    ];
+    
+    for (const { pattern, prefix } of maxPatterns) {
+      const match = montantsText.match(pattern);
+      if (match) {
+        const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+        return `${prefix}${amount}`;
+      }
+    }
+    
+    // Range patterns
+    const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
+    if (rangeMatch) {
+      const minAmount = parseInt(rangeMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+      const maxAmount = parseInt(rangeMatch[2].replace(/\s/g, '')).toLocaleString('fr-FR');
+      return `€${minAmount} - €${maxAmount}`;
+    }
+  }
+
+  // Fallback to existing formatFundingAmount logic
+  return formatFundingAmount(subsidy.amount || subsidy.funding_amount);
+};
+
+/**
  * Get subsidy title - prioritize actual source titles, flag missing ones
  */
 export const getSubsidyTitle = (subsidy: any): string => {
