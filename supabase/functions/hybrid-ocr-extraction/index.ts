@@ -17,24 +17,43 @@ interface ExtractionRequest {
 
 interface GoogleVisionResponse {
   responses: Array<{
-    textAnnotations: Array<{
+    textAnnotations?: Array<{
       description: string;
       boundingPoly?: any;
     }>;
     fullTextAnnotation?: {
       text: string;
-      pages: Array<{
-        blocks: Array<{
-          paragraphs: Array<{
-            words: Array<{
-              symbols: Array<{
+      pages?: Array<{
+        property?: {
+          detectedLanguages?: Array<{
+            languageCode: string;
+            confidence?: number;
+          }>;
+        };
+        blocks?: Array<{
+          blockType?: string;
+          paragraphs?: Array<{
+            property?: any;
+            words?: Array<{
+              property?: any;
+              symbols?: Array<{
                 text: string;
                 boundingBox?: any;
+                property?: any;
               }>;
             }>;
           }>;
         }>;
       }>;
+    };
+    imagePropertiesAnnotation?: {
+      dominantColors?: any;
+      cropHints?: any;
+    };
+    error?: {
+      code: number;
+      message: string;
+      details?: any[];
     };
   }>;
 }
@@ -77,25 +96,27 @@ serve(async (req) => {
 
     // Step 1: Extract text using Google Cloud Vision OCR
     console.log('📖 Step 1: Extracting text with Google Vision OCR...');
-    const extractedText = await extractTextWithGoogleVision(fileUrl, googleApiKey);
+    const ocrResult = await extractTextWithGoogleVision(fileUrl, googleApiKey, fileName);
     
-    if (!extractedText) {
+    if (!ocrResult.text) {
       throw new Error('Failed to extract text from document');
     }
 
-    console.log(`✅ OCR extracted ${extractedText.length} characters`);
+    console.log(`✅ OCR extracted ${ocrResult.text.length} characters using ${ocrResult.metadata.detectionType}`);
 
     // Step 2: Map fields using OpenAI based on client type
     console.log('🤖 Step 2: Mapping fields with OpenAI...');
     const fieldMapping = await mapFieldsWithOpenAI(
-      extractedText, 
+      ocrResult.text, 
       clientType, 
       documentType, 
       fileName,
-      openaiApiKey
+      openaiApiKey,
+      ocrResult.metadata
     );
 
-    // Step 3: Store extraction results
+    // Step 3: Store extraction results with enhanced metadata
+    const totalProcessingTime = Date.now();
     const { error: updateError } = await supabase
       .from('document_extractions')
       .update({
@@ -103,8 +124,17 @@ serve(async (req) => {
         extracted_data: fieldMapping.extractedData,
         confidence_score: fieldMapping.confidence,
         extraction_type: 'hybrid_google_openai',
-        processing_time_ms: Date.now(),
+        processing_time_ms: totalProcessingTime,
         model_used: 'google-vision + gpt-5-2025-08-07',
+        ocr_used: true,
+        pages_processed: ocrResult.metadata.pageCount,
+        detected_language: ocrResult.metadata.languagesDetected[0] || 'unknown',
+        debug_info: {
+          ocrMetadata: ocrResult.metadata,
+          clientType,
+          documentType,
+          extractionMethod: 'hybrid_ocr_openai_field_mapping'
+        },
         updated_at: new Date().toISOString()
       })
       .eq('document_id', documentId);
@@ -120,12 +150,18 @@ serve(async (req) => {
       success: true,
       extractedData: fieldMapping.extractedData,
       confidence: fieldMapping.confidence,
-      textLength: extractedText.length,
+      textLength: ocrResult.text.length,
       tokensUsed: fieldMapping.tokensUsed,
+      ocrMetadata: ocrResult.metadata,
       costBreakdown: {
-        googleVisionCost: 0.0015, // ~$0.0015 per page
-        openaiCost: (fieldMapping.tokensUsed / 1000) * 0.03, // Approximate
-        totalCost: 0.0015 + ((fieldMapping.tokensUsed / 1000) * 0.03)
+        googleVisionCost: ocrResult.metadata.pageCount * 0.0015, // $0.0015 per page
+        openaiCost: (fieldMapping.tokensUsed / 1000) * 0.03, // ~$0.03 per 1K tokens  
+        totalCost: (ocrResult.metadata.pageCount * 0.0015) + ((fieldMapping.tokensUsed / 1000) * 0.03)
+      },
+      processingTime: {
+        ocrTime: ocrResult.metadata.processingTime,
+        totalTime: Date.now(),
+        breakdown: `OCR: ${ocrResult.metadata.processingTime}ms, Field Mapping: ${Date.now() - ocrResult.metadata.processingTime}ms`
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -143,18 +179,65 @@ serve(async (req) => {
   }
 });
 
-async function extractTextWithGoogleVision(fileUrl: string, apiKey: string): Promise<string> {
+async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, fileName: string): Promise<{
+  text: string;
+  metadata: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+  }
+}> {
+  const startTime = Date.now();
+  
   try {
-    // First, fetch the file content
+    console.log(`📖 Google Vision: Processing ${fileName}`);
+    
+    // Fetch file content
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
       throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
     }
     
     const fileBuffer = await fileResponse.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    const fileType = fileName.toLowerCase();
+    
+    // Determine optimal detection type based on file type and content
+    const isDocumentFile = fileType.includes('.pdf') || fileType.includes('.tiff') || fileType.includes('.tif');
+    const detectionType = isDocumentFile ? 'DOCUMENT_TEXT_DETECTION' : 'TEXT_DETECTION';
+    
+    console.log(`🔍 Using ${detectionType} for ${fileName}`);
 
-    // Call Google Cloud Vision API
+    // Enhanced Vision API request with multiple features for better accuracy
+    const requestBody = {
+      requests: [
+        {
+          image: {
+            content: base64Content,
+          },
+          features: [
+            {
+              type: detectionType,
+              maxResults: 1,
+            },
+            // Add image properties to detect document quality
+            {
+              type: 'IMAGE_PROPERTIES',
+              maxResults: 1,
+            }
+          ],
+          // Enhanced image context for better OCR
+          imageContext: {
+            languageHints: ['fr', 'en', 'es', 'ro', 'pl'], // AgriTool supported languages
+            cropHintsParams: {
+              aspectRatios: [1.0, 0.75, 1.33] // Common document aspect ratios
+            }
+          }
+        },
+      ],
+    };
+
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
@@ -162,40 +245,75 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string): Pro
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: {
-                content: base64Image,
-              },
-              features: [
-                {
-                  type: 'DOCUMENT_TEXT_DETECTION',
-                  maxResults: 1,
-                },
-              ],
-            },
-          ],
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
     if (!visionResponse.ok) {
-      throw new Error(`Google Vision API error: ${visionResponse.statusText}`);
+      const errorText = await visionResponse.text();
+      throw new Error(`Google Vision API error: ${visionResponse.statusText} - ${errorText}`);
     }
 
     const result: GoogleVisionResponse = await visionResponse.json();
+    const response = result.responses?.[0];
     
-    if (result.responses?.[0]?.fullTextAnnotation?.text) {
-      return result.responses[0].fullTextAnnotation.text;
-    } else if (result.responses?.[0]?.textAnnotations?.[0]?.description) {
-      return result.responses[0].textAnnotations[0].description;
-    } else {
-      throw new Error('No text found in document');
+    if (!response) {
+      throw new Error('No response from Google Vision API');
     }
+
+    // Handle errors in the response
+    if (response.error) {
+      throw new Error(`Vision API error: ${response.error.message}`);
+    }
+
+    // Extract text with hierarchical fallback
+    let extractedText = '';
+    let pageCount = 0;
+    let detectedLanguages: string[] = [];
+
+    if (response.fullTextAnnotation) {
+      extractedText = response.fullTextAnnotation.text || '';
+      pageCount = response.fullTextAnnotation.pages?.length || 1;
+      
+      // Extract detected languages
+      if (response.fullTextAnnotation.pages) {
+        for (const page of response.fullTextAnnotation.pages) {
+          if (page.property?.detectedLanguages) {
+            for (const lang of page.property.detectedLanguages) {
+              if (lang.languageCode && !detectedLanguages.includes(lang.languageCode)) {
+                detectedLanguages.push(lang.languageCode);
+              }
+            }
+          }
+        }
+      }
+    } else if (response.textAnnotations?.[0]) {
+      extractedText = response.textAnnotations[0].description || '';
+      pageCount = 1;
+    }
+
+    if (!extractedText) {
+      throw new Error('No text detected in document');
+    }
+
+    const processingTime = Date.now() - startTime;
+    
+    console.log(`✅ Google Vision: Extracted ${extractedText.length} characters in ${processingTime}ms`);
+    console.log(`📊 Detection: ${detectionType}, Pages: ${pageCount}, Languages: ${detectedLanguages.join(', ')}`);
+
+    return {
+      text: extractedText,
+      metadata: {
+        detectionType,
+        pageCount,
+        languagesDetected: detectedLanguages,
+        processingTime
+      }
+    };
     
   } catch (error) {
-    console.error('Google Vision OCR error:', error);
+    const processingTime = Date.now() - startTime;
+    console.error(`❌ Google Vision OCR error (${processingTime}ms):`, error);
     throw error;
   }
 }
@@ -205,14 +323,22 @@ async function mapFieldsWithOpenAI(
   clientType: string, 
   documentType: string | undefined, 
   fileName: string,
-  apiKey: string
+  apiKey: string,
+  ocrMetadata?: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+  }
 ): Promise<{
   extractedData: any;
   confidence: number;
   tokensUsed: number;
 }> {
   try {
-    const prompt = buildFieldMappingPrompt(text, clientType, documentType, fileName);
+    const prompt = buildFieldMappingPrompt(text, clientType, documentType, fileName, ocrMetadata);
+    
+    console.log(`🤖 OpenAI: Processing ${clientType} document with ${text.length} characters`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -223,7 +349,10 @@ async function mapFieldsWithOpenAI(
       body: JSON.stringify({
         model: 'gpt-5-2025-08-07',
         messages: [
-          { role: 'system', content: 'You are an expert document analyzer that extracts structured data from various document types including business forms, individual applications, municipal documents, and NGO paperwork.' },
+          { 
+            role: 'system', 
+            content: `You are an expert multilingual document analyzer specializing in extracting structured data from ${clientType} documents. You handle business forms, individual applications, municipal documents, agricultural subsidies, and NGO paperwork across multiple languages (French, English, Spanish, Romanian, Polish).` 
+          },
           { role: 'user', content: prompt }
         ],
         max_completion_tokens: 2000,
@@ -250,7 +379,18 @@ async function mapFieldsWithOpenAI(
   }
 }
 
-function buildFieldMappingPrompt(text: string, clientType: string, documentType: string | undefined, fileName: string): string {
+function buildFieldMappingPrompt(
+  text: string, 
+  clientType: string, 
+  documentType: string | undefined, 
+  fileName: string,
+  ocrMetadata?: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+  }
+): string {
   const clientPrompts = {
     individual: `Extract personal information including: full_name, address, phone, email, date_of_birth, national_id, tax_number, income, employment_status, marital_status, dependents`,
     business: `Extract business information including: company_name, legal_form, registration_number, tax_id, vat_number, address, phone, email, website, industry_sector, employee_count, annual_revenue, founding_date, ceo_name`,
@@ -261,32 +401,55 @@ function buildFieldMappingPrompt(text: string, clientType: string, documentType:
 
   const clientPrompt = clientPrompts[clientType as keyof typeof clientPrompts] || clientPrompts.individual;
 
-  return `
-Analyze this document text and extract structured data based on the client type "${clientType}".
+  const ocrInfo = ocrMetadata ? `
+OCR Metadata:
+- Detection Method: ${ocrMetadata.detectionType}
+- Pages Processed: ${ocrMetadata.pageCount}
+- Languages Detected: ${ocrMetadata.languagesDetected.join(', ') || 'Unknown'}
+- OCR Processing Time: ${ocrMetadata.processingTime}ms
+` : '';
 
-Document: ${fileName}
-Type: ${documentType || 'Unknown'}
+  return `
+Analyze this document text extracted via Google Vision OCR and extract structured data for a "${clientType}" client.
+
+Document Information:
+- File: ${fileName}
+- Document Type: ${documentType || 'Unknown'}
+- Text Length: ${text.length} characters
+
+${ocrInfo}
 
 Text to analyze:
-${text.substring(0, 8000)} ${text.length > 8000 ? '...[truncated]' : ''}
+${text.substring(0, 10000)} ${text.length > 10000 ? '\n\n...[Content truncated for processing efficiency]' : ''}
 
-Instructions:
-1. ${clientPrompt}
-2. Only extract fields that are clearly present in the text
-3. Use null for missing fields
-4. Normalize data formats (dates as YYYY-MM-DD, numbers as integers/floats)
-5. Detect the document language
-6. Calculate confidence based on data completeness
+Extraction Instructions:
+1. CLIENT TYPE FOCUS: ${clientPrompt}
+2. LANGUAGE DETECTION: Identify the document language (French, English, Spanish, Romanian, Polish, etc.)
+3. FIELD EXTRACTION: Only extract fields clearly present in the text - use null for missing data
+4. DATA NORMALIZATION: 
+   - Dates: Convert to YYYY-MM-DD format
+   - Numbers: Use appropriate integer/float types
+   - Text: Trim whitespace and normalize case
+   - Arrays: Extract lists as JSON arrays
+5. CONFIDENCE CALCULATION: Base confidence on:
+   - Number of fields successfully extracted
+   - Quality of OCR text (based on coherence)
+   - Completeness of critical fields for this client type
+6. MULTILINGUAL SUPPORT: Handle documents in detected languages appropriately
 
-Return a JSON object with this structure:
+Return a JSON object with this exact structure:
 {
   "fields": {
-    // Extracted fields based on client type
+    // All extracted fields based on client type requirements above
   },
   "metadata": {
-    "document_type": "detected document type",
-    "language": "detected language code", 
-    "processing_notes": "any important notes"
+    "document_type": "specific detected document type",
+    "primary_language": "ISO language code (e.g., 'fr', 'en', 'es')",
+    "secondary_languages": ["array", "of", "other", "detected", "languages"],
+    "text_quality": "assessment of OCR text quality (high/medium/low)",
+    "processing_notes": "any important observations about the document",
+    "critical_fields_found": ["list", "of", "most", "important", "fields", "found"],
+    "extraction_challenges": "any difficulties encountered"
   },
   "confidence": 0.85
 }
