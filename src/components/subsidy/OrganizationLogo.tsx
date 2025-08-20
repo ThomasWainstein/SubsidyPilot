@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Import organization logos
-import bpifranceNew from '@/assets/organizations/bpifrance.png';
+import bpifranceOfficial from '@/assets/organizations/bpifrance-official.png';
 import regionAuvergneRhoneAlpes from '@/assets/organizations/region-auvergne-rhone-alpes.png';
 import regionBourgogneFrancheComte from '@/assets/organizations/region-bourgogne-franche-comte.png';
 import regionNormandie from '@/assets/organizations/region-normandie.png';
@@ -21,7 +21,7 @@ interface OrganizationLogoProps {
 
 // Organization name to logo mapping
 const organizationLogos: Record<string, string> = {
-  'Bpifrance': bpifranceNew,
+  'Bpifrance': bpifranceOfficial,
   'Région Auvergne-Rhône-Alpes': regionAuvergneRhoneAlpes,
   'Région Bourgogne Franche-Comté': regionBourgogneFrancheComte,
   'Région Normandie': regionNormandie,
@@ -47,15 +47,6 @@ const OrganizationLogo: React.FC<OrganizationLogoProps> = ({
     lg: 'w-12 h-12'
   };
 
-  // Special handling for Bpifrance until official logo is properly integrated
-  if (organizationName === 'Bpifrance') {
-    return (
-      <div className={`${sizeClasses[size]} bg-yellow-400 rounded-sm flex items-center justify-center text-white font-bold text-xs ${className}`}>
-        BPI
-      </div>
-    );
-  }
-  
   const logoSrc = organizationLogos[organizationName];
 
   if (!logoSrc) {
