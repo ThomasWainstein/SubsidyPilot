@@ -118,8 +118,34 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       raw_data: subsidy.raw_data,
       lesAidesData: lesAidesData,
       amount: subsidy.amount,
+      amount_min: subsidy.amount_min,
+      amount_max: subsidy.amount_max,
       funding_amount: subsidy.funding_amount
     });
+
+    // FIRST: Check standard numeric fields (from subsidies table)
+    if (typeof subsidy.amount_min === 'number' && typeof subsidy.amount_max === 'number') {
+      if (subsidy.amount_min === subsidy.amount_max) {
+        // Fixed amount
+        console.log('✅ FOUND FIXED AMOUNT:', subsidy.amount_min);
+        return `€${subsidy.amount_min.toLocaleString('fr-FR')}`;
+      } else {
+        // Range
+        console.log('✅ FOUND AMOUNT RANGE:', subsidy.amount_min, '-', subsidy.amount_max);
+        return `€${subsidy.amount_min.toLocaleString('fr-FR')} - €${subsidy.amount_max.toLocaleString('fr-FR')}`;
+      }
+    }
+
+    // Check individual numeric fields
+    if (typeof subsidy.amount_min === 'number' && subsidy.amount_min > 0) {
+      console.log('✅ FOUND MINIMUM AMOUNT:', subsidy.amount_min);
+      return `< €${subsidy.amount_min.toLocaleString('fr-FR')}`;
+    }
+
+    if (typeof subsidy.amount_max === 'number' && subsidy.amount_max > 0) {
+      console.log('✅ FOUND MAXIMUM AMOUNT:', subsidy.amount_max);
+      return `< €${subsidy.amount_max.toLocaleString('fr-FR')}`;
+    }
 
     // First check if we have raw_data.fiche content (enhanced extraction data)
     if (subsidy.raw_data?.fiche) {
