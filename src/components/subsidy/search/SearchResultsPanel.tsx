@@ -323,17 +323,6 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
               )}
             </div>
 
-            {/* Results Summary */}
-            <div className="flex items-center justify-between text-sm">
-              <div className="text-muted-foreground">
-                {loading ? 'Searching...' : `${filteredCount} of ${totalCount} results`}
-              </div>
-              {totalFunding > 0 && (
-                <div className="text-primary font-medium">
-                  €{totalFunding.toLocaleString()} total funding available
-                </div>
-              )}
-            </div>
           </div>
         </CardHeader>
       </Card>

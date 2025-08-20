@@ -137,7 +137,14 @@ const SubsidySearchPage = () => {
             <div className="border-b bg-white dark:bg-gray-800 px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex-1">
-                  <SearchHeader />
+                  <SearchHeader 
+                    subsidyCount={filteredCount}
+                    totalFunding={subsidies.reduce((sum, subsidy) => {
+                      const amount = (subsidy as any).amount_max || (subsidy as any).amount || 0;
+                      return sum + amount;
+                    }, 0)}
+                    loading={loading}
+                  />
                 </div>
                 <AdminPanelLink />
               </div>
