@@ -1304,6 +1304,75 @@ export type Database = {
           },
         ]
       }
+      document_processing_jobs: {
+        Row: {
+          client_type: string
+          completed_at: string | null
+          config: Json
+          created_at: string
+          document_id: string
+          document_type: string | null
+          error_message: string | null
+          file_name: string
+          file_url: string
+          id: string
+          max_retries: number
+          metadata: Json
+          priority: string
+          processing_time_ms: number | null
+          retry_attempt: number
+          scheduled_for: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          client_type: string
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          document_id: string
+          document_type?: string | null
+          error_message?: string | null
+          file_name: string
+          file_url: string
+          id?: string
+          max_retries?: number
+          metadata?: Json
+          priority?: string
+          processing_time_ms?: number | null
+          retry_attempt?: number
+          scheduled_for?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          client_type?: string
+          completed_at?: string | null
+          config?: Json
+          created_at?: string
+          document_id?: string
+          document_type?: string | null
+          error_message?: string | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          max_retries?: number
+          metadata?: Json
+          priority?: string
+          processing_time_ms?: number | null
+          retry_attempt?: number
+          scheduled_for?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       document_subsidy_mappings: {
         Row: {
           confidence_score: number | null
@@ -5676,6 +5745,20 @@ export type Database = {
           stats: Json
           status: string
           total_pages: number
+        }[]
+      }
+      get_processing_job_status: {
+        Args: { p_document_id: string }
+        Returns: {
+          created_at: string
+          error_message: string
+          estimated_completion: string
+          job_id: string
+          priority: string
+          processing_time_ms: number
+          progress_percentage: number
+          status: string
+          updated_at: string
         }[]
       }
       get_user_access_tier: {

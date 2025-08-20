@@ -145,3 +145,9 @@ verify_jwt = false
 
 [functions.sync-les-aides-optimal]
 verify_jwt = false
+
+[functions.async-document-processor]
+verify_jwt = false
+
+[functions.document-upload-handler]
+verify_jwt = true
