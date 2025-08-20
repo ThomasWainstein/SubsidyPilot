@@ -311,7 +311,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
                 placeholder="Search for funding opportunities, grants, or programs..."
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="pl-12 pr-12 h-12 text-base border-2 border-primary/20 focus:border-primary shadow-sm bg-white"
+                className="pl-14 pr-12 h-12 text-base border-2 border-primary/20 focus:border-primary shadow-sm bg-white"
               />
               {searchQuery && (
                 <button 
