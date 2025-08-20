@@ -6,6 +6,8 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { DetailedSubsidyDisplay } from '@/components/subsidy/DetailedSubsidyDisplay';
+import SubsidyDetailErrorBoundary from '@/components/error/SubsidyDetailErrorBoundary';
+import { SubsidyDetailSkeleton } from '@/components/ui/SubsidyLoadingSkeleton';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -42,14 +44,7 @@ const SubsidyDetailPage = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
-        <main className="flex-grow py-6 px-4">
-          <div className="container mx-auto max-w-6xl">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="text-center mt-2 text-muted-foreground">
-              Loading subsidy details...
-            </p>
-          </div>
-        </main>
+        <SubsidyDetailSkeleton />
       </div>
     );
   }
@@ -75,16 +70,17 @@ const SubsidyDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <main className="flex-grow">
-        {/* Use the DetailedSubsidyDisplay for all subsidy formats */}
-        <DetailedSubsidyDisplay 
-          subsidy={subsidy} 
-          onBack={() => navigate('/search')}
-        />
-      </main>
-    </div>
+    <SubsidyDetailErrorBoundary subsidyId={subsidyId}>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-grow">
+          <DetailedSubsidyDisplay 
+            subsidy={subsidy} 
+            onBack={() => navigate('/search')}
+          />
+        </main>
+      </div>
+    </SubsidyDetailErrorBoundary>
   );
 };
 

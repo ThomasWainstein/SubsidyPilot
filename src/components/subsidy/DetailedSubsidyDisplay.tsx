@@ -21,6 +21,35 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorited, setIsFavorited] = useState(false);
 
+  // Handle share functionality
+  const handleShare = async () => {
+    const shareData = {
+      title: title,
+      text: `Check out this subsidy: ${title}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        // You might want to show a toast notification here
+        console.log('Link copied to clipboard');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        console.log('Link copied to clipboard');
+      } catch (clipboardError) {
+        console.error('Failed to copy to clipboard:', clipboardError);
+      }
+    }
+  };
+
   // Extract data with proper formatting
   const formatArray = (data: any): string[] => {
     if (Array.isArray(data)) return data.filter(Boolean);
@@ -167,7 +196,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
         { pattern: /occitanie/i, name: 'Occitanie' },
         { pattern: /grand[-\s]est/i, name: 'Grand Est' },
-        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: 'Provence-Alpes-Côte d\'Azur' },
+        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: "Provence-Alpes-Côte d'Azur" },
         { pattern: /bretagne/i, name: 'Bretagne' },
         { pattern: /normandie/i, name: 'Normandie' },
         { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
@@ -208,7 +237,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
         { pattern: /occitanie/i, name: 'Occitanie' },
         { pattern: /grand[-\s]est/i, name: 'Grand Est' },
-        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: 'Provence-Alpes-Côte d\'Azur' },
+        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: "Provence-Alpes-Côte d'Azur" },
         { pattern: /bretagne/i, name: 'Bretagne' },
         { pattern: /normandie/i, name: 'Normandie' },
         { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
@@ -290,7 +319,10 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
               >
                 <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
               </button>
-              <button className="p-2 bg-muted text-muted-foreground rounded-full hover:bg-muted/80 transition-colors">
+              <button 
+                onClick={handleShare}
+                className="p-2 bg-muted text-muted-foreground rounded-full hover:bg-muted/80 transition-colors"
+              >
                 <Share2 className="w-5 h-5" />
               </button>
             </div>

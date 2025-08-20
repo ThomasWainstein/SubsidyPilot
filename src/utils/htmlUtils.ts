@@ -6,15 +6,22 @@
  * Comprehensive HTML entity decoder
  */
 const htmlEntities: Record<string, string> = {
+  // Basic entities
   '&nbsp;': ' ',
   '&amp;': '&',
   '&lt;': '<', 
   '&gt;': '>',
   '&quot;': '"',
   '&apos;': "'",
+  
+  // Currency symbols
   '&euro;': '€',
   '&pound;': '£',
   '&yen;': '¥',
+  '&cent;': '¢',
+  '&curren;': '¤',
+  
+  // Typography
   '&copy;': '©',
   '&reg;': '®',
   '&trade;': '™',
@@ -23,10 +30,59 @@ const htmlEntities: Record<string, string> = {
   '&hellip;': '…',
   '&laquo;': '«',
   '&raquo;': '»',
+  '&ldquo;': '"',
+  '&rdquo;': '"',
+  "&lsquo;": "'",
+  "&rsquo;": "'",
+  '&sbquo;': '‚',
+  '&bdquo;': '„',
+  
+  // Mathematical symbols
   '&deg;': '°',
   '&plusmn;': '±',
   '&times;': '×',
   '&divide;': '÷',
+  '&frac12;': '½',
+  '&frac14;': '¼',
+  '&frac34;': '¾',
+  '&sup1;': '¹',
+  '&sup2;': '²',
+  '&sup3;': '³',
+  '&le;': '≤',
+  '&ge;': '≥',
+  '&ne;': '≠',
+  '&asymp;': '≈',
+  '&infin;': '∞',
+  
+  // Accented characters
+  '&agrave;': 'à', '&aacute;': 'á', '&acirc;': 'â', '&atilde;': 'ã', '&auml;': 'ä', '&aring;': 'å',
+  '&Agrave;': 'À', '&Aacute;': 'Á', '&Acirc;': 'Â', '&Atilde;': 'Ã', '&Auml;': 'Ä', '&Aring;': 'Å',
+  '&egrave;': 'è', '&eacute;': 'é', '&ecirc;': 'ê', '&euml;': 'ë',
+  '&Egrave;': 'È', '&Eacute;': 'É', '&Ecirc;': 'Ê', '&Euml;': 'Ë',
+  '&igrave;': 'ì', '&iacute;': 'í', '&icirc;': 'î', '&iuml;': 'ï',
+  '&Igrave;': 'Ì', '&Iacute;': 'Í', '&Icirc;': 'Î', '&Iuml;': 'Ï',
+  '&ograve;': 'ò', '&oacute;': 'ó', '&ocirc;': 'ô', '&otilde;': 'õ', '&ouml;': 'ö', '&oslash;': 'ø',
+  '&Ograve;': 'Ò', '&Oacute;': 'Ó', '&Ocirc;': 'Ô', '&Otilde;': 'Õ', '&Ouml;': 'Ö', '&Oslash;': 'Ø',
+  '&ugrave;': 'ù', '&uacute;': 'ú', '&ucirc;': 'û', '&uuml;': 'ü',
+  '&Ugrave;': 'Ù', '&Uacute;': 'Ú', '&Ucirc;': 'Û', '&Uuml;': 'Ü',
+  '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+  '&ntilde;': 'ñ', '&Ntilde;': 'Ñ',
+  
+  // Special characters
+  '&sect;': '§',
+  '&para;': '¶',
+  '&middot;': '·',
+  '&cedil;': '¸',
+  '&ordm;': 'º',
+  '&ordf;': 'ª',
+  '&iquest;': '¿',
+  '&iexcl;': '¡',
+  '&brvbar;': '¦',
+  '&shy;': '­',
+  '&macr;': '¯',
+  '&acute;': '´',
+  '&micro;': 'µ',
+  '&uml;': '¨',
 };
 
 /**
