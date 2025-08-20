@@ -130,7 +130,16 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         : JSON.stringify(subsidy.raw_data.fiche);
       
       console.log('Processing fiche text:', ficheText.substring(0, 500));
-      const cleanText = ficheText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const cleanText = ficheText.replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&euro;/g, '€')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
       
       // Look for range patterns first (more specific)
       const rangePatterns = [
@@ -190,7 +199,37 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     // Check lesAidesData montants field
     if (lesAidesData?.montants) {
       console.log('Processing lesAidesData.montants:', lesAidesData.montants);
-      const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const montantsText = lesAidesData.montants
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&euro;/g, '€')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      console.log('Cleaned montants text:', montantsText);
+      
+      // Look for maximum amount patterns with clear client indicators
+      const maxPatterns = [
+        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "jusqu'à" }, 
+        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €", name: "maximum" },
+        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "plafond" },
+        { pattern: /plafonnée\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "plafonnée à" },
+        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "maximum de" }
+      ];
+      
+      for (const { pattern, prefix, name } of maxPatterns) {
+        const match = montantsText.match(pattern);
+        if (match) {
+          console.log(`✅ FOUND MAXIMUM in montants with pattern "${name}":`, match);
+          const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+          return `${prefix}${amount}`;
+        }
+      }
       
       // Range patterns
       const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
@@ -199,14 +238,6 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         const minAmount = parseInt(rangeMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
         const maxAmount = parseInt(rangeMatch[2].replace(/\s/g, '')).toLocaleString('fr-FR');
         return `€${minAmount} - €${maxAmount}`;
-      }
-      
-      // Maximum patterns
-      const maxMatch = montantsText.match(/jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i);
-      if (maxMatch) {
-        console.log('✅ FOUND MAXIMUM in montants:', maxMatch);
-        const amount = parseInt(maxMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
-        return `< €${amount}`;
       }
     }
 
