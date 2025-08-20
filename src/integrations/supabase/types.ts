@@ -217,6 +217,39 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_types: {
+        Row: {
+          created_at: string | null
+          display_name: Json
+          id: string
+          required_documents: string[] | null
+          schema_config: Json
+          type_name: string
+          updated_at: string | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: Json
+          id?: string
+          required_documents?: string[] | null
+          schema_config?: Json
+          type_name: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: Json
+          id?: string
+          required_documents?: string[] | null
+          schema_config?: Json
+          type_name?: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Relationships: []
+      }
       application_form_instances: {
         Row: {
           auto_population_config: Json | null
@@ -424,6 +457,13 @@ export type Database = {
             foreignKeyName: "applications_farm_id_fkey"
             columns: ["farm_id"]
             isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
+          {
+            foreignKeyName: "applications_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -433,6 +473,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "subsidies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_applications_farm_id"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
           },
           {
             foreignKeyName: "fk_applications_farm_id"
@@ -535,6 +582,142 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_credits: {
+        Row: {
+          created_at: string | null
+          credit_type: Database["public"]["Enums"]["credit_type"]
+          credits_purchased: number
+          credits_remaining: number | null
+          credits_used: number | null
+          expiry_date: string | null
+          id: string
+          purchase_date: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credit_type: Database["public"]["Enums"]["credit_type"]
+          credits_purchased: number
+          credits_remaining?: number | null
+          credits_used?: number | null
+          expiry_date?: string | null
+          id?: string
+          purchase_date?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credit_type?: Database["public"]["Enums"]["credit_type"]
+          credits_purchased?: number
+          credits_remaining?: number | null
+          credits_used?: number | null
+          expiry_date?: string | null
+          id?: string
+          purchase_date?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      client_profiles: {
+        Row: {
+          applicant_type_id: string
+          created_at: string | null
+          id: string
+          legacy_farm_id: string | null
+          profile_data: Json
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applicant_type_id: string
+          created_at?: string | null
+          id?: string
+          legacy_farm_id?: string | null
+          profile_data?: Json
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applicant_type_id?: string
+          created_at?: string | null
+          id?: string
+          legacy_farm_id?: string | null
+          profile_data?: Json
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_profiles_applicant_type_id_fkey"
+            columns: ["applicant_type_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_profiles_legacy_farm_id_fkey"
+            columns: ["legacy_farm_id"]
+            isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
+          {
+            foreignKeyName: "client_profiles_legacy_farm_id_fkey"
+            columns: ["legacy_farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_usage_tracking: {
+        Row: {
+          ai_assistance_minutes: number | null
+          api_calls_made: number | null
+          applications_created: number | null
+          created_at: string | null
+          documents_generated: number | null
+          id: string
+          last_activity: string | null
+          storage_used_mb: number | null
+          updated_at: string | null
+          usage_period: string
+          user_id: string
+        }
+        Insert: {
+          ai_assistance_minutes?: number | null
+          api_calls_made?: number | null
+          applications_created?: number | null
+          created_at?: string | null
+          documents_generated?: number | null
+          id?: string
+          last_activity?: string | null
+          storage_used_mb?: number | null
+          updated_at?: string | null
+          usage_period: string
+          user_id: string
+        }
+        Update: {
+          ai_assistance_minutes?: number | null
+          api_calls_made?: number | null
+          applications_created?: number | null
+          created_at?: string | null
+          documents_generated?: number | null
+          id?: string
+          last_activity?: string | null
+          storage_used_mb?: number | null
+          updated_at?: string | null
+          usage_period?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       content_blocks: {
         Row: {
@@ -750,6 +933,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      credit_packages: {
+        Row: {
+          active: boolean | null
+          bonus_credits: number | null
+          created_at: string | null
+          credit_type: Database["public"]["Enums"]["credit_type"]
+          credits: number
+          features: Json | null
+          id: string
+          package_name: string
+          price_cents: number
+          updated_at: string | null
+          validity_days: number
+        }
+        Insert: {
+          active?: boolean | null
+          bonus_credits?: number | null
+          created_at?: string | null
+          credit_type: Database["public"]["Enums"]["credit_type"]
+          credits: number
+          features?: Json | null
+          id?: string
+          package_name: string
+          price_cents: number
+          updated_at?: string | null
+          validity_days?: number
+        }
+        Update: {
+          active?: boolean | null
+          bonus_credits?: number | null
+          created_at?: string | null
+          credit_type?: Database["public"]["Enums"]["credit_type"]
+          credits?: number
+          features?: Json | null
+          id?: string
+          package_name?: string
+          price_cents?: number
+          updated_at?: string | null
+          validity_days?: number
+        }
+        Relationships: []
       }
       document_classification_logs: {
         Row: {
@@ -1409,8 +1634,22 @@ export type Database = {
             foreignKeyName: "farm_documents_farm_id_fkey"
             columns: ["farm_id"]
             isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
+          {
+            foreignKeyName: "farm_documents_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_farm_documents_farm_id"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
           },
           {
             foreignKeyName: "fk_farm_documents_farm_id"
@@ -1527,6 +1766,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_access_control: {
+        Row: {
+          access_level: string
+          created_at: string | null
+          daily_limit: number | null
+          feature_name: string
+          id: string
+          last_reset_daily: string | null
+          last_reset_monthly: string | null
+          monthly_limit: number | null
+          updated_at: string | null
+          used_this_month: number | null
+          used_today: number | null
+          user_id: string
+        }
+        Insert: {
+          access_level: string
+          created_at?: string | null
+          daily_limit?: number | null
+          feature_name: string
+          id?: string
+          last_reset_daily?: string | null
+          last_reset_monthly?: string | null
+          monthly_limit?: number | null
+          updated_at?: string | null
+          used_this_month?: number | null
+          used_today?: number | null
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string | null
+          daily_limit?: number | null
+          feature_name?: string
+          id?: string
+          last_reset_daily?: string | null
+          last_reset_monthly?: string | null
+          monthly_limit?: number | null
+          updated_at?: string | null
+          used_this_month?: number | null
+          used_today?: number | null
+          user_id?: string
+        }
+        Relationships: []
       }
       field_corrections: {
         Row: {
@@ -1774,6 +2058,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "model_training_jobs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
           {
             foreignKeyName: "model_training_jobs_farm_id_fkey"
             columns: ["farm_id"]
@@ -4432,6 +4723,13 @@ export type Database = {
             foreignKeyName: "fk_subsidy_applications_farm"
             columns: ["farm_id"]
             isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
+          {
+            foreignKeyName: "fk_subsidy_applications_farm"
+            columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -4686,6 +4984,13 @@ export type Database = {
             foreignKeyName: "subsidy_matches_farm_id_fkey"
             columns: ["farm_id"]
             isOneToOne: false
+            referencedRelation: "farm_profiles_view"
+            referencedColumns: ["farm_id"]
+          },
+          {
+            foreignKeyName: "subsidy_matches_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -4800,6 +5105,75 @@ export type Database = {
           timestamp?: string | null
           unit?: string | null
           value?: number
+        }
+        Relationships: []
+      }
+      usage_events: {
+        Row: {
+          created_at: string | null
+          credits_used: number | null
+          error_message: string | null
+          event_metadata: Json | null
+          feature_name: string
+          id: string
+          success: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          event_metadata?: Json | null
+          feature_name: string
+          id?: string
+          success?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          event_metadata?: Json | null
+          feature_name?: string
+          id?: string
+          success?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_access_tiers: {
+        Row: {
+          access_tier: Database["public"]["Enums"]["access_tier"]
+          auto_renew: boolean | null
+          created_at: string | null
+          id: string
+          last_payment_date: string | null
+          tier_end_date: string | null
+          tier_start_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_tier?: Database["public"]["Enums"]["access_tier"]
+          auto_renew?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_payment_date?: string | null
+          tier_end_date?: string | null
+          tier_start_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_tier?: Database["public"]["Enums"]["access_tier"]
+          auto_renew?: boolean | null
+          created_at?: string | null
+          id?: string
+          last_payment_date?: string | null
+          tier_end_date?: string | null
+          tier_start_date?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -4934,6 +5308,23 @@ export type Database = {
       }
     }
     Views: {
+      farm_profiles_view: {
+        Row: {
+          address: string | null
+          cnp_or_cui: string | null
+          country: string | null
+          department: string | null
+          farm_id: string | null
+          farm_name: string | null
+          legal_status: string | null
+          profile_created_at: string | null
+          profile_id: string | null
+          profile_updated_at: string | null
+          total_hectares: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       review_queue_stats: {
         Row: {
           active_reviewers: number | null
@@ -5013,6 +5404,14 @@ export type Database = {
         }
         Returns: string
       }
+      deduct_credits: {
+        Args: {
+          p_credit_type: Database["public"]["Enums"]["credit_type"]
+          p_credits_to_deduct: number
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       find_bundle_by_hash: {
         Args: { p_hash: string }
         Returns: string
@@ -5056,6 +5455,13 @@ export type Database = {
           hours_overdue: number
           priority: number
         }[]
+      }
+      get_available_credits: {
+        Args: {
+          p_credit_type: Database["public"]["Enums"]["credit_type"]
+          p_user_id: string
+        }
+        Returns: number
       }
       get_change_detection_dashboard: {
         Args: Record<PropertyKey, never>
@@ -5133,6 +5539,10 @@ export type Database = {
           status: string
           total_pages: number
         }[]
+      }
+      get_user_access_tier: {
+        Args: { p_user_id: string }
+        Returns: Database["public"]["Enums"]["access_tier"]
       }
       has_role: {
         Args: {
@@ -5221,6 +5631,7 @@ export type Database = {
       }
     }
     Enums: {
+      access_tier: "free" | "starter" | "professional" | "enterprise"
       app_role: "admin" | "moderator" | "user" | "qa_reviewer"
       application_status:
         | "draft"
@@ -5228,6 +5639,12 @@ export type Database = {
         | "under_review"
         | "approved"
         | "rejected"
+      credit_type:
+        | "application"
+        | "document"
+        | "ai_minutes"
+        | "api_calls"
+        | "combo"
       document_category:
         | "ownership_proof"
         | "lease_agreement"
@@ -5379,6 +5796,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_tier: ["free", "starter", "professional", "enterprise"],
       app_role: ["admin", "moderator", "user", "qa_reviewer"],
       application_status: [
         "draft",
@@ -5386,6 +5804,13 @@ export const Constants = {
         "under_review",
         "approved",
         "rejected",
+      ],
+      credit_type: [
+        "application",
+        "document",
+        "ai_minutes",
+        "api_calls",
+        "combo",
       ],
       document_category: [
         "ownership_proof",
