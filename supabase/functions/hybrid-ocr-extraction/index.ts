@@ -618,44 +618,6 @@ async function extractTextWithCloudVision(fileUrl: string, apiKey: string, fileN
     console.error('❌ Cloud Vision fallback failed:', error.message);
     throw new Error(`Google Vision failed: ${error.message}`);
   }
-          confidence: 0
-        }
-      };
-    }
-
-    // Assess text quality
-    const textQuality = assessTextQuality(extractedText, avgConfidence);
-    const processingTime = Date.now() - startTime;
-    
-    console.log(`✅ Google Vision Success: ${extractedText.length} chars, ${pageCount} pages, quality: ${textQuality} (${processingTime}ms)`);
-
-    return {
-      text: extractedText,
-      metadata: {
-        detectionType,
-        pageCount,
-        languagesDetected,
-        processingTime,
-        textQuality,
-        confidence: avgConfidence
-      }
-    };
-    
-  } catch (error: any) {
-    const processingTime = Date.now() - startTime;
-    console.error(`❌ Google Vision extraction failed (${processingTime}ms):`, error.message);
-    
-    // Enhanced error reporting
-    if (error.message.includes('timeout')) {
-      throw new Error(`Google Vision timeout: ${error.message}`);
-    } else if (error.message.includes('404') || error.message.includes('403')) {
-      throw new Error(`Google Vision API access error: ${error.message}`);
-    } else if (error.message.includes('quota')) {
-      throw new Error(`Google Vision quota exceeded: ${error.message}`);
-    } else {
-      throw new Error(`Google Vision failed: ${error.message}`);
-    }
-  }
 }
 
 async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: string): Promise<{
