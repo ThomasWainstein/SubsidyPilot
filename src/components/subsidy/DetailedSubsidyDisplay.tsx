@@ -45,27 +45,29 @@ interface RawDataFiche {
   url?: string;
 }
 
+// Database-compatible interface - fully flexible for Supabase JSON types
 interface SubsidyData {
   id: string;
-  title: any; // Can be string, multilingual object, or other types from DB
-  description: any; // Can be string, multilingual object, or other types from DB
+  title?: any; // Can be string, object, number, or any JSON type
+  description?: any; // Can be string, object, number, or any JSON type  
   agency?: string;
   issuing_body?: string;
-  amount?: any; // Can be string, number, array, or other types from DB
+  amount?: any; // Can be number, array, string, or any JSON type
   funding_amount?: any;
   amount_max?: any;
   deadline?: string;
   application_deadline?: string;
   application_window_end?: string;
-  geographic_scope?: any; // Can be string, object, or other types from DB
+  geographic_scope?: any; // JSON type from Supabase
   region?: any;
   sectors?: any;
+  activity_sector_codes?: any; // Database field
   categories?: any;
   objectives?: any;
   eligible_actions?: any;
   ineligible_actions?: any;
   required_documents?: any;
-  funding_rate_details?: any;
+  funding_rate_details?: any; // JSON type from Supabase
   minimum_investment?: any;
   legal_entity_type?: any;
   application_url?: string;
@@ -73,8 +75,8 @@ interface SubsidyData {
   contact_email?: string;
   program?: any;
   url?: string;
-  raw_data?: any; // Allow flexible JSON structure from database
-  // Allow any additional properties from the database
+  raw_data?: any; // JSON type from Supabase
+  // Allow all database fields
   [key: string]: any;
 }
 
@@ -91,8 +93,9 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorited, setIsFavorited] = useState(false);
 
-  // Handle share functionality with analytics and proper feedback
+  // Handle share functionality with comprehensive debugging
   const handleShare = async () => {
+    console.log('🔄 Share button clicked - testing functionality');
     analytics.trackSubsidyInteraction('share', subsidy.id);
     
     const shareData = {
@@ -101,23 +104,30 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       url: window.location.href,
     };
 
+    console.log('📤 Share data prepared:', shareData);
+
     try {
       if (navigator.share && navigator.canShare?.(shareData)) {
+        console.log('✅ Native sharing available - using Web Share API');
         await navigator.share(shareData);
         toast.success('Subsidy shared successfully!');
+        console.log('✅ Native share completed successfully');
       } else {
-        // Fallback: copy to clipboard
+        console.log('📋 Native sharing not available - using clipboard fallback');
         await navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
+        console.log('✅ Clipboard fallback completed successfully');
       }
     } catch (error) {
-      console.error('Error sharing:', error);
+      console.error('❌ Share error:', error);
       // Fallback: try clipboard again
       try {
+        console.log('🔄 Attempting clipboard fallback after error');
         await navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard!');
+        console.log('✅ Clipboard fallback after error completed');
       } catch (clipboardError) {
-        console.error('Failed to copy to clipboard:', clipboardError);
+        console.error('❌ Complete share failure:', clipboardError);
         toast.error('Unable to share. Please copy the URL manually.');
       }
     }
@@ -161,7 +171,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     return String(value);
   };
 
-  const categories = formatArray(subsidy.sectors || subsidy.categories);
+  const categories = formatArray(subsidy.sectors || subsidy.categories || subsidy.activity_sector_codes);
   const objectives = formatArray(subsidy.objectives);
   const eligibleActions = formatArray(subsidy.eligible_actions);
   const ineligibleActions = formatArray(subsidy.ineligible_actions);
@@ -214,13 +224,30 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const lesAidesData = subsidy.raw_data?.fiche || null;
   const organisme = lesAidesData?.organisme || null;
   
-  // Use les-aides.fr data if available, otherwise fallback to basic fields
-  const title = lesAidesData?.nom || (typeof subsidy.title === 'string' ? subsidy.title : (subsidy.title && typeof subsidy.title === 'object' ? getLocalizedContent(subsidy.title, language) : String(subsidy.title || ''))) || 'Untitled Subsidy';
-  const description = (typeof subsidy.description === 'string' ? subsidy.description : (subsidy.description && typeof subsidy.description === 'object' ? getLocalizedContent(subsidy.description, language) : String(subsidy.description || ''))) || '';
-  const agency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
+  // COMPREHENSIVE HTML ENTITY CLEANING - Fix ALL content, not just some
+  const rawTitle = lesAidesData?.nom || (typeof subsidy.title === 'string' ? subsidy.title : (subsidy.title && typeof subsidy.title === 'object' ? JSON.stringify(subsidy.title) : String(subsidy.title || ''))) || 'Untitled Subsidy';
+  const rawDescription = (typeof subsidy.description === 'string' ? subsidy.description : (subsidy.description && typeof subsidy.description === 'object' ? JSON.stringify(subsidy.description) : String(subsidy.description || ''))) || '';
+  const rawAgency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
+  
+  // Clean ALL content systematically
+  const title = cleanHtmlContent(rawTitle);
+  const description = cleanHtmlContent(rawDescription);
+  const agency = cleanHtmlContent(rawAgency);
   const amount = formatAmount(subsidy.amount || subsidy.funding_amount || subsidy.amount_max);
   const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
-  const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+  const region = cleanHtmlContent(safeString(subsidy.geographic_scope || subsidy.region || categories[0]));
+
+  // DEBUG: Log entity cleaning results
+  console.log('🔍 HTML Entity Cleaning Debug:', {
+    rawTitle,
+    cleanedTitle: title,
+    rawDescription: rawDescription.substring(0, 100),
+    cleanedDescription: description.substring(0, 100),
+    rawAgency,
+    cleanedAgency: agency,
+    rawRegion: safeString(subsidy.geographic_scope || subsidy.region || categories[0]),
+    cleanedRegion: region
+  });
 
   // Helper function to safely render content - avoid HTML in production
   const renderCleanContent = (content: string) => {
