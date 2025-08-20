@@ -11,6 +11,8 @@ import { testV2WithDetails } from '@/utils/testV2WithDetails';
 interface TestResult {
   id: string;
   name: string;
+  type: string;
+  url: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   accuracy?: number;
   extractedFields?: number;
@@ -85,11 +87,17 @@ export default function ValidationTestingPage() {
       );
 
       // Calculate accuracy based on result
-      const success = result.data?.success || false;
-      const extractedFields = result.data?.extractedData?.extractedFields || {};
+      let success = false;
+      let extractedFields = {};
+      let confidence = 0;
+
+      if ('data' in result && result.data) {
+        success = result.data.success || false;
+        extractedFields = result.data.extractedData?.extractedFields || {};
+        confidence = result.data.extractedData?.confidence || 0;
+      }
+
       const fieldsCount = Object.keys(extractedFields).length;
-      const confidence = result.data?.extractedData?.confidence || 0;
-      
       const accuracy = success ? Math.min(95, Math.max(50, confidence * 100)) : 0;
 
       updateTestResult(test.id, {
