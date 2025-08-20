@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Import organization logos
-import bpifrance from '@/assets/organizations/bpifrance.png';
+import bpifranceNew from '@/assets/organizations/bpifrance.png';
 import regionAuvergneRhoneAlpes from '@/assets/organizations/region-auvergne-rhone-alpes.png';
 import regionBourgogneFrancheComte from '@/assets/organizations/region-bourgogne-franche-comte.png';
 import regionNormandie from '@/assets/organizations/region-normandie.png';
@@ -21,7 +21,7 @@ interface OrganizationLogoProps {
 
 // Organization name to logo mapping
 const organizationLogos: Record<string, string> = {
-  'Bpifrance': bpifrance,
+  'Bpifrance': bpifranceNew,
   'Région Auvergne-Rhône-Alpes': regionAuvergneRhoneAlpes,
   'Région Bourgogne Franche-Comté': regionBourgogneFrancheComte,
   'Région Normandie': regionNormandie,
@@ -62,7 +62,7 @@ const OrganizationLogo: React.FC<OrganizationLogoProps> = ({
 
   return (
     <img
-      src={logoSrc}
+      src={`${logoSrc}?t=${Date.now()}`}
       alt={`${organizationName} logo`}
       className={`${sizeClasses[size]} object-contain rounded-sm ${className}`}
     />
