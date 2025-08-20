@@ -336,8 +336,8 @@ serve(async (req) => {
       
       extractionMethod = 'openai_fallback';
       
-      // 🔥 FIX: Make OpenAI model configurable
-      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-4.1-2025-04-14';
+      // 🔥 FIX: Use valid OpenAI model - gpt-5 for best accuracy
+      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-5-2025-08-07';
       
       extractedData = await extractFarmDataWithOpenAI(
         extractionResult.text, 

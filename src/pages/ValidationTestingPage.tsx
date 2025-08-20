@@ -8,11 +8,16 @@ import { CheckCircle, XCircle, Clock, Play, FileText, Upload } from 'lucide-reac
 import { testCurrentDocument, testExtraction } from '@/utils/testExtraction';
 import { testV2WithDetails } from '@/utils/testV2WithDetails';
 
+interface GroundTruth {
+  [fieldName: string]: any;
+}
+
 interface TestResult {
   id: string;
   name: string;
   type: string;
   url: string;
+  groundTruth?: GroundTruth;
   status: 'pending' | 'running' | 'completed' | 'failed';
   accuracy?: number;
   extractedFields?: number;
@@ -22,36 +27,159 @@ interface TestResult {
   endTime?: Date;
 }
 
+// Accuracy calculation functions for REAL validation (not fake!)
+const calculateFieldAccuracy = (extractedFields: Record<string, any>, groundTruth: GroundTruth): number => {
+  const expectedFields = Object.keys(groundTruth);
+  const extractedKeys = Object.keys(extractedFields);
+  
+  if (expectedFields.length === 0) return 0;
+  
+  let matchedFields = 0;
+  let totalFields = expectedFields.length;
+  
+  expectedFields.forEach(field => {
+    const expected = groundTruth[field];
+    const extracted = extractedFields[field];
+    
+    if (extracted !== undefined && extracted !== null) {
+      // Field-specific matching logic
+      if (typeof expected === 'string' && typeof extracted === 'string') {
+        // String similarity (case-insensitive, trimmed)
+        if (expected.toLowerCase().trim() === extracted.toLowerCase().trim()) {
+          matchedFields += 1;
+        } else if (calculateStringSimilarity(expected.toLowerCase(), extracted.toLowerCase()) > 0.8) {
+          matchedFields += 0.8; // Partial credit for similar strings
+        }
+      } else if (typeof expected === 'number' && typeof extracted === 'number') {
+        // Number matching with small tolerance
+        if (Math.abs(expected - extracted) / Math.max(expected, 1) < 0.05) {
+          matchedFields += 1;
+        }
+      } else if (Array.isArray(expected) && Array.isArray(extracted)) {
+        // Array matching - intersection over union
+        const intersection = expected.filter(item => extracted.includes(item));
+        const union = [...new Set([...expected, ...extracted])];
+        matchedFields += intersection.length / union.length;
+      } else if (typeof expected === 'boolean' && typeof extracted === 'boolean') {
+        if (expected === extracted) matchedFields += 1;
+      } else {
+        // Generic equality check
+        if (expected === extracted) matchedFields += 1;
+      }
+    }
+  });
+  
+  return (matchedFields / totalFields) * 100;
+};
+
+const calculateStringSimilarity = (str1: string, str2: string): number => {
+  // Simple Levenshtein distance-based similarity
+  const len1 = str1.length;
+  const len2 = str2.length;
+  const matrix = Array(len2 + 1).fill(null).map(() => Array(len1 + 1).fill(null));
+  
+  for (let i = 0; i <= len1; i++) matrix[0][i] = i;
+  for (let j = 0; j <= len2; j++) matrix[j][0] = j;
+  
+  for (let j = 1; j <= len2; j++) {
+    for (let i = 1; i <= len1; i++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,     // deletion
+        matrix[j - 1][i] + 1,     // insertion
+        matrix[j - 1][i - 1] + cost // substitution
+      );
+    }
+  }
+  
+  const distance = matrix[len2][len1];
+  return 1 - distance / Math.max(len1, len2);
+};
+
+const calculateFieldMatches = (extractedFields: Record<string, any>, groundTruth: GroundTruth) => {
+  const matches: Record<string, { expected: any; extracted: any; match: boolean }> = {};
+  
+  Object.keys(groundTruth).forEach(field => {
+    matches[field] = {
+      expected: groundTruth[field],
+      extracted: extractedFields[field],
+      match: extractedFields[field] !== undefined && extractedFields[field] !== null
+    };
+  });
+  
+  return matches;
+};
+
 const VALIDATION_TESTS = [
   {
     id: 'french-subsidy-1',
     name: 'French Agricultural Subsidy Form',
     type: 'subsidy_form',
-    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/french_agricultural_subsidy.pdf'
+    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/french_agricultural_subsidy.pdf',
+    groundTruth: {
+      farm_name: "Ferme de la Vallée",
+      owner_name: "Jean Dupont", 
+      total_hectares: 45.5,
+      crops: ["wheat", "corn", "barley"],
+      address: "123 Route Agricole, 80000 Amiens, France",
+      cnp_or_cui: "FR123456789",
+      legal_status: "SCEA",
+      livestock_present: true
+    }
   },
   {
     id: 'identity-doc-1', 
     name: 'Identity Document (CNI)',
     type: 'identity',
-    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/identity_sample.pdf'
+    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/identity_sample.pdf',
+    groundTruth: {
+      first_name: "Marie",
+      last_name: "Martin",
+      birth_date: "1985-03-15",
+      birth_place: "Lyon, France",
+      nationality: "French",
+      document_number: "CNI123456789"
+    }
   },
   {
     id: 'business-reg-1',
     name: 'Business Registration',
     type: 'business',
-    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/business_registration.pdf'
+    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/business_registration.pdf',
+    groundTruth: {
+      company_name: "AgroTech Solutions SARL",
+      siret: "12345678901234",
+      legal_status: "SARL",
+      address: "456 Boulevard Innovation, 69000 Lyon, France",
+      sector: "agricultural_technology",
+      registration_date: "2020-01-15"
+    }
   },
   {
     id: 'tax-doc-1',
     name: 'Tax Document',
     type: 'tax',
-    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/tax_document.pdf'
+    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/tax_document.pdf',
+    groundTruth: {
+      taxpayer_name: "Coopérative Agricole du Nord",
+      tax_year: 2023,
+      revenue: 450000,
+      tax_amount: 67500,
+      legal_status: "cooperative"
+    }
   },
   {
     id: 'ngo-doc-1',
     name: 'NGO Statutes',
     type: 'ngo',
-    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/ngo_statutes.pdf'
+    url: 'https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/test/ngo_statutes.pdf',
+    groundTruth: {
+      organization_name: "Association pour l'Agriculture Durable",
+      registration_number: "W751234567",
+      legal_status: "association",
+      purpose: "promoting sustainable agriculture",
+      president: "Dr. Pierre Dubois"
+    }
   }
 ];
 
@@ -86,23 +214,28 @@ export default function ValidationTestingPage() {
         test.type
       );
 
-      // Calculate accuracy based on result
+      // Calculate REAL accuracy based on ground truth comparison
       let success = false;
       let extractedFields = {};
       let confidence = 0;
+      let realAccuracy = 0;
 
       if ('data' in result && result.data) {
         success = result.data.success || false;
         extractedFields = result.data.extractedData?.extractedFields || {};
         confidence = result.data.extractedData?.confidence || 0;
+        
+        // REAL ACCURACY: Compare extracted fields with ground truth
+        if (success && test.groundTruth) {
+          realAccuracy = calculateFieldAccuracy(extractedFields, test.groundTruth);
+        }
       }
 
       const fieldsCount = Object.keys(extractedFields).length;
-      const accuracy = success ? Math.min(95, Math.max(50, confidence * 100)) : 0;
 
       updateTestResult(test.id, {
         status: 'completed',
-        accuracy,
+        accuracy: realAccuracy,
         extractedFields: fieldsCount,
         confidence: confidence * 100,
         endTime: new Date()
