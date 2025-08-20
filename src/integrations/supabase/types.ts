@@ -217,6 +217,45 @@ export type Database = {
         }
         Relationships: []
       }
+      api_usage_tracking: {
+        Row: {
+          cost_used: number | null
+          created_at: string | null
+          date: string
+          failure_count: number | null
+          id: string
+          requests_used: number | null
+          service: string
+          success_count: number | null
+          total_processing_time_ms: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cost_used?: number | null
+          created_at?: string | null
+          date: string
+          failure_count?: number | null
+          id?: string
+          requests_used?: number | null
+          service: string
+          success_count?: number | null
+          total_processing_time_ms?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cost_used?: number | null
+          created_at?: string | null
+          date?: string
+          failure_count?: number | null
+          id?: string
+          requests_used?: number | null
+          service?: string
+          success_count?: number | null
+          total_processing_time_ms?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       applicant_types: {
         Row: {
           created_at: string | null
@@ -1386,40 +1425,52 @@ export type Database = {
       }
       extraction_metrics: {
         Row: {
+          client_type: string | null
+          cost: number | null
           created_at: string | null
           document_id: string | null
           duration_ms: number | null
           end_time: string | null
           error_message: string | null
+          error_type: string | null
           id: string
           metadata: Json | null
           operation_type: string
           start_time: string | null
           success: boolean | null
+          timestamp: string | null
         }
         Insert: {
+          client_type?: string | null
+          cost?: number | null
           created_at?: string | null
           document_id?: string | null
           duration_ms?: number | null
           end_time?: string | null
           error_message?: string | null
+          error_type?: string | null
           id?: string
           metadata?: Json | null
           operation_type: string
           start_time?: string | null
           success?: boolean | null
+          timestamp?: string | null
         }
         Update: {
+          client_type?: string | null
+          cost?: number | null
           created_at?: string | null
           document_id?: string | null
           duration_ms?: number | null
           end_time?: string | null
           error_message?: string | null
+          error_type?: string | null
           id?: string
           metadata?: Json | null
           operation_type?: string
           start_time?: string | null
           success?: boolean | null
+          timestamp?: string | null
         }
         Relationships: [
           {
@@ -1961,6 +2012,66 @@ export type Database = {
           operation_type?: string
           success?: boolean
           timestamp?: string | null
+        }
+        Relationships: []
+      }
+      manual_review_queue: {
+        Row: {
+          assigned_to: string | null
+          client_type: string
+          completed_at: string | null
+          created_at: string | null
+          document_id: string | null
+          error_details: Json | null
+          file_name: string
+          file_url: string
+          id: string
+          priority: string | null
+          queued_at: string | null
+          reason: string | null
+          resolution_data: Json | null
+          reviewer_notes: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_type: string
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          error_details?: Json | null
+          file_name: string
+          file_url: string
+          id?: string
+          priority?: string | null
+          queued_at?: string | null
+          reason?: string | null
+          resolution_data?: Json | null
+          reviewer_notes?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          client_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          error_details?: Json | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          priority?: string | null
+          queued_at?: string | null
+          reason?: string | null
+          resolution_data?: Json | null
+          reviewer_notes?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2751,6 +2862,33 @@ export type Database = {
           target_user_id?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      service_health_status: {
+        Row: {
+          created_at: string | null
+          google_vision_status: string
+          id: number
+          last_checked: string | null
+          openai_status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          google_vision_status?: string
+          id?: number
+          last_checked?: string | null
+          openai_status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          google_vision_status?: string
+          id?: number
+          last_checked?: string | null
+          openai_status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

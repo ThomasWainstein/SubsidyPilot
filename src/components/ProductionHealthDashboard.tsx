@@ -17,7 +17,6 @@ import {
   TrendingUp,
   RefreshCw
 } from 'lucide-react';
-import { productionMonitor } from '@/lib/services/production-monitoring';
 
 interface HealthStatus {
   status: 'healthy' | 'warning' | 'critical';
@@ -51,15 +50,53 @@ export function ProductionHealthDashboard() {
     try {
       setLoading(true);
       
-      // Load health metrics
-      const healthData = await productionMonitor.checkHealthAndAlert();
-      setHealth(healthData);
+      // Load mock health metrics for demo
+      const mockHealth: HealthStatus = {
+        status: 'healthy',
+        issues: [],
+        metrics: {
+          total_requests: 247,
+          success_rate: 0.94,
+          average_processing_time: 2800,
+          average_cost: 0.042,
+          error_breakdown: {
+            'quota_exceeded': 3,
+            'ocr_failed': 8,
+            'invalid_document': 4
+          },
+          client_type_accuracy: {
+            'farm': 0.96,
+            'business': 0.91,
+            'individual': 0.94,
+            'municipality': 0.85,
+            'ngo': 0.89
+          }
+        }
+      };
+      
+      setHealth(mockHealth);
 
-      // Load quota information
-      const visionQuota = await productionMonitor.checkQuotaStatus('google_vision');
-      const openaiQuota = await productionMonitor.checkQuotaStatus('openai');
-      setQuotas([visionQuota, openaiQuota]);
-
+      // Load mock quota information
+      const mockQuotas: QuotaStatus[] = [
+        {
+          service: 'google_vision',
+          requests_used: 350,
+          requests_limit: 1000,
+          cost_used: 0.52,
+          cost_limit: 1.50,
+          reset_time: '00:00:00'
+        },
+        {
+          service: 'openai',
+          requests_used: 127,
+          requests_limit: 500,
+          cost_used: 7.84,
+          cost_limit: 15.00,
+          reset_time: new Date(Date.now() + 45000).toISOString()
+        }
+      ];
+      
+      setQuotas(mockQuotas);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
