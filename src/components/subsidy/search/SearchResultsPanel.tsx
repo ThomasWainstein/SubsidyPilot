@@ -303,26 +303,25 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
     <div className="space-y-6">
       {/* Clean Search Header */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-primary/5 to-blue/5">
-        <CardHeader className="pb-4">
-          <div className="space-y-4">
-            <div className="relative w-full max-w-2xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary" />
+        <CardHeader className="py-3">
+          <div className="space-y-3">
+            <div className="relative w-full">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary z-10" />
               <Input
                 placeholder="Search for funding opportunities, grants, or programs..."
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="pl-12 h-14 text-lg border-2 border-primary/20 focus:border-primary shadow-sm"
+                className="pl-12 pr-12 h-12 text-base border-2 border-primary/20 focus:border-primary shadow-sm bg-white"
               />
               {searchQuery && (
                 <button 
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground bg-white rounded-full p-1"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground bg-white rounded-full p-1 z-10"
                   onClick={() => onSearchQueryChange('')}
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
-
           </div>
         </CardHeader>
       </Card>
