@@ -383,25 +383,33 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
     
     console.log(`🔍 Using ${detectionType} for ${fileName}`);
 
-    // Direct REST API call with timeout
+    // Direct REST API call with proper structure
     const requestBody = {
       requests: [
         {
           image: {
-            content: base64Content,
+            content: base64Content
           },
           features: [
             {
               type: detectionType,
-              maxResults: 1,
+              maxResults: 50
             }
           ],
           imageContext: {
             languageHints: ['fr', 'en', 'es', 'ro', 'pl']
           }
-        },
-      ],
+        }
+      ]
     };
+
+    // Validate request structure before sending
+    if (!requestBody.requests[0].image?.content) {
+      throw new Error('Missing image content in Vision API request');
+    }
+    if (!requestBody.requests[0].features?.length) {
+      throw new Error('Missing features in Vision API request');
+    }
 
     // Create Vision API call with timeout
     console.log('🚀 Calling Google Vision API...');
