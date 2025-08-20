@@ -189,6 +189,8 @@ export const RealFrenchDocumentTesting = () => {
           .maybeSingle();
         
         if (!jobError && jobStatus) {
+          console.log(`Job status check - Status: ${jobStatus.status}, JobId: ${jobId}`);
+          
           if (jobStatus.status === 'completed' && (jobStatus as any).result) {
             console.log('🎉 Job completed with results!');
             const result = (jobStatus as any).result as any;
@@ -210,6 +212,23 @@ export const RealFrenchDocumentTesting = () => {
               },
               ocrMetadata: result.ocrMetadata || {},
               processingLog: metadata?.processing_log || [`Async processing completed in ${(jobStatus as any).processing_time_ms || 0}ms`]
+            };
+          } else if (jobStatus.status === 'completed') {
+            // Job completed but no result field - this shouldn't happen but let's handle it
+            console.log('⚠️ Job marked completed but missing result field');
+            return {
+              success: false,
+              error: 'Job completed but results not found',
+              extractedData: {},
+              confidence: 0,
+              qualityScore: 0,
+              textLength: 0,
+              tokensUsed: 0,
+              extractionMethod: 'phase-2-async-incomplete',
+              costBreakdown: {},
+              processingTime: { totalTime: Date.now() - startTime },
+              ocrMetadata: {},
+              processingLog: ['Job completed but results missing']
             };
           } else if (jobStatus.status === 'failed') {
             return {
