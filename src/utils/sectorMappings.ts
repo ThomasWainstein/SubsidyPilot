@@ -101,34 +101,94 @@ export const getSectorDisplayFromDomains = (domains: string[] | string | null): 
 };
 
 /**
+ * Extract region information from subsidy data
+ */
+const extractRegionFromSubsidy = (subsidy: any): string | null => {
+  // Check multiple possible sources for region information
+  
+  // 1. Direct region field (for structured data)
+  if (Array.isArray(subsidy.region) && subsidy.region.length > 0) {
+    const validRegions = subsidy.region.filter(r => r && r.trim() !== '');
+    if (validRegions.length > 0) return validRegions.join(', ');
+  }
+  if (subsidy.region && typeof subsidy.region === 'string' && subsidy.region.trim() !== '') {
+    return subsidy.region;
+  }
+
+  // 2. Extract from agency name (e.g., "Région Normandie" -> "Normandie")
+  if (subsidy.agency && typeof subsidy.agency === 'string') {
+    const regionMatch = subsidy.agency.match(/Région\s+(.+)/i);
+    if (regionMatch) return regionMatch[1];
+  }
+
+  // 3. Parse from raw data conditions text (for les-aides-fr data)
+  if (subsidy.raw_data?.fiche?.conditions) {
+    const conditions = subsidy.raw_data.fiche.conditions;
+    
+    // Look for specific region mentions in the conditions
+    const regionPatterns = [
+      /en\s+(Pays\s+de\s+la\s+Loire)/i,
+      /en\s+(Normandie)/i,
+      /en\s+(Île-de-France)/i,
+      /en\s+(Nouvelle-Aquitaine)/i,
+      /en\s+(Occitanie)/i,
+      /en\s+(Auvergne-Rhône-Alpes)/i,
+      /en\s+(Hauts-de-France)/i,
+      /en\s+(Grand\s+Est)/i,
+      /en\s+(Bretagne)/i,
+      /en\s+(Centre-Val\s+de\s+Loire)/i,
+      /en\s+(Bourgogne-Franche-Comté)/i,
+      /en\s+(Provence-Alpes-Côte\s+d'Azur)/i,
+      /en\s+(Corse)/i
+    ];
+
+    for (const pattern of regionPatterns) {
+      const match = conditions.match(pattern);
+      if (match) return match[1];
+    }
+  }
+
+  // 4. Check eligibility criteria for regional restrictions
+  if (subsidy.eligibility_criteria?.conditions) {
+    const conditions = subsidy.eligibility_criteria.conditions;
+    const regionPatterns = [
+      /en\s+(Pays\s+de\s+la\s+Loire)/i,
+      /en\s+(Normandie)/i,
+      /en\s+(Île-de-France)/i,
+      /en\s+(Nouvelle-Aquitaine)/i,
+      /en\s+(Occitanie)/i,
+      /en\s+(Auvergne-Rhône-Alpes)/i,
+      /en\s+(Hauts-de-France)/i,
+      /en\s+(Grand\s+Est)/i,
+      /en\s+(Bretagne)/i,
+      /en\s+(Centre-Val\s+de\s+Loire)/i,
+      /en\s+(Bourgogne-Franche-Comté)/i,
+      /en\s+(Provence-Alpes-Côte\s+d'Azur)/i,
+      /en\s+(Corse)/i
+    ];
+
+    for (const pattern of regionPatterns) {
+      const match = conditions.match(pattern);
+      if (match) return match[1];
+    }
+  }
+
+  return null;
+};
+
+/**
  * Get eligibility status based on subsidy data
  */
 export const getEligibilityStatus = (subsidy: any): { status: 'eligible' | 'check' | 'restricted'; label: string } => {
-  // Simple logic - this could be enhanced with actual farm matching
-  const hasRegionRestriction = subsidy.region && subsidy.region !== 'All regions' && subsidy.region !== '';
+  const extractedRegion = extractRegionFromSubsidy(subsidy);
   const hasSectorRestriction = subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0;
   
-  if (!hasRegionRestriction && !hasSectorRestriction) {
+  if (!extractedRegion && !hasSectorRestriction) {
     return { status: 'eligible', label: 'Available nationwide' };
   }
   
-  if (hasRegionRestriction) {
-    // Show actual regions instead of generic "Location restricted"
-    if (Array.isArray(subsidy.region)) {
-      const validRegions = subsidy.region.filter(r => r && r.trim() !== '');
-      if (validRegions.length === 0) {
-        return { status: 'eligible', label: 'Available nationwide' };
-      }
-      if (validRegions.length === 1) {
-        return { status: 'restricted', label: validRegions[0] };
-      }
-      if (validRegions.length <= 2) {
-        return { status: 'restricted', label: validRegions.join(', ') };
-      }
-      return { status: 'restricted', label: `${validRegions.slice(0, 2).join(', ')} +${validRegions.length - 2} more` };
-    } else if (subsidy.region && subsidy.region.trim() !== '') {
-      return { status: 'restricted', label: subsidy.region };
-    }
+  if (extractedRegion) {
+    return { status: 'restricted', label: extractedRegion };
   }
   
   return { status: 'check', label: 'Check requirements' };
