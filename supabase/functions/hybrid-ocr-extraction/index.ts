@@ -121,18 +121,18 @@ serve(async (req) => {
     // Step 1: Try Google Vision OCR first, fallback to OpenAI if needed
     if (googleApiKey && !fallbackToOpenAI) {
       try {
-        console.log('📖 Step 1: Extracting text with Google Vision OCR...');
-        processingLog.push('Attempting Google Vision OCR...');
+        console.log('📖 Step 1: Extracting text with Google Document AI...');
+        processingLog.push('Attempting Google Document AI...');
         
         ocrResult = await extractTextWithGoogleVision(fileUrl, googleApiKey, fileName);
-        totalCost += ocrResult.metadata.pageCount * 0.0015; // Google Vision cost
+        totalCost += ocrResult.metadata.pageCount * 0.0015; // Document AI cost
         
-        console.log(`✅ Google Vision: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
-        processingLog.push(`Google Vision success: ${ocrResult.text.length} chars`);
+        console.log(`✅ Document AI: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
+        processingLog.push(`Document AI success: ${ocrResult.text.length} chars`);
         
       } catch (visionError) {
-        console.warn(`⚠️ Google Vision failed: ${visionError.message}`);
-        processingLog.push(`Google Vision failed: ${visionError.message}`);
+        console.warn(`⚠️ Document AI failed: ${visionError.message}`);
+        processingLog.push(`Document AI failed: ${visionError.message}`);
         
         // Fallback to OpenAI extraction
         console.log('🔄 Falling back to OpenAI-only extraction...');
@@ -143,7 +143,7 @@ serve(async (req) => {
         totalCost += (ocrResult.tokensUsed / 1000) * 0.03; // OpenAI cost
       }
     } else {
-      // Direct OpenAI extraction (for testing or when Google Vision unavailable)
+      // Direct OpenAI extraction (for testing or when Document AI unavailable)
       console.log('🤖 Using OpenAI-only extraction...');
       processingLog.push('Using OpenAI-only extraction...');
       
@@ -410,8 +410,8 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
       try {
         console.log(`🔄 Trying ${processor.name} (${processor.type})...`);
         
-        // Use the specific processor ID directly
-        const processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process`;
+        // Use the specific processor ID directly with API key authentication
+        const processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process?key=${apiKey}`;
         
         const requestBody = {
           rawDocument: {
@@ -425,7 +425,6 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
         const processResponse = await fetch(processUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(requestBody)
