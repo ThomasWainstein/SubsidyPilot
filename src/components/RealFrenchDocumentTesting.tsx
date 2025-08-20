@@ -11,31 +11,31 @@ import { toast } from 'sonner';
 // Real French government document URLs for testing
 const realFrenchDocuments = [
   {
-    id: 'cap-direct-payments',
-    name: 'CAP Direct Payments Form',
-    url: 'https://www.telepac.agriculture.gouv.fr/telepac/pdf/Aide-memoire-DPB-2024.pdf',
+    id: 'french-farm-form',
+    name: 'French Farm Registration Document',
+    url: 'https://www.formulaires.service-public.fr/gf/getAnnexe.do?cerfaAnnexe=11922*02_1.pdf&cerfaFormulaire=11922*02',
+    type: 'registration',
+    expectedFields: ['farm_name', 'owner_name', 'siret', 'address'],
+    difficulty: 'medium',
+    description: 'Official French farm registration form (Cerfa 11922)'
+  },
+  {
+    id: 'eu-cap-form',
+    name: 'EU Agricultural Policy Document',
+    url: 'https://ec.europa.eu/info/sites/default/files/food-farming-fisheries/key_policies/documents/cap-strategic-plans-assessment-criteria_en.pdf',
     type: 'subsidy_application',
-    expectedFields: ['beneficiary_name', 'siret', 'total_hectares', 'payment_amount'],
-    difficulty: 'medium',
-    description: 'Common Agricultural Policy direct payments form from Telepac'
-  },
-  {
-    id: 'organic-certification',
-    name: 'Organic Farming Certification',
-    url: 'https://agriculture.gouv.fr/sites/default/files/documents/pdf/gab_dossier-conversion-bio_cle81a515.pdf',
-    type: 'certification',
-    expectedFields: ['farm_name', 'operator_name', 'certification_body', 'conversion_date'],
+    expectedFields: ['beneficiary_name', 'total_hectares', 'payment_amount', 'farm_type'],
     difficulty: 'high',
-    description: 'Organic farming certification conversion dossier'
+    description: 'EU Common Agricultural Policy strategic plans document'
   },
   {
-    id: 'young-farmer-aid',
-    name: 'Young Farmer Installation Aid',
-    url: 'https://www.asp-public.fr/sites/default/files/atoms/files/DJA_notice_2024.pdf',
-    type: 'installation_aid',
-    expectedFields: ['applicant_name', 'age', 'project_description', 'aid_amount'],
+    id: 'french-census',
+    name: 'French Agricultural Census Form',
+    url: 'https://www.insee.fr/fr/statistiques/fichier/4255765/RA2020-questionnaire.pdf',
+    type: 'census',
+    expectedFields: ['farm_name', 'operator_name', 'total_hectares', 'livestock_count'],
     difficulty: 'medium',
-    description: 'Young farmer installation aid application notice'
+    description: 'INSEE agricultural census questionnaire 2020'
   }
 ];
 
