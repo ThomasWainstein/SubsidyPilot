@@ -52,6 +52,8 @@ interface ExtractionResult {
   processingTime: any;
   processingLog: string[];
   error?: string;
+  isProcessing?: boolean;
+  jobId?: string;
 }
 
 interface GroundTruthAnnotation {
@@ -116,6 +118,23 @@ export const RealFrenchDocumentTesting = () => {
       }
 
       console.log(`⏳ Async job started: ${data.jobId}, monitoring progress...`);
+      
+      // Set initial processing state
+      setExtractionResult({
+        success: false,
+        isProcessing: true,
+        jobId: data.jobId,
+        extractedData: {},
+        confidence: 0,
+        textLength: 0,
+        tokensUsed: 0,
+        ocrMetadata: {},
+        qualityScore: 0,
+        extractionMethod: 'phase-2-async-processing',
+        costBreakdown: {},
+        processingTime: {},
+        processingLog: ['Job queued for background processing']
+      });
       
       // Monitor job completion with real-time updates
       const result = await monitorAsyncJobCompletion(data.jobId, testDocumentId, 300000); // 5 min timeout
@@ -418,50 +437,75 @@ export const RealFrenchDocumentTesting = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Real Document Results
-                <Badge className={getStatusColor(extractionResult.success)}>
-                  {extractionResult.success ? 'SUCCESS' : 'FAILED'}
-                </Badge>
+                {extractionResult.isProcessing ? (
+                  <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-2">
+                    <div className="animate-spin h-3 w-3 border-2 border-yellow-500 border-t-transparent rounded-full"></div>
+                    PROCESSING
+                  </Badge>
+                ) : (
+                  <Badge className={getStatusColor(extractionResult.success)}>
+                    {extractionResult.success ? 'SUCCESS' : 'FAILED'}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label>Confidence Score</Label>
-                  <div className="font-mono">{((extractionResult.confidence || 0) * 100).toFixed(1)}%</div>
-                </div>
-                <div>
-                  <Label>Processing Time</Label>
-                  <div className="font-mono">{extractionResult.processingTime?.totalTime || 0}ms</div>
-                </div>
-                <div>
-                  <Label>Text Length</Label>
-                  <div className="font-mono">{extractionResult.textLength || 0} chars</div>
-                </div>
-                <div>
-                  <Label>Quality Score</Label>
-                  <div className="font-mono">{((extractionResult.qualityScore || 0) * 100).toFixed(1)}%</div>
-                </div>
-                </div>
-
-                <div>
-                  <Label>Extracted Data</Label>
-                  <pre className="mt-2 p-3 bg-gray-50 rounded text-xs overflow-auto max-h-48">
-                    {JSON.stringify(extractionResult.extractedData, null, 2)}
-                  </pre>
-                </div>
-
-                <div>
-                  <Label>Processing Log</Label>
-                  <div className="mt-2 space-y-1 max-h-32 overflow-auto">
-                    {(extractionResult.processingLog || []).map((log, index) => (
-                      <div key={index} className="text-xs font-mono bg-gray-50 p-1 rounded">
-                        {log}
-                      </div>
-                    ))}
+              {extractionResult.isProcessing ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="animate-spin h-5 w-5 border-2 border-yellow-500 border-t-transparent rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-yellow-800">Processing Large Document</h3>
+                  </div>
+                  <p className="text-yellow-700 mb-4">
+                    Your {selectedDocument?.name} is being processed in the background. This may take several minutes for large documents.
+                  </p>
+                  <div className="bg-white rounded-lg p-4 border">
+                    <div className="text-sm text-gray-600 mb-2">Job ID: {extractionResult.jobId}</div>
+                    <div className="text-sm font-mono">
+                      Check console for real-time progress updates...
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <Label>Confidence Score</Label>
+                    <div className="font-mono">{((extractionResult.confidence || 0) * 100).toFixed(1)}%</div>
+                  </div>
+                  <div>
+                    <Label>Processing Time</Label>
+                    <div className="font-mono">{extractionResult.processingTime?.totalTime || 0}ms</div>
+                  </div>
+                  <div>
+                    <Label>Text Length</Label>
+                    <div className="font-mono">{extractionResult.textLength || 0} chars</div>
+                  </div>
+                  <div>
+                    <Label>Quality Score</Label>
+                    <div className="font-mono">{((extractionResult.qualityScore || 0) * 100).toFixed(1)}%</div>
+                  </div>
+                  </div>
+
+                  <div>
+                    <Label>Extracted Data</Label>
+                    <pre className="mt-2 p-3 bg-gray-50 rounded text-xs overflow-auto max-h-48">
+                      {JSON.stringify(extractionResult.extractedData, null, 2)}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <Label>Processing Log</Label>
+                    <div className="mt-2 space-y-1 max-h-32 overflow-auto">
+                      {(extractionResult.processingLog || []).map((log, index) => (
+                        <div key={index} className="text-xs font-mono bg-gray-50 p-1 rounded">
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
