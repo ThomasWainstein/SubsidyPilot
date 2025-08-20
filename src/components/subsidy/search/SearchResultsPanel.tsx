@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language';
 import { parseEnhancedFundingAmount, getSubsidyTitle, getSubsidyDescription, getDeadlineStatus } from '@/utils/subsidyFormatting';
 import { getSectorDisplayFromDomains, getEligibilityStatus } from '@/utils/sectorMappings';
+import OrganizationLogo from '../OrganizationLogo';
 
 interface Subsidy {
   id: string;
@@ -145,9 +146,12 @@ const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showM
               {getSubsidyTitle(subsidy)}
             </h3>
             {subsidy.agency && (
-              <p className="text-sm text-muted-foreground line-clamp-1">
-                {subsidy.agency}
-              </p>
+              <div className="flex items-center space-x-2">
+                <OrganizationLogo organizationName={subsidy.agency} size="sm" />
+                <p className="text-sm text-muted-foreground line-clamp-1">
+                  {subsidy.agency}
+                </p>
+              </div>
             )}
           </div>
           
@@ -361,7 +365,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
           {/* Results Grid */}
           <div className="space-y-4">
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 {[...Array(8)].map((_, i) => (
                   <SubsidyLoadingCard key={i} />
                 ))}
@@ -387,7 +391,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
                         Funding programs currently accepting applications
                       </span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                       {openSubsidies.map((subsidy) => (
                         <CleanSubsidyCard 
                           key={subsidy.id} 
@@ -405,7 +409,7 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
                     <h3 className="text-lg font-semibold mb-4 text-muted-foreground">
                       Recently Closed ({closedSubsidies.length})
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                       {closedSubsidies.slice(0, 8).map((subsidy) => (
                         <CleanSubsidyCard 
                           key={subsidy.id} 

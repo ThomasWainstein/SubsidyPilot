@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, MapPin, Euro, FileText, AlertCircle, CheckCircle, 
 import { useLanguage } from '@/contexts/language';
 import { getLocalizedContent } from '@/utils/language';
 import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
+import OrganizationLogo from './OrganizationLogo';
 
 interface DetailedSubsidyDisplayProps {
   subsidy: any;
@@ -268,17 +269,23 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-4">
-                {getStatusBadge(getStatus())}
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-white/20 text-white">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  {getRegion()}
-                </span>
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-4">
+                  {getStatusBadge(getStatus())}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-white/20 text-white">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    {getRegion()}
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
+                {agency && agency !== 'Not specified' && (
+                  <div className="flex items-center space-x-3 mb-4">
+                    <OrganizationLogo organizationName={agency} size="md" />
+                    <span className="text-lg text-primary-foreground/90 font-medium">{agency}</span>
+                  </div>
+                )}
+                <p className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">{description || 'Detailed information about this subsidy program.'}</p>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
-              <p className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">{description || 'Detailed information about this subsidy program.'}</p>
-            </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 md:ml-8 md:min-w-[300px]">
               <div className="text-center">
                 <div className="text-3xl font-bold mb-2">{getFundingAmount()}</div>
