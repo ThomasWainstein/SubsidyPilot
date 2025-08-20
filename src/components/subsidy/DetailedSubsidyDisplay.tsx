@@ -114,7 +114,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
   // Extract funding amount from les-aides data if available
   const getFundingAmount = () => {
-    return parseEnhancedFundingAmount(subsidy, subsidy.raw_data?.fiche ? { montants: subsidy.raw_data.fiche } : null);
+    return parseEnhancedFundingAmount(subsidy, subsidy.raw_data?.fiche);
   };
 
   const getRegion = () => {
