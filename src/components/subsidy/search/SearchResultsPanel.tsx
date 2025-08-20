@@ -141,16 +141,20 @@ const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showM
         {/* Main Header - Fixed height section */}
         <div className="flex-shrink-0 space-y-3 mb-4">
           {/* Title and Provider - Fixed height */}
-          <div className="h-16">
-            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1 leading-tight">
-              {getSubsidyTitle(subsidy)}
-            </h3>
-            {subsidy.agency && (
-              <div className="flex items-center space-x-2">
-                <OrganizationLogo organizationName={subsidy.agency} size="sm" />
+          <div className="h-16 flex justify-between items-start">
+            <div className="flex-1 pr-3">
+              <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1 leading-tight">
+                {getSubsidyTitle(subsidy)}
+              </h3>
+              {subsidy.agency && (
                 <p className="text-sm text-muted-foreground line-clamp-1">
                   {subsidy.agency}
                 </p>
+              )}
+            </div>
+            {subsidy.agency && (
+              <div className="flex-shrink-0">
+                <OrganizationLogo organizationName={subsidy.agency} size="lg" />
               </div>
             )}
           </div>
