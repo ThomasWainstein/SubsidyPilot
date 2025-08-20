@@ -381,48 +381,37 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
       throw new Error('Google Cloud Project ID not configured');
     }
     
-    // Try Document AI processors in order of preference
+    // Use your specific Document AI processors in order of preference
     const processorConfigs = [
-      { type: 'FORM_PARSER_PROCESSOR', location: 'us' },
-      { type: 'OCR_PROCESSOR', location: 'us' },
-      { type: 'FORM_PARSER_PROCESSOR', location: 'eu' },
-      { type: 'OCR_PROCESSOR', location: 'eu' }
+      { 
+        name: 'SubsidyFormParser', 
+        id: 'c5f598c8645ceefe', 
+        type: 'FORM_PARSER_PROCESSOR', 
+        location: 'us' 
+      },
+      { 
+        name: 'SubsidyLayoutParser', 
+        id: '554e8fd8b93fbefe', 
+        type: 'LAYOUT_PARSER_PROCESSOR', 
+        location: 'us' 
+      },
+      { 
+        name: 'SubsidyDocumentOCR', 
+        id: '35a5d4df2e404c27', 
+        type: 'DOCUMENT_OCR_PROCESSOR', 
+        location: 'us' 
+      }
     ];
     
     let documentAIResult = null;
     let usedProcessor = '';
     
-    for (const config of processorConfigs) {
+    for (const processor of processorConfigs) {
       try {
-        console.log(`🔄 Trying Document AI ${config.type} in ${config.location}...`);
+        console.log(`🔄 Trying ${processor.name} (${processor.type})...`);
         
-        // List available processors first to get actual processor ID
-        const listUrl = `https://${config.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${config.location}/processors`;
-        const listResponse = await fetch(listUrl, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!listResponse.ok) {
-          console.log(`Failed to list processors: ${listResponse.status}`);
-          continue;
-        }
-        
-        const listData = await listResponse.json();
-        const processor = listData.processors?.find((p: any) => p.type === config.type && p.state === 'ENABLED');
-        
-        if (!processor) {
-          console.log(`No enabled ${config.type} processor found in ${config.location}`);
-          continue;
-        }
-        
-        const processorId = processor.name.split('/').pop();
-        console.log(`Found processor: ${processorId}`);
-        
-        // Use the found processor
-        const processUrl = `https://${config.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${config.location}/processors/${processorId}:process`;
+        // Use the specific processor ID directly
+        const processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process`;
         
         const requestBody = {
           rawDocument: {
@@ -432,7 +421,7 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
           fieldMask: 'text,entities,pages.pageNumber'
         };
         
-        console.log('🚀 Calling Document AI API...');
+        console.log(`🚀 Calling ${processor.name} API...`);
         const processResponse = await fetch(processUrl, {
           method: 'POST',
           headers: {
@@ -444,17 +433,17 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
         
         if (!processResponse.ok) {
           const errorText = await processResponse.text();
-          console.log(`Document AI ${config.type} failed:`, errorText);
-          continue;
+          console.log(`${processor.name} failed (${processResponse.status}):`, errorText);
+          continue; // Try next processor
         }
         
         documentAIResult = await processResponse.json();
-        usedProcessor = `${config.type}_${config.location}`;
-        console.log(`✅ Document AI ${config.type} successful`);
+        usedProcessor = processor.name;
+        console.log(`✅ ${processor.name} successful`);
         break;
         
       } catch (processorError: any) {
-        console.log(`Document AI ${config.type} error:`, processorError.message);
+        console.log(`${processor.name} error:`, processorError.message);
         continue;
       }
     }
