@@ -154,22 +154,22 @@ const SubsidySearchPage = () => {
                 />
               </div>
             ) : (
-              <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+              <div className="flex">
                 {/* Desktop Sidebar - Always visible on lg+ screens */}
-                <div className="hidden lg:flex lg:flex-shrink-0">
-                  <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="h-full overflow-y-auto p-6">
-                      <div className="sticky top-0 bg-white dark:bg-gray-800 pb-4 mb-4 border-b">
-                        <h2 className="text-lg font-semibold text-foreground">Filter Options</h2>
-                        <p className="text-sm text-muted-foreground">Refine your search results</p>
-                      </div>
+                <aside className="hidden lg:block w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm min-h-screen">
+                  <div className="sticky top-0 p-6">
+                    <div className="pb-4 mb-4 border-b">
+                      <h2 className="text-lg font-semibold text-foreground">Filter Options</h2>
+                      <p className="text-sm text-muted-foreground">Refine your search results</p>
+                    </div>
+                    <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
                       <FiltersContent />
                     </div>
                   </div>
-                </div>
+                </aside>
 
-                {/* Main Content Area - Full Width */}
-                <div className="flex-1 min-w-0">
+                {/* Main Content Area */}
+                <main className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-900">
                   <div className="p-6">
                     {/* Mobile filters as sheet */}
                     <div className="lg:hidden mb-6">
@@ -188,7 +188,7 @@ const SubsidySearchPage = () => {
                       </Sheet>
                     </div>
 
-                    {/* Search Results - Full Width */}
+                    {/* Search Results */}
                     <SearchResultsPanel
                       searchQuery={searchQuery}
                       onSearchQueryChange={setSearchQuery}
@@ -203,7 +203,7 @@ const SubsidySearchPage = () => {
                       onClearFilters={clearFilters}
                     />
                   </div>
-                </div>
+                </main>
               </div>
             )}
           </div>
