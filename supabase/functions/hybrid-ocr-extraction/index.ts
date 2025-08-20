@@ -91,9 +91,17 @@ serve(async (req) => {
     console.log(`🔄 Starting hybrid extraction for ${fileName} (${clientType})`);
     processingLog.push(`Started: ${fileName} (${clientType})`);
     
-    // Generate documentId if not provided (for testing scenarios)
-    const actualDocumentId = documentId || `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`📄 Document ID: ${actualDocumentId}`);
+    // Generate proper UUID for database operations if documentId is not a valid UUID
+    let actualDocumentId = documentId;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (!documentId || !uuidRegex.test(documentId)) {
+      // Generate a proper UUID for database operations
+      actualDocumentId = crypto.randomUUID();
+      console.log(`📄 Generated Document ID: ${actualDocumentId} (original: ${documentId || 'none'})`);
+    } else {
+      console.log(`📄 Document ID: ${actualDocumentId}`);
+    }
     
     const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');

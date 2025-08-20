@@ -11,7 +11,7 @@ export const runImmediateDiagnostics = async () => {
     const basicTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
       body: { 
         test: true,
-        documentId: 'connectivity-test',
+        documentId: crypto.randomUUID(),
         fileUrl: 'https://httpbin.org/image/png',
         fileName: 'connectivity-test.png',
         clientType: 'farm'
@@ -29,7 +29,7 @@ export const runImmediateDiagnostics = async () => {
   try {
     const visionTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
       body: {
-        documentId: 'vision-api-test',
+        documentId: crypto.randomUUID(),
         fileUrl: 'https://via.placeholder.com/600x400/000000/FFFFFF?text=TEST+DOCUMENT+Sample+Form+Name+John+Doe+Amount+1000+EUR',
         fileName: 'vision-test.png',
         clientType: 'farm',
@@ -67,7 +67,7 @@ export const runImmediateDiagnostics = async () => {
   try {
     const configTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
       body: {
-        documentId: 'config-test',
+        documentId: crypto.randomUUID(),
         fileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
         fileName: 'config-test.png',
         clientType: 'farm',
