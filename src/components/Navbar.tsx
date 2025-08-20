@@ -57,7 +57,7 @@ const Navbar = () => {
 
   const navItems = user ? [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/search', label: 'Search Subsidies', icon: Search },
+    { path: '/search', label: 'Search Funding', icon: Search },
     // Regulations tab removed per business requirements
   ] : [];
 
@@ -75,11 +75,11 @@ const Navbar = () => {
             className="flex items-center space-x-2 cursor-pointer" 
             onClick={() => navigate('/')}
           >
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AT</span>
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">SP</span>
             </div>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              AgriTool
+              SubsidyPilot
             </span>
           </div>
 
@@ -141,7 +141,7 @@ const Navbar = () => {
                   <div className="flex flex-col space-y-1 p-2">
                     <p className="text-sm font-medium leading-none">{user.email}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {isAdmin ? 'Administrator' : 'Farmer'}
+                      {isAdmin ? 'Administrator' : 'Business User'}
                     </p>
                   </div>
                   <DropdownMenuSeparator />
