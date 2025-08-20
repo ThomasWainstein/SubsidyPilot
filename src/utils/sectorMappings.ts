@@ -113,7 +113,18 @@ export const getEligibilityStatus = (subsidy: any): { status: 'eligible' | 'chec
   }
   
   if (hasRegionRestriction) {
-    return { status: 'restricted', label: 'Location restricted' };
+    // Show actual regions instead of generic "Location restricted"
+    if (Array.isArray(subsidy.region)) {
+      if (subsidy.region.length === 1) {
+        return { status: 'restricted', label: subsidy.region[0] };
+      }
+      if (subsidy.region.length <= 2) {
+        return { status: 'restricted', label: subsidy.region.join(', ') };
+      }
+      return { status: 'restricted', label: `${subsidy.region.slice(0, 2).join(', ')} +${subsidy.region.length - 2} more` };
+    } else {
+      return { status: 'restricted', label: subsidy.region };
+    }
   }
   
   return { status: 'check', label: 'Check requirements' };
