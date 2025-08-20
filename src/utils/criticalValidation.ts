@@ -16,7 +16,8 @@ export const testGoogleVisionAPIFixed = async (): Promise<DiagnosticResult> => {
     
     const testDocumentId = crypto.randomUUID(); // Generate valid UUID
     
-    const { data, error } = await supabase.functions.invoke('hybrid-ocr-extraction', {
+    // Use async processor for more robust testing
+    const { data, error } = await supabase.functions.invoke('async-document-processor', {
       body: {
         documentId: testDocumentId,
         // Use a simple accessible test image

@@ -97,7 +97,7 @@ export const RealFrenchDocumentTesting = () => {
       
       const testDocumentId = crypto.randomUUID();
       
-      const { data, error } = await supabase.functions.invoke('hybrid-ocr-extraction', {
+      const { data, error } = await supabase.functions.invoke('async-document-processor', {
         body: {
           documentId: testDocumentId,
           fileUrl: selectedDocument.url,
@@ -197,7 +197,7 @@ export const RealFrenchDocumentTesting = () => {
       const testDocumentId = crypto.randomUUID();
       const base64TestImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       
-      const { data: testData, error: testError } = await supabase.functions.invoke('hybrid-ocr-extraction', {
+      const { data: testData, error: testError } = await supabase.functions.invoke('async-document-processor', {
         body: {
           documentId: testDocumentId,
           fileUrl: base64TestImage,
@@ -392,7 +392,7 @@ export const RealFrenchDocumentTesting = () => {
                       <div className="flex justify-between">
                         <span>Same processing pipeline:</span>
                         <Badge variant="outline" className="bg-green-100 text-green-800">
-                          ✓ hybrid-ocr-extraction
+                          ✓ async-document-processor
                         </Badge>
                       </div>
                       <div className="flex justify-between">

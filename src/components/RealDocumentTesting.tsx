@@ -116,7 +116,7 @@ export const RealDocumentTesting: React.FC = () => {
 
   const triggerExtraction = async (testDoc: TestDocument, fileUrl: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('hybrid-ocr-extraction', {
+      const { data, error } = await supabase.functions.invoke('async-document-processor', {
         body: {
           documentPath: testDoc.groundTruth?.documentId,
           fileUrl: fileUrl,

@@ -36,9 +36,9 @@ export default function ValidationPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Phase 1A Validation Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-2">Phase 2 Async Processing Dashboard</h1>
         <p className="text-muted-foreground">
-          Real document testing with Google Cloud Vision API and ground truth validation
+          Phase 2 async processing eliminates stack overflow issues with advanced background processing
         </p>
       </div>
 

@@ -250,10 +250,10 @@ export const ExtractionValidationDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Phase 1A Validation Dashboard
+            Phase 2 Async Processing Dashboard
           </CardTitle>
           <CardDescription>
-            Comprehensive testing across all client types with real accuracy measurement
+            Advanced async processing testing with stack overflow elimination
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

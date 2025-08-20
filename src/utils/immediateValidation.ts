@@ -8,7 +8,7 @@ export const runImmediateDiagnostics = async () => {
   // Test 1: Check if Edge Function responds at all
   console.log('\n1️⃣ Testing basic edge function connectivity...');
   try {
-    const basicTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
+    const basicTest = await supabase.functions.invoke('async-document-processor', {
       body: { 
         test: true,
         documentId: crypto.randomUUID(),
@@ -27,7 +27,7 @@ export const runImmediateDiagnostics = async () => {
   // Test 2: Check Google Vision API with simple test image
   console.log('\n2️⃣ Testing Google Vision API with test image...');
   try {
-    const visionTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
+    const visionTest = await supabase.functions.invoke('async-document-processor', {
       body: {
         documentId: crypto.randomUUID(),
         fileUrl: 'https://via.placeholder.com/600x400/000000/FFFFFF?text=TEST+DOCUMENT+Sample+Form+Name+John+Doe+Amount+1000+EUR',
@@ -65,7 +65,7 @@ export const runImmediateDiagnostics = async () => {
   // Test 4: Check API keys configuration
   console.log('\n4️⃣ Testing API keys configuration...');
   try {
-    const configTest = await supabase.functions.invoke('hybrid-ocr-extraction', {
+    const configTest = await supabase.functions.invoke('async-document-processor', {
       body: {
         documentId: crypto.randomUUID(),
         fileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -98,7 +98,7 @@ export const runImmediateDiagnostics = async () => {
   });
 
   console.log('\n🔗 Next Steps:');
-  console.log('1. Check edge function logs in Supabase Dashboard → Edge Functions → hybrid-ocr-extraction → Logs');
+  console.log('1. Check edge function logs in Supabase Dashboard → Edge Functions → async-document-processor → Logs');
   console.log('2. Test Google Vision API key manually with curl command');
   console.log('3. Verify Google Cloud Vision API is enabled in Google Console');
   
@@ -188,7 +188,7 @@ export const getManualTestingChecklist = () => {
     '   - Confirm API key restrictions allow Supabase edge function IPs',
     '',
     '3. 📋 Edge Function Logs:',
-    '   - Go to Supabase Dashboard → Edge Functions → hybrid-ocr-extraction',
+    '   - Go to Supabase Dashboard → Edge Functions → async-document-processor',
     '   - Click "Logs" to see recent invocations',
     '   - Look for timeout patterns, API errors, or authentication failures',
     '',

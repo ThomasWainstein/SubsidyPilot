@@ -133,7 +133,7 @@ export class FallbackManager {
   ): Promise<{ success: boolean; data?: any; confidence: number; cost: number; error?: string }> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const { data, error } = await supabase.functions.invoke('hybrid-ocr-extraction', {
+        const { data, error } = await supabase.functions.invoke('async-document-processor', {
           body: {
             documentId,
             fileUrl,

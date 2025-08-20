@@ -27,8 +27,21 @@ export interface ExtractionResult {
 export type ClientType = 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
 
 /**
- * Triggers document extraction using either hybrid OCR (Google Vision + OpenAI) 
- * or pure OpenAI approach
+ * Determines if document should use async processing (Phase 2)
+ */
+const shouldUseAsyncProcessing = (fileName: string, documentType: string): boolean => {
+  // Use async for large EU policy documents or complex forms
+  const largeDocTypes = ['eu-policy', 'budget_report', 'subsidy_application'];
+  const complexFiles = fileName.toLowerCase().includes('eu') || 
+                      fileName.toLowerCase().includes('policy') ||
+                      fileName.toLowerCase().includes('budget');
+  
+  return largeDocTypes.includes(documentType) || complexFiles;
+};
+
+/**
+ * Triggers document extraction using Phase 2 async processor for large documents
+ * or traditional sync processor for smaller documents
  */
 export const triggerExtraction = async (
   documentId: string,
@@ -39,8 +52,16 @@ export const triggerExtraction = async (
   useHybridOCR: boolean = true
 ): Promise<ExtractionResult> => {
   try {
-    console.log(`🚀 Triggering ${useHybridOCR ? 'hybrid OCR' : 'pure OpenAI'} extraction for ${clientType}: ${fileName}`);
+    const useAsync = shouldUseAsyncProcessing(fileName, documentType);
     
+    console.log(`🚀 Triggering ${useAsync ? 'Phase 2 async' : useHybridOCR ? 'hybrid OCR' : 'pure OpenAI'} extraction for ${clientType}: ${fileName}`);
+    
+    if (useAsync) {
+      // Use Phase 2 async processor for large/complex documents
+      return await triggerAsyncExtraction(documentId, fileUrl, fileName, documentType, clientType);
+    }
+    
+    // Use traditional sync processor for smaller documents
     const functionName = useHybridOCR ? 'hybrid-ocr-extraction' : 'extract-document-data';
     const body = useHybridOCR ? {
       documentId,
@@ -91,6 +112,123 @@ export const triggerExtraction = async (
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+};
+
+/**
+ * Phase 2 async extraction with job monitoring
+ */
+const triggerAsyncExtraction = async (
+  documentId: string,
+  fileUrl: string,
+  fileName: string,
+  documentType: string,
+  clientType: ClientType
+): Promise<ExtractionResult> => {
+  try {
+    console.log('🔄 Starting Phase 2 async processing...');
+    
+    // Start async processing job
+    const { data, error } = await supabase.functions.invoke('async-document-processor', {
+      body: {
+        documentId,
+        fileUrl,
+        fileName,
+        clientType,
+        documentType
+      }
+    });
+
+    if (error) {
+      console.error('❌ Phase 2 async processing failed to start:', error);
+      return {
+        success: false,
+        error: error.message || 'Async processing failed to start'
+      };
+    }
+
+    if (!data?.success || !data?.jobId) {
+      return {
+        success: false,
+        error: 'Failed to start async processing job'
+      };
+    }
+
+    console.log(`⏳ Async job started: ${data.jobId}, monitoring progress...`);
+    
+    // Monitor job completion with timeout
+    const result = await monitorAsyncJob(data.jobId, documentId, 300000); // 5 min timeout
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to trigger async extraction:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Async extraction failed'
+    };
+  }
+};
+
+/**
+ * Monitor async job completion
+ */
+const monitorAsyncJob = async (
+  jobId: string, 
+  documentId: string, 
+  timeoutMs: number = 300000
+): Promise<ExtractionResult> => {
+  const startTime = Date.now();
+  const pollInterval = 2000; // 2 seconds
+  
+  while (Date.now() - startTime < timeoutMs) {
+    try {
+      // Check job status
+      const { data: jobStatus } = await supabase
+        .from('document_processing_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+      
+      if (jobStatus?.status === 'completed') {
+        // Get extraction result
+        const { data: extraction } = await supabase
+          .from('document_extractions')
+          .select('*')
+          .eq('document_id', documentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (extraction) {
+          console.log('✅ Phase 2 async processing completed successfully');
+          return {
+            success: true,
+            extractedData: extraction.extracted_data,
+            confidence: extraction.confidence_score || 0,
+            qualityScore: extraction.table_quality || 0,
+            extractionMethod: 'phase-2-async',
+            processingLog: [`Async processing completed in ${Date.now() - startTime}ms`]
+          };
+        }
+      } else if (jobStatus?.status === 'failed') {
+        return {
+          success: false,
+          error: jobStatus.error_message || 'Async processing failed'
+        };
+      }
+      
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      
+    } catch (error) {
+      console.error('Error monitoring async job:', error);
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+  }
+  
+  return {
+    success: false,
+    error: 'Async processing timeout - job may still be running in background'
+  };
 };
 
 /**
