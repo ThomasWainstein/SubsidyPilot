@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import AddFarmModal from '@/components/dashboard/AddFarmModal';
+import { usePortfolioMetrics } from '@/hooks/usePortfolioMetrics';
 
 interface Farm {
   id: string;
@@ -68,43 +69,8 @@ const SimplifiedDashboard: React.FC = () => {
     fetchFarms();
   }, [user]);
 
-  // Calculate portfolio metrics based on the UX principles
-  const portfolioMetrics = useMemo(() => {
-    if (farms.length === 0) return null;
-
-    const totalHectares = farms.reduce((sum, farm) => sum + (farm.total_hectares || 0), 0);
-    const profilesComplete = farms.filter(f => f.status === 'Profile Complete').length;
-    const incompleteProfiles = farms.length - profilesComplete;
-    
-    // Calculate immediate opportunities (farms ready for applications)
-    const readyForApplications = farms.filter(f => 
-      f.status === 'Profile Complete' && 
-      f.total_hectares && 
-      f.department
-    ).length;
-
-    // Calculate potential funding (simplified calculation for demo)
-    const estimatedFunding = farms.reduce((sum, farm) => {
-      const hectares = farm.total_hectares || 0;
-      const isOrganic = farm.land_use_types?.includes('organic');
-      const hasLivestock = farm.livestock && Object.keys(farm.livestock).length > 0;
-      
-      let farmPotential = 5000; // Base amount
-      if (hectares > 0) farmPotential += hectares * 500;
-      if (isOrganic) farmPotential += 25000;
-      if (hasLivestock) farmPotential += 20000;
-      
-      return sum + farmPotential;
-    }, 0);
-
-    return {
-      totalFarms: farms.length,
-      totalHectares,
-      readyForApplications,
-      incompleteProfiles,
-      estimatedFunding
-    };
-  }, [farms]);
+  // Use real portfolio metrics from actual subsidy eligibility
+  const { data: portfolioMetrics } = usePortfolioMetrics(user?.id || '');
 
   // Prioritize farms by action urgency
   const prioritizedFarms = useMemo(() => {
@@ -165,6 +131,9 @@ const SimplifiedDashboard: React.FC = () => {
                       <p className="text-2xl font-bold text-green-600">
                         {portfolioMetrics.readyForApplications}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        €{Math.round(portfolioMetrics.totalFundingAvailable / 1000)}K available
+                      </p>
                     </div>
                     <CheckCircle className="h-8 w-8 text-green-600" />
                   </div>
@@ -179,6 +148,9 @@ const SimplifiedDashboard: React.FC = () => {
                       <p className="text-2xl font-bold text-orange-600">
                         {portfolioMetrics.incompleteProfiles}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        €{Math.round(portfolioMetrics.totalBlockedValue / 1000)}K blocked
+                      </p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-orange-600" />
                   </div>
@@ -189,12 +161,15 @@ const SimplifiedDashboard: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Funding Available</p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        €{Math.round(portfolioMetrics.estimatedFunding / 1000)}K
+                      <p className="text-sm text-muted-foreground">Urgent Deadlines</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {portfolioMetrics.urgentDeadlines}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Within 30 days
                       </p>
                     </div>
-                    <Euro className="h-8 w-8 text-blue-600" />
+                    <Clock className="h-8 w-8 text-red-600" />
                   </div>
                 </CardContent>
               </Card>
@@ -203,12 +178,15 @@ const SimplifiedDashboard: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Land</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {portfolioMetrics.totalHectares} ha
+                      <p className="text-sm text-muted-foreground">Total Available</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        €{Math.round((portfolioMetrics.totalFundingAvailable + portfolioMetrics.totalBlockedValue) / 1000)}K
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {portfolioMetrics.totalHectares} hectares
                       </p>
                     </div>
-                    <Target className="h-8 w-8 text-muted-foreground" />
+                    <Euro className="h-8 w-8 text-blue-600" />
                   </div>
                 </CardContent>
               </Card>
