@@ -112,6 +112,14 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
   // Extract funding amount from les-aides data if available
   const getFundingAmount = () => {
+    // Debug logging to understand the data structure
+    console.log('Subsidy data:', {
+      raw_data: subsidy.raw_data,
+      lesAidesData: lesAidesData,
+      amount: subsidy.amount,
+      funding_amount: subsidy.funding_amount
+    });
+
     // First check if we have raw_data.fiche content (enhanced extraction data)
     if (subsidy.raw_data?.fiche) {
       const ficheText = typeof subsidy.raw_data.fiche === 'string' 
@@ -136,13 +144,14 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         }
       }
       
-      // Look for single amount patterns
+      // Look for single amount patterns  
       const singlePatterns = [
         /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, // "jusqu'à 50 000 €"
         /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, // "50 000 € maximum"
         /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "valeur de 1 200 €"
-        /(\d+(?:\s+\d+)*)\s*€/gi, // Any "X €" pattern (use last match)
-        /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i // "1 200 euros HT"
+        /aide\s+comprise\s+entre\s+(\d+(?:\s+\d+)*)\s*€/i, // "aide comprise entre 2 000 €"
+        /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i, // "1 200 euros HT"
+        /(\d+(?:\s+\d+)*)\s*€/gi // Any "X €" pattern (use last match)
       ];
       
       for (const pattern of singlePatterns) {
@@ -168,6 +177,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     // Fallback to les-aides montants field
     if (lesAidesData?.montants) {
       const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      console.log('Processing montants text:', montantsText);
       
       // Range patterns
       const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
