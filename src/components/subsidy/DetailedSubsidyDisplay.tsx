@@ -141,12 +141,20 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, // "jusqu'à 50 000 €"
         /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, // "50 000 € maximum"
         /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "valeur de 1 200 €"
-        /(\d+(?:\s+\d+)*)\s*€/g, // Any "X €" pattern (use last match)
+        /(\d+(?:\s+\d+)*)\s*€/gi, // Any "X €" pattern (use last match)
         /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i // "1 200 euros HT"
       ];
       
       for (const pattern of singlePatterns) {
-        const matches = Array.from(cleanText.matchAll(pattern));
+        // Handle both global and non-global patterns safely
+        let matches;
+        if (pattern.global) {
+          matches = Array.from(cleanText.matchAll(pattern));
+        } else {
+          const match = cleanText.match(pattern);
+          matches = match ? [match] : [];
+        }
+        
         if (matches.length > 0) {
           // For multiple matches, prefer the largest amount or the last one
           const amounts = matches.map(m => parseInt(m[1].replace(/\s/g, '')));
