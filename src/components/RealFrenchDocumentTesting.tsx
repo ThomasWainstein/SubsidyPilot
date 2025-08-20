@@ -82,7 +82,7 @@ export const RealFrenchDocumentTesting = () => {
     
     // Initialize ground truth fields
     const initialGroundTruth: GroundTruthAnnotation = {};
-    document.expectedFields.forEach((field: string) => {
+    (document.expectedFields || []).forEach((field: string) => {
       initialGroundTruth[field] = '';
     });
     setGroundTruth(initialGroundTruth);
@@ -145,7 +145,7 @@ export const RealFrenchDocumentTesting = () => {
     const missingFields: string[] = [];
     const extractedFields: string[] = [];
 
-    selectedDocument.expectedFields.forEach((field: string) => {
+    (selectedDocument.expectedFields || []).forEach((field: string) => {
       const expectedValue = groundTruth[field]?.trim().toLowerCase();
       const extractedValue = extractedData[field]?.toString().trim().toLowerCase();
       
@@ -267,7 +267,7 @@ export const RealFrenchDocumentTesting = () => {
                   <div className="space-y-1">
                     <div className="text-xs font-medium">Expected Fields:</div>
                     <div className="flex flex-wrap gap-1">
-                      {doc.expectedFields.map((field: string) => (
+                      {(doc.expectedFields || []).map((field: string) => (
                         <Badge key={field} variant="outline" className="text-xs">
                           {field.replace('_', ' ')}
                         </Badge>
@@ -345,7 +345,7 @@ export const RealFrenchDocumentTesting = () => {
                 <div>
                   <Label>Processing Log</Label>
                   <div className="mt-2 space-y-1 max-h-32 overflow-auto">
-                    {extractionResult.processingLog.map((log, index) => (
+                    {(extractionResult.processingLog || []).map((log, index) => (
                       <div key={index} className="text-xs font-mono bg-gray-50 p-1 rounded">
                         {log}
                       </div>
@@ -423,7 +423,7 @@ export const RealFrenchDocumentTesting = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <h4 className="font-medium">Expected Field Values</h4>
-                {selectedDocument.expectedFields.map((field: string) => (
+                {(selectedDocument?.expectedFields || []).map((field: string) => (
                   <div key={field}>
                     <Label htmlFor={field}>{field.replace('_', ' ').toUpperCase()}</Label>
                     <Input
@@ -464,11 +464,11 @@ export const RealFrenchDocumentTesting = () => {
                     ))}
                   </div>
 
-                  {accuracy.missingFields.length > 0 && (
+                  {(accuracy.missingFields.length > 0) && (
                     <div>
                       <div className="text-sm font-medium text-red-600">Missing Fields:</div>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {accuracy.missingFields.map(field => (
+                        {(accuracy.missingFields || []).map(field => (
                           <Badge key={field} variant="outline" className="bg-red-100 text-red-800">
                             {field.replace('_', ' ')}
                           </Badge>
@@ -488,7 +488,7 @@ export const RealFrenchDocumentTesting = () => {
                       </div>
                       <div className="flex justify-between">
                         <span>Fields Extracted:</span>
-                        <span>{accuracy.extractedFields.length}/{selectedDocument.expectedFields.length}</span>
+                        <span>{accuracy.extractedFields.length}/{(selectedDocument?.expectedFields || []).length}</span>
                       </div>
                     </div>
                   </div>
