@@ -306,12 +306,12 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
         <CardHeader className="py-3">
           <div className="space-y-3">
             <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary z-10" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary z-10" />
               <Input
                 placeholder="Search for funding opportunities, grants, or programs..."
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="pl-14 pr-12 h-12 text-base border-2 border-primary/20 focus:border-primary shadow-sm bg-white"
+                className="pl-16 pr-12 h-12 text-base border-2 border-primary/20 focus:border-primary shadow-sm bg-white"
               />
               {searchQuery && (
                 <button 
