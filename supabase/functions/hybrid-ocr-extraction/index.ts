@@ -152,8 +152,15 @@ serve(async (req) => {
       totalCost += (ocrResult.tokensUsed / 1000) * 0.03;
     }
     
-    if (!ocrResult.text) {
+    // Check if OCR failed vs. successfully found no text
+    if (!ocrResult || ocrResult.metadata === undefined) {
       throw new Error('Failed to extract text from document');
+    }
+    
+    // If OCR succeeded but found no text, that's still a valid result
+    if (!ocrResult.text) {
+      console.log('ℹ️ OCR completed successfully but no text was detected in the document');
+      processingLog.push('OCR completed - no text detected');
     }
 
     // Step 2: Map fields using OpenAI based on client type
