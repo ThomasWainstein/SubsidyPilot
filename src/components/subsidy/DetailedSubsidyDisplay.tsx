@@ -463,7 +463,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                   </div>
                 )}
                 <div className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">
-                  {description ? renderCleanContent(description) : <span>Detailed information about this subsidy program.</span>}
+                  {description ? <div>{description}</div> : <span>Detailed information about this subsidy program.</span>}
                 </div>
               </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 md:ml-8 md:min-w-[300px]">
