@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,15 +6,10 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { DetailedSubsidyDisplay } from '@/components/subsidy/DetailedSubsidyDisplay';
-import { extractSubsidyData, ExtractedSubsidyData } from '@/lib/extraction/source-extractors';
-import { RichContentDisplay } from '@/components/subsidy/RichContentDisplay';
-import { toast } from 'sonner';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
   const navigate = useNavigate();
-  const [richExtractedData, setRichExtractedData] = useState<ExtractedSubsidyData | null>(null);
-  const [isExtracting, setIsExtracting] = useState(false);
 
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
@@ -43,34 +38,7 @@ const SubsidyDetailPage = () => {
     enabled: !!subsidyId
   });
 
-  // Enhanced document extraction
-  useEffect(() => {
-    const performExtraction = async () => {
-      if (!subsidy) return;
-      
-      setIsExtracting(true);
-      try {
-        // Use source-aware extraction for rich content
-        const richData = extractSubsidyData(subsidy);
-        setRichExtractedData(richData);
-        
-        toast.success('Subsidy data processed', {
-          description: `Loaded ${richData.agency} subsidy information`
-        });
-      } catch (error) {
-        console.error('Extraction failed:', error);
-        toast.error('Data processing failed', {
-          description: 'Could not process subsidy information'
-        });
-      } finally {
-        setIsExtracting(false);
-      }
-    };
-
-    performExtraction();
-  }, [subsidy]);
-
-  if (isLoading || isExtracting) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
@@ -78,7 +46,7 @@ const SubsidyDetailPage = () => {
           <div className="container mx-auto max-w-6xl">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="text-center mt-2 text-muted-foreground">
-              {isLoading ? 'Loading subsidy details...' : 'Analyzing document for comprehensive details...'}
+              Loading subsidy details...
             </p>
           </div>
         </main>
@@ -115,16 +83,6 @@ const SubsidyDetailPage = () => {
           subsidy={subsidy} 
           onBack={() => navigate('/search')}
         />
-        
-        {/* Pass rich extracted data to DetailedSubsidyDisplay for integrated display */}
-        {richExtractedData && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <RichContentDisplay 
-              extractedData={richExtractedData} 
-              originalData={subsidy}
-            />
-          </div>
-        )}
       </main>
     </div>
   );
