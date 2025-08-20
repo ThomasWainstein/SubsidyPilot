@@ -111,9 +111,23 @@ export const RealFrenchDocumentTesting = () => {
         throw new Error(error.message || JSON.stringify(error));
       }
 
-      setExtractionResult(data);
-      toast.success(`Successfully extracted data from ${selectedDocument.name}`);
-      console.log('✅ Real document extraction successful:', data);
+      if (!data?.success || !data?.jobId) {
+        throw new Error('Failed to start async processing job');
+      }
+
+      console.log(`⏳ Async job started: ${data.jobId}, monitoring progress...`);
+      
+      // Monitor job completion with real-time updates
+      const result = await monitorAsyncJobCompletion(data.jobId, testDocumentId, 300000); // 5 min timeout
+      
+      setExtractionResult(result);
+      
+      if (result.success) {
+        toast.success(`Successfully extracted data from ${selectedDocument.name}`);
+        console.log('✅ Real document extraction successful:', result);
+      } else {
+        toast.error(`Extraction failed: ${result.error}`);
+      }
       
     } catch (error: any) {
       console.error('❌ Real document extraction failed:', error);
@@ -129,12 +143,107 @@ export const RealFrenchDocumentTesting = () => {
         extractionMethod: 'failed',
         costBreakdown: {},
         processingTime: {},
-        processingLog: []
+        processingLog: [error.message]
       });
       toast.error(`Extraction failed: ${error.message}`);
     } finally {
       setIsExtracting(false);
     }
+  };
+
+  // Monitor async job completion
+  const monitorAsyncJobCompletion = async (
+    jobId: string, 
+    documentId: string, 
+    timeoutMs: number = 300000
+  ): Promise<ExtractionResult> => {
+    const startTime = Date.now();
+    const pollInterval = 3000; // 3 seconds
+    
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        // Check job status
+        const { data: jobStatus } = await supabase
+          .from('document_processing_jobs')
+          .select('*')
+          .eq('id', jobId)
+          .single();
+        
+        if (jobStatus?.status === 'completed') {
+          console.log('🎉 Job completed, fetching extraction results...');
+          
+          // Get extraction result
+          const { data: extraction } = await supabase
+            .from('document_extractions')
+            .select('*')
+            .eq('document_id', documentId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (extraction) {
+            return {
+              success: true,
+              extractedData: extraction.extracted_data || {},
+              confidence: extraction.confidence_score || 0,
+              qualityScore: extraction.table_quality || 0,
+              textLength: JSON.stringify(extraction.extracted_data || {}).length,
+              tokensUsed: (extraction.extracted_data as any)?.tokensUsed || 0,
+              extractionMethod: 'phase-2-async',
+              costBreakdown: (extraction.extracted_data as any)?.costBreakdown || {},
+              processingTime: {
+                totalTime: Date.now() - startTime,
+                ocrTime: 0,
+                fieldMappingTime: 0
+              },
+              ocrMetadata: (extraction.extracted_data as any)?.ocrMetadata || {},
+              processingLog: [`Async processing completed in ${Date.now() - startTime}ms`]
+            };
+          }
+        } else if (jobStatus?.status === 'failed') {
+          return {
+            success: false,
+            error: jobStatus.error_message || 'Async processing failed',
+            extractedData: {},
+            confidence: 0,
+            qualityScore: 0,
+            textLength: 0,
+            tokensUsed: 0,
+            extractionMethod: 'phase-2-async-failed',
+            costBreakdown: {},
+            processingTime: { totalTime: Date.now() - startTime },
+            ocrMetadata: {},
+            processingLog: [`Job failed: ${jobStatus.error_message}`]
+          };
+        }
+        
+        // Update UI with progress info
+        const progressMsg = `Processing... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`;
+        console.log(`⏳ ${progressMsg} - Status: ${jobStatus?.status || 'pending'}`);
+        
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        
+      } catch (error) {
+        console.error('Error monitoring async job:', error);
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+    }
+    
+    return {
+      success: false,
+      error: 'Async processing timeout - job may still be running in background',
+      extractedData: {},
+      confidence: 0,
+      qualityScore: 0,
+      textLength: 0,
+      tokensUsed: 0,
+      extractionMethod: 'phase-2-timeout',
+      costBreakdown: {},
+      processingTime: { totalTime: timeoutMs },
+      ocrMetadata: {},
+      processingLog: ['Processing timeout after 5 minutes']
+    };
   };
 
   const calculateAccuracy = () => {
@@ -317,22 +426,22 @@ export const RealFrenchDocumentTesting = () => {
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <Label>Confidence Score</Label>
-                    <div className="font-mono">{(extractionResult.confidence * 100).toFixed(1)}%</div>
-                  </div>
-                  <div>
-                    <Label>Processing Time</Label>
-                    <div className="font-mono">{extractionResult.processingTime?.totalTime || 0}ms</div>
-                  </div>
-                  <div>
-                    <Label>Text Length</Label>
-                    <div className="font-mono">{extractionResult.textLength} chars</div>
-                  </div>
-                  <div>
-                    <Label>Quality Score</Label>
-                    <div className="font-mono">{(extractionResult.qualityScore * 100).toFixed(1)}%</div>
-                  </div>
+                <div>
+                  <Label>Confidence Score</Label>
+                  <div className="font-mono">{((extractionResult.confidence || 0) * 100).toFixed(1)}%</div>
+                </div>
+                <div>
+                  <Label>Processing Time</Label>
+                  <div className="font-mono">{extractionResult.processingTime?.totalTime || 0}ms</div>
+                </div>
+                <div>
+                  <Label>Text Length</Label>
+                  <div className="font-mono">{extractionResult.textLength || 0} chars</div>
+                </div>
+                <div>
+                  <Label>Quality Score</Label>
+                  <div className="font-mono">{((extractionResult.qualityScore || 0) * 100).toFixed(1)}%</div>
+                </div>
                 </div>
 
                 <div>
