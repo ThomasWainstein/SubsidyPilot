@@ -113,6 +113,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   // Extract funding amount from les-aides data if available
   const getFundingAmount = () => {
     // Debug logging to understand the data structure
+    console.log('=== FUNDING AMOUNT DEBUG ===');
     console.log('Subsidy data:', {
       raw_data: subsidy.raw_data,
       lesAidesData: lesAidesData,
@@ -126,6 +127,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         ? subsidy.raw_data.fiche 
         : JSON.stringify(subsidy.raw_data.fiche);
       
+      console.log('Processing fiche text:', ficheText.substring(0, 500));
       const cleanText = ficheText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       
       // Look for range patterns first (more specific)
@@ -138,24 +140,25 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       for (const pattern of rangePatterns) {
         const match = cleanText.match(pattern);
         if (match) {
+          console.log('✅ FOUND RANGE:', match);
           const minAmount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
           const maxAmount = parseInt(match[2].replace(/\s/g, '')).toLocaleString('fr-FR');
           return `€${minAmount} - €${maxAmount}`;
         }
       }
       
-      // Look for single amount patterns with clear client indicators
+      // Look for maximum amount patterns with clear client indicators
       const maxPatterns = [
-        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }, // "jusqu'à 50 000 €" → "< €50,000"
-        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" }, // "50 000 € maximum" → "< €50,000"
-        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }, // "plafond de 25000 €" → "< €25,000"
-        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" } // "maximum de 50000 €" → "< €50,000"
+        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "jusqu'à" }, 
+        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €", name: "maximum" },
+        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "plafond" },
+        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "maximum de" }
       ];
       
-      // Check for maximum amount patterns first
-      for (const { pattern, prefix } of maxPatterns) {
+      for (const { pattern, prefix, name } of maxPatterns) {
         const match = cleanText.match(pattern);
         if (match) {
+          console.log(`✅ FOUND MAXIMUM with pattern "${name}":`, match);
           const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
           return `${prefix}${amount}`;
         }
@@ -163,81 +166,61 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       
       // Then check for exact amount patterns
       const exactPatterns = [
-        /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "valeur de 1 200 €"
-        /aide\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "aide de 15000 €"
-        /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i, // "1 200 euros HT"
-        /(\d+(?:\s+\d+)*)\s*€/gi // Any "X €" pattern (use last match)
+        { pattern: /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, name: "valeur de" },
+        { pattern: /aide\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, name: "aide de" },
+        { pattern: /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i, name: "euros HT" },
+        { pattern: /(\d+(?:\s+\d+)*)\s*€/i, name: "X €" }
       ];
-      
-      for (const pattern of exactPatterns) {
-        // Handle both global and non-global patterns safely
-        let matches;
-        if (pattern.global) {
-          matches = Array.from(cleanText.matchAll(pattern));
-        } else {
-          const match = cleanText.match(pattern);
-          matches = match ? [match] : [];
-        }
-        
-        if (matches.length > 0) {
-          // For multiple matches, prefer the largest amount or the last one
-          const amounts = matches.map(m => parseInt(m[1].replace(/\s/g, '')));
-          const maxAmount = Math.max(...amounts);
-          const formattedAmount = maxAmount.toLocaleString('fr-FR');
-          return `€${formattedAmount}`;
+
+      for (const { pattern, name } of exactPatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+          console.log(`✅ FOUND EXACT AMOUNT with pattern "${name}":`, match);
+          const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+          return `€${amount}`;
         }
       }
-    }
-    
-    // Fallback to les-aides montants field
-    if (lesAidesData?.montants) {
-      const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      console.log('Processing montants text:', montantsText);
       
-      // Range patterns - show clear ranges
+      console.log('❌ No amount patterns matched in fiche data');
+    }
+
+    // Check lesAidesData montants field
+    if (lesAidesData?.montants) {
+      console.log('Processing lesAidesData.montants:', lesAidesData.montants);
+      const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Range patterns
       const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
       if (rangeMatch) {
+        console.log('✅ FOUND RANGE in montants:', rangeMatch);
         const minAmount = parseInt(rangeMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
         const maxAmount = parseInt(rangeMatch[2].replace(/\s/g, '')).toLocaleString('fr-FR');
         return `€${minAmount} - €${maxAmount}`;
       }
       
-      // Maximum amount patterns - show with < symbol for clarity
-      const maxPatterns = [
-        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
-        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" },
-        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
-        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }
-      ];
-      
-      for (const { pattern, prefix } of maxPatterns) {
-        const match = montantsText.match(pattern);
-        if (match) {
-          const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
-          return `${prefix}${amount}`;
-        }
+      // Maximum patterns
+      const maxMatch = montantsText.match(/jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i);
+      if (maxMatch) {
+        console.log('✅ FOUND MAXIMUM in montants:', maxMatch);
+        const amount = parseInt(maxMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+        return `< €${amount}`;
       }
-      
-      // Exact amount patterns
-      const euroMatches = [
-        montantsText.match(/valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "valeur de 1 200 €"
-        montantsText.match(/aide\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "aide de 15000 €"
-        montantsText.match(/(\d+(?:\s+\d+)*)\s*euros?\s+HT/i), // "1 200 euros HT"
-        montantsText.match(/(\d+(?:\s+\d+)*)\s*€/), // "1 200 €" (French format)
-        montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/), // "1200 €" or "1,200 €"
-        montantsText.match(/€\s*(\d+(?:[.,\s]\d+)*)/), // "€ 1200" or "€1,200"
-      ].find(match => match);
-      
-      if (euroMatches) {
-        const amount = parseInt(euroMatches[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+    }
+
+    // Check description as last resort
+    if (subsidy.description) {
+      console.log('Processing description:', subsidy.description.substring(0, 300));
+      const descMatch = subsidy.description.match(/(\d+(?:\s+\d+)*)\s*€/);
+      if (descMatch) {
+        console.log('✅ FOUND AMOUNT in description:', descMatch);
+        const amount = parseInt(descMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
         return `€${amount}`;
       }
     }
-    
+
+    console.log('❌ NO AMOUNT FOUND IN ANY FIELD');
     return formatAmount(subsidy.amount || subsidy.funding_amount);
   };
-
-  // Extract region from les-aides data
   const getRegion = () => {
     // First check enhanced extraction data (raw_data.fiche)
     if (subsidy.raw_data?.fiche) {
