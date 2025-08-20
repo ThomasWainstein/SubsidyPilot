@@ -68,7 +68,17 @@ interface AccuracyResult {
   extractedFields: string[];
 }
 
-export const RealFrenchDocumentTesting = () => {
+interface RealFrenchDocumentTestingProps {
+  onTestResult?: (result: {
+    type: 'french_doc';
+    name: string;
+    status: 'completed' | 'failed' | 'running';
+    accuracy?: number;
+    details?: any;
+  }) => void;
+}
+
+export const RealFrenchDocumentTesting: React.FC<RealFrenchDocumentTestingProps> = ({ onTestResult }) => {
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
   const [groundTruth, setGroundTruth] = useState<GroundTruthAnnotation>({});
@@ -140,6 +150,23 @@ export const RealFrenchDocumentTesting = () => {
       const result = await monitorAsyncJobCompletion(data.jobId, testDocumentId, 300000); // 5 min timeout
       
       setExtractionResult(result);
+      
+      // Report test result to parent component
+      if (onTestResult) {
+        onTestResult({
+          type: 'french_doc',
+          name: `${selectedDocument.name} Extraction`,
+          status: result.success ? 'completed' : 'failed',
+          accuracy: result.success ? result.confidence : 0,
+          details: {
+            extractedData: result.extractedData,
+            confidence: result.confidence,
+            processingTime: result.processingTime,
+            textLength: result.textLength,
+            qualityScore: result.qualityScore
+          }
+        });
+      }
       
       if (result.success) {
         toast.success(`Successfully extracted data from ${selectedDocument.name}`);
