@@ -121,8 +121,8 @@ const SubsidySearchPage = () => {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
 
-        <main className="flex-grow py-4 md:py-6 px-4">
-          <div className="container mx-auto">
+        <main className="flex-grow py-4 md:py-6 px-4 max-w-[1600px] mx-auto w-full">
+          <div className="w-full">
             <div className="flex justify-between items-center mb-4">
               <div className="flex-1">
                 <SearchHeader />
@@ -158,13 +158,13 @@ const SubsidySearchPage = () => {
                 </div>
 
                 {/* Desktop layout */}
-                <div className="hidden lg:grid lg:grid-cols-4 gap-6">
+                <div className="hidden lg:grid lg:grid-cols-5 gap-8">
                   <div className="lg:col-span-1 min-w-0">
                     <div className="sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
                       <FiltersContent />
                     </div>
                   </div>
-                  <div className="lg:col-span-3">
+                  <div className="lg:col-span-4">
                     <SearchResultsPanel
                       searchQuery={searchQuery}
                       onSearchQueryChange={setSearchQuery}
