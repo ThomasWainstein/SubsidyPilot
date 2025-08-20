@@ -336,8 +336,8 @@ serve(async (req) => {
       
       extractionMethod = 'openai_fallback';
       
-      // 🔥 FIX: Use valid OpenAI model - gpt-5 for best accuracy
-      const openAIModel = Deno.env.get('OPENAI_MODEL') || 'gpt-5-2025-08-07';
+      // Use cost-effective model for basic extraction - gpt-4o-mini is sufficient for farm data
+      const openAIModel = Deno.env.get('BASIC_EXTRACTION_MODEL') || 'gpt-4o-mini';
       
       extractedData = await extractFarmDataWithOpenAI(
         extractionResult.text, 

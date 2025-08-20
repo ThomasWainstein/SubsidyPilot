@@ -731,9 +731,10 @@ async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: 
   const startTime = Date.now();
   
   try {
-    console.log(`🤖 OpenAI: Processing ${fileName} with GPT-5`);
+    console.log(`🤖 OpenAI: Processing ${fileName} with cost-effective model`);
     
-    // This is a simplified fallback - in practice, you'd need to implement
+    // Use cost-effective model for basic OCR fallback
+    const model = Deno.env.get('BASIC_EXTRACTION_MODEL') || 'gpt-4o-mini';
     // actual document processing with OpenAI (perhaps using vision models)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -742,7 +743,7 @@ async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model,
         messages: [
           { 
             role: 'system', 
@@ -842,7 +843,7 @@ async function mapFieldsWithOpenAI(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: Deno.env.get('BASIC_EXTRACTION_MODEL') || 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 

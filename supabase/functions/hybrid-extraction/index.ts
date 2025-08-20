@@ -214,7 +214,7 @@ ${documentText.substring(0, 4000)} // Limit text to avoid token limits
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: Deno.env.get('BASIC_EXTRACTION_MODEL') || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
