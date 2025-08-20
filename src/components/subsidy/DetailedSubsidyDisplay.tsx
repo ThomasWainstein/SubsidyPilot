@@ -144,17 +144,32 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         }
       }
       
-      // Look for single amount patterns  
-      const singlePatterns = [
-        /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, // "jusqu'à 50 000 €"
-        /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, // "50 000 € maximum"
+      // Look for single amount patterns with clear client indicators
+      const maxPatterns = [
+        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }, // "jusqu'à 50 000 €" → "< €50,000"
+        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" }, // "50 000 € maximum" → "< €50,000"
+        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }, // "plafond de 25000 €" → "< €25,000"
+        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" } // "maximum de 50000 €" → "< €50,000"
+      ];
+      
+      // Check for maximum amount patterns first
+      for (const { pattern, prefix } of maxPatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+          const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+          return `${prefix}${amount}`;
+        }
+      }
+      
+      // Then check for exact amount patterns
+      const exactPatterns = [
         /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "valeur de 1 200 €"
-        /aide\s+comprise\s+entre\s+(\d+(?:\s+\d+)*)\s*€/i, // "aide comprise entre 2 000 €"
+        /aide\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "aide de 15000 €"
         /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i, // "1 200 euros HT"
         /(\d+(?:\s+\d+)*)\s*€/gi // Any "X €" pattern (use last match)
       ];
       
-      for (const pattern of singlePatterns) {
+      for (const pattern of exactPatterns) {
         // Handle both global and non-global patterns safely
         let matches;
         if (pattern.global) {
@@ -179,7 +194,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       console.log('Processing montants text:', montantsText);
       
-      // Range patterns
+      // Range patterns - show clear ranges
       const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
       if (rangeMatch) {
         const minAmount = parseInt(rangeMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
@@ -187,13 +202,30 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         return `€${minAmount} - €${maxAmount}`;
       }
       
-      // Single amount patterns
+      // Maximum amount patterns - show with < symbol for clarity
+      const maxPatterns = [
+        { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+        { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €" },
+        { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" },
+        { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €" }
+      ];
+      
+      for (const { pattern, prefix } of maxPatterns) {
+        const match = montantsText.match(pattern);
+        if (match) {
+          const amount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+          return `${prefix}${amount}`;
+        }
+      }
+      
+      // Exact amount patterns
       const euroMatches = [
+        montantsText.match(/valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "valeur de 1 200 €"
+        montantsText.match(/aide\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "aide de 15000 €"
+        montantsText.match(/(\d+(?:\s+\d+)*)\s*euros?\s+HT/i), // "1 200 euros HT"
         montantsText.match(/(\d+(?:\s+\d+)*)\s*€/), // "1 200 €" (French format)
         montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/), // "1200 €" or "1,200 €"
         montantsText.match(/€\s*(\d+(?:[.,\s]\d+)*)/), // "€ 1200" or "€1,200"
-        montantsText.match(/valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i), // "valeur de 1 200 €"
-        montantsText.match(/(\d+(?:\s+\d+)*)\s*euros?\s+HT/i) // "1 200 euros HT"
       ].find(match => match);
       
       if (euroMatches) {
