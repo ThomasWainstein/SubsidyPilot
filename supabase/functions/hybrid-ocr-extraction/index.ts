@@ -103,7 +103,7 @@ serve(async (req) => {
       console.log(`📄 Document ID: ${actualDocumentId}`);
     }
     
-    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
+    const documentAIApiKey = Deno.env.get('GOOGLE_DOCUMENT_AI_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
     if (!openaiApiKey) {
@@ -116,15 +116,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     let ocrResult: any;
-    let extractionMethod = 'hybrid_google_openai';
+    let extractionMethod = 'hybrid_documentai_openai';
 
-    // Step 1: Try Google Vision OCR first, fallback to OpenAI if needed
-    if (googleApiKey && !fallbackToOpenAI) {
+    // Step 1: Try Google Document AI first, fallback to OpenAI if needed
+    if (documentAIApiKey && !fallbackToOpenAI) {
       try {
         console.log('📖 Step 1: Extracting text with Google Document AI...');
         processingLog.push('Attempting Google Document AI...');
         
-        ocrResult = await extractTextWithGoogleVision(fileUrl, googleApiKey, fileName);
+        ocrResult = await extractTextWithGoogleVision(fileUrl, documentAIApiKey, fileName);
         totalCost += ocrResult.metadata.pageCount * 0.0015; // Document AI cost
         
         console.log(`✅ Document AI: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
