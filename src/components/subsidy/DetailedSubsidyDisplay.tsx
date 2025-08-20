@@ -112,8 +112,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
   // Extract funding amount from les-aides data if available
   const getFundingAmount = () => {
-    // Debug logging to understand the data structure
-    console.log('=== FUNDING AMOUNT DEBUG ===');
+    // Debug logging to understand the data structure  
+    console.log('=== FUNDING AMOUNT DEBUG (v2) ===');
     console.log('Subsidy data:', {
       raw_data: subsidy.raw_data,
       lesAidesData: lesAidesData,
