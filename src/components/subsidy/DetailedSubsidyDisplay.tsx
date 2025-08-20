@@ -541,50 +541,80 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
             {activeTab === 'documents' && (
               <div className="bg-card rounded-lg shadow-sm border p-6">
-                <h2 className="text-2xl font-bold mb-6">Required Documents</h2>
-                <div className="space-y-3">
-                  {requiredDocuments.length > 0 ? (
-                    requiredDocuments.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center">
-                          <FileText className="w-5 h-5 text-primary mr-3" />
-                          <span className="text-muted-foreground">{doc}</span>
+                <h2 className="text-2xl font-bold mb-6">Documents & Resources</h2>
+                <div className="space-y-4">
+                  {/* Official Application Platform */}
+                  {lesAidesData?.url && (
+                    <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3">
+                          <FileText className="w-5 h-5 text-blue-600 mt-1" />
+                          <div>
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100">Official Application Platform</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
+                              Submit your application directly on the official regional platform
+                            </p>
+                          </div>
                         </div>
-                        <button className="text-primary hover:text-primary/80 transition-colors">
-                          <Download className="w-5 h-5" />
-                        </button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => window.open(lesAidesData.url, '_blank')}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Apply Now
+                        </Button>
                       </div>
-                    ))
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center">
-                          <FileText className="w-5 h-5 text-primary mr-3" />
-                          <span className="text-muted-foreground">Application Form</span>
+                    </div>
+                  )}
+
+                  {/* Program Information Page */}
+                  {subsidy.application_url && (
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3">
+                          <FileText className="w-5 h-5 text-green-600 mt-1" />
+                          <div>
+                            <h4 className="font-semibold">Complete Program Information</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Detailed eligibility criteria, requirements, and application guidance
+                            </p>
+                          </div>
                         </div>
-                        <button className="text-primary hover:text-primary/80 transition-colors">
-                          <Download className="w-5 h-5" />
-                        </button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(subsidy.application_url, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View Details
+                        </Button>
                       </div>
-                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center">
-                          <FileText className="w-5 h-5 text-primary mr-3" />
-                          <span className="text-muted-foreground">Business Plan</span>
+                    </div>
+                  )}
+
+                  {/* Application Process Guide */}
+                  {lesAidesData?.conseils && (
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <CheckCircle className="w-5 h-5 text-primary mt-1" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold mb-2">Application Process</h4>
+                          <div className="text-sm text-muted-foreground">
+                            {renderCleanContent(lesAidesData.conseils)}
+                          </div>
                         </div>
-                        <button className="text-primary hover:text-primary/80 transition-colors">
-                          <Download className="w-5 h-5" />
-                        </button>
                       </div>
-                      <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center">
-                          <FileText className="w-5 h-5 text-primary mr-3" />
-                          <span className="text-muted-foreground">Financial Statements</span>
-                        </div>
-                        <button className="text-primary hover:text-primary/80 transition-colors">
-                          <Download className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </>
+                    </div>
+                  )}
+
+                  {/* No documents fallback */}
+                  {!lesAidesData?.url && !subsidy.application_url && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No additional documents available for this program.</p>
+                      <p className="text-sm mt-2">Contact the agency directly for more information.</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -709,15 +739,41 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             <div className="bg-card rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <Button className="w-full">
-                  Apply Now
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Download Guide
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Check Eligibility
-                </Button>
+                {lesAidesData?.url ? (
+                  <Button 
+                    className="w-full"
+                    onClick={() => window.open(lesAidesData.url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Apply on Official Platform
+                  </Button>
+                ) : subsidy.application_url ? (
+                  <Button 
+                    className="w-full"
+                    onClick={() => window.open(subsidy.application_url, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View Program Details
+                  </Button>
+                ) : (
+                  <Button 
+                    className="w-full" 
+                    disabled
+                  >
+                    Application Link Not Available
+                  </Button>
+                )}
+                
+                {subsidy.application_url && lesAidesData?.url && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.open(subsidy.application_url, '_blank')}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Program Information
+                  </Button>
+                )}
               </div>
             </div>
 
