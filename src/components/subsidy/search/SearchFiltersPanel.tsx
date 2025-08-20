@@ -12,6 +12,8 @@ interface FilterState {
   farmingTypes: string[];
   fundingSources: string[];
   fundingInstruments: string[];
+  organizations: string[];
+  amountRanges: string[];
   documentsRequired: string[];
   applicationFormats: string[];
   sustainabilityGoals: string[];
@@ -29,6 +31,9 @@ interface SearchFiltersPanelProps {
   availableRegions: string[];
   availableCategories: string[];
   availableFundingTypes: string[];
+  availableOrganizations: string[];
+  availableAmountRanges: { label: string; min: number; max: number }[];
+  availableSectors: string[];
 }
 
 const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
@@ -41,7 +46,10 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
   onClearFilters,
   availableRegions,
   availableCategories,
-  availableFundingTypes
+  availableFundingTypes,
+  availableOrganizations,
+  availableAmountRanges,
+  availableSectors
 }) => {
   const { t } = useLanguage();
 
@@ -70,6 +78,8 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
                 farmingTypes: filters.farmingTypes,
                 fundingSources: filters.fundingSources,
                 fundingInstruments: filters.fundingInstruments,
+                organizations: filters.organizations,
+                amountRanges: filters.amountRanges,
                 documentsRequired: filters.documentsRequired,
                 applicationFormats: filters.applicationFormats,
                 sustainabilityGoals: filters.sustainabilityGoals,
@@ -81,6 +91,9 @@ const SearchFiltersPanel: React.FC<SearchFiltersPanelProps> = ({
               availableCountries={[]}
               availableFundingTypes={availableFundingTypes}
               availableCategories={availableCategories}
+              availableSectors={availableSectors}
+              availableOrganizations={availableOrganizations}
+              availableAmountRanges={availableAmountRanges}
             />
           </div>
         </CardContent>

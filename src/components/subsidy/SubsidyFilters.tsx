@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import GeographicEligibilityFilter from './filters/GeographicEligibilityFilter';
 import AgriculturalSectorFilter from './filters/AgriculturalSectorFilter';
 import FundingTypeFilter from './filters/FundingTypeFilter';
+import OrganizationFilter from './filters/OrganizationFilter';
+import AmountRangeFilter from './filters/AmountRangeFilter';
 import ApplicationRequirementsFilter from './filters/ApplicationRequirementsFilter';
 import StrategicAlignmentFilter from './filters/StrategicAlignmentFilter';
 import DeadlineStatusFilter from './filters/DeadlineStatusFilter';
@@ -15,6 +17,8 @@ interface FilterState {
   farmingTypes: string[];
   fundingSources: string[];
   fundingInstruments: string[];
+  organizations: string[];
+  amountRanges: string[];
   documentsRequired: string[];
   applicationFormats: string[];
   sustainabilityGoals: string[];
@@ -29,6 +33,9 @@ interface SubsidyFiltersProps {
   availableCountries?: string[];
   availableFundingTypes?: string[];
   availableCategories?: string[];
+  availableSectors?: string[];
+  availableOrganizations?: string[];
+  availableAmountRanges?: { label: string; min: number; max: number }[];
 }
 
 const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({ 
@@ -38,7 +45,10 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
   availableRegions = [],
   availableCountries = [],
   availableFundingTypes = [],
-  availableCategories = []
+  availableCategories = [],
+  availableSectors = [],
+  availableOrganizations = [],
+  availableAmountRanges = []
 }) => {
   const { t } = useLanguage();
 
@@ -61,7 +71,10 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
   };
 
   // Count active filters
-  const activeFilterCount = Object.values(filters).reduce((count, filterValue) => {
+  const activeFilterCount = Object.entries(filters).reduce((count, [key, filterValue]) => {
+    if (key === 'eligibleCountry') {
+      return count + (filterValue && typeof filterValue === 'string' && filterValue.length > 0 ? 1 : 0);
+    }
     if (Array.isArray(filterValue)) {
       return count + filterValue.length;
     } else if (typeof filterValue === 'string' && filterValue) {
@@ -81,7 +94,7 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             onClick={onClearFilters}
           >
-            {t('common.clear')}
+            Clear All
           </button>
         </div>
       )}
@@ -97,6 +110,7 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
       <AgriculturalSectorFilter
         farmingTypes={filters.farmingTypes}
         availableCategories={availableCategories}
+        availableSectors={availableSectors}
         onFarmingTypeToggle={(type) => toggleArrayFilter('farmingTypes', type)}
       />
 
@@ -107,6 +121,22 @@ const SubsidyFilters: React.FC<SubsidyFiltersProps> = ({
         onFundingSourceToggle={(source) => toggleArrayFilter('fundingSources', source)}
         onFundingInstrumentToggle={(instrument) => toggleArrayFilter('fundingInstruments', instrument)}
       />
+
+      {availableOrganizations.length > 0 && (
+        <OrganizationFilter
+          selectedOrganizations={filters.organizations || []}
+          availableOrganizations={availableOrganizations}
+          onOrganizationToggle={(org) => toggleArrayFilter('organizations', org)}
+        />
+      )}
+
+      {availableAmountRanges.length > 0 && (
+        <AmountRangeFilter
+          selectedRanges={filters.amountRanges || []}
+          availableRanges={availableAmountRanges}
+          onRangeToggle={(range) => toggleArrayFilter('amountRanges', range)}
+        />
+      )}
 
       <ApplicationRequirementsFilter
         documentsRequired={filters.documentsRequired}

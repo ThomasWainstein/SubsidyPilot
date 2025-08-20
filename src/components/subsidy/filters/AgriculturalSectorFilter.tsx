@@ -7,31 +7,47 @@ import FilterTagButton from '../FilterTagButton';
 interface AgriculturalSectorFilterProps {
   farmingTypes: string[];
   availableCategories: string[];
+  availableSectors?: string[];
   onFarmingTypeToggle: (type: string) => void;
 }
 
 const AgriculturalSectorFilter: React.FC<AgriculturalSectorFilterProps> = ({
   farmingTypes,
   availableCategories,
+  availableSectors = [],
   onFarmingTypeToggle
 }) => {
   const { t } = useLanguage();
 
+  // Use sectors from real data, fallback to categories
+  const sectorsToShow = availableSectors.length > 0 ? availableSectors : availableCategories;
+
   return (
-    <FilterSection title="search.filters.agriculturalSector">
-      <h4 className="text-xs text-muted-foreground mb-2 font-medium">What You Grow/Raise</h4>
+    <FilterSection title="Business & Sector">
+      <h4 className="text-xs text-muted-foreground mb-2 font-medium">Activity Sector</h4>
       <div className="flex flex-wrap gap-2 min-w-0">
-        {availableCategories.map(category => (
+        {sectorsToShow.map(sector => (
           <FilterTagButton
-            key={category}
-            value={category}
-            active={farmingTypes.includes(category)}
-            onClick={() => onFarmingTypeToggle(category)}
-            translationKey={category}
+            key={sector}
+            value={sector}
+            active={farmingTypes.includes(sector)}
+            onClick={() => onFarmingTypeToggle(sector)}
+            translationKey={sector}
           />
         ))}
-        {availableCategories.length === 0 && (
-          <p className="text-sm text-muted-foreground">No farm types available</p>
+        {sectorsToShow.length === 0 && (
+          <div className="flex flex-wrap gap-2">
+            {/* Fallback to common business sectors */}
+            {['Agriculture', 'Technology', 'Manufacturing', 'Services', 'Export'].map(sector => (
+              <FilterTagButton
+                key={sector}
+                value={sector}
+                active={farmingTypes.includes(sector)}
+                onClick={() => onFarmingTypeToggle(sector)}
+                translationKey={sector}
+              />
+            ))}
+          </div>
         )}
       </div>
     </FilterSection>

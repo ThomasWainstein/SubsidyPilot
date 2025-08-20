@@ -32,6 +32,8 @@ const SubsidySearchPage = () => {
     farmingTypes: [] as string[],
     fundingSources: [] as string[],
     fundingInstruments: [] as string[],
+    organizations: [] as string[],
+    amountRanges: [] as string[],
     documentsRequired: [] as string[],
     applicationFormats: [] as string[],
     sustainabilityGoals: [] as string[],
@@ -51,7 +53,10 @@ const SubsidySearchPage = () => {
   const { 
     regions: availableRegions, 
     categories: availableCategories, 
-    fundingTypes: availableFundingTypes 
+    fundingTypes: availableFundingTypes,
+    organizations: availableOrganizations,
+    amountRanges: availableAmountRanges,
+    sectors: availableSectors
   } = useFilterOptions();
 
   // Handle API errors
@@ -69,6 +74,8 @@ const SubsidySearchPage = () => {
       farmingTypes: [],
       fundingSources: [],
       fundingInstruments: [],
+      organizations: [],
+      amountRanges: [],
       documentsRequired: [],
       applicationFormats: [],
       sustainabilityGoals: [],
@@ -113,6 +120,9 @@ const SubsidySearchPage = () => {
       availableRegions={availableRegions}
       availableCategories={availableCategories}
       availableFundingTypes={availableFundingTypes}
+      availableOrganizations={availableOrganizations}
+      availableAmountRanges={availableAmountRanges}
+      availableSectors={availableSectors}
     />
   );
 
