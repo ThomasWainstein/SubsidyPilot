@@ -123,30 +123,6 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       funding_amount: subsidy.funding_amount
     });
 
-    // FIRST: Check standard numeric fields (from subsidies table)
-    if (typeof subsidy.amount_min === 'number' && typeof subsidy.amount_max === 'number') {
-      if (subsidy.amount_min === subsidy.amount_max) {
-        // Fixed amount
-        console.log('✅ FOUND FIXED AMOUNT:', subsidy.amount_min);
-        return `€${subsidy.amount_min.toLocaleString('fr-FR')}`;
-      } else {
-        // Range
-        console.log('✅ FOUND AMOUNT RANGE:', subsidy.amount_min, '-', subsidy.amount_max);
-        return `€${subsidy.amount_min.toLocaleString('fr-FR')} - €${subsidy.amount_max.toLocaleString('fr-FR')}`;
-      }
-    }
-
-    // Check individual numeric fields
-    if (typeof subsidy.amount_min === 'number' && subsidy.amount_min > 0) {
-      console.log('✅ FOUND MINIMUM AMOUNT:', subsidy.amount_min);
-      return `< €${subsidy.amount_min.toLocaleString('fr-FR')}`;
-    }
-
-    if (typeof subsidy.amount_max === 'number' && subsidy.amount_max > 0) {
-      console.log('✅ FOUND MAXIMUM AMOUNT:', subsidy.amount_max);
-      return `< €${subsidy.amount_max.toLocaleString('fr-FR')}`;
-    }
-
     // First check if we have raw_data.fiche content (enhanced extraction data)
     if (subsidy.raw_data?.fiche) {
       const ficheText = typeof subsidy.raw_data.fiche === 'string' 
@@ -178,6 +154,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         { pattern: /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "jusqu'à" }, 
         { pattern: /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, prefix: "< €", name: "maximum" },
         { pattern: /plafond\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "plafond" },
+        { pattern: /plafonnée\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "plafonnée à" },
         { pattern: /maximum\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, prefix: "< €", name: "maximum de" }
       ];
       
@@ -245,6 +222,31 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     }
 
     console.log('❌ NO AMOUNT FOUND IN ANY FIELD');
+    
+    // FALLBACK: Check standard numeric fields (from subsidies table) as last resort
+    if (typeof subsidy.amount_min === 'number' && typeof subsidy.amount_max === 'number') {
+      if (subsidy.amount_min === subsidy.amount_max) {
+        // Fixed amount
+        console.log('⚠️ FALLBACK TO FIXED AMOUNT:', subsidy.amount_min);
+        return `€${subsidy.amount_min.toLocaleString('fr-FR')}`;
+      } else {
+        // Range
+        console.log('⚠️ FALLBACK TO AMOUNT RANGE:', subsidy.amount_min, '-', subsidy.amount_max);
+        return `€${subsidy.amount_min.toLocaleString('fr-FR')} - €${subsidy.amount_max.toLocaleString('fr-FR')}`;
+      }
+    }
+
+    // Check individual numeric fields
+    if (typeof subsidy.amount_min === 'number' && subsidy.amount_min > 0) {
+      console.log('⚠️ FALLBACK TO MINIMUM AMOUNT:', subsidy.amount_min);
+      return `< €${subsidy.amount_min.toLocaleString('fr-FR')}`;
+    }
+
+    if (typeof subsidy.amount_max === 'number' && subsidy.amount_max > 0) {
+      console.log('⚠️ FALLBACK TO MAXIMUM AMOUNT:', subsidy.amount_max);
+      return `< €${subsidy.amount_max.toLocaleString('fr-FR')}`;
+    }
+    
     return formatAmount(subsidy.amount || subsidy.funding_amount);
   };
   const getRegion = () => {
