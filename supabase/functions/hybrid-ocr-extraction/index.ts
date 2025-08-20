@@ -375,35 +375,98 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
     console.log(`📄 File size: ${fileSizeMB.toFixed(2)}MB`);
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
     
-    // Use Document AI OCR API for better document processing
-    const requestBody = {
-      document: {
-        content: base64Content,
-      },
-      parent: `projects/${Deno.env.get('GOOGLE_CLOUD_PROJECT_ID') || 'your-project'}/locations/us`
-    };
-
-    console.log('🚀 Calling Google Document AI OCR API...');
-    const docAIResponse = await fetch(
-      `https://documentai.googleapis.com/v1/projects/${Deno.env.get('GOOGLE_CLOUD_PROJECT_ID') || 'your-project'}/locations/us/processors/ocr:process?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+    // Get Google Cloud credentials
+    const projectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
+    if (!projectId) {
+      throw new Error('Google Cloud Project ID not configured');
+    }
+    
+    // Try Document AI processors in order of preference
+    const processorConfigs = [
+      { type: 'FORM_PARSER_PROCESSOR', location: 'us' },
+      { type: 'OCR_PROCESSOR', location: 'us' },
+      { type: 'FORM_PARSER_PROCESSOR', location: 'eu' },
+      { type: 'OCR_PROCESSOR', location: 'eu' }
+    ];
+    
+    let documentAIResult = null;
+    let usedProcessor = '';
+    
+    for (const config of processorConfigs) {
+      try {
+        console.log(`🔄 Trying Document AI ${config.type} in ${config.location}...`);
+        
+        // List available processors first to get actual processor ID
+        const listUrl = `https://${config.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${config.location}/processors`;
+        const listResponse = await fetch(listUrl, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!listResponse.ok) {
+          console.log(`Failed to list processors: ${listResponse.status}`);
+          continue;
+        }
+        
+        const listData = await listResponse.json();
+        const processor = listData.processors?.find((p: any) => p.type === config.type && p.state === 'ENABLED');
+        
+        if (!processor) {
+          console.log(`No enabled ${config.type} processor found in ${config.location}`);
+          continue;
+        }
+        
+        const processorId = processor.name.split('/').pop();
+        console.log(`Found processor: ${processorId}`);
+        
+        // Use the found processor
+        const processUrl = `https://${config.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${config.location}/processors/${processorId}:process`;
+        
+        const requestBody = {
+          rawDocument: {
+            content: base64Content,
+            mimeType: fileResponse!.headers.get('content-type') || 'application/pdf'
+          },
+          fieldMask: 'text,entities,pages.pageNumber'
+        };
+        
+        console.log('🚀 Calling Document AI API...');
+        const processResponse = await fetch(processUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!processResponse.ok) {
+          const errorText = await processResponse.text();
+          console.log(`Document AI ${config.type} failed:`, errorText);
+          continue;
+        }
+        
+        documentAIResult = await processResponse.json();
+        usedProcessor = `${config.type}_${config.location}`;
+        console.log(`✅ Document AI ${config.type} successful`);
+        break;
+        
+      } catch (processorError: any) {
+        console.log(`Document AI ${config.type} error:`, processorError.message);
+        continue;
       }
-    );
-
-    if (!docAIResponse.ok) {
-      // Fallback to Cloud Vision if Document AI fails
+    }
+    
+    if (!documentAIResult) {
+      // Fallback to Cloud Vision if Document AI completely fails
       console.log('📖 Document AI unavailable, falling back to Cloud Vision...');
       return await extractTextWithCloudVision(fileUrl, apiKey, fileName);
     }
-
-    const result = await docAIResponse.json();
-    const document = result.document;
     
+    // Extract text from Document AI response
+    const document = documentAIResult.document;
     if (!document) {
       throw new Error('No document processed by Document AI');
     }
