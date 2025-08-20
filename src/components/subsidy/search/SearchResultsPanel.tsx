@@ -327,33 +327,6 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
         </CardHeader>
       </Card>
 
-      {/* Results Status Overview */}
-      {!loading && subsidies.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-700">{openSubsidies.length}</div>
-              <div className="text-sm text-green-600">Open ({urgentSubsidies.length > 0 ? `${urgentSubsidies.length} urgent` : 'no urgent'})</div>
-            </CardContent>
-          </Card>
-          
-          {urgentSubsidies.length > 0 && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-amber-700">{urgentSubsidies.length}</div>
-                <div className="text-sm text-amber-600">Closing Soon</div>
-              </CardContent>
-            </Card>
-          )}
-          
-          <Card className="border-blue-200 bg-blue-50">
-            <CardContent className="p-4 text-center">
-              <div className="text-sm text-blue-600">Last updated:</div>
-              <div className="font-medium text-blue-700">2 hours ago</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
           {/* Results Grid */}
           <div className="space-y-4">
