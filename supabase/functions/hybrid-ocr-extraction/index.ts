@@ -8,12 +8,14 @@ const corsHeaders = {
 };
 
 interface ExtractionRequest {
-  documentId: string;
-  fileUrl: string;
-  fileName: string;
+  documentId?: string;
+  documentPath?: string;
+  fileUrl?: string;
+  fileName?: string;
   clientType: 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
   documentType?: string;
   fallbackToOpenAI?: boolean;
+  isTestDocument?: boolean;
 }
 
 interface GoogleVisionResponse {
@@ -84,7 +86,7 @@ serve(async (req) => {
   let processingLog: string[] = [];
 
   try {
-    const { documentId, fileUrl, fileName, clientType, documentType, fallbackToOpenAI = false } = await req.json() as ExtractionRequest;
+    const { documentId, documentPath, fileUrl, fileName, clientType, documentType, fallbackToOpenAI = false, isTestDocument = false } = await req.json() as ExtractionRequest;
     
     console.log(`🔄 Starting hybrid extraction for ${fileName} (${clientType})`);
     processingLog.push(`Started: ${fileName} (${clientType})`);

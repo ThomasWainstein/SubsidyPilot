@@ -45,6 +45,7 @@ const ScrapeRunsList = lazy(() => import('@/components/admin/ScrapeRunsList'));
 const ScrapeReportDashboard = lazy(() => import('@/components/admin/ScrapeReportDashboard'));
 const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'));
 const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
+const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -158,6 +159,10 @@ function App() {
                       
                       <Route path="/eu-portal" element={
                         <ProtectedRouteWrapper><EUSubsidyPortalPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/validation" element={
+                        <ProtectedRouteWrapper><ValidationPage /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/admin" element={
