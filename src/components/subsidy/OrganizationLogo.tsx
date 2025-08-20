@@ -41,13 +41,22 @@ const OrganizationLogo: React.FC<OrganizationLogoProps> = ({
   size = 'sm',
   className = ''
 }) => {
-  const logoSrc = organizationLogos[organizationName];
-  
   const sizeClasses = {
     sm: 'w-6 h-6',
     md: 'w-8 h-8', 
     lg: 'w-12 h-12'
   };
+
+  // Special handling for Bpifrance until official logo is properly integrated
+  if (organizationName === 'Bpifrance') {
+    return (
+      <div className={`${sizeClasses[size]} bg-yellow-400 rounded-sm flex items-center justify-center text-white font-bold text-xs ${className}`}>
+        BPI
+      </div>
+    );
+  }
+  
+  const logoSrc = organizationLogos[organizationName];
 
   if (!logoSrc) {
     // Fallback icon for organizations without specific logos
