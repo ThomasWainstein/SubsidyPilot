@@ -10,14 +10,48 @@ import OrganizationLogo from './OrganizationLogo';
 import { analytics } from '@/lib/analytics/events';
 import { toast } from 'sonner';
 
-// Type-safe subsidy interface - flexible to handle various data structures
+// Proper TypeScript interfaces for subsidy data
+interface RawDataFiche {
+  nom?: string;
+  objet?: string;
+  organisme?: {
+    raison_sociale?: string;
+    sigle?: string;
+    adresses?: Array<{
+      libelle?: string;
+      service?: string;
+      interlocuteur?: string;
+      adresse?: string;
+      telephone?: string;
+      email?: string;
+      web?: string;
+    }>;
+  };
+  domaines?: number[];
+  montants?: string;
+  conseils?: string;
+  conditions?: string;
+  criteres?: {
+    pour?: Array<{
+      libelle: string;
+      enfants?: Array<{ libelle: string }>;
+    }>;
+    contre?: Array<{
+      libelle: string;
+      enfants?: Array<{ libelle: string }>;
+    }>;
+  };
+  restrictions?: string[];
+  url?: string;
+}
+
 interface SubsidyData {
   id: string;
-  title: any;
-  description: any;
+  title: any; // Can be string, multilingual object, or other types from DB
+  description: any; // Can be string, multilingual object, or other types from DB
   agency?: string;
   issuing_body?: string;
-  amount?: any;
+  amount?: any; // Can be string, number, array, or other types from DB
   funding_amount?: any;
   amount_max?: any;
   deadline?: string;
@@ -38,8 +72,8 @@ interface SubsidyData {
   contact_phone?: string;
   contact_email?: string;
   program?: any;
-  url?: string; // Add url property
-  raw_data?: any; // Allow any type for raw_data to handle database flexibility
+  url?: string;
+  raw_data?: any; // Allow flexible JSON structure from database
   // Allow any additional properties from the database
   [key: string]: any;
 }
@@ -181,8 +215,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const organisme = lesAidesData?.organisme || null;
   
   // Use les-aides.fr data if available, otherwise fallback to basic fields
-  const title = lesAidesData?.nom || getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
-  const description = getLocalizedContent(subsidy.description, language) || '';
+  const title = lesAidesData?.nom || (typeof subsidy.title === 'string' ? subsidy.title : (subsidy.title && typeof subsidy.title === 'object' ? getLocalizedContent(subsidy.title, language) : String(subsidy.title || ''))) || 'Untitled Subsidy';
+  const description = (typeof subsidy.description === 'string' ? subsidy.description : (subsidy.description && typeof subsidy.description === 'object' ? getLocalizedContent(subsidy.description, language) : String(subsidy.description || ''))) || '';
   const agency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
   const amount = formatAmount(subsidy.amount || subsidy.funding_amount || subsidy.amount_max);
   const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
@@ -401,7 +435,9 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                     <span className="text-lg text-primary-foreground/90 font-medium">{agency}</span>
                   </div>
                 )}
-                <p className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">{description || 'Detailed information about this subsidy program.'}</p>
+                <div className="text-xl text-primary-foreground/90 mb-4 max-w-3xl">
+                  {description ? renderCleanContent(description) : <span>Detailed information about this subsidy program.</span>}
+                </div>
               </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 md:ml-8 md:min-w-[300px]">
               <div className="text-center">
