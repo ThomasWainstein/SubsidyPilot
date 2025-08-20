@@ -112,10 +112,64 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
   // Extract funding amount from les-aides data if available
   const getFundingAmount = () => {
+    // First check if we have raw_data.fiche content (enhanced extraction data)
+    if (subsidy.raw_data?.fiche) {
+      const ficheText = typeof subsidy.raw_data.fiche === 'string' 
+        ? subsidy.raw_data.fiche 
+        : JSON.stringify(subsidy.raw_data.fiche);
+      
+      const cleanText = ficheText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Look for range patterns first (more specific)
+      const rangePatterns = [
+        /entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i, // "entre 2 000 € et 50 000 €"
+        /de\s+(\d+(?:\s+\d+)*)\s*€\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, // "de 2 000 € à 50 000 €"
+        /(\d+(?:\s+\d+)*)\s*€\s+à\s+(\d+(?:\s+\d+)*)\s*€/i, // "2 000 € à 50 000 €"
+      ];
+      
+      for (const pattern of rangePatterns) {
+        const match = cleanText.match(pattern);
+        if (match) {
+          const minAmount = match[1].replace(/\s/g, ',');
+          const maxAmount = match[2].replace(/\s/g, ',');
+          return `€${minAmount} - €${maxAmount}`;
+        }
+      }
+      
+      // Look for single amount patterns
+      const singlePatterns = [
+        /jusqu.à\s+(\d+(?:\s+\d+)*)\s*€/i, // "jusqu'à 50 000 €"
+        /(\d+(?:\s+\d+)*)\s*€\s+maximum/i, // "50 000 € maximum"
+        /valeur\s+de\s+(\d+(?:\s+\d+)*)\s*€/i, // "valeur de 1 200 €"
+        /(\d+(?:\s+\d+)*)\s*€/g, // Any "X €" pattern (use last match)
+        /(\d+(?:\s+\d+)*)\s*euros?\s+HT/i // "1 200 euros HT"
+      ];
+      
+      for (const pattern of singlePatterns) {
+        const matches = Array.from(cleanText.matchAll(pattern));
+        if (matches.length > 0) {
+          // For multiple matches, prefer the largest amount or the last one
+          const amounts = matches.map(m => parseInt(m[1].replace(/\s/g, '')));
+          const maxAmount = Math.max(...amounts);
+          const formattedAmount = maxAmount.toLocaleString('fr-FR');
+          return `€${formattedAmount}`;
+        }
+      }
+    }
+    
+    // Fallback to les-aides montants field
     if (lesAidesData?.montants) {
-      // Try to extract amount from HTML content
       const montantsText = lesAidesData.montants.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      // Look for various amount patterns (French format with spaces)
+      
+      // Range patterns
+      const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
+      if (rangeMatch) {
+        const minAmount = rangeMatch[1].replace(/\s/g, ',');
+        const maxAmount = rangeMatch[2].replace(/\s/g, ',');
+        return `€${minAmount} - €${maxAmount}`;
+      }
+      
+      // Single amount patterns
       const euroMatches = [
         montantsText.match(/(\d+(?:\s+\d+)*)\s*€/), // "1 200 €" (French format)
         montantsText.match(/(\d+(?:[.,]\d+)*)\s*€/), // "1200 €" or "1,200 €"
@@ -125,34 +179,108 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       ].find(match => match);
       
       if (euroMatches) {
-        const amount = euroMatches[1].replace(/\s/g, ','); // Convert French spacing to comma
+        const amount = euroMatches[1].replace(/\s/g, ',');
         return `€${amount}`;
       }
     }
+    
     return formatAmount(subsidy.amount || subsidy.funding_amount);
   };
 
   // Extract region from les-aides data
   const getRegion = () => {
-    if (organisme?.raison_sociale) {
-      // Extract region from organization name
-      const orgName = organisme.raison_sociale.toLowerCase();
-      if (orgName.includes('hauts-de-france') || orgName.includes('hauts de france')) {
-        return 'Hauts-de-France';
+    // First check enhanced extraction data (raw_data.fiche)
+    if (subsidy.raw_data?.fiche) {
+      const ficheText = typeof subsidy.raw_data.fiche === 'string' 
+        ? subsidy.raw_data.fiche 
+        : JSON.stringify(subsidy.raw_data.fiche);
+      
+      const cleanText = ficheText.toLowerCase().replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Look for common French regions
+      const regionPatterns = [
+        { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
+        { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
+        { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
+        { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
+        { pattern: /occitanie/i, name: 'Occitanie' },
+        { pattern: /grand[-\s]est/i, name: 'Grand Est' },
+        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: 'Provence-Alpes-Côte d\'Azur' },
+        { pattern: /bretagne/i, name: 'Bretagne' },
+        { pattern: /normandie/i, name: 'Normandie' },
+        { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
+        { pattern: /bourgogne[-\s]franche[-\s]comté/i, name: 'Bourgogne-Franche-Comté' },
+        { pattern: /pays.de.la.loire/i, name: 'Pays de la Loire' },
+        { pattern: /corsica|corse/i, name: 'Corsica' },
+        { pattern: /martinique/i, name: 'Martinique' },
+        { pattern: /guadeloupe/i, name: 'Guadeloupe' },
+        { pattern: /guyane/i, name: 'Guyane' },
+        { pattern: /réunion/i, name: 'La Réunion' },
+        { pattern: /mayotte/i, name: 'Mayotte' }
+      ];
+      
+      for (const { pattern, name } of regionPatterns) {
+        if (pattern.test(cleanText)) {
+          return name;
+        }
       }
+      
+      // Look for organization indicators
+      if (cleanText.includes('conseil régional') || cleanText.includes('région')) {
+        const regionMatch = cleanText.match(/(?:conseil\s+régional|région)\s+(?:de\s+)?([a-záàâäçéèêëïîôöùûüÿñ\s-]+)/i);
+        if (regionMatch) {
+          return regionMatch[1].trim().replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+    }
+    
+    // Check organisme data
+    if (organisme?.raison_sociale) {
+      const orgName = organisme.raison_sociale.toLowerCase();
+      
+      // Check for specific regions in organization name
+      const regionPatterns = [
+        { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
+        { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
+        { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
+        { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
+        { pattern: /occitanie/i, name: 'Occitanie' },
+        { pattern: /grand[-\s]est/i, name: 'Grand Est' },
+        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: 'Provence-Alpes-Côte d\'Azur' },
+        { pattern: /bretagne/i, name: 'Bretagne' },
+        { pattern: /normandie/i, name: 'Normandie' },
+        { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
+        { pattern: /bourgogne[-\s]franche[-\s]comté/i, name: 'Bourgogne-Franche-Comté' },
+        { pattern: /pays.de.la.loire/i, name: 'Pays de la Loire' }
+      ];
+      
+      for (const { pattern, name } of regionPatterns) {
+        if (pattern.test(orgName)) {
+          return name;
+        }
+      }
+      
       if (orgName.includes('région')) {
-        // Try to extract region name after "région"
         const regionMatch = orgName.match(/région\s+([^,]+)/);
         if (regionMatch) {
-          return regionMatch[1].trim();
+          return regionMatch[1].trim().replace(/\b\w/g, l => l.toUpperCase());
         }
       }
     }
     
     // Check if description mentions a region
     const descText = (lesAidesData?.objet || description || '').toLowerCase();
-    if (descText.includes('hauts-de-france') || descText.includes('hauts de france')) {
-      return 'Hauts-de-France';
+    const regionPatterns = [
+      { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
+      { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
+      { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
+      { pattern: /occitanie/i, name: 'Occitanie' }
+    ];
+    
+    for (const { pattern, name } of regionPatterns) {
+      if (pattern.test(descText)) {
+        return name;
+      }
     }
     
     return safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
