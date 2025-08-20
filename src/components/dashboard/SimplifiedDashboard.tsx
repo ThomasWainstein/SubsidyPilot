@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import ActionFocusedFarmCard from '@/components/dashboard/ActionFocusedFarmCard';
+import DashboardRecommendations from '@/components/dashboard/DashboardRecommendations';
+import SubsidyErrorBoundary from '@/components/error/SubsidyErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -210,6 +212,11 @@ const SimplifiedDashboard: React.FC = () => {
             </Card>
           ) : (
             <div className="space-y-6">
+              {/* Recommendations Section - Top Priority */}
+              <SubsidyErrorBoundary>
+                <DashboardRecommendations farms={farms} />
+              </SubsidyErrorBoundary>
+
               {/* Priority Actions Section */}
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-foreground">

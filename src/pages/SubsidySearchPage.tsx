@@ -8,6 +8,8 @@ import SearchResultsPanel from '@/components/subsidy/search/SearchResultsPanel';
 import SearchLoadingState from '@/components/subsidy/search/SearchLoadingState';
 import EmptyState from '@/components/states/EmptyState';
 import PageErrorBoundary from '@/components/error/PageErrorBoundary';
+import RecommendedSection from '@/components/subsidy/search/RecommendedSection';
+import SubsidyErrorBoundary from '@/components/error/SubsidyErrorBoundary';
 import { FilterSet } from '@/components/subsidy/SavedFilterSets';
 import { useSubsidyFiltering } from '@/hooks/useSubsidyFiltering';
 import { useFilterOptions } from '@/hooks/useFilterOptions';
@@ -193,6 +195,16 @@ const SubsidySearchPage = () => {
                           </div>
                         </SheetContent>
                       </Sheet>
+                    </div>
+
+                    {/* Personalized Recommendations */}
+                    <div className="mb-6">
+                      <SubsidyErrorBoundary>
+                        <RecommendedSection 
+                          farmId={farmId} 
+                          searchQuery={searchQuery} 
+                        />
+                      </SubsidyErrorBoundary>
                     </div>
 
                     {/* Search Results */}

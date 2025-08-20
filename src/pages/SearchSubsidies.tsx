@@ -7,6 +7,8 @@ import { Search, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { PipelineTestComponent } from '@/components/admin/PipelineTestComponent';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import RecommendedSection from '@/components/subsidy/search/RecommendedSection';
+import SubsidyErrorBoundary from '@/components/error/SubsidyErrorBoundary';
 
 interface Subsidy {
   id: string;
@@ -101,6 +103,11 @@ export default function SearchSubsidies() {
               Search
             </Button>
           </div>
+
+          {/* Personalized Recommendations */}
+          <SubsidyErrorBoundary>
+            <RecommendedSection searchQuery={searchTerm} />
+          </SubsidyErrorBoundary>
 
           {/* Results Count */}
           <div className="text-sm text-muted-foreground">
