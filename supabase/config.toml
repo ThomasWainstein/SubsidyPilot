@@ -68,6 +68,9 @@ verify_jwt = false
 [functions.hybrid-extraction]
 verify_jwt = true
 
+[functions.hybrid-ocr-extraction]
+verify_jwt = false
+
 [functions.enhanced-franceagrimer-extraction]
 verify_jwt = false
 
