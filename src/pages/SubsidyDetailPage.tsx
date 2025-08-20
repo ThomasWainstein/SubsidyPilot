@@ -12,6 +12,8 @@ import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplicat
 import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
 import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
 import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
+import { extractSubsidyData, ExtractedSubsidyData } from '@/lib/extraction/source-extractors';
+import { RichContentDisplay } from '@/components/subsidy/RichContentDisplay';
 import { EnhancedSubsidy, isEnhancedSubsidy } from '@/types/enhanced-subsidy';
 import { mapLegacyToEnhanced } from '@/utils/subsidyDataMapper';
 import { toast } from 'sonner';
@@ -21,6 +23,7 @@ const SubsidyDetailPage = () => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const [extractedData, setExtractedData] = useState<Partial<DocumentContent>>({});
+  const [richExtractedData, setRichExtractedData] = useState<ExtractedSubsidyData | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userFarms, setUserFarms] = useState<any[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -87,65 +90,23 @@ const SubsidyDetailPage = () => {
     const performExtraction = async () => {
       if (!subsidy) return;
       
-      // Get URL from either table structure
-      const subsidyUrl = (subsidy as any).url || (subsidy as any).application_url;
-      if (!subsidyUrl) return;
-      
       setIsExtracting(true);
       try {
-        // Parse document content first
-        const documentContent = await parseDocumentContent(subsidyUrl);
+        // Use source-aware extraction instead of mock data
+        const richData = extractSubsidyData(subsidy);
+        setRichExtractedData(richData);
         
-        if (documentContent?.meta?.extractedText) {
-          // Use AI to extract comprehensive structured data
-          const aiExtracted = await extractStructuredData(documentContent.meta.extractedText);
-          
-          // Get data from either table structure
-          const subsidyTitle = (subsidy as any).title || '';
-          const subsidyAgency = (subsidy as any).agency || '';
-          const subsidyAmount = (subsidy as any).amount || (subsidy as any).amount_min;
-          const subsidyDeadline = (subsidy as any).deadline;
-          const subsidyEligibility = (subsidy as any).eligibility || (subsidy as any).eligibility_criteria;
-          const subsidyDescription = (subsidy as any).description || '';
-          
-          // Merge all available data sources
-          const mergedData: Partial<DocumentContent> = {
-            ...documentContent,
-            ...aiExtracted,
-            // Enrich with subsidy data
-            programName: subsidyTitle || aiExtracted.programName,
-            agency: subsidyAgency || aiExtracted.agency,
-            funding: {
-              ...aiExtracted.funding,
-              fundingDetails: (typeof subsidyAmount === 'string' ? subsidyAmount : JSON.stringify(subsidyAmount)) || aiExtracted.funding?.fundingDetails
-            },
-            timeline: {
-              ...aiExtracted.timeline,
-              applicationPeriod: {
-                ...aiExtracted.timeline?.applicationPeriod,
-                end: subsidyDeadline || aiExtracted.timeline?.applicationPeriod?.end
-              }
-            },
-            eligibility: typeof subsidyEligibility === 'string' ? 
-              { generalCriteria: subsidyEligibility, eligibleEntities: [], legalEntityTypes: [], geographicScope: [] } : 
-              aiExtracted.eligibility,
-            description: subsidyDescription || aiExtracted.description,
-            meta: {
-              ...aiExtracted.meta,
-              sourceUrl: subsidyUrl
-            }
-          };
-          
-          setExtractedData(mergedData);
-          
-          toast.success('Document analysis complete', {
-            description: `Extracted comprehensive details with ${mergedData.meta?.extractionConfidence || 85}% confidence`
-          });
-        }
+        // Legacy extraction for backward compatibility (now safely returns empty)
+        const legacyData = await extractStructuredData('');
+        setExtractedData(legacyData);
+        
+        toast.success('Subsidy data processed', {
+          description: `Loaded ${richData.agency} subsidy information`
+        });
       } catch (error) {
         console.error('Extraction failed:', error);
-        toast.error('Document analysis failed', {
-          description: 'Could not extract additional details from the document'
+        toast.error('Data processing failed', {
+          description: 'Could not process subsidy information'
         });
       } finally {
         setIsExtracting(false);
@@ -205,6 +166,14 @@ const SubsidyDetailPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
+              {/* Rich Content Display for Les Aides data */}
+              {richExtractedData && (
+                <RichContentDisplay 
+                  extractedData={richExtractedData} 
+                  originalData={subsidy}
+                />
+              )}
+              
               {/* Schema Extraction Status */}
               <SchemaExtractionStatus
                 subsidyId={subsidyId!}
