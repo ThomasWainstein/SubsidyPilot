@@ -54,12 +54,21 @@ export class SubsidyEligibilityService {
     const needsAction: SubsidyEligibilityScore[] = [];
 
     for (const subsidy of subsidies) {
+      console.log(`\nProcessing subsidy: "${subsidy.title}"`);
+      console.log('Raw amount field:', subsidy.amount);
+      
       const eligibilityResult = this.assessSubsidyEligibility(farm, subsidy, documents || []);
+      
+      console.log(`Eligibility result - Score: ${eligibilityResult.score}, Parsed Amount: ${eligibilityResult.amount}`);
       
       if (eligibilityResult.score >= 0.9) {
         readyToApply.push(eligibilityResult);
+        console.log('→ Added to READY TO APPLY');
       } else if (eligibilityResult.score >= 0.3) {
         needsAction.push(eligibilityResult);
+        console.log('→ Added to NEEDS ACTION');
+      } else {
+        console.log('→ Score too low, not included');
       }
     }
 
@@ -164,10 +173,13 @@ export class SubsidyEligibilityService {
   }
 
   /**
-   * Parse monetary amounts from various formats
+   * Enhanced French amount parser for subsidy amounts
    */
   private static parseSubsidyAmount(amountField: any): number | null {
     if (!amountField) return null;
+    
+    // Console log for debugging
+    console.log('Parsing amount field:', amountField, 'Type:', typeof amountField);
     
     if (Array.isArray(amountField) && amountField.length > 0) {
       return Math.max(...amountField.filter(a => typeof a === 'number'));
@@ -178,14 +190,53 @@ export class SubsidyEligibilityService {
     }
     
     if (typeof amountField === 'string') {
-      // Extract numbers from strings like "jusqu'à 25 000 €" or "€15,000"
+      // Enhanced French parsing patterns
+      const frenchPatterns = [
+        // Range patterns - take maximum value
+        /entre\s+([\d\s]+)\s*€?\s+et\s+([\d\s]+)\s*€?/i,           // "entre 2 000 € et 50 000 €"
+        /de\s+([\d\s]+)\s*€?\s+à\s+([\d\s]+)\s*€?/i,               // "de 1000€ à 15000€"
+        /([\d\s]+)\s*€?\s*[-–]\s*([\d\s]+)\s*€?/i,                 // "2 000 € - 50 000 €"
+        
+        // Single amount patterns
+        /jusqu'?à\s+([\d\s]+)\s*(?:euros?|€)/i,                    // "jusqu'à 25 000 €"
+        /maximum\s+de\s+([\d\s]+)\s*(?:euros?|€)/i,                // "maximum de 50000€"
+        /plafond\s+de\s+([\d\s]+)\s*(?:euros?|€)/i,                // "plafond de 25000€"
+        /aide\s+de\s+([\d\s]+)\s*(?:euros?|€)/i,                   // "aide de 15000€"
+        /([\d\s]+)\s*(?:euros?|€)/i                                // "25 000 euros"
+      ];
+
+      for (const pattern of frenchPatterns) {
+        const match = amountField.match(pattern);
+        if (match) {
+          console.log('Pattern matched:', pattern.source, 'Match:', match);
+          
+          // For range patterns, take the maximum (second capture group)
+          if (match[2]) {
+            const maxAmount = match[2].replace(/\s/g, '');
+            const parsed = parseInt(maxAmount, 10);
+            console.log('Range parsed - max amount:', parsed);
+            return parsed || null;
+          } else {
+            // Single amount (first capture group)
+            const amount = match[1].replace(/\s/g, '');
+            const parsed = parseInt(amount, 10);
+            console.log('Single amount parsed:', parsed);
+            return parsed || null;
+          }
+        }
+      }
+      
+      // Fallback to original logic for any numeric string
       const match = amountField.match(/[\d\s,]+/);
       if (match) {
         const cleanNumber = match[0].replace(/[\s,]/g, '');
-        return parseInt(cleanNumber, 10) || null;
+        const parsed = parseInt(cleanNumber, 10);
+        console.log('Fallback parsing:', parsed);
+        return parsed || null;
       }
     }
     
+    console.log('No amount could be parsed');
     return null;
   }
 
