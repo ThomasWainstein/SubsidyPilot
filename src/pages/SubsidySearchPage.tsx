@@ -154,11 +154,17 @@ const SubsidySearchPage = () => {
                 />
               </div>
             ) : (
-              <div className="flex min-h-screen">
-                {/* Desktop Sidebar - Collapsible */}
-                <div className="hidden lg:block w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-                  <div className="h-full overflow-y-auto p-6">
-                    <FiltersContent />
+              <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+                {/* Desktop Sidebar - Always visible on lg+ screens */}
+                <div className="hidden lg:flex lg:flex-shrink-0">
+                  <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="h-full overflow-y-auto p-6">
+                      <div className="sticky top-0 bg-white dark:bg-gray-800 pb-4 mb-4 border-b">
+                        <h2 className="text-lg font-semibold text-foreground">Filter Options</h2>
+                        <p className="text-sm text-muted-foreground">Refine your search results</p>
+                      </div>
+                      <FiltersContent />
+                    </div>
                   </div>
                 </div>
 
