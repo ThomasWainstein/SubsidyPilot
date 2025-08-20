@@ -4,6 +4,8 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { SubsidyDataManager, type UnifiedSubsidyData } from './subsidy-data-consistency';
+import { FrenchGeographicMatcher } from './geographic-matching';
 
 export interface RecommendationScore {
   subsidyId: string;
@@ -59,22 +61,15 @@ export class RecommendationEngine {
     popular: RecommendationScore[];
   }> {
     try {
-      // Fetch all available subsidies
-      const { data: subsidies, error } = await supabase
-        .from('subsidies')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('🎯 Generating recommendations for farm:', farmProfile.id);
+      
+      // Use unified data source for consistency
+      const subsidies = await SubsidyDataManager.getUnifiedSubsidies();
+      console.log(`📊 Processing ${subsidies.length} unified subsidies`);
 
-      if (error) throw error;
-
-      const allScores = subsidies?.map(subsidy => 
-        this.calculateRecommendationScore(farmProfile, {
-          ...subsidy,
-          title: String(subsidy.title || ''),
-          description: String(subsidy.description || ''),
-          agency: String(subsidy.agency || '')
-        })
-      ) || [];
+      const allScores = subsidies.map(subsidy => 
+        this.calculateRecommendationScore(farmProfile, subsidy)
+      );
 
       return {
         quickWins: allScores
@@ -119,7 +114,7 @@ export class RecommendationEngine {
    */
   private static calculateRecommendationScore(
     farm: FarmProfile,
-    subsidy: SubsidyData
+    subsidy: UnifiedSubsidyData
   ): RecommendationScore {
     let score = 0;
     const reasons: string[] = [];
@@ -128,12 +123,13 @@ export class RecommendationEngine {
     let category: RecommendationScore['category'] = 'popular';
     let confidence = 0.5;
 
-    // Geographic matching (high importance)
-    const geoScore = this.calculateGeographicMatch(farm, subsidy);
-    score += geoScore.score;
-    if (geoScore.matches) reasons.push(geoScore.reason);
-    if (geoScore.blocker) blockers.push(geoScore.blocker);
-    confidence = Math.max(confidence, geoScore.confidence);
+    // Geographic matching (high importance) - Use enhanced matcher
+    const farmLocation = farm.department || farm.region || farm.country || '';
+    const geoMatch = FrenchGeographicMatcher.calculateMatch(farmLocation, subsidy.region.names);
+    score += geoMatch.score;
+    if (geoMatch.matches) reasons.push(geoMatch.reason);
+    if (geoMatch.blocker) blockers.push(geoMatch.blocker);
+    confidence = Math.max(confidence, geoMatch.confidence);
 
     // Sector/activity matching
     const sectorScore = this.calculateSectorMatch(farm, subsidy);
@@ -277,7 +273,7 @@ export class RecommendationEngine {
   /**
    * Calculate sector/activity compatibility
    */
-  private static calculateSectorMatch(farm: FarmProfile, subsidy: SubsidyData): {
+  private static calculateSectorMatch(farm: FarmProfile, subsidy: UnifiedSubsidyData): {
     score: number;
     reason?: string;
     blocker?: string;
@@ -287,6 +283,19 @@ export class RecommendationEngine {
     
     // Extract sectors from title and description
     const subsidyText = `${subsidy.title} ${subsidy.description || ''}`.toLowerCase();
+    
+    // Check subsidy sectors
+    const subsidySectors = subsidy.sector || [];
+    const sectorMatches = farmActivities.filter(activity => 
+      subsidySectors.some(sector => sector.toLowerCase().includes(activity.toLowerCase()))
+    );
+
+    if (sectorMatches.length > 0) {
+      return {
+        score: 25,
+        reason: `Correspond à vos activités: ${sectorMatches.join(', ')}`
+      };
+    }
     
     // Agriculture-specific keywords
     const agricultureKeywords = [
@@ -299,18 +308,6 @@ export class RecommendationEngine {
     );
 
     if (hasAgricultureMatch) {
-      // Check for specific activity matches
-      const specificMatches = farmActivities.filter(activity => 
-        subsidyText.includes(activity.toLowerCase())
-      );
-
-      if (specificMatches.length > 0) {
-        return {
-          score: 25,
-          reason: `Correspond à vos activités: ${specificMatches.join(', ')}`
-        };
-      }
-
       return {
         score: 15,
         reason: 'Programme destiné au secteur agricole'
@@ -343,7 +340,7 @@ export class RecommendationEngine {
   /**
    * Calculate farm size compatibility
    */
-  private static calculateSizeMatch(farm: FarmProfile, subsidy: SubsidyData): {
+  private static calculateSizeMatch(farm: FarmProfile, subsidy: UnifiedSubsidyData): {
     score: number;
     reason?: string;
     blocker?: string;
@@ -375,7 +372,7 @@ export class RecommendationEngine {
   /**
    * Calculate certification matching
    */
-  private static calculateCertificationMatch(farm: FarmProfile, subsidy: SubsidyData): {
+  private static calculateCertificationMatch(farm: FarmProfile, subsidy: UnifiedSubsidyData): {
     score: number;
     reason?: string;
   } {
@@ -396,50 +393,38 @@ export class RecommendationEngine {
   /**
    * Analyze deadline urgency
    */
-  private static analyzeDeadline(subsidy: SubsidyData): {
+  private static analyzeDeadline(subsidy: UnifiedSubsidyData): {
     isExpiringSoon: boolean;
     daysRemaining?: number;
   } {
-    if (!subsidy.deadline) return { isExpiringSoon: false };
-
-    const deadline = new Date(subsidy.deadline);
-    const today = new Date();
-    const daysRemaining = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
     return {
-      isExpiringSoon: daysRemaining > 0 && daysRemaining <= 30,
-      daysRemaining: Math.max(0, daysRemaining)
+      isExpiringSoon: subsidy.deadline.daysRemaining !== undefined && subsidy.deadline.daysRemaining <= 30,
+      daysRemaining: subsidy.deadline.daysRemaining
     };
   }
 
   /**
    * Analyze subsidy value
    */
-  private static analyzeValue(subsidy: SubsidyData): {
+  private static analyzeValue(subsidy: UnifiedSubsidyData): {
     isHighValue: boolean;
     displayAmount?: string;
   } {
-    const maxAmount = subsidy.amountMax || 0;
-    const minAmount = subsidy.amountMin || 0;
+    const maxAmount = subsidy.amount.max || 0;
+    const minAmount = subsidy.amount.min || 0;
 
     const isHighValue = maxAmount > 50000 || minAmount > 20000;
-    
-    let displayAmount = '';
-    if (maxAmount && minAmount) {
-      displayAmount = `${minAmount.toLocaleString('fr-FR')} € - ${maxAmount.toLocaleString('fr-FR')} €`;
-    } else if (maxAmount) {
-      displayAmount = `jusqu'à ${maxAmount.toLocaleString('fr-FR')} €`;
-    } else if (minAmount) {
-      displayAmount = `à partir de ${minAmount.toLocaleString('fr-FR')} €`;
-    }
 
-    return { isHighValue, displayAmount };
+    return { 
+      isHighValue, 
+      displayAmount: subsidy.amount.displayText 
+    };
   }
 
   /**
    * Calculate quick win potential
    */
-  private static calculateQuickWinPotential(farm: FarmProfile, subsidy: SubsidyData): {
+  private static calculateQuickWinPotential(farm: FarmProfile, subsidy: UnifiedSubsidyData): {
     isQuickWin: boolean;
   } {
     const subsidyText = `${subsidy.title} ${subsidy.description || ''}`.toLowerCase();
@@ -473,22 +458,19 @@ export class RecommendationEngine {
   /**
    * Check if subsidy is a new opportunity
    */
-  private static isNewOpportunity(subsidy: SubsidyData): boolean {
-    if (!subsidy.createdAt) return false;
-    
-    const createdDate = new Date(subsidy.createdAt);
+  private static isNewOpportunity(subsidy: UnifiedSubsidyData): boolean {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    return createdDate > thirtyDaysAgo;
+    return subsidy.lastUpdated > thirtyDaysAgo;
   }
 
   /**
    * Estimate personalized value for the farm
    */
-  private static estimatePersonalizedValue(farm: FarmProfile, subsidy: SubsidyData): string | undefined {
+  private static estimatePersonalizedValue(farm: FarmProfile, subsidy: UnifiedSubsidyData): string | undefined {
     const farmSize = farm.totalHectares || 0;
-    const maxAmount = subsidy.amountMax || 0;
+    const maxAmount = subsidy.amount.max || 0;
     
     if (!maxAmount || !farmSize) return undefined;
 
