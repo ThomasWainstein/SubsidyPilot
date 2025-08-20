@@ -105,7 +105,7 @@ export const getSectorDisplayFromDomains = (domains: string[] | string | null): 
  */
 export const getEligibilityStatus = (subsidy: any): { status: 'eligible' | 'check' | 'restricted'; label: string } => {
   // Simple logic - this could be enhanced with actual farm matching
-  const hasRegionRestriction = subsidy.region && subsidy.region !== 'All regions';
+  const hasRegionRestriction = subsidy.region && subsidy.region !== 'All regions' && subsidy.region !== '';
   const hasSectorRestriction = subsidy.sector && Array.isArray(subsidy.sector) && subsidy.sector.length > 0;
   
   if (!hasRegionRestriction && !hasSectorRestriction) {
@@ -115,14 +115,18 @@ export const getEligibilityStatus = (subsidy: any): { status: 'eligible' | 'chec
   if (hasRegionRestriction) {
     // Show actual regions instead of generic "Location restricted"
     if (Array.isArray(subsidy.region)) {
-      if (subsidy.region.length === 1) {
-        return { status: 'restricted', label: subsidy.region[0] };
+      const validRegions = subsidy.region.filter(r => r && r.trim() !== '');
+      if (validRegions.length === 0) {
+        return { status: 'eligible', label: 'Available nationwide' };
       }
-      if (subsidy.region.length <= 2) {
-        return { status: 'restricted', label: subsidy.region.join(', ') };
+      if (validRegions.length === 1) {
+        return { status: 'restricted', label: validRegions[0] };
       }
-      return { status: 'restricted', label: `${subsidy.region.slice(0, 2).join(', ')} +${subsidy.region.length - 2} more` };
-    } else {
+      if (validRegions.length <= 2) {
+        return { status: 'restricted', label: validRegions.join(', ') };
+      }
+      return { status: 'restricted', label: `${validRegions.slice(0, 2).join(', ')} +${validRegions.length - 2} more` };
+    } else if (subsidy.region && subsidy.region.trim() !== '') {
       return { status: 'restricted', label: subsidy.region };
     }
   }
