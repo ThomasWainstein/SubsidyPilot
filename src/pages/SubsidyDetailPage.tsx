@@ -5,58 +5,16 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { useLanguage } from '@/contexts/language';
-import { useHybridExtraction } from '@/hooks/useHybridExtraction';
 import { DetailedSubsidyDisplay } from '@/components/subsidy/DetailedSubsidyDisplay';
-import ExtractedFormApplication from '@/components/subsidy/ExtractedFormApplication';
-import { EnhancedExtractionTrigger } from '@/components/admin/EnhancedExtractionTrigger';
-import { SchemaExtractionStatus } from '@/components/subsidy/SchemaExtractionStatus';
-import { parseDocumentContent, extractStructuredData, DocumentContent } from '@/utils/documentParser';
 import { extractSubsidyData, ExtractedSubsidyData } from '@/lib/extraction/source-extractors';
 import { RichContentDisplay } from '@/components/subsidy/RichContentDisplay';
-import { EnhancedSubsidy, isEnhancedSubsidy } from '@/types/enhanced-subsidy';
-import { mapLegacyToEnhanced } from '@/utils/subsidyDataMapper';
 import { toast } from 'sonner';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
   const navigate = useNavigate();
-  const { language } = useLanguage();
-  const [extractedData, setExtractedData] = useState<Partial<DocumentContent>>({});
   const [richExtractedData, setRichExtractedData] = useState<ExtractedSubsidyData | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userFarms, setUserFarms] = useState<any[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
-
-  // Get current user and their farms
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
-      
-      if (user) {
-        const { data: farms, error } = await supabase
-          .from('farms')
-          .select('*')
-          .eq('user_id', user.id);
-        
-        if (!error && farms) {
-          setUserFarms(farms);
-        }
-      }
-    };
-
-    getCurrentUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setCurrentUser(session?.user || null);
-      if (!session?.user) {
-        setUserFarms([]);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
@@ -85,20 +43,16 @@ const SubsidyDetailPage = () => {
     enabled: !!subsidyId
   });
 
-  // Enhanced document extraction with AI
+  // Enhanced document extraction
   useEffect(() => {
     const performExtraction = async () => {
       if (!subsidy) return;
       
       setIsExtracting(true);
       try {
-        // Use source-aware extraction instead of mock data
+        // Use source-aware extraction for rich content
         const richData = extractSubsidyData(subsidy);
         setRichExtractedData(richData);
-        
-        // Legacy extraction for backward compatibility (now safely returns empty)
-        const legacyData = await extractStructuredData('');
-        setExtractedData(legacyData);
         
         toast.success('Subsidy data processed', {
           description: `Loaded ${richData.agency} subsidy information`
@@ -162,44 +116,15 @@ const SubsidyDetailPage = () => {
           onBack={() => navigate('/search')}
         />
         
-        {/* Additional content sections - positioned below the detailed display */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Rich Content Display for Les Aides data */}
-              {richExtractedData && (
-                <RichContentDisplay 
-                  extractedData={richExtractedData} 
-                  originalData={subsidy}
-                />
-              )}
-              
-              {/* Schema Extraction Status */}
-              <SchemaExtractionStatus
-                subsidyId={subsidyId!}
-                title="Application Form Schema"
-                autoRefresh={true}
-                showDetails={true}
-              />
-              
-              {/* Enhanced Data Extraction */}
-              {((subsidy as any).url || (subsidy as any).application_url) && (
-                <EnhancedExtractionTrigger 
-                  subsidyUrl={(subsidy as any).url || (subsidy as any).application_url}
-                  subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
-                  onSuccess={() => navigate(0)}
-                />
-              )}
-              
-              {/* Application Form Section */}
-              <ExtractedFormApplication
-                subsidyId={subsidyId!}
-                subsidyTitle={(subsidy as any).title || 'Subsidy Program'}
-                farmId={userFarms.length > 0 ? userFarms[0].id : undefined}
-              />
-            </div>
+        {/* Pass rich extracted data to DetailedSubsidyDisplay for integrated display */}
+        {richExtractedData && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <RichContentDisplay 
+              extractedData={richExtractedData} 
+              originalData={subsidy}
+            />
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
