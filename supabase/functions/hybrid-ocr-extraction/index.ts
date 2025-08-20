@@ -7,6 +7,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Memory and processing limits to prevent stack overflow
+const PROCESSING_LIMITS = {
+  MAX_FILE_SIZE_MB: 15,
+  MAX_TEXT_LENGTH: 50000,
+  MAX_PROCESSING_TIME_MS: 120000, // 2 minutes
+  MAX_RETRIES: 2,
+  CIRCUIT_BREAKER_THRESHOLD: 5,
+  MEMORY_THRESHOLD_BYTES: 100 * 1024 * 1024 // 100MB
+};
+
+// Circuit breaker state
+let documentAIFailures = 0;
+let cloudVisionFailures = 0;
+let lastFailureTime = 0;
+
 interface ExtractionRequest {
   documentId?: string;
   documentPath?: string;
@@ -103,7 +118,21 @@ serve(async (req) => {
       console.log(`📄 Document ID: ${actualDocumentId}`);
     }
     
+    // Check circuit breaker before attempting processing
+    if (shouldSkipService('documentai')) {
+      console.log('⚠️ Document AI circuit breaker active - skipping to fallback');
+      processingLog.push('Document AI circuit breaker active');
+      fallbackToOpenAI = true;
+    }
+    
+    // Check processing limits early
+    const memoryUsage = (process as any)?.memoryUsage?.() || { heapUsed: 0 };
+    if (memoryUsage.heapUsed > PROCESSING_LIMITS.MEMORY_THRESHOLD_BYTES) {
+      throw new Error(`Memory threshold exceeded: ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`);
+    }
+    
     const documentAIApiKey = Deno.env.get('GOOGLE_DOCUMENT_AI_API_KEY');
+    const serviceAccountKey = Deno.env.get('GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
     if (!openaiApiKey) {
@@ -119,20 +148,26 @@ serve(async (req) => {
     let extractionMethod = 'hybrid_documentai_openai';
 
     // Step 1: Try Google Document AI first, fallback to OpenAI if needed
-    if (documentAIApiKey && !fallbackToOpenAI) {
+    if ((serviceAccountKey || documentAIApiKey) && !fallbackToOpenAI) {
       try {
         console.log('📖 Step 1: Extracting text with Google Document AI...');
         processingLog.push('Attempting Google Document AI...');
         
-        ocrResult = await extractTextWithDocumentAI(fileUrl, documentAIApiKey, fileName);
+        ocrResult = await extractTextWithDocumentAI(fileUrl, serviceAccountKey || documentAIApiKey, fileName, !!serviceAccountKey);
         totalCost += ocrResult.metadata.pageCount * 0.0015; // Document AI cost
         
         console.log(`✅ Document AI: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
         processingLog.push(`Document AI success: ${ocrResult.text.length} chars`);
         
+        // Reset circuit breaker on success
+        resetCircuitBreaker('documentai');
+        
       } catch (documentAIError) {
         console.warn(`⚠️ Document AI failed: ${documentAIError.message}`);
         processingLog.push(`Document AI failed: ${documentAIError.message}`);
+        
+        // Update circuit breaker
+        recordFailure('documentai');
         
         // Fallback to OpenAI extraction
         console.log('🔄 Falling back to OpenAI-only extraction...');
@@ -320,7 +355,7 @@ serve(async (req) => {
   }
 });
 
-async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileName: string): Promise<{
+async function extractTextWithDocumentAI(fileUrl: string, credential: string, fileName: string, useServiceAccount: boolean = false): Promise<{
   text: string;
   metadata: {
     detectionType: string;
@@ -334,51 +369,76 @@ async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileNa
   const startTime = Date.now();
   
   try {
-    console.log(`📖 Google Document AI: Processing ${fileName} via Document OCR API`);
+    console.log(`📖 Google Document AI: Processing ${fileName} via ${useServiceAccount ? 'Service Account' : 'API Key'}`);
     
-    // Fetch file content with timeout and retry logic
+    // Early size check before fetching
     let fileResponse;
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= PROCESSING_LIMITS.MAX_RETRIES; attempt++) {
       try {
         console.log(`🔄 Attempt ${attempt}: Fetching ${fileUrl}`);
         
-        const fetchPromise = fetch(fileUrl);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('File fetch timeout after 15 seconds')), 15000)
-        );
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         
-        fileResponse = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+        fileResponse = await fetch(fileUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
         
         if (fileResponse.ok) {
           console.log(`✅ File fetched successfully: ${fileResponse.status}`);
           break;
         }
         
-        if (attempt === 2) throw new Error(`Failed to fetch file after 2 attempts: ${fileResponse.statusText}`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (attempt === PROCESSING_LIMITS.MAX_RETRIES) {
+          throw new Error(`Failed to fetch file after ${PROCESSING_LIMITS.MAX_RETRIES} attempts: ${fileResponse.statusText}`);
+        }
+        
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         
       } catch (fetchError: any) {
         console.error(`❌ Fetch attempt ${attempt} failed:`, fetchError.message);
-        if (attempt === 2) throw new Error(`File fetch failed: ${fetchError.message}`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (attempt === PROCESSING_LIMITS.MAX_RETRIES) {
+          throw new Error(`File fetch failed: ${fetchError.message}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
     }
     
-    // Convert to base64 with size limit
+    // Size and memory checks
     const fileBuffer = await fileResponse!.arrayBuffer();
     const fileSizeMB = fileBuffer.byteLength / (1024 * 1024);
     
-    if (fileSizeMB > 20) {
-      throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB (max 20MB)`);
+    if (fileSizeMB > PROCESSING_LIMITS.MAX_FILE_SIZE_MB) {
+      throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB (max ${PROCESSING_LIMITS.MAX_FILE_SIZE_MB}MB)`);
     }
     
     console.log(`📄 File size: ${fileSizeMB.toFixed(2)}MB`);
+    
+    // Memory check before base64 conversion
+    const estimatedBase64Size = fileBuffer.byteLength * 1.4; // Base64 is ~40% larger
+    if (estimatedBase64Size > PROCESSING_LIMITS.MEMORY_THRESHOLD_BYTES / 2) {
+      throw new Error(`Document too large for processing: ${(estimatedBase64Size / 1024 / 1024).toFixed(1)}MB`);
+    }
+    
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
     
-    // Get Google Cloud credentials
+    // Get authentication details
+    let accessToken: string | null = null;
     const projectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
+    
     if (!projectId) {
       throw new Error('Google Cloud Project ID not configured');
+    }
+    
+    if (useServiceAccount) {
+      try {
+        const serviceAccountJSON = JSON.parse(credential);
+        accessToken = await getAccessToken(serviceAccountJSON);
+        console.log('🔐 Using Service Account authentication');
+      } catch (saError: any) {
+        console.warn('⚠️ Service Account auth failed, falling back to API key:', saError.message);
+        useServiceAccount = false;
+      }
     }
     
     // Use your specific Document AI processors in order of preference
@@ -410,8 +470,22 @@ async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileNa
       try {
         console.log(`🔄 Trying ${processor.name} (${processor.type})...`);
         
-        // Use the specific processor ID directly with API key authentication
-        const processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process?key=${apiKey}`;
+        // Build Document AI API URL with proper authentication
+        let processUrl: string;
+        let headers: { [key: string]: string };
+        
+        if (useServiceAccount && accessToken) {
+          processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process`;
+          headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          };
+        } else {
+          processUrl = `https://${processor.location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${processor.location}/processors/${processor.id}:process?key=${credential}`;
+          headers = {
+            'Content-Type': 'application/json'
+          };
+        }
         
         const requestBody = {
           rawDocument: {
@@ -424,9 +498,7 @@ async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileNa
         console.log(`🚀 Calling ${processor.name} API...`);
         const processResponse = await fetch(processUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           body: JSON.stringify(requestBody)
         });
         
@@ -450,7 +522,7 @@ async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileNa
     if (!documentAIResult) {
       // Fallback to Cloud Vision if Document AI completely fails
       console.log('📖 Document AI unavailable, falling back to Cloud Vision...');
-      return await extractTextWithCloudVision(fileUrl, apiKey, fileName);
+      return await extractTextWithCloudVision(fileUrl, credential, fileName, useServiceAccount);
     }
     
     // Extract text from Document AI response
@@ -509,12 +581,12 @@ async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileNa
   } catch (error: any) {
     console.error('❌ Document AI extraction failed:', error.message);
     // Fallback to Cloud Vision
-    return await extractTextWithCloudVision(fileUrl, apiKey, fileName);
+    return await extractTextWithCloudVision(fileUrl, credential, fileName, useServiceAccount);
   }
 }
 
 // Fallback Cloud Vision function
-async function extractTextWithCloudVision(fileUrl: string, apiKey: string, fileName: string): Promise<{
+async function extractTextWithCloudVision(fileUrl: string, credential: string, fileName: string, useServiceAccount: boolean = false): Promise<{
   text: string;
   metadata: {
     detectionType: string;
@@ -528,15 +600,26 @@ async function extractTextWithCloudVision(fileUrl: string, apiKey: string, fileN
   const startTime = Date.now();
   
   try {
-    console.log(`📖 Google Vision: Processing ${fileName} via Cloud Vision API (fallback)`);
+    console.log(`📖 Google Vision: Processing ${fileName} via Cloud Vision API (${useServiceAccount ? 'Service Account' : 'API Key'})`);
     
-    // Fetch and process file (reusing existing logic)
-    const fileResponse = await fetch(fileUrl);
+    // Size and timeout controls
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    
+    const fileResponse = await fetch(fileUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
     if (!fileResponse.ok) {
       throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
     }
     
     const fileBuffer = await fileResponse.arrayBuffer();
+    const fileSizeMB = fileBuffer.byteLength / (1024 * 1024);
+    
+    if (fileSizeMB > PROCESSING_LIMITS.MAX_FILE_SIZE_MB) {
+      throw new Error(`File too large for Cloud Vision: ${fileSizeMB.toFixed(1)}MB`);
+    }
+    
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
     
     const detectionType = fileName.toLowerCase().includes('.pdf') ? 'DOCUMENT_TEXT_DETECTION' : 'TEXT_DETECTION';
@@ -560,23 +643,48 @@ async function extractTextWithCloudVision(fileUrl: string, apiKey: string, fileN
       ]
     };
 
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+    let visionResponse;
+    if (useServiceAccount) {
+      try {
+        const serviceAccountJSON = JSON.parse(credential);
+        const accessToken = await getAccessToken(serviceAccountJSON);
+        
+        visionResponse = await fetch(
+          'https://vision.googleapis.com/v1/images:annotate',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+      } catch (saError: any) {
+        console.warn('⚠️ Service Account auth failed for Vision API, falling back to API key:', saError.message);
+        useServiceAccount = false;
       }
-    );
-
-    if (!visionResponse.ok) {
-      const errorText = await visionResponse.text();
-      throw new Error(`Vision API HTTP ${visionResponse.status}: ${errorText}`);
+    }
+    
+    if (!useServiceAccount) {
+      visionResponse = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${credential}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
     }
 
-    const result = await visionResponse.json();
+    if (!visionResponse!.ok) {
+      const errorText = await visionResponse!.text();
+      throw new Error(`Vision API HTTP ${visionResponse!.status}: ${errorText}`);
+    }
+
+    const result = await visionResponse!.json();
     const response = result.responses?.[0];
     
     if (response?.error) {
@@ -918,4 +1026,102 @@ function calculateConfidence(extractedData: any): number {
   
   const fillRate = filledFields / totalFields;
   return Math.max(0.3, Math.min(0.95, fillRate * 0.8 + 0.2));
+}
+
+// =============================================================================
+// HELPER FUNCTIONS FOR SERVICE ACCOUNT AUTH AND CIRCUIT BREAKER
+// =============================================================================
+
+/**
+ * Generate JWT token for Google Cloud Service Account authentication
+ */
+async function getAccessToken(serviceAccountJSON: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: serviceAccountJSON.client_email,
+    sub: serviceAccountJSON.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600 // 1 hour
+  };
+
+  // Create JWT header and payload
+  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const payloadEncoded = btoa(JSON.stringify(payload));
+  const toSign = `${header}.${payloadEncoded}`;
+
+  // Import private key and sign
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    new TextEncoder().encode(serviceAccountJSON.private_key.replace(/\\n/g, '\n')),
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(toSign));
+  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+  const jwt = `${toSign}.${signatureB64}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+  });
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`Token exchange failed: ${errorText}`);
+  }
+
+  const tokenData = await tokenResponse.json();
+  return tokenData.access_token;
+}
+
+/**
+ * Circuit breaker: Check if service should be skipped
+ */
+function shouldSkipService(service: 'documentai' | 'cloudvision'): boolean {
+  const failures = service === 'documentai' ? documentAIFailures : cloudVisionFailures;
+  const timeSinceLastFailure = Date.now() - lastFailureTime;
+  
+  // Reset circuit breaker after 5 minutes
+  if (timeSinceLastFailure > 300000) {
+    if (service === 'documentai') documentAIFailures = 0;
+    else cloudVisionFailures = 0;
+    return false;
+  }
+  
+  return failures >= PROCESSING_LIMITS.CIRCUIT_BREAKER_THRESHOLD;
+}
+
+/**
+ * Circuit breaker: Record a service failure
+ */
+function recordFailure(service: 'documentai' | 'cloudvision'): void {
+  if (service === 'documentai') {
+    documentAIFailures++;
+  } else {
+    cloudVisionFailures++;
+  }
+  lastFailureTime = Date.now();
+  
+  console.log(`⚠️ ${service} failure recorded (${service === 'documentai' ? documentAIFailures : cloudVisionFailures}/${PROCESSING_LIMITS.CIRCUIT_BREAKER_THRESHOLD})`);
+}
+
+/**
+ * Circuit breaker: Reset failures on success
+ */
+function resetCircuitBreaker(service: 'documentai' | 'cloudvision'): void {
+  if (service === 'documentai') {
+    documentAIFailures = 0;
+  } else {
+    cloudVisionFailures = 0;
+  }
+  console.log(`✅ ${service} circuit breaker reset`);
 }
