@@ -44,6 +44,7 @@ const OrganizationDashboardPage = lazy(() => import('@/pages/OrganizationDashboa
 const ScrapeRunsList = lazy(() => import('@/components/admin/ScrapeRunsList'));
 const ScrapeReportDashboard = lazy(() => import('@/components/admin/ScrapeReportDashboard'));
 const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'));
+const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -169,6 +170,10 @@ function App() {
                       
                       <Route path="/admin/subsidy/:id" element={
                         <ProtectedRouteWrapper><SubsidyDetailAdmin /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/admin/proof-of-concept" element={
+                        <ProtectedRouteWrapper><ProofOfConcept /></ProtectedRouteWrapper>
                       } />
                       
                       
