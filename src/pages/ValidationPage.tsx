@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RealDocumentTesting } from '@/components/RealDocumentTesting';
 import { ProductionHealthDashboard } from '@/components/ProductionHealthDashboard';
+import { LesAidesDocumentTester } from '@/components/LesAidesDocumentTester';
+import { AlternativeDocumentStrategy } from '@/components/AlternativeDocumentStrategy';
 import { EnhancedSystemValidationSummary } from '@/components/EnhancedSystemValidationSummary';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Clock } from 'lucide-react';
@@ -72,13 +74,18 @@ export default function ValidationPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="testing" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="testing">Real Document Testing</TabsTrigger>
+      <Tabs defaultValue="real-docs" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="real-docs">Real French Documents</TabsTrigger>
+          <TabsTrigger value="testing">Manual Testing</TabsTrigger>
           <TabsTrigger value="health">Production Health</TabsTrigger>
           <TabsTrigger value="validation">System Validation</TabsTrigger>
           <TabsTrigger value="results">Test Results</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="real-docs">
+          <AlternativeDocumentStrategy />
+        </TabsContent>
 
         <TabsContent value="testing">
           <RealDocumentTesting />
