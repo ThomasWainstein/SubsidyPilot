@@ -8,6 +8,7 @@ import { RoleProvider } from '@/contexts/RoleContext';
 import { CalendarProvider } from '@/contexts/CalendarContext';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from 'sonner';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import GenericErrorFallback from '@/components/error/GenericErrorFallback';
@@ -201,6 +202,7 @@ function App() {
                     </Routes>
                   </SuspenseWrapper>
                     <Toaster />
+                    <Sonner />
                   </div>
                   </SecurityWrapper>
                 </CalendarProvider>

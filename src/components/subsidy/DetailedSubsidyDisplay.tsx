@@ -8,9 +8,44 @@ import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
 import { cleanHtmlContent, extractTextContent, containsHtml } from '@/utils/htmlUtils';
 import OrganizationLogo from './OrganizationLogo';
 import { analytics } from '@/lib/analytics/events';
+import { toast } from 'sonner';
+
+// Type-safe subsidy interface - flexible to handle various data structures
+interface SubsidyData {
+  id: string;
+  title: any;
+  description: any;
+  agency?: string;
+  issuing_body?: string;
+  amount?: any;
+  funding_amount?: any;
+  amount_max?: any;
+  deadline?: string;
+  application_deadline?: string;
+  application_window_end?: string;
+  geographic_scope?: any; // Can be string, object, or other types from DB
+  region?: any;
+  sectors?: any;
+  categories?: any;
+  objectives?: any;
+  eligible_actions?: any;
+  ineligible_actions?: any;
+  required_documents?: any;
+  funding_rate_details?: any;
+  minimum_investment?: any;
+  legal_entity_type?: any;
+  application_url?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  program?: any;
+  url?: string; // Add url property
+  raw_data?: any; // Allow any type for raw_data to handle database flexibility
+  // Allow any additional properties from the database
+  [key: string]: any;
+}
 
 interface DetailedSubsidyDisplayProps {
-  subsidy: any;
+  subsidy: SubsidyData;
   onBack?: () => void;
 }
 
@@ -22,7 +57,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorited, setIsFavorited] = useState(false);
 
-  // Handle share functionality with analytics
+  // Handle share functionality with analytics and proper feedback
   const handleShare = async () => {
     analytics.trackSubsidyInteraction('share', subsidy.id);
     
@@ -35,28 +70,36 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     try {
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
+        toast.success('Subsidy shared successfully!');
       } else {
         // Fallback: copy to clipboard
         await navigator.clipboard.writeText(window.location.href);
-        // You might want to show a toast notification here
-        console.log('Link copied to clipboard');
+        toast.success('Link copied to clipboard!');
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      // Fallback: copy to clipboard
+      // Fallback: try clipboard again
       try {
         await navigator.clipboard.writeText(window.location.href);
-        console.log('Link copied to clipboard');
+        toast.success('Link copied to clipboard!');
       } catch (clipboardError) {
         console.error('Failed to copy to clipboard:', clipboardError);
+        toast.error('Unable to share. Please copy the URL manually.');
       }
     }
   };
 
-  // Handle favorite functionality with analytics
+  // Handle favorite functionality with analytics and feedback
   const handleFavorite = () => {
-    setIsFavorited(!isFavorited);
+    const newFavoriteState = !isFavorited;
+    setIsFavorited(newFavoriteState);
     analytics.trackSubsidyInteraction('favorite', subsidy.id);
+    
+    if (newFavoriteState) {
+      toast.success('Added to favorites!');
+    } else {
+      toast.success('Removed from favorites!');
+    }
   };
 
   // Extract data with proper formatting
@@ -91,9 +134,9 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const requiredDocuments = formatArray(subsidy.required_documents);
   const fundingRateDetails = formatArray(subsidy.funding_rate_details);
 
-  // Get status based on available data
+  // Get status based on available data with type safety
   const getStatus = () => {
-    const deadline = (subsidy as any).deadline || (subsidy as any).application_deadline || (subsidy as any).application_window_end;
+    const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
     if (deadline) {
       const deadlineDate = new Date(deadline);
       const now = new Date();
@@ -133,17 +176,17 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     </button>
   );
 
-  // Extract les-aides.fr API data if available
-  const lesAidesData = (subsidy as any).raw_data?.fiche || null;
+  // Extract les-aides.fr API data if available with type safety
+  const lesAidesData = subsidy.raw_data?.fiche || null;
   const organisme = lesAidesData?.organisme || null;
   
   // Use les-aides.fr data if available, otherwise fallback to basic fields
   const title = lesAidesData?.nom || getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
   const description = getLocalizedContent(subsidy.description, language) || '';
   const agency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
-  const amount = formatAmount((subsidy as any).amount || (subsidy as any).funding_amount || (subsidy as any).amount_max);
-  const deadline = (subsidy as any).deadline || (subsidy as any).application_deadline || (subsidy as any).application_window_end;
-  const region = safeString((subsidy as any).geographic_scope || (subsidy as any).region || categories[0]);
+  const amount = formatAmount(subsidy.amount || subsidy.funding_amount || subsidy.amount_max);
+  const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
+  const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
 
   // Helper function to safely render content - avoid HTML in production
   const renderCleanContent = (content: string) => {
@@ -283,7 +326,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       }
     }
     
-    return safeString((subsidy as any).geographic_scope || (subsidy as any).region || categories[0]);
+    return safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
   };
 
   // Extract category from les-aides domaines
