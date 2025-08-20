@@ -209,11 +209,14 @@ export const RealFrenchDocumentTesting: React.FC<RealFrenchDocumentTestingProps>
     while (Date.now() - startTime < timeoutMs) {
       try {
         // Check job status first - this is where async results are actually stored
+        console.log(`🔍 Checking job status for: ${jobId}`);
         const { data: jobStatus, error: jobError } = await supabase
           .from('document_processing_jobs')
           .select('*')
           .eq('id', jobId)
           .maybeSingle();
+        
+        console.log('📊 Job query result:', { jobStatus, jobError });
         
         if (!jobError && jobStatus) {
           console.log(`Job status check - Status: ${jobStatus.status}, JobId: ${jobId}`);
