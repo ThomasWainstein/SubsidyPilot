@@ -154,15 +154,19 @@ const SubsidySearchPage = () => {
                 />
               </div>
             ) : (
-              <div className="flex">
-                {/* Desktop Sidebar - Always visible on lg+ screens */}
-                <aside className="hidden lg:block w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm min-h-screen">
-                  <div className="sticky top-0 p-6">
-                    <div className="pb-4 mb-4 border-b">
-                      <h2 className="text-lg font-semibold text-foreground">Filter Options</h2>
-                      <p className="text-sm text-muted-foreground">Refine your search results</p>
+              <div className="flex min-h-screen">
+                {/* Desktop Sidebar - ALWAYS VISIBLE FOR DEBUGGING */}
+                <aside className="w-80 bg-red-50 border-r-4 border-red-300 shadow-lg flex-shrink-0">
+                  <div className="p-6">
+                    <div className="pb-4 mb-4 border-b border-red-200">
+                      <h2 className="text-lg font-semibold text-red-800">🔍 Filter Options</h2>
+                      <p className="text-sm text-red-600">Refine your search results</p>
                     </div>
                     <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+                      <div className="bg-yellow-100 p-4 rounded border-2 border-yellow-400 mb-4">
+                        <p className="text-yellow-800 font-bold">DEBUG: Sidebar is rendering!</p>
+                        <p className="text-yellow-700 text-sm">If you see this, the sidebar layout works</p>
+                      </div>
                       <FiltersContent />
                     </div>
                   </div>
