@@ -11,6 +11,17 @@ export interface ExtractionResult {
     totalCost?: number;
   };
   tokensUsed?: number;
+  qualityScore?: number;
+  extractionMethod?: string;
+  ocrMetadata?: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
+  };
+  processingLog?: string[];
 }
 
 export type ClientType = 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
@@ -61,7 +72,11 @@ export const triggerExtraction = async (
         extractedData: data.extractedData,
         confidence: data.confidence || 0,
         costBreakdown: data.costBreakdown,
-        tokensUsed: data.tokensUsed
+        tokensUsed: data.tokensUsed,
+        qualityScore: data.qualityScore,
+        extractionMethod: data.extractionMethod,
+        ocrMetadata: data.ocrMetadata,
+        processingLog: data.processingLog
       };
     }
 

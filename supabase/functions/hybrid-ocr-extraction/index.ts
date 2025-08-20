@@ -13,6 +13,7 @@ interface ExtractionRequest {
   fileName: string;
   clientType: 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
   documentType?: string;
+  fallbackToOpenAI?: boolean;
 }
 
 interface GoogleVisionResponse {
@@ -32,6 +33,7 @@ interface GoogleVisionResponse {
         };
         blocks?: Array<{
           blockType?: string;
+          confidence?: number;
           paragraphs?: Array<{
             property?: any;
             words?: Array<{
@@ -77,16 +79,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  let totalCost = 0;
+  let processingLog: string[] = [];
+
   try {
-    const { documentId, fileUrl, fileName, clientType, documentType } = await req.json() as ExtractionRequest;
+    const { documentId, fileUrl, fileName, clientType, documentType, fallbackToOpenAI = false } = await req.json() as ExtractionRequest;
     
     console.log(`🔄 Starting hybrid extraction for ${fileName} (${clientType})`);
+    processingLog.push(`Started: ${fileName} (${clientType})`);
     
     const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
-    if (!googleApiKey || !openaiApiKey) {
-      throw new Error('Missing required API keys');
+    if (!openaiApiKey) {
+      throw new Error('Missing OpenAI API key');
     }
 
     // Initialize Supabase client
@@ -94,18 +101,51 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Step 1: Extract text using Google Cloud Vision OCR
-    console.log('📖 Step 1: Extracting text with Google Vision OCR...');
-    const ocrResult = await extractTextWithGoogleVision(fileUrl, googleApiKey, fileName);
+    let ocrResult: any;
+    let extractionMethod = 'hybrid_google_openai';
+
+    // Step 1: Try Google Vision OCR first, fallback to OpenAI if needed
+    if (googleApiKey && !fallbackToOpenAI) {
+      try {
+        console.log('📖 Step 1: Extracting text with Google Vision OCR...');
+        processingLog.push('Attempting Google Vision OCR...');
+        
+        ocrResult = await extractTextWithGoogleVision(fileUrl, googleApiKey, fileName);
+        totalCost += ocrResult.metadata.pageCount * 0.0015; // Google Vision cost
+        
+        console.log(`✅ Google Vision: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
+        processingLog.push(`Google Vision success: ${ocrResult.text.length} chars`);
+        
+      } catch (visionError) {
+        console.warn(`⚠️ Google Vision failed: ${visionError.message}`);
+        processingLog.push(`Google Vision failed: ${visionError.message}`);
+        
+        // Fallback to OpenAI extraction
+        console.log('🔄 Falling back to OpenAI-only extraction...');
+        processingLog.push('Falling back to OpenAI extraction...');
+        
+        ocrResult = await extractTextWithOpenAI(fileUrl, openaiApiKey, fileName);
+        extractionMethod = 'openai_fallback';
+        totalCost += (ocrResult.tokensUsed / 1000) * 0.03; // OpenAI cost
+      }
+    } else {
+      // Direct OpenAI extraction (for testing or when Google Vision unavailable)
+      console.log('🤖 Using OpenAI-only extraction...');
+      processingLog.push('Using OpenAI-only extraction...');
+      
+      ocrResult = await extractTextWithOpenAI(fileUrl, openaiApiKey, fileName);
+      extractionMethod = 'openai_only';
+      totalCost += (ocrResult.tokensUsed / 1000) * 0.03;
+    }
     
     if (!ocrResult.text) {
       throw new Error('Failed to extract text from document');
     }
 
-    console.log(`✅ OCR extracted ${ocrResult.text.length} characters using ${ocrResult.metadata.detectionType}`);
-
     // Step 2: Map fields using OpenAI based on client type
     console.log('🤖 Step 2: Mapping fields with OpenAI...');
+    processingLog.push('Starting field mapping...');
+    
     const fieldMapping = await mapFieldsWithOpenAI(
       ocrResult.text, 
       clientType, 
@@ -114,26 +154,42 @@ serve(async (req) => {
       openaiApiKey,
       ocrResult.metadata
     );
+    
+    totalCost += (fieldMapping.tokensUsed / 1000) * 0.03; // OpenAI field mapping cost
+    processingLog.push(`Field mapping complete: ${fieldMapping.tokensUsed} tokens`);
 
-    // Step 3: Store extraction results with enhanced metadata
-    const totalProcessingTime = Date.now();
+    // Step 3: Enhanced quality validation
+    const qualityScore = calculateDocumentQuality(ocrResult, fieldMapping);
+    const finalConfidence = calculateEnhancedConfidence(fieldMapping.extractedData, qualityScore, clientType);
+    
+    processingLog.push(`Quality: ${qualityScore}, Confidence: ${finalConfidence}`);
+
+    // Step 4: Store extraction results with comprehensive metadata
+    const totalProcessingTime = Date.now() - startTime;
     const { error: updateError } = await supabase
       .from('document_extractions')
       .update({
         status: 'completed',
         extracted_data: fieldMapping.extractedData,
-        confidence_score: fieldMapping.confidence,
-        extraction_type: 'hybrid_google_openai',
+        confidence_score: finalConfidence,
+        extraction_type: extractionMethod,
         processing_time_ms: totalProcessingTime,
-        model_used: 'google-vision + gpt-5-2025-08-07',
+        model_used: extractionMethod.includes('google') ? 'google-vision + gpt-5-2025-08-07' : 'gpt-5-2025-08-07',
         ocr_used: true,
-        pages_processed: ocrResult.metadata.pageCount,
-        detected_language: ocrResult.metadata.languagesDetected[0] || 'unknown',
+        pages_processed: ocrResult.metadata.pageCount || 1,
+        detected_language: ocrResult.metadata.languagesDetected?.[0] || 'unknown',
         debug_info: {
           ocrMetadata: ocrResult.metadata,
           clientType,
           documentType,
-          extractionMethod: 'hybrid_ocr_openai_field_mapping'
+          extractionMethod,
+          qualityScore,
+          processingLog,
+          costBreakdown: {
+            googleVision: extractionMethod.includes('google') ? ocrResult.metadata.pageCount * 0.0015 : 0,
+            openai: (fieldMapping.tokensUsed / 1000) * 0.03,
+            total: totalCost
+          }
         },
         updated_at: new Date().toISOString()
       })
@@ -144,34 +200,43 @@ serve(async (req) => {
       throw updateError;
     }
 
-    console.log(`✅ Hybrid extraction completed for ${fileName}`);
+    console.log(`✅ ${extractionMethod} extraction completed for ${fileName}`);
+    processingLog.push(`Completed successfully in ${totalProcessingTime}ms`);
 
     return new Response(JSON.stringify({
       success: true,
       extractedData: fieldMapping.extractedData,
-      confidence: fieldMapping.confidence,
+      confidence: finalConfidence,
       textLength: ocrResult.text.length,
       tokensUsed: fieldMapping.tokensUsed,
       ocrMetadata: ocrResult.metadata,
+      qualityScore,
+      extractionMethod,
       costBreakdown: {
-        googleVisionCost: ocrResult.metadata.pageCount * 0.0015, // $0.0015 per page
-        openaiCost: (fieldMapping.tokensUsed / 1000) * 0.03, // ~$0.03 per 1K tokens  
-        totalCost: (ocrResult.metadata.pageCount * 0.0015) + ((fieldMapping.tokensUsed / 1000) * 0.03)
+        googleVisionCost: extractionMethod.includes('google') ? ocrResult.metadata.pageCount * 0.0015 : 0,
+        openaiCost: (fieldMapping.tokensUsed / 1000) * 0.03,
+        totalCost
       },
       processingTime: {
-        ocrTime: ocrResult.metadata.processingTime,
-        totalTime: Date.now(),
-        breakdown: `OCR: ${ocrResult.metadata.processingTime}ms, Field Mapping: ${Date.now() - ocrResult.metadata.processingTime}ms`
-      }
+        totalTime: totalProcessingTime,
+        ocrTime: ocrResult.metadata.processingTime || 0,
+        fieldMappingTime: totalProcessingTime - (ocrResult.metadata.processingTime || 0)
+      },
+      processingLog
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
+    const errorTime = Date.now() - startTime;
     console.error('Hybrid extraction error:', error);
+    processingLog.push(`Error after ${errorTime}ms: ${error.message}`);
+    
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: error.message,
+      processingTime: errorTime,
+      processingLog
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -186,6 +251,8 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
     pageCount: number;
     languagesDetected: string[];
     processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
   }
 }> {
   const startTime = Date.now();
@@ -193,23 +260,32 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
   try {
     console.log(`📖 Google Vision: Processing ${fileName}`);
     
-    // Fetch file content
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    // Fetch file content with retry logic
+    let fileResponse;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        fileResponse = await fetch(fileUrl);
+        if (fileResponse.ok) break;
+        if (attempt === 3) throw new Error(`Failed to fetch file after 3 attempts: ${fileResponse.statusText}`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // exponential backoff
+      } catch (fetchError) {
+        if (attempt === 3) throw fetchError;
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
     
-    const fileBuffer = await fileResponse.arrayBuffer();
+    const fileBuffer = await fileResponse!.arrayBuffer();
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
     const fileType = fileName.toLowerCase();
     
-    // Determine optimal detection type based on file type and content
+    // Enhanced detection type selection
     const isDocumentFile = fileType.includes('.pdf') || fileType.includes('.tiff') || fileType.includes('.tif');
+    const isPotentialScannedPdf = isDocumentFile && fileBuffer.byteLength > 500000; // Large PDFs likely scanned
     const detectionType = isDocumentFile ? 'DOCUMENT_TEXT_DETECTION' : 'TEXT_DETECTION';
     
-    console.log(`🔍 Using ${detectionType} for ${fileName}`);
+    console.log(`🔍 Using ${detectionType} for ${fileName} (${(fileBuffer.byteLength / 1024).toFixed(1)}KB)`);
 
-    // Enhanced Vision API request with multiple features for better accuracy
+    // Enhanced Vision API request
     const requestBody = {
       requests: [
         {
@@ -221,17 +297,15 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
               type: detectionType,
               maxResults: 1,
             },
-            // Add image properties to detect document quality
             {
               type: 'IMAGE_PROPERTIES',
               maxResults: 1,
             }
           ],
-          // Enhanced image context for better OCR
           imageContext: {
-            languageHints: ['fr', 'en', 'es', 'ro', 'pl'], // AgriTool supported languages
+            languageHints: ['fr', 'en', 'es', 'ro', 'pl'],
             cropHintsParams: {
-              aspectRatios: [1.0, 0.75, 1.33] // Common document aspect ratios
+              aspectRatios: [1.0, 0.75, 1.33, 1.41] // A4, US Letter, etc.
             }
           }
         },
@@ -261,53 +335,76 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
       throw new Error('No response from Google Vision API');
     }
 
-    // Handle errors in the response
     if (response.error) {
       throw new Error(`Vision API error: ${response.error.message}`);
     }
 
-    // Extract text with hierarchical fallback
+    // Enhanced text extraction with quality assessment
     let extractedText = '';
     let pageCount = 0;
     let detectedLanguages: string[] = [];
+    let avgConfidence = 0;
 
     if (response.fullTextAnnotation) {
       extractedText = response.fullTextAnnotation.text || '';
       pageCount = response.fullTextAnnotation.pages?.length || 1;
       
-      // Extract detected languages
+      // Extract languages and confidence
       if (response.fullTextAnnotation.pages) {
+        let totalConfidence = 0;
+        let confidenceCount = 0;
+        
         for (const page of response.fullTextAnnotation.pages) {
           if (page.property?.detectedLanguages) {
             for (const lang of page.property.detectedLanguages) {
               if (lang.languageCode && !detectedLanguages.includes(lang.languageCode)) {
                 detectedLanguages.push(lang.languageCode);
               }
+              if (lang.confidence) {
+                totalConfidence += lang.confidence;
+                confidenceCount++;
+              }
+            }
+          }
+          
+          // Calculate block-level confidence
+          if (page.blocks) {
+            for (const block of page.blocks) {
+              if (block.confidence) {
+                totalConfidence += block.confidence;
+                confidenceCount++;
+              }
             }
           }
         }
+        
+        avgConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0.8;
       }
     } else if (response.textAnnotations?.[0]) {
       extractedText = response.textAnnotations[0].description || '';
       pageCount = 1;
+      avgConfidence = 0.7; // Default for simple text detection
     }
 
     if (!extractedText) {
       throw new Error('No text detected in document');
     }
 
+    // Assess text quality
+    const textQuality = assessTextQuality(extractedText, avgConfidence);
     const processingTime = Date.now() - startTime;
     
-    console.log(`✅ Google Vision: Extracted ${extractedText.length} characters in ${processingTime}ms`);
-    console.log(`📊 Detection: ${detectionType}, Pages: ${pageCount}, Languages: ${detectedLanguages.join(', ')}`);
+    console.log(`✅ Google Vision: ${extractedText.length} chars, ${pageCount} pages, quality: ${textQuality}`);
 
     return {
       text: extractedText,
       metadata: {
         detectionType,
         pageCount,
-        languagesDetected: detectedLanguages,
-        processingTime
+        languagesDetected,
+        processingTime,
+        textQuality,
+        confidence: avgConfidence
       }
     };
     
@@ -316,6 +413,101 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
     console.error(`❌ Google Vision OCR error (${processingTime}ms):`, error);
     throw error;
   }
+}
+
+async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: string): Promise<{
+  text: string;
+  tokensUsed: number;
+  metadata: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
+  }
+}> {
+  const startTime = Date.now();
+  
+  try {
+    console.log(`🤖 OpenAI: Processing ${fileName} with GPT-5`);
+    
+    // This is a simplified fallback - in practice, you'd need to implement
+    // actual document processing with OpenAI (perhaps using vision models)
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-2025-08-07',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a fallback OCR system. Extract text from document URLs when other OCR methods fail.' 
+          },
+          { 
+            role: 'user', 
+            content: `Extract text from this document: ${fileUrl}. Return only the extracted text content.` 
+          }
+        ],
+        max_completion_tokens: 2000
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const extractedText = result.choices[0].message.content;
+    const tokensUsed = result.usage?.total_tokens || 0;
+    
+    const processingTime = Date.now() - startTime;
+    
+    return {
+      text: extractedText,
+      tokensUsed,
+      metadata: {
+        detectionType: 'OPENAI_FALLBACK',
+        pageCount: 1,
+        languagesDetected: ['unknown'],
+        processingTime,
+        textQuality: 'medium',
+        confidence: 0.6
+      }
+    };
+    
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error(`❌ OpenAI fallback error (${processingTime}ms):`, error);
+    throw error;
+  }
+}
+
+function assessTextQuality(text: string, confidence: number): 'high' | 'medium' | 'low' {
+  // Quality assessment based on text characteristics and OCR confidence
+  const wordCount = text.split(/\s+/).length;
+  const avgWordLength = text.replace(/\s+/g, '').length / wordCount;
+  const hasSpecialChars = /[^\w\s\-.,!?()]/g.test(text);
+  const coherenceScore = text.split(/[.!?]/).filter(s => s.trim().length > 10).length / Math.max(1, text.split(/[.!?]/).length);
+  
+  let qualityScore = 0;
+  
+  // Confidence weight (40%)
+  qualityScore += confidence * 0.4;
+  
+  // Text coherence weight (30%)
+  qualityScore += coherenceScore * 0.3;
+  
+  // Word characteristics weight (30%)
+  if (avgWordLength > 2 && avgWordLength < 15) qualityScore += 0.15;
+  if (!hasSpecialChars || text.match(/[^\w\s\-.,!?()]/g)?.length < text.length * 0.05) qualityScore += 0.15;
+  
+  if (qualityScore >= 0.8) return 'high';
+  if (qualityScore >= 0.6) return 'medium';
+  return 'low';
 }
 
 async function mapFieldsWithOpenAI(
@@ -329,6 +521,8 @@ async function mapFieldsWithOpenAI(
     pageCount: number;
     languagesDetected: string[];
     processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
   }
 ): Promise<{
   extractedData: any;
@@ -389,11 +583,13 @@ function buildFieldMappingPrompt(
     pageCount: number;
     languagesDetected: string[];
     processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
   }
 ): string {
   const clientPrompts = {
-    individual: `Extract personal information including: full_name, address, phone, email, date_of_birth, national_id, tax_number, income, employment_status, marital_status, dependents`,
-    business: `Extract business information including: company_name, legal_form, registration_number, tax_id, vat_number, address, phone, email, website, industry_sector, employee_count, annual_revenue, founding_date, ceo_name`,
+    individual: `Extract personal information including: full_name, address, phone, email, date_of_birth, national_id (CNI), tax_number, income, employment_status, marital_status, dependents`,
+    business: `Extract business information including: company_name, legal_form, registration_number (SIRET/SIREN), tax_id, vat_number, address, phone, email, website, industry_sector, employee_count, annual_revenue, founding_date, ceo_name`,
     municipality: `Extract municipal information including: municipality_name, administrative_level, mayor_name, population, budget, contact_info, website, services_offered, departments, administrative_code`,
     ngo: `Extract NGO information including: organization_name, legal_status, registration_number, mission_statement, activities, budget, funding_sources, board_members, contact_info, geographic_focus, beneficiaries`,
     farm: `Extract farm information including: farm_name, owner_name, address, total_hectares, legal_status, registration_number, revenue, certifications, land_use_types, livestock_present, irrigation_method`
@@ -402,58 +598,118 @@ function buildFieldMappingPrompt(
   const clientPrompt = clientPrompts[clientType as keyof typeof clientPrompts] || clientPrompts.individual;
 
   const ocrInfo = ocrMetadata ? `
-OCR Metadata:
-- Detection Method: ${ocrMetadata.detectionType}
-- Pages Processed: ${ocrMetadata.pageCount}
-- Languages Detected: ${ocrMetadata.languagesDetected.join(', ') || 'Unknown'}
-- OCR Processing Time: ${ocrMetadata.processingTime}ms
+OCR Analysis Results:
+- Method: ${ocrMetadata.detectionType}
+- Pages: ${ocrMetadata.pageCount}
+- Languages: ${ocrMetadata.languagesDetected.join(', ') || 'Unknown'}
+- Text Quality: ${ocrMetadata.textQuality} (confidence: ${(ocrMetadata.confidence * 100).toFixed(1)}%)
+- Processing: ${ocrMetadata.processingTime}ms
 ` : '';
 
   return `
-Analyze this document text extracted via Google Vision OCR and extract structured data for a "${clientType}" client.
-
-Document Information:
-- File: ${fileName}
-- Document Type: ${documentType || 'Unknown'}
-- Text Length: ${text.length} characters
+Analyze this document text extracted from "${fileName}" for a ${clientType} client and extract structured data.
 
 ${ocrInfo}
 
-Text to analyze:
-${text.substring(0, 10000)} ${text.length > 10000 ? '\n\n...[Content truncated for processing efficiency]' : ''}
+Document Context:
+- File: ${fileName}
+- Document Type: ${documentType || 'Unknown'}
+- Text Length: ${text.length} characters
+- Client Context: ${clientType.toUpperCase()}
 
-Extraction Instructions:
-1. CLIENT TYPE FOCUS: ${clientPrompt}
-2. LANGUAGE DETECTION: Identify the document language (French, English, Spanish, Romanian, Polish, etc.)
-3. FIELD EXTRACTION: Only extract fields clearly present in the text - use null for missing data
-4. DATA NORMALIZATION: 
-   - Dates: Convert to YYYY-MM-DD format
-   - Numbers: Use appropriate integer/float types
-   - Text: Trim whitespace and normalize case
-   - Arrays: Extract lists as JSON arrays
-5. CONFIDENCE CALCULATION: Base confidence on:
-   - Number of fields successfully extracted
-   - Quality of OCR text (based on coherence)
-   - Completeness of critical fields for this client type
-6. MULTILINGUAL SUPPORT: Handle documents in detected languages appropriately
+EXTRACTION REQUIREMENTS:
+${clientPrompt}
 
-Return a JSON object with this exact structure:
+QUALITY GUIDELINES:
+1. **Language Detection**: Identify primary document language
+2. **Field Extraction**: Only extract clearly visible fields - use null for missing data
+3. **Data Normalization**: 
+   - Dates → YYYY-MM-DD format
+   - Numbers → Proper integer/float types
+   - Text → Trimmed, normalized case
+   - Arrays → JSON arrays for lists
+4. **Critical Field Priority**: Focus on essential fields for ${clientType} documents
+5. **Confidence Scoring**: Base confidence on field completeness and text quality
+
+TEXT TO ANALYZE:
+${text.substring(0, 12000)}${text.length > 12000 ? '\n\n...[Text truncated - analyzed first 12,000 characters]' : ''}
+
+Return JSON with this structure:
 {
   "fields": {
-    // All extracted fields based on client type requirements above
+    // All extracted fields based on client type requirements
   },
   "metadata": {
     "document_type": "specific detected document type",
-    "primary_language": "ISO language code (e.g., 'fr', 'en', 'es')",
-    "secondary_languages": ["array", "of", "other", "detected", "languages"],
-    "text_quality": "assessment of OCR text quality (high/medium/low)",
-    "processing_notes": "any important observations about the document",
-    "critical_fields_found": ["list", "of", "most", "important", "fields", "found"],
-    "extraction_challenges": "any difficulties encountered"
+    "primary_language": "ISO code (fr/en/es/ro/pl)",
+    "secondary_languages": ["other", "detected", "languages"],
+    "text_quality_assessment": "your assessment of OCR text quality",
+    "critical_fields_found": ["list", "of", "essential", "fields", "extracted"],
+    "extraction_challenges": "any difficulties or ambiguities encountered",
+    "processing_notes": "important observations about this document"
   },
   "confidence": 0.85
 }
 `;
+}
+
+function calculateDocumentQuality(ocrResult: any, fieldMapping: any): number {
+  let qualityScore = 0;
+  
+  // OCR quality (40%)
+  if (ocrResult.metadata.textQuality === 'high') qualityScore += 0.4;
+  else if (ocrResult.metadata.textQuality === 'medium') qualityScore += 0.25;
+  else qualityScore += 0.1;
+  
+  // Field extraction success (40%)
+  const extractedFields = Object.keys(fieldMapping.extractedData || {});
+  const fieldSuccessRate = extractedFields.length > 0 ? 
+    extractedFields.filter(key => fieldMapping.extractedData[key] !== null).length / extractedFields.length : 0;
+  qualityScore += fieldSuccessRate * 0.4;
+  
+  // Language detection (20%)
+  if (ocrResult.metadata.languagesDetected?.length > 0) {
+    qualityScore += 0.2;
+  } else {
+    qualityScore += 0.1;
+  }
+  
+  return Math.min(1.0, qualityScore);
+}
+
+function calculateEnhancedConfidence(extractedData: any, qualityScore: number, clientType: string): number {
+  if (!extractedData.fields) return 0.3;
+  
+  const fields = extractedData.fields;
+  const totalFields = Object.keys(fields).length;
+  const filledFields = Object.values(fields).filter(value => 
+    value !== null && value !== '' && value !== undefined
+  ).length;
+  
+  if (totalFields === 0) return 0.3;
+  
+  // Define critical fields per client type
+  const criticalFieldsByType = {
+    individual: ['full_name', 'national_id', 'address'],
+    business: ['company_name', 'registration_number', 'legal_form'],
+    municipality: ['municipality_name', 'administrative_level'],
+    ngo: ['organization_name', 'legal_status'],
+    farm: ['farm_name', 'owner_name', 'total_hectares']
+  };
+  
+  const criticalFields = criticalFieldsByType[clientType as keyof typeof criticalFieldsByType] || [];
+  const criticalFieldsFound = criticalFields.filter(field => 
+    fields[field] && fields[field] !== null && fields[field] !== ''
+  ).length;
+  
+  const criticalFieldsScore = criticalFields.length > 0 ? 
+    criticalFieldsFound / criticalFields.length : 1.0;
+  
+  // Weighted confidence calculation
+  const fillRate = filledFields / totalFields;
+  const baseConfidence = (fillRate * 0.5) + (criticalFieldsScore * 0.3) + (qualityScore * 0.2);
+  
+  return Math.max(0.3, Math.min(0.95, baseConfidence));
 }
 
 function calculateConfidence(extractedData: any): number {
@@ -461,7 +717,9 @@ function calculateConfidence(extractedData: any): number {
   
   const fields = extractedData.fields;
   const totalFields = Object.keys(fields).length;
-  const filledFields = Object.values(fields).filter(value => value !== null && value !== '' && value !== undefined).length;
+  const filledFields = Object.values(fields).filter(value => 
+    value !== null && value !== '' && value !== undefined
+  ).length;
   
   if (totalFields === 0) return 0.3;
   

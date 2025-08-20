@@ -13,6 +13,17 @@ export interface ExtractionResult {
     totalCost?: number;
   };
   tokensUsed?: number;
+  qualityScore?: number;
+  extractionMethod?: string;
+  ocrMetadata?: {
+    detectionType: string;
+    pageCount: number;
+    languagesDetected: string[];
+    processingTime: number;
+    textQuality: 'high' | 'medium' | 'low';
+    confidence: number;
+  };
+  processingLog?: string[];
 }
 
 export const triggerDocumentExtraction = async (
