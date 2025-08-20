@@ -7,6 +7,7 @@ import { LesAidesDocumentTester } from '@/components/LesAidesDocumentTester';
 import { AlternativeDocumentStrategy } from '@/components/AlternativeDocumentStrategy';
 import { EnhancedSystemValidationSummary } from '@/components/EnhancedSystemValidationSummary';
 import { PhaseValidationDiagnostics } from '@/components/PhaseValidationDiagnostics';
+import { RealFrenchDocumentTesting } from '@/components/RealFrenchDocumentTesting';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 
@@ -78,7 +79,7 @@ export default function ValidationPage() {
       <Tabs defaultValue="diagnostics" className="space-y-4">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="diagnostics">🔍 Diagnostics</TabsTrigger>
-          <TabsTrigger value="real-docs">Real French Documents</TabsTrigger>
+          <TabsTrigger value="real-docs">🇫🇷 French Docs</TabsTrigger>
           <TabsTrigger value="testing">Manual Testing</TabsTrigger>
           <TabsTrigger value="health">Production Health</TabsTrigger>
           <TabsTrigger value="validation">System Validation</TabsTrigger>
@@ -90,7 +91,7 @@ export default function ValidationPage() {
         </TabsContent>
 
         <TabsContent value="real-docs">
-          <AlternativeDocumentStrategy />
+          <RealFrenchDocumentTesting />
         </TabsContent>
 
         <TabsContent value="testing">
@@ -117,7 +118,7 @@ export default function ValidationPage() {
               <div className="text-center py-12 text-muted-foreground">
                 <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Test Results Yet</h3>
-                <p>Upload real documents in the "Real Document Testing" tab to generate accuracy results.</p>
+                <p>Test real French documents in the "🇫🇷 French Docs" tab to generate accuracy results.</p>
               </div>
             </CardContent>
           </Card>
