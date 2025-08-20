@@ -139,10 +139,7 @@ const SubsidySearchPage = () => {
                 <div className="flex-1">
                   <SearchHeader 
                     subsidyCount={filteredCount}
-                    totalFunding={subsidies.reduce((sum, subsidy) => {
-                      const amount = (subsidy as any).amount_max || (subsidy as any).amount || 0;
-                      return sum + amount;
-                    }, 0)}
+                    lastUpdated={subsidies.length > 0 ? new Date(Math.max(...subsidies.map(s => new Date((s as any).updated_at || (s as any).created_at).getTime()))) : undefined}
                     loading={loading}
                   />
                 </div>

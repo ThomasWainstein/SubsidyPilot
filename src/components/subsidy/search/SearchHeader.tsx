@@ -3,16 +3,32 @@ import { useLanguage } from '@/contexts/language';
 
 interface SearchHeaderProps {
   subsidyCount?: number;
-  totalFunding?: number;
+  lastUpdated?: Date;
   loading?: boolean;
 }
 
 const SearchHeader: React.FC<SearchHeaderProps> = ({ 
   subsidyCount, 
-  totalFunding, 
+  lastUpdated, 
   loading 
 }) => {
   const { t } = useLanguage();
+  
+  const getLastUpdatedText = () => {
+    if (!lastUpdated) return 'Recently updated';
+    
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Updated just now';
+    if (diffInHours < 24) return `Updated ${diffInHours} hours ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays === 1) return 'Updated yesterday';
+    if (diffInDays < 7) return `Updated ${diffInDays} days ago`;
+    
+    return `Updated ${lastUpdated.toLocaleDateString()}`;
+  };
   
   return (
     <div className="space-y-3">
@@ -30,11 +46,9 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
             <div className="text-2xl font-bold text-primary">
               {subsidyCount} opportunities
             </div>
-            {totalFunding && totalFunding > 0 && (
-              <div className="text-sm text-muted-foreground">
-                €{totalFunding.toLocaleString()} total funding
-              </div>
-            )}
+            <div className="text-sm text-muted-foreground">
+              {getLastUpdatedText()}
+            </div>
           </div>
         )}
       </div>
