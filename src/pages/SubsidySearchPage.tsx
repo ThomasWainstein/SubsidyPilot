@@ -121,50 +121,58 @@ const SubsidySearchPage = () => {
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
 
-        <main className="flex-grow py-4 md:py-6 px-6 w-full">
+        <main className="flex-grow">
           <div className="w-full">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex-1">
-                <SearchHeader />
+            {/* Header Section - Full Width */}
+            <div className="border-b bg-white dark:bg-gray-800 px-6 py-4">
+              <div className="flex justify-between items-center">
+                <div className="flex-1">
+                  <SearchHeader />
+                </div>
+                <AdminPanelLink />
               </div>
-              <AdminPanelLink />
             </div>
 
             {error ? (
-              <EmptyState
-                icon={AlertCircle}
-                title="Error Loading Subsidies"
-                description="Unable to load subsidy data. Please try again or contact support if the problem persists."
-                actionLabel="Retry"
-                onAction={() => navigate(0)}
-              />
+              <div className="px-6 py-8">
+                <EmptyState
+                  icon={AlertCircle}
+                  title="Error Loading Subsidies"
+                  description="Unable to load subsidy data. Please try again or contact support if the problem persists."
+                  actionLabel="Retry"
+                  onAction={() => navigate(0)}
+                />
+              </div>
             ) : (
-              <div className="space-y-4">
-                {/* Mobile filters as sheet */}
-                <div className="lg:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" className="w-full flex items-center gap-2 min-h-[44px]">
-                        <Filter size={16} />
-                        Filter & Search Options
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-full sm:w-80 p-0">
-                      <div className="h-full overflow-y-auto p-4">
-                        <FiltersContent />
-                      </div>
-                    </SheetContent>
-                  </Sheet>
+              <div className="flex min-h-screen">
+                {/* Desktop Sidebar - Collapsible */}
+                <div className="hidden lg:block w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                  <div className="h-full overflow-y-auto p-6">
+                    <FiltersContent />
+                  </div>
                 </div>
 
-                {/* Desktop layout */}
-<div className="hidden lg:grid lg:grid-cols-6 gap-8 w-full">
-                  <div className="lg:col-span-1 min-w-0">
-                    <div className="sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                      <FiltersContent />
+                {/* Main Content Area - Full Width */}
+                <div className="flex-1 min-w-0">
+                  <div className="p-6">
+                    {/* Mobile filters as sheet */}
+                    <div className="lg:hidden mb-6">
+                      <Sheet>
+                        <SheetTrigger asChild>
+                          <Button variant="outline" className="w-full flex items-center gap-2 min-h-[44px]">
+                            <Filter size={16} />
+                            Filter & Search Options
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-full sm:w-80 p-0">
+                          <div className="h-full overflow-y-auto p-4">
+                            <FiltersContent />
+                          </div>
+                        </SheetContent>
+                      </Sheet>
                     </div>
-                  </div>
-                  <div className="lg:col-span-5 w-full">
+
+                    {/* Search Results - Full Width */}
                     <SearchResultsPanel
                       searchQuery={searchQuery}
                       onSearchQueryChange={setSearchQuery}
@@ -179,23 +187,6 @@ const SubsidySearchPage = () => {
                       onClearFilters={clearFilters}
                     />
                   </div>
-                </div>
-
-                {/* Mobile layout */}
-                <div className="lg:hidden">
-                  <SearchResultsPanel
-                    searchQuery={searchQuery}
-                    onSearchQueryChange={setSearchQuery}
-                    showFilters={false}
-                    onToggleFilters={() => {}}
-                    subsidies={subsidies as any}
-                    totalCount={totalCount}
-                    filteredCount={filteredCount}
-                    loading={loading}
-                    error={error}
-                    farmId={farmId}
-                    onClearFilters={clearFilters}
-                  />
                 </div>
               </div>
             )}

@@ -357,67 +357,67 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
         </div>
       )}
 
-      {/* Results Grid */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <SubsidyLoadingCard key={i} />
-            ))}
+          {/* Results Grid */}
+          <div className="space-y-4">
+            {loading ? (
+              <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <SubsidyLoadingCard key={i} />
+                ))}
+              </div>
+            ) : subsidies.length === 0 ? (
+              <Card>
+                <CardContent className="py-8">
+                  <EmptySubsidyState 
+                    type="no-results"
+                    searchQuery={searchQuery}
+                    onClearFilters={onClearFilters}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Open Subsidies */}
+                {openSubsidies.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-foreground">
+                      Available Funding Opportunities
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        Funding programs currently accepting applications
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 gap-6">
+                      {openSubsidies.map((subsidy) => (
+                        <CleanSubsidyCard 
+                          key={subsidy.id} 
+                          subsidy={subsidy} 
+                          showMatchScore={Boolean(farmId)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Closed Subsidies */}
+                {closedSubsidies.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold mb-4 text-muted-foreground">
+                      Recently Closed ({closedSubsidies.length})
+                    </h3>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 4xl:grid-cols-5 gap-6">
+                      {closedSubsidies.slice(0, 8).map((subsidy) => (
+                        <CleanSubsidyCard 
+                          key={subsidy.id} 
+                          subsidy={subsidy} 
+                          showMatchScore={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        ) : subsidies.length === 0 ? (
-          <Card>
-            <CardContent className="py-8">
-              <EmptySubsidyState 
-                type="no-results"
-                searchQuery={searchQuery}
-                onClearFilters={onClearFilters}
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Open Subsidies */}
-            {openSubsidies.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-foreground">
-                  Available Funding Opportunities
-                  <span className="text-sm font-normal text-muted-foreground ml-2">
-                    Funding programs currently accepting applications
-                  </span>
-                </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {openSubsidies.map((subsidy) => (
-                    <CleanSubsidyCard 
-                      key={subsidy.id} 
-                      subsidy={subsidy} 
-                      showMatchScore={Boolean(farmId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Closed Subsidies */}
-            {closedSubsidies.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4 text-muted-foreground">
-                  Recently Closed ({closedSubsidies.length})
-                </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {closedSubsidies.slice(0, 4).map((subsidy) => (
-                    <CleanSubsidyCard 
-                      key={subsidy.id} 
-                      subsidy={subsidy} 
-                      showMatchScore={false}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
       
       {/* Simple Tips */}
       {!loading && openSubsidies.length > 0 && (

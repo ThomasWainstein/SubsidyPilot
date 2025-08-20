@@ -20,6 +20,10 @@ export default {
       },
     },
     extend: {
+      screens: {
+        '3xl': '1920px',
+        '4xl': '2560px',
+      },
       fontFamily: {
         sans: ["Roboto", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif", ...fontFamily.sans],
       },

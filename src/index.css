@@ -102,3 +102,16 @@
 .step-number {
   @apply flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium;
 }
+
+/* Ultra-wide screen support for better grid layouts */
+@media (min-width: 1920px) {
+  .grid-cols-3xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 2560px) {
+  .grid-cols-4xl\:grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
