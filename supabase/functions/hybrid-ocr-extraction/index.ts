@@ -124,15 +124,15 @@ serve(async (req) => {
         console.log('📖 Step 1: Extracting text with Google Document AI...');
         processingLog.push('Attempting Google Document AI...');
         
-        ocrResult = await extractTextWithGoogleVision(fileUrl, documentAIApiKey, fileName);
+        ocrResult = await extractTextWithDocumentAI(fileUrl, documentAIApiKey, fileName);
         totalCost += ocrResult.metadata.pageCount * 0.0015; // Document AI cost
         
         console.log(`✅ Document AI: ${ocrResult.text.length} chars, ${ocrResult.metadata.detectionType}`);
         processingLog.push(`Document AI success: ${ocrResult.text.length} chars`);
         
-      } catch (visionError) {
-        console.warn(`⚠️ Document AI failed: ${visionError.message}`);
-        processingLog.push(`Document AI failed: ${visionError.message}`);
+      } catch (documentAIError) {
+        console.warn(`⚠️ Document AI failed: ${documentAIError.message}`);
+        processingLog.push(`Document AI failed: ${documentAIError.message}`);
         
         // Fallback to OpenAI extraction
         console.log('🔄 Falling back to OpenAI-only extraction...');
@@ -320,7 +320,7 @@ serve(async (req) => {
   }
 });
 
-async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, fileName: string): Promise<{
+async function extractTextWithDocumentAI(fileUrl: string, apiKey: string, fileName: string): Promise<{
   text: string;
   metadata: {
     detectionType: string;
