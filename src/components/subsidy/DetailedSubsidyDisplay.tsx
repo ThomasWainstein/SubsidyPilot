@@ -7,6 +7,7 @@ import { getLocalizedContent } from '@/utils/language';
 import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
 import { cleanHtmlContent, extractTextContent, containsHtml } from '@/utils/htmlUtils';
 import OrganizationLogo from './OrganizationLogo';
+import { analytics } from '@/lib/analytics/events';
 
 interface DetailedSubsidyDisplayProps {
   subsidy: any;
@@ -21,8 +22,10 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorited, setIsFavorited] = useState(false);
 
-  // Handle share functionality
+  // Handle share functionality with analytics
   const handleShare = async () => {
+    analytics.trackSubsidyInteraction('share', subsidy.id);
+    
     const shareData = {
       title: title,
       text: `Check out this subsidy: ${title}`,
@@ -48,6 +51,12 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
         console.error('Failed to copy to clipboard:', clipboardError);
       }
     }
+  };
+
+  // Handle favorite functionality with analytics
+  const handleFavorite = () => {
+    setIsFavorited(!isFavorited);
+    analytics.trackSubsidyInteraction('favorite', subsidy.id);
   };
 
   // Extract data with proper formatting
@@ -84,7 +93,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
 
   // Get status based on available data
   const getStatus = () => {
-    const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
+    const deadline = (subsidy as any).deadline || (subsidy as any).application_deadline || (subsidy as any).application_window_end;
     if (deadline) {
       const deadlineDate = new Date(deadline);
       const now = new Date();
@@ -132,9 +141,9 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const title = lesAidesData?.nom || getLocalizedContent(subsidy.title, language) || 'Untitled Subsidy';
   const description = getLocalizedContent(subsidy.description, language) || '';
   const agency = organisme?.raison_sociale || organisme?.sigle || safeString(subsidy.agency || subsidy.issuing_body);
-  const amount = formatAmount(subsidy.amount || subsidy.funding_amount);
-  const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
-  const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+  const amount = formatAmount((subsidy as any).amount || (subsidy as any).funding_amount || (subsidy as any).amount_max);
+  const deadline = (subsidy as any).deadline || (subsidy as any).application_deadline || (subsidy as any).application_window_end;
+  const region = safeString((subsidy as any).geographic_scope || (subsidy as any).region || categories[0]);
 
   // Helper function to safely render content - avoid HTML in production
   const renderCleanContent = (content: string) => {
@@ -274,7 +283,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       }
     }
     
-    return safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+    return safeString((subsidy as any).geographic_scope || (subsidy as any).region || categories[0]);
   };
 
   // Extract category from les-aides domaines
@@ -312,7 +321,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
             </div>
             <div className="flex items-center space-x-3">
               <button 
-                onClick={() => setIsFavorited(!isFavorited)}
+                onClick={handleFavorite}
                 className={`p-2 rounded-full transition-colors ${
                   isFavorited ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 }`}

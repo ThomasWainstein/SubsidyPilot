@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,8 @@ import { ArrowLeft } from 'lucide-react';
 import { DetailedSubsidyDisplay } from '@/components/subsidy/DetailedSubsidyDisplay';
 import SubsidyDetailErrorBoundary from '@/components/error/SubsidyDetailErrorBoundary';
 import { SubsidyDetailSkeleton } from '@/components/ui/SubsidyLoadingSkeleton';
+import { analytics } from '@/lib/analytics/events';
+import { setupSubsidyPageSEO } from '@/lib/seo/structured-data';
 
 const SubsidyDetailPage = () => {
   const { subsidyId } = useParams<{ subsidyId: string }>();
@@ -39,6 +41,34 @@ const SubsidyDetailPage = () => {
     },
     enabled: !!subsidyId
   });
+
+  // Analytics and SEO setup
+  useEffect(() => {
+    if (subsidy) {
+      // Track subsidy view
+      analytics.trackSubsidyView({
+        subsidyId: subsidyId!,
+        title: String((subsidy as any).title || ''),
+        region: String((subsidy as any).geographic_scope || (subsidy as any).region || ''),
+        amount: String((subsidy as any).amount || (subsidy as any).funding_amount || (subsidy as any).amount_max || ''),
+        source: document.referrer.includes('/search') ? 'search' : 'direct'
+      });
+
+      // Setup SEO
+      setupSubsidyPageSEO(subsidy);
+    }
+  }, [subsidy, subsidyId]);
+
+  // Track errors
+  useEffect(() => {
+    if (error) {
+      analytics.trackError({
+        action: 'page_error',
+        message: error.message,
+        url: window.location.href
+      });
+    }
+  }, [error]);
 
   if (isLoading) {
     return (
