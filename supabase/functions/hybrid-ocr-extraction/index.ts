@@ -319,34 +319,56 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
   const startTime = Date.now();
   
   try {
-    console.log(`📖 Google Vision: Processing ${fileName}`);
+    console.log(`📖 Google Vision: Processing ${fileName} via Direct REST API`);
     
-    // Fetch file content with retry logic
+    // Fetch file content with timeout and retry logic
     let fileResponse;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        fileResponse = await fetch(fileUrl);
-        if (fileResponse.ok) break;
-        if (attempt === 3) throw new Error(`Failed to fetch file after 3 attempts: ${fileResponse.statusText}`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // exponential backoff
-      } catch (fetchError) {
-        if (attempt === 3) throw fetchError;
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        console.log(`🔄 Attempt ${attempt}: Fetching ${fileUrl}`);
+        
+        // Create timeout promise for fetch
+        const fetchPromise = fetch(fileUrl);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('File fetch timeout after 15 seconds')), 15000)
+        );
+        
+        fileResponse = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+        
+        if (fileResponse.ok) {
+          console.log(`✅ File fetched successfully: ${fileResponse.status}`);
+          break;
+        }
+        
+        if (attempt === 2) throw new Error(`Failed to fetch file after 2 attempts: ${fileResponse.statusText}`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second backoff
+        
+      } catch (fetchError: any) {
+        console.error(`❌ Fetch attempt ${attempt} failed:`, fetchError.message);
+        if (attempt === 2) throw new Error(`File fetch failed: ${fetchError.message}`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
     
+    // Convert to base64 with size limit
     const fileBuffer = await fileResponse!.arrayBuffer();
-    const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
-    const fileType = fileName.toLowerCase();
+    const fileSizeMB = fileBuffer.byteLength / (1024 * 1024);
     
-    // Enhanced detection type selection
+    if (fileSizeMB > 20) {
+      throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB (max 20MB)`);
+    }
+    
+    console.log(`📄 File size: ${fileSizeMB.toFixed(2)}MB`);
+    const base64Content = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    
+    // Determine detection type
+    const fileType = fileName.toLowerCase();
     const isDocumentFile = fileType.includes('.pdf') || fileType.includes('.tiff') || fileType.includes('.tif');
-    const isPotentialScannedPdf = isDocumentFile && fileBuffer.byteLength > 500000; // Large PDFs likely scanned
     const detectionType = isDocumentFile ? 'DOCUMENT_TEXT_DETECTION' : 'TEXT_DETECTION';
     
-    console.log(`🔍 Using ${detectionType} for ${fileName} (${(fileBuffer.byteLength / 1024).toFixed(1)}KB)`);
+    console.log(`🔍 Using ${detectionType} for ${fileName}`);
 
-    // Enhanced Vision API request
+    // Direct REST API call with timeout
     const requestBody = {
       requests: [
         {
@@ -357,23 +379,18 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
             {
               type: detectionType,
               maxResults: 1,
-            },
-            {
-              type: 'IMAGE_PROPERTIES',
-              maxResults: 1,
             }
           ],
           imageContext: {
-            languageHints: ['fr', 'en', 'es', 'ro', 'pl'],
-            cropHintsParams: {
-              aspectRatios: [1.0, 0.75, 1.33, 1.41] // A4, US Letter, etc.
-            }
+            languageHints: ['fr', 'en', 'es', 'ro', 'pl']
           }
         },
       ],
     };
 
-    const visionResponse = await fetch(
+    // Create Vision API call with timeout
+    console.log('🚀 Calling Google Vision API...');
+    const visionPromise = fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
         method: 'POST',
@@ -383,13 +400,22 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
         body: JSON.stringify(requestBody),
       }
     );
+    
+    const visionTimeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Google Vision API timeout after 20 seconds')), 20000)
+    );
+
+    const visionResponse = await Promise.race([visionPromise, visionTimeoutPromise]) as Response;
 
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      throw new Error(`Google Vision API error: ${visionResponse.statusText} - ${errorText}`);
+      console.error(`❌ Vision API HTTP Error: ${visionResponse.status}`, errorText);
+      throw new Error(`Vision API HTTP ${visionResponse.status}: ${errorText.substring(0, 200)}`);
     }
 
     const result: GoogleVisionResponse = await visionResponse.json();
+    console.log('📋 Vision API response received');
+    
     const response = result.responses?.[0];
     
     if (!response) {
@@ -397,10 +423,11 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
     }
 
     if (response.error) {
-      throw new Error(`Vision API error: ${response.error.message}`);
+      console.error('❌ Vision API Error:', response.error);
+      throw new Error(`Vision API error ${response.error.code}: ${response.error.message}`);
     }
 
-    // Enhanced text extraction with quality assessment
+    // Extract text with enhanced error handling
     let extractedText = '';
     let pageCount = 0;
     let detectedLanguages: string[] = [];
@@ -410,52 +437,45 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
       extractedText = response.fullTextAnnotation.text || '';
       pageCount = response.fullTextAnnotation.pages?.length || 1;
       
-      // Extract languages and confidence
+      // Extract languages
       if (response.fullTextAnnotation.pages) {
-        let totalConfidence = 0;
-        let confidenceCount = 0;
-        
         for (const page of response.fullTextAnnotation.pages) {
           if (page.property?.detectedLanguages) {
             for (const lang of page.property.detectedLanguages) {
               if (lang.languageCode && !detectedLanguages.includes(lang.languageCode)) {
                 detectedLanguages.push(lang.languageCode);
               }
-              if (lang.confidence) {
-                totalConfidence += lang.confidence;
-                confidenceCount++;
-              }
-            }
-          }
-          
-          // Calculate block-level confidence
-          if (page.blocks) {
-            for (const block of page.blocks) {
-              if (block.confidence) {
-                totalConfidence += block.confidence;
-                confidenceCount++;
-              }
             }
           }
         }
-        
-        avgConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0.8;
       }
+      avgConfidence = 0.8; // Default confidence for full text
     } else if (response.textAnnotations?.[0]) {
       extractedText = response.textAnnotations[0].description || '';
       pageCount = 1;
       avgConfidence = 0.7; // Default for simple text detection
     }
 
-    if (!extractedText) {
-      throw new Error('No text detected in document');
+    if (!extractedText || extractedText.trim().length === 0) {
+      console.warn('⚠️ No text detected by Vision API');
+      return {
+        text: '',
+        metadata: {
+          detectionType,
+          pageCount: 0,
+          languagesDetected: [],
+          processingTime: Date.now() - startTime,
+          textQuality: 'low',
+          confidence: 0
+        }
+      };
     }
 
     // Assess text quality
     const textQuality = assessTextQuality(extractedText, avgConfidence);
     const processingTime = Date.now() - startTime;
     
-    console.log(`✅ Google Vision: ${extractedText.length} chars, ${pageCount} pages, quality: ${textQuality}`);
+    console.log(`✅ Google Vision Success: ${extractedText.length} chars, ${pageCount} pages, quality: ${textQuality} (${processingTime}ms)`);
 
     return {
       text: extractedText,
@@ -469,10 +489,20 @@ async function extractTextWithGoogleVision(fileUrl: string, apiKey: string, file
       }
     };
     
-  } catch (error) {
+  } catch (error: any) {
     const processingTime = Date.now() - startTime;
-    console.error(`❌ Google Vision OCR error (${processingTime}ms):`, error);
-    throw error;
+    console.error(`❌ Google Vision extraction failed (${processingTime}ms):`, error.message);
+    
+    // Enhanced error reporting
+    if (error.message.includes('timeout')) {
+      throw new Error(`Google Vision timeout: ${error.message}`);
+    } else if (error.message.includes('404') || error.message.includes('403')) {
+      throw new Error(`Google Vision API access error: ${error.message}`);
+    } else if (error.message.includes('quota')) {
+      throw new Error(`Google Vision quota exceeded: ${error.message}`);
+    } else {
+      throw new Error(`Google Vision failed: ${error.message}`);
+    }
   }
 }
 

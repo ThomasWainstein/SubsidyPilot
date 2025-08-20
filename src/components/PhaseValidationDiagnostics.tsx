@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Clock, AlertTriangle, FileText, Cloud, Database } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertTriangle, FileText, Cloud, Database, Terminal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { runImmediateDiagnostics, testGoogleVisionAPIKey, analyzeExtractionErrors, getManualTestingChecklist } from '@/utils/immediateValidation';
 
 interface DiagnosticResult {
   name: string;
@@ -264,21 +265,27 @@ export const PhaseValidationDiagnostics = () => {
 
   const runAllDiagnostics = async () => {
     setDiagnosticsRunning(true);
-    toast.info('Running comprehensive diagnostics...');
+    toast.info('Running Phase 1A critical diagnostics...');
 
     try {
-      console.log('🚀 Starting Phase 1A Validation Diagnostics...');
+      console.log('🚀 Starting Phase 1A Critical Validation Diagnostics...');
 
-      // Run API tests
-      const apiResults = await Promise.all([
-        testGoogleVisionAPI(),
-        testDatabaseConnectivity()
-      ]);
+      // Run immediate diagnostics from utility
+      const immediateResults = await runImmediateDiagnostics();
+      
+      // Convert to our format
+      const apiResults = immediateResults.map(result => ({
+        name: result.test,
+        success: result.success,
+        error: result.error,
+        data: result.data,
+        duration: 0
+      }));
 
       // Run document access tests
       const documentResults = await testDocumentAccess();
 
-      // Run workflow test
+      // Run workflow test (simplified)
       const workflowResults = [await testCompleteWorkflow()];
 
       setResults({
@@ -294,7 +301,17 @@ export const PhaseValidationDiagnostics = () => {
         ...workflowResults.filter(r => r.success)
       ].length;
 
-      toast.success(`Diagnostics complete: ${successfulTests}/${totalTests} tests passed`);
+      // Analyze errors
+      analyzeExtractionErrors(immediateResults);
+
+      if (successfulTests < totalTests) {
+        toast.error(`Critical issues found: ${totalTests - successfulTests} tests failed`);
+        console.log('\n🚨 CRITICAL BLOCKING ISSUES DETECTED');
+        console.log('📋 Manual Testing Checklist:');
+        getManualTestingChecklist().forEach(item => console.log(item));
+      } else {
+        toast.success(`All systems operational: ${successfulTests}/${totalTests} tests passed`);
+      }
 
     } catch (error: any) {
       toast.error(`Diagnostics failed: ${error.message}`);
@@ -326,7 +343,7 @@ export const PhaseValidationDiagnostics = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
           <Button 
             onClick={runAllDiagnostics} 
             disabled={diagnosticsRunning}
@@ -335,12 +352,44 @@ export const PhaseValidationDiagnostics = () => {
             {diagnosticsRunning ? (
               <>
                 <Clock className="h-4 w-4 mr-2 animate-spin" />
-                Running Diagnostics...
+                Running Critical Diagnostics...
               </>
             ) : (
-              'Run Complete System Diagnostics'
+              'Run Phase 1A Critical Diagnostics'
             )}
           </Button>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const apiKey = prompt('Enter your Google Vision API key to test:');
+                if (apiKey) {
+                  console.clear();
+                  testGoogleVisionAPIKey(apiKey);
+                }
+              }}
+              className="flex-1"
+            >
+              <Terminal className="h-4 w-4 mr-2" />
+              Test API Key
+            </Button>
+            
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                console.clear();
+                console.log('📋 PHASE 1A MANUAL TESTING CHECKLIST:');
+                getManualTestingChecklist().forEach(item => console.log(item));
+              }}
+              className="flex-1"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Manual Checklist
+            </Button>
+          </div>
         </div>
 
         {(results.apiTests.length > 0 || results.documentTests.length > 0 || results.workflowTests.length > 0) && (
