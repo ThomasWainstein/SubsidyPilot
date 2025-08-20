@@ -181,64 +181,99 @@ export const RealFrenchDocumentTesting = () => {
     
     while (Date.now() - startTime < timeoutMs) {
       try {
-        // Check job status
-        const { data: jobStatus } = await supabase
-          .from('document_processing_jobs')
+        // First check if extraction already exists (job table might not be updated)
+        const { data: extraction, error: extractionError } = await supabase
+          .from('document_extractions')
           .select('*')
-          .eq('id', jobId)
-          .single();
+          .eq('document_id', documentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         
-        if (jobStatus?.status === 'completed') {
-          console.log('🎉 Job completed, fetching extraction results...');
-          
-          // Get extraction result
-          const { data: extraction } = await supabase
-            .from('document_extractions')
-            .select('*')
-            .eq('document_id', documentId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-          
-          if (extraction) {
-            return {
-              success: true,
-              extractedData: extraction.extracted_data || {},
-              confidence: extraction.confidence_score || 0,
-              qualityScore: extraction.table_quality || 0,
-              textLength: JSON.stringify(extraction.extracted_data || {}).length,
-              tokensUsed: (extraction.extracted_data as any)?.tokensUsed || 0,
-              extractionMethod: 'phase-2-async',
-              costBreakdown: (extraction.extracted_data as any)?.costBreakdown || {},
-              processingTime: {
-                totalTime: Date.now() - startTime,
-                ocrTime: 0,
-                fieldMappingTime: 0
-              },
-              ocrMetadata: (extraction.extracted_data as any)?.ocrMetadata || {},
-              processingLog: [`Async processing completed in ${Date.now() - startTime}ms`]
-            };
-          }
-        } else if (jobStatus?.status === 'failed') {
+        if (!extractionError && extraction) {
+          console.log('🎉 Found extraction result, processing completed!');
           return {
-            success: false,
-            error: jobStatus.error_message || 'Async processing failed',
-            extractedData: {},
-            confidence: 0,
-            qualityScore: 0,
-            textLength: 0,
-            tokensUsed: 0,
-            extractionMethod: 'phase-2-async-failed',
-            costBreakdown: {},
-            processingTime: { totalTime: Date.now() - startTime },
-            ocrMetadata: {},
-            processingLog: [`Job failed: ${jobStatus.error_message}`]
+            success: true,
+            extractedData: extraction.extracted_data || {},
+            confidence: extraction.confidence_score || 0,
+            qualityScore: 0, // No quality_score field in current DB schema
+            textLength: JSON.stringify(extraction.extracted_data || {}).length,
+            tokensUsed: (extraction.extracted_data as any)?.tokensUsed || 0,
+            extractionMethod: 'phase-2-async',
+            costBreakdown: (extraction.extracted_data as any)?.costBreakdown || {},
+            processingTime: {
+              totalTime: Date.now() - startTime,
+              ocrTime: 0,
+              fieldMappingTime: 0
+            },
+            ocrMetadata: (extraction.extracted_data as any)?.ocrMetadata || {},
+            processingLog: [`Async processing completed in ${Date.now() - startTime}ms`]
           };
         }
         
-        // Update UI with progress info
-        const progressMsg = `Processing... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`;
-        console.log(`⏳ ${progressMsg} - Status: ${jobStatus?.status || 'pending'}`);
+        // Check job status (fallback if job table exists)
+        const { data: jobStatus, error: jobError } = await supabase
+          .from('document_processing_jobs')
+          .select('*')
+          .eq('id', jobId)
+          .maybeSingle();
+        
+        if (!jobError && jobStatus) {
+          if (jobStatus.status === 'completed') {
+            console.log('🎉 Job completed, fetching extraction results...');
+            
+            const { data: jobExtraction } = await supabase
+              .from('document_extractions')
+              .select('*')
+              .eq('document_id', documentId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            if (jobExtraction) {
+              return {
+                success: true,
+                extractedData: jobExtraction.extracted_data || {},
+                confidence: jobExtraction.confidence_score || 0,
+                qualityScore: 0, // No quality_score field in current DB schema
+                textLength: JSON.stringify(jobExtraction.extracted_data || {}).length,
+                tokensUsed: (jobExtraction.extracted_data as any)?.tokensUsed || 0,
+                extractionMethod: 'phase-2-async',
+                costBreakdown: (jobExtraction.extracted_data as any)?.costBreakdown || {},
+                processingTime: {
+                  totalTime: Date.now() - startTime,
+                  ocrTime: 0,
+                  fieldMappingTime: 0
+                },
+                ocrMetadata: (jobExtraction.extracted_data as any)?.ocrMetadata || {},
+                processingLog: [`Async processing completed in ${Date.now() - startTime}ms`]
+              };
+            }
+          } else if (jobStatus.status === 'failed') {
+            return {
+              success: false,
+              error: jobStatus.error_message || 'Async processing failed',
+              extractedData: {},
+              confidence: 0,
+              qualityScore: 0,
+              textLength: 0,
+              tokensUsed: 0,
+              extractionMethod: 'phase-2-async-failed',
+              costBreakdown: {},
+              processingTime: { totalTime: Date.now() - startTime },
+              ocrMetadata: {},
+              processingLog: [`Job failed: ${jobStatus.error_message}`]
+            };
+          }
+          
+          // Update UI with progress info
+          const progressMsg = `Processing... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`;
+          console.log(`⏳ ${progressMsg} - Status: ${jobStatus?.status || 'pending'}`);
+        } else {
+          // Job record doesn't exist, just wait and check extraction directly
+          const progressMsg = `Processing... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`;
+          console.log(`⏳ ${progressMsg} - Checking extraction completion directly`);
+        }
         
         // Wait before next poll
         await new Promise(resolve => setTimeout(resolve, pollInterval));
