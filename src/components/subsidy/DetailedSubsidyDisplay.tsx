@@ -130,8 +130,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       for (const pattern of rangePatterns) {
         const match = cleanText.match(pattern);
         if (match) {
-          const minAmount = match[1].replace(/\s/g, ',');
-          const maxAmount = match[2].replace(/\s/g, ',');
+          const minAmount = parseInt(match[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+          const maxAmount = parseInt(match[2].replace(/\s/g, '')).toLocaleString('fr-FR');
           return `€${minAmount} - €${maxAmount}`;
         }
       }
@@ -172,8 +172,8 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       // Range patterns
       const rangeMatch = montantsText.match(/entre\s+(\d+(?:\s+\d+)*)\s*€\s+et\s+(\d+(?:\s+\d+)*)\s*€/i);
       if (rangeMatch) {
-        const minAmount = rangeMatch[1].replace(/\s/g, ',');
-        const maxAmount = rangeMatch[2].replace(/\s/g, ',');
+        const minAmount = parseInt(rangeMatch[1].replace(/\s/g, '')).toLocaleString('fr-FR');
+        const maxAmount = parseInt(rangeMatch[2].replace(/\s/g, '')).toLocaleString('fr-FR');
         return `€${minAmount} - €${maxAmount}`;
       }
       
@@ -187,7 +187,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
       ].find(match => match);
       
       if (euroMatches) {
-        const amount = euroMatches[1].replace(/\s/g, ',');
+        const amount = parseInt(euroMatches[1].replace(/\s/g, '')).toLocaleString('fr-FR');
         return `€${amount}`;
       }
     }
