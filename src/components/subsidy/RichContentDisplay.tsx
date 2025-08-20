@@ -20,6 +20,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { ExtractedSubsidyData } from '@/lib/extraction/source-extractors';
+import { cleanHtmlContent, extractTextContent, containsHtml } from '@/utils/htmlUtils';
 
 interface RichContentDisplayProps {
   extractedData: ExtractedSubsidyData;
@@ -30,17 +31,13 @@ export const RichContentDisplay: React.FC<RichContentDisplayProps> = ({
   extractedData, 
   originalData 
 }) => {
-  const formatHtmlContent = (content: string) => {
+  const formatContent = (content: string) => {
     if (!content) return '';
     
-    // Simple HTML cleanup for display
-    return content
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .trim();
+    // Use comprehensive HTML processing
+    return containsHtml(content) 
+      ? extractTextContent(content)
+      : cleanHtmlContent(content);
   };
 
   const renderContactInfo = () => {
@@ -172,7 +169,7 @@ export const RichContentDisplay: React.FC<RichContentDisplayProps> = ({
           <div className="space-y-2">
             {extractedData.requirements.map((requirement, index) => (
               <div key={index} className="text-sm leading-relaxed">
-                {formatHtmlContent(requirement)}
+                {formatContent(requirement)}
               </div>
             ))}
           </div>
@@ -265,7 +262,7 @@ export const RichContentDisplay: React.FC<RichContentDisplayProps> = ({
             <div>
               <h4 className="font-medium mb-2">Program Description</h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {formatHtmlContent(extractedData.description)}
+                {formatContent(extractedData.description)}
               </p>
             </div>
           )}
@@ -275,7 +272,7 @@ export const RichContentDisplay: React.FC<RichContentDisplayProps> = ({
             <div>
               <h4 className="font-medium mb-2">Funding Details</h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {formatHtmlContent(extractedData.fundingDetails)}
+                {formatContent(extractedData.fundingDetails)}
               </p>
             </div>
           )}

@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, MapPin, Euro, FileText, AlertCircle, CheckCircle, 
 import { useLanguage } from '@/contexts/language';
 import { getLocalizedContent } from '@/utils/language';
 import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
+import { cleanHtmlContent, extractTextContent, containsHtml } from '@/utils/htmlUtils';
 import OrganizationLogo from './OrganizationLogo';
 
 interface DetailedSubsidyDisplayProps {
@@ -106,10 +107,42 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
   const region = safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
 
-  // Helper function to safely render HTML content
-  const renderHTMLContent = (htmlContent: string) => {
-    if (!htmlContent) return null;
-    return <div dangerouslySetInnerHTML={{ __html: htmlContent }} className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:text-muted-foreground" />;
+  // Helper function to safely render content - avoid HTML in production
+  const renderCleanContent = (content: string) => {
+    if (!content) return null;
+    
+    const cleanContent = containsHtml(content) 
+      ? extractTextContent(content)
+      : cleanHtmlContent(content);
+    
+    // Split by double newlines to create paragraphs
+    const paragraphs = cleanContent.split('\n\n').filter(p => p.trim());
+    
+    return (
+      <div className="prose prose-sm max-w-none dark:prose-invert">
+        {paragraphs.map((paragraph, index) => {
+          // Handle bullet points
+          if (paragraph.includes('•')) {
+            const items = paragraph.split('\n').filter(line => line.trim());
+            return (
+              <ul key={index} className="list-disc pl-4 space-y-1">
+                {items.map((item, itemIndex) => (
+                  <li key={itemIndex} className="text-muted-foreground">
+                    {item.replace(/^•\s*/, '').trim()}
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          
+          return (
+            <p key={index} className="text-muted-foreground leading-relaxed mb-3">
+              {paragraph.trim()}
+            </p>
+          );
+        })}
+      </div>
+    );
   };
 
   // Extract funding amount from les-aides data if available
@@ -325,7 +358,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 <div className="bg-card rounded-lg shadow-sm border p-6">
                   <h2 className="text-2xl font-bold mb-4">Program Description</h2>
                   {lesAidesData?.objet ? (
-                    renderHTMLContent(lesAidesData.objet)
+                    renderCleanContent(lesAidesData.objet)
                   ) : (
                     <p className="text-muted-foreground leading-relaxed">{description || 'This subsidy program provides financial support for eligible projects and activities.'}</p>
                   )}
@@ -335,7 +368,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 <div className="bg-card rounded-lg shadow-sm border p-6">
                   <h3 className="text-xl font-semibold mb-4">Funding Information</h3>
                   {lesAidesData?.montants ? (
-                    renderHTMLContent(lesAidesData.montants)
+                    renderCleanContent(lesAidesData.montants)
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -365,7 +398,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 {lesAidesData?.conseils && (
                   <div className="bg-card rounded-lg shadow-sm border p-6">
                     <h3 className="text-xl font-semibold mb-4">Practical Information</h3>
-                    {renderHTMLContent(lesAidesData.conseils)}
+                    {renderCleanContent(lesAidesData.conseils)}
                   </div>
                 )}
 
@@ -397,7 +430,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 {lesAidesData?.conditions && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-4">Conditions d'attribution</h3>
-                    {renderHTMLContent(lesAidesData.conditions)}
+                    {renderCleanContent(lesAidesData.conditions)}
                   </div>
                 )}
 
