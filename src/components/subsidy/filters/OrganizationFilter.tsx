@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '@/contexts/language';
 import FilterSection from '../FilterSection';
 import FilterCheckbox from '../FilterCheckbox';
+import OrganizationLogo from '../OrganizationLogo';
 
 interface OrganizationFilterProps {
   selectedOrganizations: string[];
@@ -35,14 +36,16 @@ const OrganizationFilter: React.FC<OrganizationFilterProps> = ({
           <h4 className="text-xs text-muted-foreground mb-2 font-medium">Major Funders</h4>
           <div className="space-y-2">
             {featuredOrganizations.map(organization => (
-              <FilterCheckbox
-                key={organization}
-                id={`organization-${organization}`}
-                value={organization}
-                checked={selectedOrganizations.includes(organization)}
-                onChange={() => onOrganizationToggle(organization)}
-                translationKey={organization}
-              />
+              <div key={organization} className="flex items-center space-x-3">
+                <OrganizationLogo organizationName={organization} size="sm" />
+                <FilterCheckbox
+                  id={`organization-${organization}`}
+                  value={organization}
+                  checked={selectedOrganizations.includes(organization)}
+                  onChange={() => onOrganizationToggle(organization)}
+                  translationKey={organization}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -53,14 +56,16 @@ const OrganizationFilter: React.FC<OrganizationFilterProps> = ({
           <h4 className="text-xs text-muted-foreground mb-2 font-medium">Other Organizations</h4>
           <div className="space-y-2">
             {otherOrganizations.map(organization => (
-              <FilterCheckbox
-                key={organization}
-                id={`organization-other-${organization}`}
-                value={organization}
-                checked={selectedOrganizations.includes(organization)}
-                onChange={() => onOrganizationToggle(organization)}
-                translationKey={organization}
-              />
+              <div key={organization} className="flex items-center space-x-3">
+                <OrganizationLogo organizationName={organization} size="sm" />
+                <FilterCheckbox
+                  id={`organization-other-${organization}`}
+                  value={organization}
+                  checked={selectedOrganizations.includes(organization)}
+                  onChange={() => onOrganizationToggle(organization)}
+                  translationKey={organization}
+                />
+              </div>
             ))}
             {availableOrganizations.length > featuredOrganizations.length + otherOrganizations.length && (
               <p className="text-xs text-muted-foreground px-2">
