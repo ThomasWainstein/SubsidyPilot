@@ -135,64 +135,52 @@ const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showM
   }
 
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
-      <CardContent className="p-6">
-        {/* Main Header */}
-        <div className="space-y-4">
-          {/* Title and Provider */}
-          <div>
-            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
+    <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary h-[420px]">
+      <CardContent className="p-6 h-full flex flex-col">
+        {/* Main Header - Fixed height section */}
+        <div className="flex-shrink-0 space-y-3 mb-4">
+          {/* Title and Provider - Fixed height */}
+          <div className="h-16">
+            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1 leading-tight">
               {getSubsidyTitle(subsidy)}
             </h3>
             {subsidy.agency && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground line-clamp-1">
                 {subsidy.agency}
               </p>
             )}
           </div>
           
-          {/* Funding Amount - Hero Display */}
-          <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-primary/20">
-                <Euro className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Available Funding</p>
-                <p className="text-xl font-bold text-primary">
-                  {getFundingAmount()}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Target Audience */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">For:</p>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+          {/* Target Audience - Fixed height */}
+          <div className="h-12">
+            <p className="text-sm font-medium text-foreground mb-1">For:</p>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-2 py-0.5">
                 <Building2 className="w-3 h-3 mr-1" />
-                {getTargetAudience()}
+                <span className="truncate max-w-24">{getTargetAudience()}</span>
               </Badge>
-              <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+              <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5">
                 <MapPin className="w-3 h-3 mr-1" />
-                {getRegionDisplay()}
+                <span className="truncate max-w-20">{getRegionDisplay()}</span>
               </Badge>
             </div>
           </div>
+        </div>
           
+        {/* Flexible content area */}
+        <div className="flex-1 flex flex-col justify-between">
           {/* Status and Eligibility */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               {deadlineStatus.urgent ? (
-                <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" />
-                  {deadlineStatus.status}
+                  <span className="truncate">Urgent</span>
                 </Badge>
               ) : (
-                <Badge className="bg-green-100 text-green-800 border-green-300">
+                <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Open for Applications
+                  <span className="truncate">Open</span>
                 </Badge>
               )}
               
@@ -201,7 +189,7 @@ const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showM
                   variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
                   className="text-xs"
                 >
-                  {subsidy.matchConfidence}% match
+                  {subsidy.matchConfidence}%
                 </Badge>
               )}
             </div>
@@ -215,19 +203,32 @@ const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showM
               ) : (
                 <AlertTriangle className="w-3 h-3 text-amber-600" />
               )}
-              <span>{eligibilityStatus.label}</span>
+              <span className="truncate">{eligibilityStatus.label}</span>
             </div>
           </div>
           
-          {/* Single Action Button */}
-          <div className="pt-2">
-            <Button 
-              className="w-full font-medium"
-              onClick={() => navigate(`/subsidy/${subsidy.id}`)}
-            >
-              {eligibilityStatus.status === 'eligible' ? 'Apply Now' : 'Learn More'}
-            </Button>
+          {/* Funding Amount - Aligned section */}
+          <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4 mb-4 h-20 flex items-center">
+            <div className="flex items-center gap-3 w-full">
+              <div className="p-2 rounded-full bg-primary/20 flex-shrink-0">
+                <Euro className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-muted-foreground">Available Funding</p>
+                <p className="text-lg font-bold text-primary truncate">
+                  {getFundingAmount()}
+                </p>
+              </div>
+            </div>
           </div>
+          
+          {/* Action Button - Aligned at bottom */}
+          <Button 
+            className="w-full font-medium h-11"
+            onClick={() => navigate(`/subsidy/${subsidy.id}`)}
+          >
+            {eligibilityStatus.status === 'eligible' ? 'Apply Now' : 'Learn More'}
+          </Button>
         </div>
       </CardContent>
     </Card>
