@@ -6,6 +6,7 @@ import { ProductionHealthDashboard } from '@/components/ProductionHealthDashboar
 import { LesAidesDocumentTester } from '@/components/LesAidesDocumentTester';
 import { AlternativeDocumentStrategy } from '@/components/AlternativeDocumentStrategy';
 import { EnhancedSystemValidationSummary } from '@/components/EnhancedSystemValidationSummary';
+import { PhaseValidationDiagnostics } from '@/components/PhaseValidationDiagnostics';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 
@@ -74,14 +75,19 @@ export default function ValidationPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="real-docs" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="diagnostics" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="diagnostics">🔍 Diagnostics</TabsTrigger>
           <TabsTrigger value="real-docs">Real French Documents</TabsTrigger>
           <TabsTrigger value="testing">Manual Testing</TabsTrigger>
           <TabsTrigger value="health">Production Health</TabsTrigger>
           <TabsTrigger value="validation">System Validation</TabsTrigger>
           <TabsTrigger value="results">Test Results</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="diagnostics">
+          <PhaseValidationDiagnostics />
+        </TabsContent>
 
         <TabsContent value="real-docs">
           <AlternativeDocumentStrategy />

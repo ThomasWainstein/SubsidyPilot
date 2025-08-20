@@ -91,6 +91,10 @@ serve(async (req) => {
     console.log(`🔄 Starting hybrid extraction for ${fileName} (${clientType})`);
     processingLog.push(`Started: ${fileName} (${clientType})`);
     
+    // Generate documentId if not provided (for testing scenarios)
+    const actualDocumentId = documentId || `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`📄 Document ID: ${actualDocumentId}`);
+    
     const googleApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
@@ -166,40 +170,95 @@ serve(async (req) => {
     
     processingLog.push(`Quality: ${qualityScore}, Confidence: ${finalConfidence}`);
 
-    // Step 4: Store extraction results with comprehensive metadata
+    // Step 4: Store extraction results - handle test scenarios
     const totalProcessingTime = Date.now() - startTime;
-    const { error: updateError } = await supabase
-      .from('document_extractions')
-      .update({
-        status: 'completed',
-        extracted_data: fieldMapping.extractedData,
-        confidence_score: finalConfidence,
-        extraction_type: extractionMethod,
-        processing_time_ms: totalProcessingTime,
-        model_used: extractionMethod.includes('google') ? 'google-vision + gpt-5-2025-08-07' : 'gpt-5-2025-08-07',
-        ocr_used: true,
-        pages_processed: ocrResult.metadata.pageCount || 1,
-        detected_language: ocrResult.metadata.languagesDetected?.[0] || 'unknown',
-        debug_info: {
-          ocrMetadata: ocrResult.metadata,
-          clientType,
-          documentType,
-          extractionMethod,
-          qualityScore,
-          processingLog,
-          costBreakdown: {
-            googleVision: extractionMethod.includes('google') ? ocrResult.metadata.pageCount * 0.0015 : 0,
-            openai: (fieldMapping.tokensUsed / 1000) * 0.03,
-            total: totalCost
-          }
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('document_id', documentId);
+    
+    if (!isTestDocument && actualDocumentId !== documentId) {
+      console.log('⚠️ Test document - skipping database storage');
+      processingLog.push('Test document - database storage skipped');
+    } else {
+      try {
+        // Try to update existing record first
+        const { error: updateError } = await supabase
+          .from('document_extractions')
+          .update({
+            status: 'completed',
+            extracted_data: fieldMapping.extractedData,
+            confidence_score: finalConfidence,
+            extraction_type: extractionMethod,
+            processing_time_ms: totalProcessingTime,
+            model_used: extractionMethod.includes('google') ? 'google-vision + gpt-4o-mini' : 'gpt-4o-mini',
+            ocr_used: true,
+            pages_processed: ocrResult.metadata.pageCount || 1,
+            detected_language: ocrResult.metadata.languagesDetected?.[0] || 'unknown',
+            debug_info: {
+              ocrMetadata: ocrResult.metadata,
+              clientType,
+              documentType,
+              extractionMethod,
+              qualityScore,
+              processingLog,
+              costBreakdown: {
+                googleVision: extractionMethod.includes('google') ? ocrResult.metadata.pageCount * 0.0015 : 0,
+                openai: (fieldMapping.tokensUsed / 1000) * 0.03,
+                total: totalCost
+              }
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('document_id', actualDocumentId);
 
-    if (updateError) {
-      console.error('Failed to update extraction:', updateError);
-      throw updateError;
+        if (updateError) {
+          console.warn('Failed to update extraction record:', updateError.message);
+          console.log('📝 Creating new extraction record...');
+          
+          // Create new record if update fails
+          const { error: insertError } = await supabase
+            .from('document_extractions')
+            .insert({
+              document_id: actualDocumentId,
+              status: 'completed',
+              extracted_data: fieldMapping.extractedData,
+              confidence_score: finalConfidence,
+              extraction_type: extractionMethod,
+              processing_time_ms: totalProcessingTime,
+              model_used: extractionMethod.includes('google') ? 'google-vision + gpt-4o-mini' : 'gpt-4o-mini',
+              ocr_used: true,
+              pages_processed: ocrResult.metadata.pageCount || 1,
+              detected_language: ocrResult.metadata.languagesDetected?.[0] || 'unknown',
+              debug_info: {
+                ocrMetadata: ocrResult.metadata,
+                clientType,
+                documentType,
+                extractionMethod,
+                qualityScore,
+                processingLog,
+                costBreakdown: {
+                  googleVision: extractionMethod.includes('google') ? ocrResult.metadata.pageCount * 0.0015 : 0,
+                  openai: (fieldMapping.tokensUsed / 1000) * 0.03,
+                  total: totalCost
+                }
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          
+          if (insertError) {
+            console.error('Failed to create extraction record:', insertError);
+            processingLog.push(`Database error: ${insertError.message}`);
+          } else {
+            console.log('✅ Extraction record created successfully');
+            processingLog.push('Database record created successfully');
+          }
+        } else {
+          console.log('✅ Extraction record updated successfully');
+          processingLog.push('Database record updated successfully');
+        }
+      } catch (dbError: any) {
+        console.error('Database operation failed:', dbError);
+        processingLog.push(`Database operation failed: ${dbError.message}`);
+        // Don't throw - continue with response even if DB fails
+      }
     }
 
     console.log(`✅ ${extractionMethod} extraction completed for ${fileName}`);
@@ -443,7 +502,7 @@ async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -454,7 +513,7 @@ async function extractTextWithOpenAI(fileUrl: string, apiKey: string, fileName: 
             content: `Extract text from this document: ${fileUrl}. Return only the extracted text content.` 
           }
         ],
-        max_completion_tokens: 2000
+        max_tokens: 2000
       }),
     });
 
@@ -543,7 +602,7 @@ async function mapFieldsWithOpenAI(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -551,7 +610,7 @@ async function mapFieldsWithOpenAI(
           },
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
