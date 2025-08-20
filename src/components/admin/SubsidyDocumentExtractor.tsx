@@ -21,19 +21,22 @@ export const SubsidyDocumentExtractor = () => {
   const [results, setResults] = useState<ExtractionResult | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
-  // Test URLs for real French subsidy documents
+  // Test URLs with working documents for validation
   const testDocuments = [
     {
-      name: "CAP Strategic Plan 2023-2027",
-      url: "https://agriculture.gouv.fr/sites/default/files/documents/psp_france_2023-2027_vf.pdf"
+      name: "Sample Farm Document (Known Working)",
+      url: "https://gvfgvbztagafjykncwto.supabase.co/storage/v1/object/public/farm-documents/d4f572cf-a56e-4a24-9344-21f981424b01/financial/Farm_Registration_Document_long.docx",
+      description: "Use hybrid-extraction function"
     },
     {
-      name: "FEADER Rural Development",
-      url: "https://agriculture.gouv.fr/sites/default/files/documents/feader-2023-formulaire-aide.pdf"
+      name: "Test PDF Document",
+      url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      description: "Basic PDF for functionality testing"
     },
     {
-      name: "Organic Farming Support",
-      url: "https://www.franceagrimer.fr/content/download/65432/document/formulaire-bio-2024.pdf"
+      name: "French Government Form Template",
+      url: "https://www.formulaires.service-public.fr/gf/cerfa_13412.do",
+      description: "Real French agricultural form"
     }
   ];
 
@@ -162,7 +165,7 @@ export const SubsidyDocumentExtractor = () => {
             </div>
             <div>
               <Label>Quick Test Documents</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
+              <div className="grid grid-cols-1 gap-2 mt-1">
                 {testDocuments.map((doc, index) => (
                   <Button
                     key={index}
@@ -170,8 +173,10 @@ export const SubsidyDocumentExtractor = () => {
                     size="sm"
                     onClick={() => setTestUrl(doc.url)}
                     disabled={isExtracting}
+                    className="flex flex-col items-start p-3 h-auto text-left"
                   >
-                    {doc.name}
+                    <div className="font-medium">{doc.name}</div>
+                    <div className="text-xs text-muted-foreground">{doc.description}</div>
                   </Button>
                 ))}
               </div>
