@@ -1,30 +1,32 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, X, Calendar, MapPin, Euro, Clock, Building2, Bookmark, ExternalLink, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, X, MapPin, Euro, Building2, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 import EmptySubsidyState from './EmptySubsidyState';
 import SubsidyLoadingCard from './SubsidyLoadingCard';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language';
+import { parseEnhancedFundingAmount, getSubsidyTitle, getSubsidyDescription, getDeadlineStatus } from '@/utils/subsidyFormatting';
+import { getSectorDisplayFromDomains, getEligibilityStatus } from '@/utils/sectorMappings';
 
 interface Subsidy {
   id: string;
   title: any;
   description: any;
-  region: string | string[] | null; // Updated to handle different data types
-  categories?: string[]; // Made optional since subsidies_structured uses sector
-  sector?: string; // Added for subsidies_structured
+  region: string | string[] | null;
+  categories?: string[];
+  sector?: string | string[];
   funding_type: string;
   deadline: string;
-  amount_min?: number; // Made optional for subsidies_structured
-  amount_max?: number; // Made optional for subsidies_structured
-  amount?: number; // Added for subsidies_structured
-  agency?: string; // Added for subsidies_structured
+  amount_min?: number;
+  amount_max?: number;
+  amount?: number;
+  agency?: string;
   matchConfidence: number;
-  raw_data?: any; // Added for enhanced parsing
+  raw_data?: any;
+  lesAidesData?: any;
 }
 
 interface SearchResultsPanelProps {
@@ -37,128 +39,85 @@ interface SearchResultsPanelProps {
   filteredCount: number;
   loading: boolean;
   error: string | null;
-  farmId?: string; // Now optional
+  farmId?: string;
   onClearFilters?: () => void;
 }
 
-import { formatFundingAmount, parseEnhancedFundingAmount, getSubsidyTitle, getSubsidyDescription, getRegionDisplay, getDeadlineStatus, getSectorDisplayString, formatFilterLabel } from '@/utils/subsidyFormatting';
-
-const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
+const CleanSubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchScore: boolean }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+  const eligibilityStatus = getEligibilityStatus(subsidy);
   
   // Check if application is closed
   const isClosed = deadlineStatus.status === 'Application closed';
   
-  // Get status display with better urgency indicators
-  const getStatusDisplay = () => {
-    if (isClosed) {
-      return {
-        icon: <AlertCircle className="w-4 h-4" />,
-        color: 'bg-red-50 text-red-600 border-red-200',
-        text: 'Application Closed',
-        priority: 'closed'
-      };
-    } else if (deadlineStatus.urgent && deadlineStatus.daysLeft !== undefined) {
-      const daysText = deadlineStatus.daysLeft === 0 ? 'Today' : 
-                     deadlineStatus.daysLeft === 1 ? 'Tomorrow' : 
-                     `${deadlineStatus.daysLeft} days`;
-      return {
-        icon: <AlertTriangle className="w-4 h-4" />,
-        color: 'bg-amber-50 text-amber-700 border-amber-200',
-        text: `Closes ${daysText}`,
-        priority: 'urgent'
-      };
-    } else {
-      const deadlineText = subsidy.deadline ? 
-        `Open until ${new Date(subsidy.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` :
-        'Open Application';
-      return {
-        icon: <CheckCircle2 className="w-4 h-4" />,
-        color: 'bg-green-50 text-green-700 border-green-200',
-        text: deadlineText,
-        priority: 'open'
-      };
-    }
-  };
-
-  const statusDisplay = getStatusDisplay();
-
-  // Get funding display with proper context and clarity
-  const getFundingDisplay = () => {
-    // Use enhanced parsing first
-    const enhancedAmount = parseEnhancedFundingAmount(subsidy, subsidy.raw_data?.fiche ? { montants: subsidy.raw_data.fiche.montants } : null);
+  // Get clean funding amount
+  const getFundingAmount = () => {
+    const enhancedAmount = parseEnhancedFundingAmount(subsidy, subsidy.lesAidesData);
     if (enhancedAmount && enhancedAmount !== 'Not specified') {
-      return {
-        amount: enhancedAmount,
-        context: 'per application',
-        type: 'enhanced'
-      };
-    }
-
-    if (subsidy.amount) {
-      // Try to infer context from description or title
-      const isPerHectare = getSubsidyDescription(subsidy).toLowerCase().includes('hectare') || 
-                          getSubsidyTitle(subsidy).toLowerCase().includes('hectare');
-      const isPerProject = getSubsidyDescription(subsidy).toLowerCase().includes('project') ||
-                          getSubsidyTitle(subsidy).toLowerCase().includes('project');
-      
-      let context = 'per application';
-      if (isPerHectare) context = 'per hectare';
-      else if (isPerProject) context = 'per project';
-
-      return {
-        amount: formatFundingAmount(subsidy.amount),
-        context: context,
-        type: 'fixed'
-      };
-    } else if (subsidy.amount_min && subsidy.amount_max) {
-      const range = `${formatFundingAmount(subsidy.amount_min)} - ${formatFundingAmount(subsidy.amount_max)}`;
-      return {
-        amount: range,
-        context: 'funding range',
-        type: 'range'
-      };
-    } else if (subsidy.amount_min) {
-      return {
-        amount: `From ${formatFundingAmount(subsidy.amount_min)}`,
-        context: 'minimum funding',
-        type: 'minimum'
-      };
+      return enhancedAmount;
     }
     
-    // Instead of "Amount varies", show more helpful info
-    const sector = subsidy.sector ? getSectorDisplayString(subsidy.sector) : '';
-    if (sector.toLowerCase().includes('livestock')) {
-      return { amount: '€5,000 - €100,000', context: 'typical for livestock projects', type: 'estimate' };
-    } else if (sector.toLowerCase().includes('crop')) {
-      return { amount: '€200 - €800', context: 'per hectare', type: 'estimate' };
-    } else {
-      return { amount: 'Check details', context: 'amount depends on project', type: 'variable' };
+    if (subsidy.amount_min && subsidy.amount_max) {
+      return `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`;
     }
+    
+    if (subsidy.amount) {
+      return `€${subsidy.amount.toLocaleString()}`;
+    }
+    
+    return 'Amount varies';
+  };
+  
+  // Get clean sector display
+  const getTargetAudience = () => {
+    if (subsidy.sector) {
+      const sectors = getSectorDisplayFromDomains(subsidy.sector);
+      if (sectors !== 'All sectors') {
+        return sectors;
+      }
+    }
+    
+    // Fallback to broad categories
+    if (subsidy.funding_type?.toLowerCase().includes('agriculture')) {
+      return 'Agricultural businesses';
+    }
+    
+    return 'All business types';
+  };
+  
+  // Get clean region display
+  const getRegionDisplay = () => {
+    if (!subsidy.region || subsidy.region === 'All regions') {
+      return 'Available nationwide';
+    }
+    
+    if (Array.isArray(subsidy.region)) {
+      if (subsidy.region.length === 1) {
+        return subsidy.region[0];
+      }
+      return `${subsidy.region.slice(0, 2).join(', ')}${subsidy.region.length > 2 ? ` +${subsidy.region.length - 2} more` : ''}`;
+    }
+    
+    return subsidy.region;
   };
 
-  const fundingDisplay = getFundingDisplay();
-
-  // If closed, render simplified card
+  // If closed, show minimal card
   if (isClosed) {
     return (
-      <Card className="opacity-50 border-red-200 bg-red-50/30">
+      <Card className="opacity-60 border-gray-200 bg-gray-50">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm text-muted-foreground line-clamp-1 mb-1">
+              <h4 className="font-medium text-gray-600 line-clamp-1 mb-1">
                 {getSubsidyTitle(subsidy)}
               </h4>
               <div className="flex items-center gap-2">
-                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
+                <Badge variant="secondary" className="text-xs">
                   <AlertCircle className="w-3 h-3 mr-1" />
                   Application Closed
                 </Badge>
-                {subsidy.agency && (
-                  <span className="text-xs text-muted-foreground">{subsidy.agency}</span>
-                )}
               </div>
             </div>
             <Button 
@@ -167,7 +126,7 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
               className="text-xs"
               onClick={() => navigate(`/subsidy/${subsidy.id}`)}
             >
-              View Archive
+              View Details
             </Button>
           </div>
         </CardContent>
@@ -175,180 +134,100 @@ const SubsidyCard = ({ subsidy, showMatchScore }: { subsidy: Subsidy; showMatchS
     );
   }
 
-  // Regular open/urgent application card
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-200 h-full flex flex-col
-      ${statusDisplay.priority === 'urgent' ? 
-        'border-l-4 border-l-amber-400 hover:border-l-amber-500 ring-1 ring-amber-100' :
-        'border-l-4 border-l-primary/20 hover:border-l-primary'}`}
-    >
-      {/* Header Section */}
-      <CardHeader className="pb-4 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg leading-tight mb-3 text-foreground group-hover:text-primary transition-colors line-clamp-2">
+    <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
+      <CardContent className="p-6">
+        {/* Main Header */}
+        <div className="space-y-4">
+          {/* Title and Provider */}
+          <div>
+            <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
               {getSubsidyTitle(subsidy)}
             </h3>
-            
-            {/* Hero Status & Deadline */}
-            <div className="space-y-2">
-              {deadlineStatus.urgent && deadlineStatus.daysLeft !== undefined ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <div className="p-1 rounded-full bg-amber-500">
-                    <AlertTriangle className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-amber-800 text-lg">
-                      {deadlineStatus.daysLeft === 0 ? 'Closes Today!' : 
-                       deadlineStatus.daysLeft === 1 ? 'Closes Tomorrow!' : 
-                       `${deadlineStatus.daysLeft} Days Left`}
-                    </div>
-                    <div className="text-xs text-amber-600">
-                      Deadline: {new Date(subsidy.deadline!).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric'
-                      })}
-                    </div>
-                  </div>
-                </div>
+            {subsidy.agency && (
+              <p className="text-sm text-muted-foreground">
+                {subsidy.agency}
+              </p>
+            )}
+          </div>
+          
+          {/* Funding Amount - Hero Display */}
+          <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/20">
+                <Euro className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Available Funding</p>
+                <p className="text-xl font-bold text-primary">
+                  {getFundingAmount()}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Target Audience */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">For:</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                <Building2 className="w-3 h-3 mr-1" />
+                {getTargetAudience()}
+              </Badge>
+              <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                <MapPin className="w-3 h-3 mr-1" />
+                {getRegionDisplay()}
+              </Badge>
+            </div>
+          </div>
+          
+          {/* Status and Eligibility */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {deadlineStatus.urgent ? (
+                <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  {deadlineStatus.status}
+                </Badge>
               ) : (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
-                  <div className="p-1 rounded-full bg-green-500">
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-green-800 text-base">Open for Applications</div>
-                    {subsidy.deadline && (
-                      <div className="text-xs text-green-600">
-                        Deadline: {new Date(subsidy.deadline).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric'
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <Badge className="bg-green-100 text-green-800 border-green-300">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Open for Applications
+                </Badge>
               )}
-
+              
               {showMatchScore && (
                 <Badge 
                   variant={subsidy.matchConfidence > 70 ? 'default' : 'secondary'}
-                  className="font-medium"
+                  className="text-xs"
                 >
-                  {subsidy.matchConfidence}% match for your farm
+                  {subsidy.matchConfidence}% match
                 </Badge>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Funding Hero Section */}
-        <div className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-primary/5 border border-primary/20">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-full bg-primary/20">
-              <Euro className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-muted-foreground mb-1">Available Funding</div>
-              <div className="text-2xl font-bold text-primary mb-1">
-                {fundingDisplay.amount}
-              </div>
-              <div className="text-sm text-primary/80">
-                {fundingDisplay.context}
-              </div>
-              {fundingDisplay.type === 'range' && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  💡 Amount depends on project size and coverage %
-                </div>
+            
+            {/* Simple eligibility indicator */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {eligibilityStatus.status === 'eligible' ? (
+                <CheckCircle2 className="w-3 h-3 text-green-600" />
+              ) : eligibilityStatus.status === 'restricted' ? (
+                <MapPin className="w-3 h-3 text-blue-600" />
+              ) : (
+                <AlertTriangle className="w-3 h-3 text-amber-600" />
               )}
+              <span>{eligibilityStatus.label}</span>
             </div>
           </div>
-        </div>
-      </CardHeader>
-
-      {/* Content Section */}
-      <CardContent className="pt-0 flex-1 flex flex-col">
-        {/* Eligibility Check */}
-        {(subsidy.region || subsidy.sector) && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50/50 border border-green-200/50">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <div className="font-medium text-green-800 mb-1">Eligibility Match</div>
-                <div className="text-green-700">
-                  {subsidy.sector && (
-                    <span>✓ {getSectorDisplayString(subsidy.sector)}</span>
-                  )}
-                  {subsidy.sector && subsidy.region && <span> • </span>}
-                  {subsidy.region && (
-                    <span>✓ {getRegionDisplay(subsidy.region)}</span>
-                  )}
-                </div>
-              </div>
-            </div>
+          
+          {/* Single Action Button */}
+          <div className="pt-2">
+            <Button 
+              className="w-full font-medium"
+              onClick={() => navigate(`/subsidy/${subsidy.id}`)}
+            >
+              {eligibilityStatus.status === 'eligible' ? 'Apply Now' : 'Learn More'}
+            </Button>
           </div>
-        )}
-
-        {/* Application Complexity */}
-        <div className="mb-4 p-3 rounded-lg bg-blue-50/50 border border-blue-200/50">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-            <span className="text-sm font-medium text-blue-800">Quick Application</span>
-          </div>
-          <div className="text-sm text-blue-700 space-y-1">
-            <div>📄 Online form - takes 30-45 minutes</div>
-            <div>⏱️ Decision in 2-4 weeks</div>
-            <div>📋 Need: Farm plan, recent financials</div>
-          </div>
-        </div>
-
-        {/* Agency & Trust Indicators */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {subsidy.agency && (
-            <Badge className="bg-primary/10 text-primary border-primary/30 font-medium">
-              <Building2 className="w-3 h-3 mr-1" />
-              {subsidy.agency}
-            </Badge>
-          )}
-          {subsidy.funding_type && (
-            <Badge variant="outline" className="font-medium border-blue-300 text-blue-700">
-              {formatFilterLabel(subsidy.funding_type)}
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
-            EU Verified
-          </Badge>
-        </div>
-
-        {/* Enhanced Action Buttons */}
-        <div className="flex gap-2 mt-auto">
-          <Button 
-            size="sm" 
-            className="flex-1 font-medium bg-primary hover:bg-primary/90"
-            onClick={() => navigate(`/subsidy/${subsidy.id}`)}
-          >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Check My Eligibility
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="px-4 border-2 hover:bg-primary/10 hover:border-primary/30"
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: Implement save functionality
-            }}
-          >
-            <Bookmark className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Success Stats Footer */}
-        <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-            <span>89% approval rate for qualified farms</span>
-          </div>
-          <div>Updated 2 hours ago</div>
         </div>
       </CardContent>
     </Card>
@@ -371,32 +250,39 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
   
+  // Group subsidies by status
+  const openSubsidies = subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed');
+  const urgentSubsidies = openSubsidies.filter(s => getDeadlineStatus(s.deadline).urgent);
+  const closedSubsidies = subsidies.filter(s => getDeadlineStatus(s.deadline).status === 'Application closed');
+  
+  // Calculate total funding
+  const totalFunding = openSubsidies.reduce((sum, subsidy) => {
+    const amount = subsidy.amount_max || subsidy.amount || 0;
+    return sum + amount;
+  }, 0);
+  
   if (error) {
     return (
       <div className="space-y-6">
-        {/* Search Header */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="relative w-full sm:w-96">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search for funding opportunities, grants, or programs..."
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="pl-10 h-12 text-base border-2 focus:border-primary/30"
+                className="pl-10 h-12"
               />
-              </div>
             </div>
           </CardHeader>
         </Card>
-
         <Card>
           <CardContent className="py-8">
             <EmptySubsidyState 
               type="error"
               error={error}
-              onRetry={() => navigate(0)}
+              onRetry={() => window.location.reload()}
             />
           </CardContent>
         </Card>
@@ -406,200 +292,147 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Search Header */}
+      {/* Clean Search Header */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="relative w-full sm:w-96">
+          <div className="space-y-4">
+            <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search for funding opportunities, grants, or programs..."
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
-                className="pl-10 h-12 text-base border-2 focus:border-primary/30"
+                className="pl-10 h-12"
               />
               {searchQuery && (
                 <button 
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => onSearchQueryChange('')}
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
-            
+
             {/* Results Summary */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary"></div>
-                <span className="font-medium">
-                  {loading ? 'Searching...' : `${filteredCount} of ${totalCount} results`}
-                </span>
+            <div className="flex items-center justify-between text-sm">
+              <div className="text-muted-foreground">
+                {loading ? 'Searching...' : `${filteredCount} of ${totalCount} results`}
               </div>
+              {totalFunding > 0 && (
+                <div className="text-primary font-medium">
+                  €{totalFunding.toLocaleString()} total funding available
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Results Section */}
-      <div className="space-y-4">
-        {/* Results Header with Quick Filters */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-1">Available Funding Opportunities</h2>
-            <p className="text-muted-foreground">Funding programs currently accepting applications</p>
-          </div>
+      {/* Results Status Overview */}
+      {!loading && subsidies.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-700">{openSubsidies.length}</div>
+              <div className="text-sm text-green-600">Open ({urgentSubsidies.length > 0 ? `${urgentSubsidies.length} urgent` : 'no urgent'})</div>
+            </CardContent>
+          </Card>
           
-          <div className="flex items-center gap-3">
-            {/* Quick Status Filters */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="text-xs px-3 py-1.5">
-                <CheckCircle2 className="w-3 h-3 mr-1 text-green-600" />
-                Open ({subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed').length})
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs px-3 py-1.5">
-                <AlertTriangle className="w-3 h-3 mr-1 text-amber-600" />
-                Urgent ({subsidies.filter(s => getDeadlineStatus(s.deadline).urgent).length})
-              </Button>
-            </div>
-            
-            {!loading && subsidies.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>Last updated: 2 hours ago</span>
-              </div>
-            )}
-          </div>
+          {urgentSubsidies.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold text-amber-700">{urgentSubsidies.length}</div>
+                <div className="text-sm text-amber-600">Closing Soon</div>
+              </CardContent>
+            </Card>
+          )}
+          
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4 text-center">
+              <div className="text-sm text-blue-600">Last updated:</div>
+              <div className="font-medium text-blue-700">2 hours ago</div>
+            </CardContent>
+          </Card>
         </div>
+      )}
 
+      {/* Results Grid */}
+      <div className="space-y-4">
         {loading ? (
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <SubsidyLoadingCard key={index} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <SubsidyLoadingCard key={i} />
             ))}
           </div>
         ) : subsidies.length === 0 ? (
           <Card>
-            <CardContent className="py-12">
+            <CardContent className="py-8">
               <EmptySubsidyState 
-                type={totalCount === 0 ? 'no-data' : 'no-results'}
+                type="no-results"
                 searchQuery={searchQuery}
                 onClearFilters={onClearFilters}
               />
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {/* Separate open and closed applications */}
-            {subsidies.some(s => getDeadlineStatus(s.deadline).status !== 'Application closed') && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    Currently Accepting Applications ({subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed').length})
-                  </h3>
-                  <div className="text-sm text-muted-foreground">
-                    €{(subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed').length * 45000).toLocaleString()} 
-                    {' '}total funding available
-                  </div>
-                </div>
-                <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                  {subsidies
-                    .filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed')
-                    .sort((a, b) => {
-                      const aStatus = getDeadlineStatus(a.deadline);
-                      const bStatus = getDeadlineStatus(b.deadline);
-                      
-                      // Sort urgent first, then by days left
-                      if (aStatus.urgent && !bStatus.urgent) return -1;
-                      if (!aStatus.urgent && bStatus.urgent) return 1;
-                      
-                      if (aStatus.daysLeft !== undefined && bStatus.daysLeft !== undefined) {
-                        return aStatus.daysLeft - bStatus.daysLeft;
-                      }
-                      
-                      return 0;
-                    })
-                    .map((subsidy) => (
-                      <SubsidyCard 
-                        key={subsidy.id} 
-                        subsidy={subsidy} 
-                        showMatchScore={!!farmId}
-                      />
-                    ))
-                  }
-                </div>
-              </div>
-            )}
-
-            {/* Closed applications section */}
-            {subsidies.some(s => getDeadlineStatus(s.deadline).status === 'Application closed') && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-medium text-muted-foreground flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Recently Closed Programs ({subsidies.filter(s => getDeadlineStatus(s.deadline).status === 'Application closed').length})
-                  </h3>
-                  <Badge variant="outline" className="text-xs">
-                    May reopen next year - save for reference
-                  </Badge>
-                </div>
-                <div className="grid gap-3 lg:grid-cols-1">
-                  {subsidies
-                    .filter(s => getDeadlineStatus(s.deadline).status === 'Application closed')
-                    .map((subsidy) => (
-                      <SubsidyCard 
-                        key={subsidy.id} 
-                        subsidy={subsidy} 
-                        showMatchScore={false}
-                      />
-                    ))
-                  }
+          <>
+            {/* Open Subsidies */}
+            {openSubsidies.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-foreground">
+                  Available Funding Opportunities
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    Funding programs currently accepting applications
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {openSubsidies.map((subsidy) => (
+                    <CleanSubsidyCard 
+                      key={subsidy.id} 
+                      subsidy={subsidy} 
+                      showMatchScore={Boolean(farmId)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
             
-            {/* Results Summary Footer */}
-            <div className="text-center py-6 border-t bg-muted/20 rounded-lg">
-              <div className="space-y-3">
-                <h4 className="font-semibold text-foreground">Funding Overview</h4>
-                <div className="flex items-center justify-center gap-8">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                      <span className="font-bold text-lg text-green-700">
-                        {subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed').length}
-                      </span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Active Opportunities</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                      <span className="font-bold text-lg text-amber-700">
-                        {subsidies.filter(s => getDeadlineStatus(s.deadline).urgent).length}
-                      </span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Closing Soon</span>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <span className="font-bold text-lg text-blue-700">
-                        €{(subsidies.filter(s => getDeadlineStatus(s.deadline).status !== 'Application closed').length * 45000).toLocaleString()}
-                      </span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">Total Available</span>
-                  </div>
+            {/* Closed Subsidies */}
+            {closedSubsidies.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-4 text-muted-foreground">
+                  Recently Closed ({closedSubsidies.length})
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {closedSubsidies.slice(0, 4).map((subsidy) => (
+                    <CleanSubsidyCard 
+                      key={subsidy.id} 
+                      subsidy={subsidy} 
+                      showMatchScore={false}
+                    />
+                  ))}
                 </div>
-                <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                  💡 Tip: Apply early for better chances. Our data shows applications submitted in the first 30 days have 23% higher approval rates.
-                </p>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
+      
+      {/* Simple Tips */}
+      {!loading && openSubsidies.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+              <div className="text-sm text-blue-700">
+                <strong>Tip:</strong> Applications submitted early in the funding period typically have higher approval rates. 
+                Click "Learn More" to check detailed requirements before applying.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
