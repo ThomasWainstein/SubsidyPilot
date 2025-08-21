@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RealDocumentTesting } from '@/components/RealDocumentTesting';
@@ -10,6 +10,7 @@ import { PhaseValidationDiagnostics } from '@/components/PhaseValidationDiagnost
 import { RealFrenchDocumentTesting } from '@/components/RealFrenchDocumentTesting';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Clock, FileCheck, Target, TrendingUp } from 'lucide-react';
+import { quickFunctionTest, testRealProcessing } from '@/utils/quickFunctionTest';
 
 interface TestResult {
   id: string;
@@ -24,6 +25,18 @@ interface TestResult {
 export default function ValidationPage() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [activeTab, setActiveTab] = useState('diagnostics');
+
+  // Make test functions globally available for console access
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).quickFunctionTest = quickFunctionTest;
+      (window as any).testRealProcessing = testRealProcessing;
+      console.log('🎯 Edge Function Test utilities loaded!');
+      console.log('📋 Available commands:');
+      console.log('  • quickFunctionTest() - Test all edge function deployments');
+      console.log('  • testRealProcessing() - Test real document processing');
+    }
+  }, []);
 
   const phase1AStatus = {
     google_cloud_api: 'configured',
