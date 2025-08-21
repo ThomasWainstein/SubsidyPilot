@@ -166,20 +166,29 @@ serve(async (req) => {
       console.error('Google Vision failed:', error);
       method = 'openai_fallback';
       confidence = 0.3;
+      
+      // If Google Vision fails, try to extract with OpenAI directly from file metadata
+      extractedText = `Document: ${fileName}\nType: ${documentType}\nFile processed but OCR extraction failed.`;
+      console.log('🔄 Falling back to OpenAI with basic document info');
     }
 
-    // Extract structured data with OpenAI
+    // Extract structured data with OpenAI (always try this step)
     let structuredData = {};
-    if (extractedText) {
-      try {
-        const openaiResult = await extractWithOpenAI(extractedText, documentType);
-        structuredData = openaiResult.structuredData;
-        confidence = Math.max(confidence, openaiResult.confidence);
-        console.log(`✅ OpenAI processing successful, confidence: ${openaiResult.confidence}`);
-      } catch (error) {
-        console.error('OpenAI processing failed:', error);
-        confidence = Math.min(confidence, 0.5);
-      }
+    try {
+      const openaiResult = await extractWithOpenAI(extractedText, documentType);
+      structuredData = openaiResult.structuredData;
+      confidence = Math.max(confidence, openaiResult.confidence);
+      console.log(`✅ OpenAI processing successful, confidence: ${openaiResult.confidence}`);
+    } catch (error) {
+      console.error('OpenAI processing failed:', error);
+      confidence = Math.min(confidence, 0.5);
+      // Provide basic structured data even if OpenAI fails
+      structuredData = {
+        fileName: fileName,
+        documentType: documentType,
+        processingStatus: 'partial_failure',
+        extractionMethod: method
+      };
     }
 
     const processingTime = Date.now() - startTime;
