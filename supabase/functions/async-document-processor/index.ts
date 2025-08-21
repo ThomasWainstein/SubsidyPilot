@@ -38,9 +38,10 @@ async function processDocumentInBackground(
   userId?: string
 ) {
   const processingStartTime = Date.now();
+  const requestId = crypto.randomUUID().slice(0, 8);
   
   try {
-    console.log(`🔄 Background processing started for job ${jobId}`);
+    console.log(`[${requestId}] 🔄 Background processing started for job ${jobId}`);
     
     // Update job status to processing
     await supabase
@@ -53,12 +54,15 @@ async function processDocumentInBackground(
 
     // Add artificial delay for very large documents to prevent memory issues
     const fileSize = await getFileSize(fileUrl);
+    console.log(`[${requestId}] 📏 File size: ${Math.round(fileSize / 1024 / 1024)}MB`);
+    
     if (fileSize > 10 * 1024 * 1024) { // 10MB+
-      console.log(`⏳ Large file detected (${Math.round(fileSize / 1024 / 1024)}MB), adding processing delay`);
+      console.log(`[${requestId}] ⏳ Large file detected, adding processing delay`);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    // Call hybrid extraction for processing
+    // Call hybrid extraction for processing with detailed error tracking
+    console.log(`[${requestId}] 🔄 Calling hybrid-extraction function`);
     const hybridResponse = await supabase.functions.invoke('hybrid-extraction', {
       body: {
         fileUrl,
@@ -68,13 +72,32 @@ async function processDocumentInBackground(
       }
     });
 
+    console.log(`[${requestId}] 📝 Hybrid extraction response status:`, {
+      hasError: !!hybridResponse.error,
+      hasData: !!hybridResponse.data,
+      status: hybridResponse.status
+    });
+
     if (hybridResponse.error) {
-      throw new Error(`Hybrid extraction failed: ${hybridResponse.error.message}`);
+      console.error(`[${requestId}] ❌ Hybrid extraction error details:`, {
+        message: hybridResponse.error.message,
+        code: hybridResponse.error.code,
+        details: hybridResponse.error.details,
+        status: hybridResponse.status
+      });
+      throw new Error(`Hybrid extraction failed: ${hybridResponse.error.message || JSON.stringify(hybridResponse.error)}`);
+    }
+
+    if (!hybridResponse.data) {
+      console.error(`[${requestId}] ❌ No data returned from hybrid extraction:`, hybridResponse);
+      throw new Error(`Hybrid extraction returned no data. Status: ${hybridResponse.status}`);
     }
 
     const hybridData = hybridResponse.data;
+    console.log(`[${requestId}] ✅ Hybrid extraction successful: confidence ${hybridData.confidence}, method ${hybridData.method}`);
     
     // Store extraction results
+    console.log(`[${requestId}] 💾 Storing extraction results`);
     const { error: extractionError } = await supabase
       .from('document_extractions')
       .insert({
@@ -92,6 +115,7 @@ async function processDocumentInBackground(
       });
 
     if (extractionError) {
+      console.error(`[${requestId}] ❌ Database insertion error:`, extractionError);
       throw extractionError;
     }
 
@@ -108,15 +132,21 @@ async function processDocumentInBackground(
           ...hybridData.ocrMetadata,
           confidence: hybridData.confidence,
           extractionMethod: hybridData.method,
-          textLength: hybridData.extractedText.length
+          textLength: hybridData.extractedText.length,
+          requestId
         }
       })
       .eq('id', jobId);
 
-    console.log(`✅ Background processing completed for job ${jobId} in ${totalProcessingTime}ms`);
+    console.log(`[${requestId}] ✅ Background processing completed for job ${jobId} in ${totalProcessingTime}ms`);
 
   } catch (error) {
-    console.error(`❌ Background processing failed for job ${jobId}:`, error);
+    const totalProcessingTime = Date.now() - processingStartTime;
+    console.error(`[${requestId}] ❌ Background processing failed for job ${jobId} at ${totalProcessingTime}ms:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
     // Update job status to failed
     await supabase
@@ -125,7 +155,7 @@ async function processDocumentInBackground(
         status: 'failed',
         error_message: error.message,
         completed_at: new Date().toISOString(),
-        processing_time_ms: Date.now() - processingStartTime
+        processing_time_ms: totalProcessingTime
       })
       .eq('id', jobId);
 
@@ -162,10 +192,28 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Add debug endpoints for testing
+  const url = new URL(req.url);
+  if (url.searchParams.get('test') === 'health') {
+    return new Response(JSON.stringify({
+      status: 'healthy',
+      service: 'async-document-processor',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      supabase: {
+        url: supabaseUrl ? 'configured' : 'missing',
+        serviceKey: supabaseServiceKey ? 'configured' : 'missing'
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     const { documentId, fileUrl, fileName, clientType, documentType, userId }: AsyncDocumentProcessorRequest = await req.json();
+    const requestId = crypto.randomUUID().slice(0, 8);
 
-    console.log(`🔄 Creating async processing job for document ${documentId}`);
+    console.log(`[${requestId}] 🔄 Creating async processing job for document ${documentId}`);
 
     // Validate input
     if (!documentId || !fileUrl || !fileName || !clientType || !documentType) {
@@ -175,6 +223,7 @@ serve(async (req) => {
     // Determine priority based on file size and type
     const fileSize = await getFileSize(fileUrl);
     const priority = fileSize > 50 * 1024 * 1024 ? 'high' : 'normal'; // High priority for files > 50MB
+    console.log(`[${requestId}] 📏 File size: ${Math.round(fileSize / 1024 / 1024)}MB, priority: ${priority}`);
 
     // Create job record
     const { data: jobData, error: jobError } = await supabase
@@ -197,18 +246,20 @@ serve(async (req) => {
         metadata: {
           fileSize,
           createdBy: 'async-document-processor',
-          version: '1.0'
+          version: '1.0',
+          requestId
         }
       })
       .select()
       .single();
 
     if (jobError) {
+      console.error(`[${requestId}] ❌ Job creation failed:`, jobError);
       throw jobError;
     }
 
     const jobId = jobData.id;
-    console.log(`✅ Created job ${jobId} with priority ${priority}`);
+    console.log(`[${requestId}] ✅ Created job ${jobId} with priority ${priority}`);
 
     // Start background processing using EdgeRuntime.waitUntil for memory safety
     EdgeRuntime.waitUntil(
@@ -226,7 +277,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Async document processor error:', error);
+    console.error('❌ Async document processor error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return new Response(
       JSON.stringify({ 
         success: false,
