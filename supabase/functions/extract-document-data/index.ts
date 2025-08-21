@@ -99,6 +99,23 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Add health check endpoint
+  const url = new URL(req.url);
+  if (url.searchParams.get('test') === 'health') {
+    return new Response(JSON.stringify({
+      status: 'healthy',
+      service: 'extract-document-data',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      supabase: {
+        url: supabaseUrl ? 'configured' : 'missing',
+        serviceKey: supabaseServiceKey ? 'configured' : 'missing'
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     const { documentId, fileUrl, fileName, clientType, documentType }: ExtractDocumentDataRequest = await req.json();
     const startTime = Date.now();

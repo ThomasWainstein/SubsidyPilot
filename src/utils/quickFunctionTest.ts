@@ -12,26 +12,34 @@ export const quickFunctionTest = async () => {
     
     try {
       const startTime = Date.now();
-      const response = await supabase.functions.invoke(func, { 
-        body: { test: 'health', timestamp: new Date().toISOString() }
+      // Use query parameter for health check instead of request body
+      const response = await fetch(`https://gvfgvbztagafjykncwto.supabase.co/functions/v1/${func}?test=health`, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2Zmd2Ynp0YWdhZmp5a25jd3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg3MDgxNzMsImV4cCI6MjA2NDI4NDE3M30.DLtvrw9I0nboGZiZQnGkszDTFHh4vDbpiA1do2J6rcI',
+          'Content-Type': 'application/json'
+        }
       });
       const duration = Date.now() - startTime;
       
+      const data = response.ok ? await response.json() : null;
+      const error = response.ok ? null : { message: `HTTP ${response.status}` };
+      
       console.log(`⏱️ ${func} response time: ${duration}ms`);
       console.log(`📊 ${func} result:`, {
-        hasData: !!response.data,
-        hasError: !!response.error,
-        data: response.data,
-        error: response.error
+        hasData: !!data,
+        hasError: !response.ok,
+        data: data,
+        error: error
       });
       
       results.push({
         function: func,
-        status: response.error ? 'ERROR' : 'SUCCESS',
+        status: response.ok ? 'SUCCESS' : 'ERROR',
         duration: duration,
-        hasData: !!response.data,
-        error: response.error?.message || null,
-        data: response.data || null
+        hasData: !!data,
+        error: error?.message || null,
+        data: data || null
       });
       
     } catch (error) {
