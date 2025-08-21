@@ -496,13 +496,6 @@ export type Database = {
             foreignKeyName: "applications_farm_id_fkey"
             columns: ["farm_id"]
             isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
-          },
-          {
-            foreignKeyName: "applications_farm_id_fkey"
-            columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -512,13 +505,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "subsidies"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_applications_farm_id"
-            columns: ["farm_id"]
-            isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
           },
           {
             foreignKeyName: "fk_applications_farm_id"
@@ -699,13 +685,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "applicant_types"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_profiles_legacy_farm_id_fkey"
-            columns: ["legacy_farm_id"]
-            isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
           },
           {
             foreignKeyName: "client_profiles_legacy_farm_id_fkey"
@@ -1754,22 +1733,8 @@ export type Database = {
             foreignKeyName: "farm_documents_farm_id_fkey"
             columns: ["farm_id"]
             isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
-          },
-          {
-            foreignKeyName: "farm_documents_farm_id_fkey"
-            columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_farm_documents_farm_id"
-            columns: ["farm_id"]
-            isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
           },
           {
             foreignKeyName: "fk_farm_documents_farm_id"
@@ -2238,13 +2203,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "model_training_jobs_farm_id_fkey"
-            columns: ["farm_id"]
-            isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
-          },
           {
             foreignKeyName: "model_training_jobs_farm_id_fkey"
             columns: ["farm_id"]
@@ -2934,6 +2892,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          risk_level: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          risk_level?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          risk_level?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       service_health_status: {
         Row: {
           created_at: string | null
@@ -3073,978 +3064,6 @@ export type Database = {
         Relationships: []
       }
       subsidies_backup: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_15_52: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_17_09: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_17_25: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_17_33: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_19_36: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_20_28: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_22_38: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_25_44: {
-        Row: {
-          agency: string | null
-          amount_max: number | null
-          amount_min: number | null
-          api_source: string | null
-          application_docs: Json | null
-          application_schema: Json | null
-          application_url: string | null
-          categories: string[] | null
-          code: string | null
-          created_at: string | null
-          deadline: string | null
-          description: Json | null
-          documents: Json | null
-          domain: string | null
-          eligibility_criteria: Json | null
-          external_id: string | null
-          extraction_batch_id: string | null
-          funding_type: string | null
-          id: string | null
-          import_job_id: string | null
-          language: string[] | null
-          legal_entities: string[] | null
-          matching_tags: string[] | null
-          raw_content: Json | null
-          raw_data: Json | null
-          record_status: string | null
-          region: string[] | null
-          scrape_date: string | null
-          source_url: string | null
-          status: string | null
-          tags: string[] | null
-          title: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          agency?: string | null
-          amount_max?: number | null
-          amount_min?: number | null
-          api_source?: string | null
-          application_docs?: Json | null
-          application_schema?: Json | null
-          application_url?: string | null
-          categories?: string[] | null
-          code?: string | null
-          created_at?: string | null
-          deadline?: string | null
-          description?: Json | null
-          documents?: Json | null
-          domain?: string | null
-          eligibility_criteria?: Json | null
-          external_id?: string | null
-          extraction_batch_id?: string | null
-          funding_type?: string | null
-          id?: string | null
-          import_job_id?: string | null
-          language?: string[] | null
-          legal_entities?: string[] | null
-          matching_tags?: string[] | null
-          raw_content?: Json | null
-          raw_data?: Json | null
-          record_status?: string | null
-          region?: string[] | null
-          scrape_date?: string | null
-          source_url?: string | null
-          status?: string | null
-          tags?: string[] | null
-          title?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      subsidies_backup_2025_08_19_12_29_45: {
         Row: {
           agency: string | null
           amount_max: number | null
@@ -4930,13 +3949,6 @@ export type Database = {
             foreignKeyName: "fk_subsidy_applications_farm"
             columns: ["farm_id"]
             isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
-          },
-          {
-            foreignKeyName: "fk_subsidy_applications_farm"
-            columns: ["farm_id"]
-            isOneToOne: false
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -5187,13 +4199,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "subsidy_matches_farm_id_fkey"
-            columns: ["farm_id"]
-            isOneToOne: false
-            referencedRelation: "farm_profiles_view"
-            referencedColumns: ["farm_id"]
-          },
           {
             foreignKeyName: "subsidy_matches_farm_id_fkey"
             columns: ["farm_id"]
@@ -5515,23 +4520,6 @@ export type Database = {
       }
     }
     Views: {
-      farm_profiles_view: {
-        Row: {
-          address: string | null
-          cnp_or_cui: string | null
-          country: string | null
-          department: string | null
-          farm_id: string | null
-          farm_name: string | null
-          legal_status: string | null
-          profile_created_at: string | null
-          profile_id: string | null
-          profile_updated_at: string | null
-          total_hectares: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
       review_queue_stats: {
         Row: {
           active_reviewers: number | null
@@ -5590,6 +4578,10 @@ export type Database = {
           subsidy_tags: string[]
         }
         Returns: number
+      }
+      check_production_readiness: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       complete_data_purge: {
         Args: Record<PropertyKey, never>
@@ -5703,6 +4695,23 @@ export type Database = {
           latest_status: string
         }[]
       }
+      get_farm_profiles: {
+        Args: { p_user_id?: string }
+        Returns: {
+          address: string
+          cnp_or_cui: string
+          country: string
+          department: string
+          farm_id: string
+          farm_name: string
+          legal_status: string
+          profile_created_at: string
+          profile_id: string
+          profile_updated_at: string
+          total_hectares: number
+          user_id: string
+        }[]
+      }
       get_phase_d_extractions: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -5760,6 +4769,10 @@ export type Database = {
           status: string
           updated_at: string
         }[]
+      }
+      get_security_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_user_access_tier: {
         Args: { p_user_id: string }
