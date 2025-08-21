@@ -5846,6 +5846,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_database_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       verify_system_health: {
         Args: Record<PropertyKey, never>
         Returns: Json
