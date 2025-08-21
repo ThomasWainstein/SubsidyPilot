@@ -134,7 +134,85 @@ export default function ValidationPage() {
         </TabsList>
 
         <TabsContent value="diagnostics">
-          <PhaseValidationDiagnostics />
+          <div className="space-y-6">
+            <PhaseValidationDiagnostics />
+            
+            {/* Edge Function Test Panel */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Edge Function Deployment Test
+                </CardTitle>
+                <CardDescription>
+                  Test if edge functions are deployed and responding (resolves "supabase not defined" console errors)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <button
+                      onClick={async () => {
+                        console.log('🔍 Testing Edge Function Deployment...');
+                        try {
+                          const result = await quickFunctionTest();
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Edge Function Deployment Test',
+                            status: result.deploymentStatus === 'FULLY DEPLOYED' ? 'completed' : 'failed',
+                            details: result
+                          });
+                        } catch (error) {
+                          console.error('Test failed:', error);
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Edge Function Deployment Test',
+                            status: 'failed',
+                            details: { error: error.message }
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >
+                      Test Function Deployment
+                    </button>
+                    
+                    <button
+                      onClick={async () => {
+                        console.log('🧪 Testing Real Document Processing...');
+                        try {
+                          const result = await testRealProcessing();
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Real Document Processing Test',
+                            status: result.success ? 'completed' : 'failed',
+                            details: result
+                          });
+                        } catch (error) {
+                          console.error('Processing test failed:', error);
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Real Document Processing Test',
+                            status: 'failed',
+                            details: { error: error.message }
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Test Real Processing
+                    </button>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground">
+                    <p>• <strong>Function Deployment Test:</strong> Checks if all 3 edge functions respond</p>
+                    <p>• <strong>Real Processing Test:</strong> Creates an actual async processing job</p>
+                    <p>• Results will appear in the "Test Results" tab automatically</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="real-docs">
