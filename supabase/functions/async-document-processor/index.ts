@@ -42,6 +42,14 @@ async function processDocumentInBackground(
   
   try {
     console.log(`[${requestId}] 🔄 Background processing started for job ${jobId}`);
+    console.log(`[${requestId}] 📋 Processing parameters:`, {
+      documentId,
+      fileUrl,
+      fileName,
+      documentType,
+      clientType,
+      userId: userId || 'anonymous'
+    });
     
     // Update job status to processing
     await supabase
@@ -52,9 +60,15 @@ async function processDocumentInBackground(
       })
       .eq('id', jobId);
 
-    // Add artificial delay for very large documents to prevent memory issues
+    // Validate file URL accessibility before processing
     const fileSize = await getFileSize(fileUrl);
     console.log(`[${requestId}] 📏 File size: ${Math.round(fileSize / 1024 / 1024)}MB`);
+    
+    // Only block processing if file is completely inaccessible (0 bytes from HTTP URLs)
+    if (fileSize === 0 && !fileUrl.startsWith('data:')) {
+      console.error(`[${requestId}] ❌ HTTP file is not accessible - cannot process`);
+      throw new Error(`File at URL ${fileUrl.substring(0, 100)}... is not accessible. Please check the file URL and permissions.`);
+    }
     
     if (fileSize > 10 * 1024 * 1024) { // 10MB+
       console.log(`[${requestId}] ⏳ Large file detected, adding processing delay`);
@@ -177,13 +191,75 @@ async function processDocumentInBackground(
 }
 
 async function getFileSize(url: string): Promise<number> {
-  try {
-    const response = await fetch(url, { method: 'HEAD' });
-    const contentLength = response.headers.get('content-length');
-    return contentLength ? parseInt(contentLength, 10) : 0;
-  } catch (error) {
-    console.warn('Could not determine file size:', error);
+  const requestId = crypto.randomUUID().slice(0, 8);
+  console.log(`[${requestId}] 🔍 Checking file size for URL type: ${url.substring(0, 50)}...`);
+  
+  if (!url) {
+    console.error(`[${requestId}] ❌ Empty URL provided to getFileSize`);
     return 0;
+  }
+  
+  // Handle base64 data URLs
+  if (url.startsWith('data:')) {
+    console.log(`[${requestId}] 📦 Base64 data URL detected - estimating size`);
+    try {
+      // Estimate size from base64 data
+      const base64Data = url.substring(url.indexOf(',') + 1);
+      const estimatedSize = Math.floor((base64Data.length * 3) / 4);
+      console.log(`[${requestId}] ✅ Base64 data estimated size: ${estimatedSize} bytes`);
+      return estimatedSize;
+    } catch (error) {
+      console.error(`[${requestId}] ❌ Failed to estimate base64 size:`, error);
+      return 1024; // Return 1KB as fallback for base64 data
+    }
+  }
+  
+  try {
+    console.log(`[${requestId}] 📡 Making HEAD request to: ${url}`);
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Supabase-Edge-Function/1.0'
+      }
+    });
+    
+    console.log(`[${requestId}] 📊 HEAD response status: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      console.warn(`[${requestId}] ⚠️ HEAD request failed, trying GET request for size`);
+      // Fallback to partial GET request
+      try {
+        const getResponse = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Supabase-Edge-Function/1.0',
+            'Range': 'bytes=0-1023' // Only get first 1KB to check if accessible
+          }
+        });
+        if (getResponse.ok) {
+          const contentLength = getResponse.headers.get('content-length') || 
+                               getResponse.headers.get('content-range')?.split('/')[1];
+          const size = contentLength ? parseInt(contentLength, 10) : 1024;
+          console.log(`[${requestId}] ✅ File accessible via GET, estimated size: ${size} bytes`);
+          return size;
+        }
+      } catch (getFallbackError) {
+        console.error(`[${requestId}] ❌ GET fallback also failed:`, getFallbackError);
+      }
+      return 0;
+    }
+    
+    const contentLength = response.headers.get('content-length');
+    const size = contentLength ? parseInt(contentLength, 10) : 1024; // Default to 1KB if unknown
+    console.log(`[${requestId}] ✅ File size determined: ${size} bytes (${Math.round(size / 1024 / 1024)}MB)`);
+    return size;
+  } catch (error) {
+    console.error(`[${requestId}] ❌ getFileSize error for URL ${url.substring(0, 100)}:`, {
+      message: error.message,
+      name: error.name
+    });
+    // For network errors, return 1KB to allow processing to continue
+    return 1024;
   }
 }
 
