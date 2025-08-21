@@ -32,11 +32,52 @@ interface HybridExtractionResponse {
 }
 
 async function downloadFile(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download file: ${response.statusText}`);
+  const requestId = crypto.randomUUID().slice(0, 8);
+  console.log(`[${requestId}] 📥 Starting file download from: ${url}`);
+  
+  if (!url || typeof url !== 'string') {
+    console.error(`[${requestId}] ❌ Invalid file URL:`, url);
+    throw new Error(`Invalid file URL provided: ${url}`);
   }
-  return await response.arrayBuffer();
+  
+  try {
+    console.log(`[${requestId}] 🌐 Making fetch request to: ${url}`);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Supabase-Edge-Function/1.0'
+      }
+    });
+    
+    console.log(`[${requestId}] 📊 Response status: ${response.status} ${response.statusText}`);
+    console.log(`[${requestId}] 📋 Response headers:`, Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unable to read error response');
+      console.error(`[${requestId}] ❌ HTTP Error Response:`, errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    }
+    
+    const contentLength = response.headers.get('content-length');
+    console.log(`[${requestId}] 📏 Content-Length header: ${contentLength}`);
+    
+    const buffer = await response.arrayBuffer();
+    console.log(`[${requestId}] ✅ File downloaded successfully: ${buffer.byteLength} bytes`);
+    
+    if (buffer.byteLength === 0) {
+      console.error(`[${requestId}] ❌ Downloaded file is empty (0 bytes)`);
+      throw new Error('Downloaded file is empty');
+    }
+    
+    return buffer;
+  } catch (error) {
+    console.error(`[${requestId}] ❌ File download failed:`, {
+      message: error.message,
+      stack: error.stack,
+      url: url
+    });
+    throw new Error(`File download failed: ${error.message}`);
+  }
 }
 
 async function extractWithGoogleVision(fileBuffer: ArrayBuffer): Promise<{ text: string; confidence: number }> {
