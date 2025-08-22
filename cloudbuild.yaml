@@ -5,24 +5,24 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '-t', 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:$COMMIT_SHA',
-      '-t', 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:latest',
+      '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:$COMMIT_SHA',
+      '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:latest',
       '.'
     ]
 
-  # Push the Docker image to Container Registry  
+  # Push the Docker image to Artifact Registry  
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:$COMMIT_SHA']
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:$COMMIT_SHA']
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:latest']
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:latest']
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args: [
       'run', 'deploy', 'subsidypilot-form-parser',
-      '--image', 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:$COMMIT_SHA',
+      '--image', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:$COMMIT_SHA',
       '--region', 'europe-west1',
       '--platform', 'managed',
       '--allow-unauthenticated',
@@ -35,10 +35,10 @@ steps:
       '--set-env-vars', 'NODE_ENV=production,SUPABASE_URL=https://gvfgvbztagafjykncwto.supabase.co'
     ]
 
-# Store images in Container Registry
+# Store images in Artifact Registry
 images:
-  - 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/subsidypilot-form-parser:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:$COMMIT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/subsidypilot/subsidypilot-form-parser:latest'
 
 # Build options
 options:
