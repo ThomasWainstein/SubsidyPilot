@@ -27,6 +27,7 @@ import {
   Zap
 } from 'lucide-react';
 import { DocumentUploadCloudRun } from '@/components/DocumentUploadCloudRun';
+import { PatternExtractionDemo } from '@/components/PatternExtractionDemo';
 import { useCloudRunProcessing } from '@/hooks/useCloudRunProcessing';
 import Navbar from '@/components/Navbar';
 
@@ -126,6 +127,11 @@ export const UniversalCloudRunTestPage = () => {
               Test the Google Cloud Run subsidypilot-form-parser service for both client onboarding 
               and subsidy intelligence across all applicant types
             </p>
+          </div>
+
+          {/* Phase 1 Pattern Extraction Demo */}
+          <div className="mb-8">
+            <PatternExtractionDemo />
           </div>
 
           {/* Service Status */}
