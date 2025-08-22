@@ -8,12 +8,13 @@ const corsHeaders = {
 };
 
 interface UploadRequest {
-  farmId: string;
+  farmId?: string; // Made optional for test scenarios
   fileName: string;
   fileSize: number;
   documentType: string;
-  category: string;
+  category?: string; // Made optional for test scenarios
   clientType?: 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
+  userId?: string; // Add userId for test scenarios
 }
 
 serve(async (req) => {
@@ -29,6 +30,51 @@ serve(async (req) => {
     const uploadData = await req.json() as UploadRequest;
     console.log(`📤 Initiating async upload for ${uploadData.fileName}`);
 
+    // Handle test scenarios - create or get test farm ID
+    let farmId = uploadData.farmId;
+    let category = uploadData.category || 'test-documents';
+    
+    if (!farmId && uploadData.userId) {
+      // For test scenarios, create a default test farm for the user
+      console.log('🧪 Test upload detected, checking for test farm...');
+      
+      // Try to find existing test farm for user
+      const { data: existingFarm } = await supabase
+        .from('farms')
+        .select('id')
+        .eq('name', 'Test Farm')
+        .eq('user_id', uploadData.userId)
+        .single();
+      
+      if (existingFarm) {
+        farmId = existingFarm.id;
+        console.log(`✅ Using existing test farm: ${farmId}`);
+      } else {
+        // Create test farm for user
+        const { data: newFarm, error: farmError } = await supabase
+          .from('farms')
+          .insert({
+            name: 'Test Farm',
+            user_id: uploadData.userId,
+            address: 'Test Address',
+            total_hectares: 0,
+            legal_status: 'individual',
+            country: 'Test Country'
+          })
+          .select('id')
+          .single();
+        
+        if (farmError || !newFarm) {
+          throw new Error(`Failed to create test farm: ${farmError?.message}`);
+        }
+        
+        farmId = newFarm.id;
+        console.log(`✅ Created new test farm: ${farmId}`);
+      }
+    } else if (!farmId) {
+      throw new Error('farmId or userId must be provided');
+    }
+
     // Validate file constraints
     const maxSize = getMaxFileSize(uploadData.documentType, uploadData.fileName);
     if (uploadData.fileSize > maxSize) {
@@ -43,7 +89,7 @@ serve(async (req) => {
 
     // Generate upload URL and document ID
     const documentId = crypto.randomUUID();
-    const filePath = `${uploadData.farmId}/${uploadData.category}/${uploadData.fileName}`;
+    const filePath = `${farmId}/${category}/${uploadData.fileName}`;
     
     // Create signed upload URL
     const { data: uploadUrl, error: urlError } = await supabase.storage
@@ -61,11 +107,11 @@ serve(async (req) => {
       .from('farm_documents')
       .insert({
         id: documentId,
-        farm_id: uploadData.farmId,
+        farm_id: farmId,
         file_name: uploadData.fileName,
         file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
         file_size: uploadData.fileSize,
-        category: uploadData.category,
+        category: category,
         mime_type: getMimeType(uploadData.fileName),
         processing_status: 'upload_pending',
         uploaded_at: new Date().toISOString()

@@ -83,7 +83,8 @@ export const DocumentUploadCloudRun = ({
             fileSize: file.size,
             fileType: file.type,
             documentType: documentType,
-            userId: (await supabase.auth.getUser()).data.user?.id
+            userId: (await supabase.auth.getUser()).data.user?.id,
+            category: 'test-documents'
           }
         }
       );
