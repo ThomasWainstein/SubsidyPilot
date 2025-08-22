@@ -347,6 +347,15 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // Log environment variables for debugging (safely)
+    console.log(`[${requestId}] 🔧 Environment check:`, {
+      supabaseUrl: supabaseUrl ? 'configured' : 'missing',
+      supabaseServiceKey: supabaseServiceKey ? 'configured' : 'missing',
+      googleVisionApiKey: googleVisionApiKey ? 'configured' : 'missing',
+      googleProjectId: googleProjectId ? 'configured' : 'missing',
+      openaiApiKey: openaiApiKey ? 'configured' : 'missing'
+    });
+
     // Add test endpoints for debugging
     const url = new URL(req.url);
     if (url.searchParams.get('test') === 'vision') {
