@@ -134,23 +134,9 @@ serve(async (req) => {
     let docError = null;
     
     if (clientProfileId) {
-      // Modern approach: Store as client document (to be implemented when we have client_documents table)
-      console.log(`📋 Will create client document record for profile ${clientProfileId} when table is ready`);
-      // For now, create as farm document with special handling
-      const { error } = await supabase
-        .from('farm_documents')
-        .insert({
-          id: documentId,
-          farm_id: uploadData.farmId || '00000000-0000-0000-0000-000000000000', // Placeholder for legacy compatibility
-          file_name: uploadData.fileName,
-          file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
-          file_size: uploadData.fileSize,
-          category: category,
-          mime_type: getMimeType(uploadData.fileName),
-          processing_status: 'upload_pending',
-          uploaded_at: new Date().toISOString()
-        });
-      docError = error;
+      // Modern approach: For universal clients, we'll skip the farm document creation
+      // and just track in document_extractions for now until we have client_documents table
+      console.log(`📋 Universal client document - skipping farm_documents table for profile ${clientProfileId}`);
     } else {
       // Legacy approach: Store as farm document
       const { error } = await supabase
@@ -178,10 +164,18 @@ serve(async (req) => {
       .from('document_extractions')
       .insert({
         document_id: documentId,
+        user_id: uploadData.userId || null,
         status: 'uploading',
         status_v2: 'uploading',
         extracted_data: {},
         confidence_score: 0.0,
+        progress_metadata: {
+          client_profile_id: clientProfileId,
+          client_type: uploadData.clientType,
+          use_case: uploadData.useCase,
+          file_size: uploadData.fileSize,
+          file_path: filePath
+        },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
