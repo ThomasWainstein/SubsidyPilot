@@ -272,13 +272,101 @@ export const DocumentUploadCloudRun = ({
 
         {/* Results */}
         {result && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              Document processed successfully! Extracted {Object.keys(result || {}).length} data fields 
-              using async Cloud Run processing.
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-success">✅ Processing Complete</h3>
+                <Badge variant="secondary">
+                  {result.processing_time_ms ? `${result.processing_time_ms}ms` : 'N/A'}
+                </Badge>
+              </div>
+
+              {/* Hybrid Processing Metrics */}
+              {result.extraction_method && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 bg-background/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Processing Method</div>
+                    <div className="font-semibold capitalize">
+                      {result.extraction_method.replace('-', ' + ')}
+                    </div>
+                  </div>
+                  
+                  {result.cost_optimization && (
+                    <>
+                      <div className="text-center p-3 bg-background/50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Pattern Fields</div>
+                        <div className="font-semibold text-primary">
+                          {result.cost_optimization.fields_from_patterns || 0}
+                        </div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-background/50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">AI Fields</div>
+                        <div className="font-semibold text-secondary">
+                          {result.cost_optimization.fields_from_ai || 0}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Processing Time Breakdown */}
+              {result.pattern_extraction_time && (
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Pattern Extraction:</span>
+                  <span className="font-mono">{result.pattern_extraction_time}ms</span>
+                </div>
+              )}
+              
+              {result.ai_processing_time && result.ai_processing_time > 0 && (
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">AI Processing:</span>
+                  <span className="font-mono">{result.ai_processing_time}ms</span>
+                </div>
+              )}
+
+              {/* Cost Optimization Note */}
+              {result.extraction_method === 'pattern-only' && (
+                <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg mb-2">
+                  <span className="text-lg">⚡</span>
+                  <div className="text-sm">
+                    <div className="font-semibold text-primary">Cost Optimized!</div>
+                    <div className="text-muted-foreground">Pattern extraction only - no AI costs</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Confidence Score:</span>
+                <span className="font-mono">{(result.confidence * 100).toFixed(1)}%</span>
+              </div>
+              
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Fields Extracted:</span>
+                <span className="font-mono">{result.fields_extracted || 0}/{result.total_fields || 0}</span>
+              </div>
+            </div>
+
+            {/* Extracted Data */}
+            {result.extractedData && Object.keys(result.extractedData).length > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg">
+                <h4 className="font-semibold mb-3">Extracted Data:</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {Object.entries(result.extractedData).map(([key, value]) => (
+                    <div key={key} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}:
+                      </span>
+                      <span className="font-mono text-right max-w-xs truncate">
+                        {String(value) || 'N/A'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Error */}
@@ -324,8 +412,9 @@ export const DocumentUploadCloudRun = ({
         </div>
 
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>✨ <strong>Cloud Run Processing:</strong> Advanced AI extraction with high accuracy</p>
-          <p>⚡ <strong>Fast Processing:</strong> Typically completes in 30-120 seconds</p>
+          <p>🔍 <strong>Hybrid Processing:</strong> Fast pattern extraction + AI when needed</p>
+          <p>⚡ <strong>Cost Optimized:</strong> Uses AI only for complex fields</p>
+          <p>📊 <strong>Smart Analysis:</strong> Combines rule-based and ML approaches</p>
           <p>🔒 <strong>Secure:</strong> Files processed on Google Cloud infrastructure</p>
         </div>
       </CardContent>
