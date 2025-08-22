@@ -153,15 +153,48 @@ export const testRealProcessing = async () => {
         
       if (jobError) {
         console.error('❌ Failed to retrieve job from database:', jobError);
-      } else {
-        console.log('✅ Job found in database:', jobData);
+      }
+      
+      // Wait a bit for background processing and then check job status with more details
+      console.log('⏳ Waiting 3 seconds for background processing...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Enhanced job status check with error details
+      const { data: finalJobStatus, error: finalJobError } = await supabase
+        .from('document_processing_jobs')
+        .select('*, error_message, status, completed_at, processing_time_ms')
+        .eq('id', response.data.jobId)
+        .maybeSingle();
+      
+      if (finalJobError) {
+        console.error('❌ Failed to retrieve final job status:', finalJobError);
+        return {
+          success: false,
+          jobId: response.data.jobId,
+          duration,
+          error: `Database query failed: ${finalJobError.message}`,
+          jobData: null
+        };
+      }
+      
+      console.log('📊 Final job status:', finalJobStatus);
+      
+      if (finalJobStatus?.status === 'failed') {
+        console.error('❌ Job failed with error:', finalJobStatus.error_message);
+        return {
+          success: false,
+          jobId: response.data.jobId,
+          duration,
+          jobData: finalJobStatus,
+          error: finalJobStatus.error_message || 'Job failed with unknown error'
+        };
       }
       
       return {
         success: true,
         jobId: response.data.jobId,
         duration,
-        jobData
+        jobData: finalJobStatus
       };
     } else {
       console.error('❌ No job ID returned');
