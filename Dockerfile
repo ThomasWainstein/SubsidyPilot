@@ -13,8 +13,11 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy server source code
 COPY server/ ./
 
-# Ensure index.js is executable
-RUN ls -la /app && cat /app/package.json
+# Debug: List files and check structure
+RUN echo "=== FILES IN /app ===" && ls -la /app
+RUN echo "=== PACKAGE.JSON CONTENT ===" && cat /app/package.json
+RUN echo "=== CHECK INDEX.JS EXISTS ===" && ls -la /app/index.js || echo "index.js NOT FOUND"
+RUN echo "=== NPM START TEST ===" && npm run start --version || echo "npm start failed"
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
