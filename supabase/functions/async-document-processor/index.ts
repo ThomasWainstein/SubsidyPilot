@@ -75,50 +75,53 @@ async function processDocumentInBackground(
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    // Call hybrid extraction for processing with detailed error tracking
-    console.log(`[${requestId}] 🔄 Calling hybrid-extraction function`);
-    const hybridResponse = await supabase.functions.invoke('hybrid-extraction', {
-      body: {
-        fileUrl,
-        fileName,
-        documentType,
-        processingMode: 'async'
-      }
-    });
-
-    // Enhanced logging for debugging edge function communication
-    console.log(`[${requestId}] 📝 Hybrid extraction response status:`, {
-      hasError: !!hybridResponse.error,
-      hasData: !!hybridResponse.data,
-      status: hybridResponse.status,
-      errorMessage: hybridResponse.error?.message,
-      errorDetails: hybridResponse.error
-    });
+    // Call hybrid extraction for processing with direct HTTP call (more reliable than supabase.functions.invoke)
+    console.log(`[${requestId}] 🔄 Calling hybrid-extraction function via direct HTTP`);
     
-    // Log the actual response structure for debugging
-    console.log(`[${requestId}] 🔍 Full hybrid response structure:`, JSON.stringify({
-      data: hybridResponse.data,
-      error: hybridResponse.error,
-      status: hybridResponse.status
-    }, null, 2));
-
-    if (hybridResponse.error) {
-      console.error(`[${requestId}] ❌ Hybrid extraction error details:`, {
-        message: hybridResponse.error.message,
-        code: hybridResponse.error.code,
-        details: hybridResponse.error.details,
-        status: hybridResponse.status
+    let hybridData;
+    try {
+      const hybridResponse = await fetch(`${supabaseUrl}/functions/v1/hybrid-extraction`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json',
+          'apikey': supabaseServiceKey
+        },
+        body: JSON.stringify({
+          fileUrl,
+          fileName,
+          documentType,
+          processingMode: 'async'
+        })
       });
-      throw new Error(`Hybrid extraction failed: ${hybridResponse.error.message || JSON.stringify(hybridResponse.error)}`);
-    }
 
-    if (!hybridResponse.data) {
-      console.error(`[${requestId}] ❌ No data returned from hybrid extraction:`, hybridResponse);
-      throw new Error(`Hybrid extraction returned no data. Status: ${hybridResponse.status}`);
-    }
+      console.log(`[${requestId}] 📝 Hybrid extraction HTTP response:`, {
+        status: hybridResponse.status,
+        statusText: hybridResponse.statusText,
+        ok: hybridResponse.ok
+      });
 
-    const hybridData = hybridResponse.data;
-    console.log(`[${requestId}] ✅ Hybrid extraction successful: confidence ${hybridData.confidence}, method ${hybridData.method}`);
+      if (!hybridResponse.ok) {
+        const errorText = await hybridResponse.text();
+        console.error(`[${requestId}] ❌ Hybrid extraction HTTP error:`, {
+          status: hybridResponse.status,
+          statusText: hybridResponse.statusText,
+          errorText: errorText
+        });
+        throw new Error(`Hybrid extraction HTTP error: ${hybridResponse.status} ${hybridResponse.statusText} - ${errorText}`);
+      }
+
+      hybridData = await hybridResponse.json();
+      console.log(`[${requestId}] ✅ Hybrid extraction successful: confidence ${hybridData.confidence}, method ${hybridData.method}`);
+      
+      if (!hybridData) {
+        console.error(`[${requestId}] ❌ No data returned from hybrid extraction:`, hybridData);
+        throw new Error(`Hybrid extraction returned no data.`);
+      }
+    } catch (fetchError) {
+      console.error(`[${requestId}] ❌ Failed to call hybrid-extraction:`, fetchError);
+      throw new Error(`Hybrid extraction failed: ${fetchError.message}`);
+    }
     
     // Store extraction results
     console.log(`[${requestId}] 💾 Storing extraction results`);
