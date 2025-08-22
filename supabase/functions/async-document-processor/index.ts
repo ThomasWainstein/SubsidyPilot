@@ -86,11 +86,21 @@ async function processDocumentInBackground(
       }
     });
 
+    // Enhanced logging for debugging edge function communication
     console.log(`[${requestId}] 📝 Hybrid extraction response status:`, {
       hasError: !!hybridResponse.error,
       hasData: !!hybridResponse.data,
-      status: hybridResponse.status
+      status: hybridResponse.status,
+      errorMessage: hybridResponse.error?.message,
+      errorDetails: hybridResponse.error
     });
+    
+    // Log the actual response structure for debugging
+    console.log(`[${requestId}] 🔍 Full hybrid response structure:`, JSON.stringify({
+      data: hybridResponse.data,
+      error: hybridResponse.error,
+      status: hybridResponse.status
+    }, null, 2));
 
     if (hybridResponse.error) {
       console.error(`[${requestId}] ❌ Hybrid extraction error details:`, {
