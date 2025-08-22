@@ -1,4 +1,5 @@
 # Cloud Build configuration for SubsidyPilot Form Parser
+# This file MUST be used instead of auto-detection
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
