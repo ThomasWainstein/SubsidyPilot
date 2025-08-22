@@ -121,13 +121,35 @@ export const testRealProcessing = async () => {
     if (response.data?.jobId) {
       console.log(`✅ Job created successfully: ${response.data.jobId}`);
       
-      // Check if job was created in database
+      // Check if job was created in database (with retry for async creation)
       console.log('🔍 Checking job in database...');
-      const { data: jobData, error: jobError } = await supabase
-        .from('document_processing_jobs')
-        .select('*')
-        .eq('id', response.data.jobId)
-        .single();
+      let jobData = null;
+      let jobError = null;
+      
+      // Retry logic for job lookup (async job creation might take a moment)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: jobResult, error: jobQueryError } = await supabase
+          .from('document_processing_jobs')
+          .select('*')
+          .eq('id', response.data.jobId)
+          .maybeSingle();
+          
+        if (jobResult) {
+          jobData = jobResult;
+          jobError = null;
+          break;
+        } else if (jobQueryError && jobQueryError.code !== 'PGRST116') {
+          // Real error, not just "no rows found"
+          jobError = jobQueryError;
+          break;
+        }
+        
+        // Wait a bit before retrying
+        if (attempt < 2) {
+          console.log(`⏳ Job not found yet, retrying in 500ms (attempt ${attempt + 1}/3)...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
         
       if (jobError) {
         console.error('❌ Failed to retrieve job from database:', jobError);
