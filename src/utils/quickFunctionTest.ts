@@ -181,8 +181,66 @@ export const testRealProcessing = async () => {
   }
 };
 
+// Test hybrid-extraction function directly to isolate issues
+export const testHybridExtraction = async () => {
+  console.log('\n🔬 Testing Hybrid Extraction Function Directly...');
+  
+  try {
+    const testData = {
+      fileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      fileName: 'test-deployment.png',
+      documentType: 'test',
+      processingMode: 'async'
+    };
+
+    console.log('📋 Test parameters:', testData);
+    
+    const startTime = Date.now();
+    console.log('🚀 Calling hybrid-extraction function...');
+    
+    const { data: response, error } = await supabase.functions.invoke('hybrid-extraction', {
+      body: testData
+    });
+    
+    const duration = Date.now() - startTime;
+    
+    console.log(`⏱️ Hybrid extraction call completed in ${duration}ms`);
+    console.log('📊 Response details:', {
+      hasData: !!response,
+      hasError: !!error,
+      data: response,
+      error: error
+    });
+
+    if (error) {
+      console.error('❌ Hybrid extraction error:', error);
+      return {
+        success: false,
+        duration,
+        error: error.message || 'Unknown error',
+        details: error
+      };
+    }
+
+    console.log('✅ Hybrid extraction successful:', response);
+    return {
+      success: true,
+      duration,
+      data: response
+    };
+    
+  } catch (error) {
+    console.error('❌ Hybrid extraction test failed with exception:', error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error'
+    };
+  }
+};
+
 // Make functions available globally for console access
 if (typeof window !== 'undefined') {
   (window as any).quickFunctionTest = quickFunctionTest;
   (window as any).testRealProcessing = testRealProcessing;
+  (window as any).testHybridExtraction = testHybridExtraction;
 }

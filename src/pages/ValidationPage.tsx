@@ -202,11 +202,39 @@ export default function ValidationPage() {
                     >
                       Test Real Processing
                     </button>
+                    
+                    <button
+                      onClick={async () => {
+                        console.log('🔬 Testing Hybrid Extraction Function...');
+                        try {
+                          const { testHybridExtraction } = await import('@/utils/quickFunctionTest');
+                          const result = await testHybridExtraction();
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Hybrid Extraction Direct Test',
+                            status: result.success ? 'completed' : 'failed',
+                            details: result
+                          });
+                        } catch (error) {
+                          console.error('Hybrid extraction test failed:', error);
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Hybrid Extraction Direct Test',
+                            status: 'failed',
+                            details: { error: error.message }
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                    >
+                      Test Hybrid Extraction
+                    </button>
                   </div>
                   
                   <div className="text-sm text-muted-foreground">
                     <p>• <strong>Function Deployment Test:</strong> Checks if all 3 edge functions respond</p>
                     <p>• <strong>Real Processing Test:</strong> Creates an actual async processing job</p>
+                    <p>• <strong>Hybrid Extraction Test:</strong> Tests the hybrid-extraction function directly to isolate issues</p>
                     <p>• Results will appear in the "Test Results" tab automatically</p>
                   </div>
                 </div>
