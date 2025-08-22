@@ -14,9 +14,12 @@ interface SecurityEvent {
   id: string;
   event_type: string;
   user_id: string | null;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  target_user_id: string | null;
   message: string;
-  metadata: any;
+  event_data: any;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  ip_address: string | null;
+  user_agent: string | null;
   created_at: string;
 }
 
@@ -102,7 +105,7 @@ export const SecurityMonitor = () => {
     setStats(prev => ({
       ...prev,
       totalEvents: prev.totalEvents + 1,
-      criticalEvents: prev.criticalEvents + (newEvent.severity === 'critical' ? 1 : 0),
+      criticalEvents: prev.criticalEvents + (newEvent.risk_level === 'critical' ? 1 : 0),
       rateLimitViolations: prev.rateLimitViolations + (newEvent.event_type.includes('rate_limit') ? 1 : 0),
       fileValidationFailures: prev.fileValidationFailures + (newEvent.event_type.includes('file_validation') ? 1 : 0),
       lastUpdate: new Date().toISOString(),
@@ -227,12 +230,12 @@ export const SecurityMonitor = () => {
               events.map((event) => (
                 <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg">
                   <div className="flex items-center gap-2">
-                    {getSeverityIcon(event.severity)}
+                    {getSeverityIcon(event.risk_level)}
                     <Badge 
-                      variant={getSeverityColor(event.severity) as any}
+                      variant={getSeverityColor(event.risk_level) as any}
                       className="text-xs"
                     >
-                      {event.severity.toUpperCase()}
+                      {event.risk_level.toUpperCase()}
                     </Badge>
                   </div>
                   
@@ -240,13 +243,13 @@ export const SecurityMonitor = () => {
                     <p className="font-medium text-sm">{event.event_type}</p>
                     <p className="text-sm text-muted-foreground mt-1">{event.message}</p>
                     
-                    {event.metadata && Object.keys(event.metadata).length > 0 && (
+                    {event.event_data && Object.keys(event.event_data).length > 0 && (
                       <details className="mt-2">
                         <summary className="text-xs text-muted-foreground cursor-pointer">
                           View Details
                         </summary>
                         <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
-                          {JSON.stringify(event.metadata, null, 2)}
+                          {JSON.stringify(event.event_data, null, 2)}
                         </pre>
                       </details>
                     )}

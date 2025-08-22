@@ -4798,12 +4798,20 @@ export type Database = {
         Returns: boolean
       }
       log_security_event: {
-        Args: {
-          _event_data?: Json
-          _event_type: string
-          _risk_level?: string
-          _target_user_id?: string
-        }
+        Args:
+          | {
+              _event_data?: Json
+              _event_type: string
+              _risk_level?: string
+              _target_user_id?: string
+            }
+          | {
+              p_event_data?: Json
+              p_event_type: string
+              p_message: string
+              p_risk_level?: string
+              p_target_user_id?: string
+            }
         Returns: undefined
       }
       purge_ai_and_subsidy_data: {
