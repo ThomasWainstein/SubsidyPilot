@@ -86,7 +86,7 @@ export const DocumentUploadCloudRun = ({
             userId: (await supabase.auth.getUser()).data.user?.id,
             clientType: 'individual', // Default for test, could be made configurable
             useCase: 'client-onboarding', // Default use case for this component
-            category: 'test-documents'
+            category: 'other'
           }
         }
       );
