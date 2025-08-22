@@ -16,7 +16,17 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const pathname = url.pathname.replace('/functions/v1/cloud-run-proxy', '');
+    console.log(`📥 Original URL: ${req.url}`);
+    console.log(`📍 Original pathname: ${url.pathname}`);
+    
+    // Strip both the Supabase function path and any cloud-run-proxy prefix
+    let pathname = url.pathname.replace('/functions/v1/cloud-run-proxy', '');
+    console.log(`🔄 After function path removal: ${pathname}`);
+    
+    // Remove any leading /cloud-run-proxy prefix that might come from the frontend
+    pathname = pathname.replace(/^\/cloud-run-proxy/, '');
+    console.log(`🎯 Final pathname: ${pathname}`);
+    
     const targetUrl = `${CLOUD_RUN_BASE_URL}${pathname}${url.search}`;
 
     console.log(`🚀 Proxying request to: ${targetUrl}`);
