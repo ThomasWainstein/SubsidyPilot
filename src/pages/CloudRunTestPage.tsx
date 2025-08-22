@@ -135,7 +135,9 @@ const CloudRunTestPage: React.FC = () => {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Endpoint:</strong> https://subsidypilot-form-parser-838836299668.europe-west1.run.app
+                  <strong>Proxy Endpoint:</strong> https://gvfgvbztagafjykncwto.supabase.co/functions/v1/cloud-run-proxy
+                  <br />
+                  <strong>Target Service:</strong> https://subsidypilot-form-parser-838836299668.europe-west1.run.app
                   <br />
                   <strong>Region:</strong> europe-west1 (Belgium)
                   <br />

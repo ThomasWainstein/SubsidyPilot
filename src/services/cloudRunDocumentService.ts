@@ -30,7 +30,7 @@ export interface CloudRunProcessingResponse {
 }
 
 class CloudRunDocumentService {
-  private readonly baseUrl = 'https://subsidypilot-form-parser-838836299668.europe-west1.run.app';
+  private readonly baseUrl = 'https://gvfgvbztagafjykncwto.supabase.co/functions/v1/cloud-run-proxy';
   private readonly timeout = 300000; // 5 minutes
 
   /**
