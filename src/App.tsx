@@ -47,6 +47,7 @@ const ScrapeReportDashboard = lazy(() => import('@/components/admin/ScrapeReport
 const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'));
 const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
 const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
+const SecurityMonitor = lazy(() => import('@/components/security/SecurityMonitor'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -184,6 +185,10 @@ function App() {
                       
                       <Route path="/admin/proof-of-concept" element={
                         <ProtectedRouteWrapper><ProofOfConcept /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/admin/security" element={
+                        <ProtectedRouteWrapper><SecurityMonitor /></ProtectedRouteWrapper>
                       } />
                       
                       
