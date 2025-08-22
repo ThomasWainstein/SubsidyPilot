@@ -33,6 +33,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const DocumentReviewPage = lazy(() => import('@/pages/DocumentReviewPage'));
 const DocumentReviewDetailPage = lazy(() => import('@/pages/DocumentReviewDetailPage'));
 const ExtractionAnalyticsPage = lazy(() => import('@/pages/ExtractionAnalyticsPage'));
+const CloudRunTestPage = lazy(() => import('@/pages/CloudRunTestPage'));
 const SupportedFileTypesPage = lazy(() => import('@/pages/SupportedFileTypesPage'));
 const ReviewWorkflowDocsPage = lazy(() => import('@/pages/ReviewWorkflowDocsPage'));
 const TrainingPipelinePage = lazy(() => import('@/pages/TrainingPipelinePage'));
@@ -135,6 +136,10 @@ function App() {
                       
                       <Route path="/farm/:farmId/document-review/analytics" element={
                         <ProtectedRouteWrapper><ExtractionAnalyticsPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/cloud-run-test" element={
+                        <ProtectedRouteWrapper><CloudRunTestPage /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/farm/:farmId/training" element={
