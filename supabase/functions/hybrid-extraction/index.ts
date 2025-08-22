@@ -33,13 +33,34 @@ interface HybridExtractionResponse {
 
 async function downloadFile(url: string): Promise<ArrayBuffer> {
   const requestId = crypto.randomUUID().slice(0, 8);
-  console.log(`[${requestId}] 📥 Starting file download from: ${url}`);
+  console.log(`[${requestId}] 📥 Starting file download from: ${url.substring(0, 100)}...`);
   
   if (!url || typeof url !== 'string') {
     console.error(`[${requestId}] ❌ Invalid file URL:`, url);
     throw new Error(`Invalid file URL provided: ${url}`);
   }
   
+  // Handle base64 data URLs
+  if (url.startsWith('data:')) {
+    console.log(`[${requestId}] 📦 Processing base64 data URL`);
+    try {
+      const base64Data = url.substring(url.indexOf(',') + 1);
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      console.log(`[${requestId}] ✅ Base64 data decoded successfully: ${bytes.byteLength} bytes`);
+      return bytes.buffer;
+    } catch (error) {
+      console.error(`[${requestId}] ❌ Failed to decode base64 data:`, error);
+      throw new Error(`Failed to decode base64 data: ${error.message}`);
+    }
+  }
+  
+  // Handle HTTP/HTTPS URLs
   try {
     console.log(`[${requestId}] 🌐 Making fetch request to: ${url}`);
     const response = await fetch(url, {
