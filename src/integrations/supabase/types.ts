@@ -647,6 +647,68 @@ export type Database = {
         }
         Relationships: []
       }
+      client_documents: {
+        Row: {
+          category: string
+          client_profile_id: string | null
+          created_at: string
+          document_type: string
+          file_name: string
+          file_size: number
+          file_url: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          processed_at: string | null
+          processing_status: string
+          updated_at: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          client_profile_id?: string | null
+          created_at?: string
+          document_type: string
+          file_name: string
+          file_size: number
+          file_url: string
+          id?: string
+          metadata?: Json | null
+          mime_type: string
+          processed_at?: string | null
+          processing_status?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          client_profile_id?: string | null
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_size?: number
+          file_url?: string
+          id?: string
+          metadata?: Json | null
+          mime_type?: string
+          processed_at?: string | null
+          processing_status?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_documents_client_profile_id_fkey"
+            columns: ["client_profile_id"]
+            isOneToOne: false
+            referencedRelation: "client_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_profiles: {
         Row: {
           applicant_type_id: string
@@ -1155,6 +1217,7 @@ export type Database = {
           retry_count: number | null
           run_id: string | null
           session_id: string | null
+          source_table: string | null
           source_template_version: string | null
           status: string
           status_v2:
@@ -1202,6 +1265,7 @@ export type Database = {
           retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
+          source_table?: string | null
           source_template_version?: string | null
           status?: string
           status_v2?:
@@ -1249,6 +1313,7 @@ export type Database = {
           retry_count?: number | null
           run_id?: string | null
           session_id?: string | null
+          source_table?: string | null
           source_template_version?: string | null
           status?: string
           status_v2?:
@@ -1272,13 +1337,6 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "scrape_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_document_extractions_document_id"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "farm_documents"
             referencedColumns: ["id"]
           },
         ]
