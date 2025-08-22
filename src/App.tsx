@@ -23,7 +23,6 @@ const FarmProfilePage = lazy(() => import('@/pages/FarmProfilePage'));
 const FarmEditPage = lazy(() => import('@/pages/FarmEditPage'));
 const SubsidySearchPage = lazy(() => import('@/pages/SubsidySearchPage'));
 const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
-const ApplicationFormPage = lazy(() => import('@/pages/ApplicationFormPage'));
 const EUSubsidyPortalPage = lazy(() => import('@/pages/EUSubsidyPortalPage'));
 const SubsidyDetailPage = lazy(() => import('@/pages/SubsidyDetailPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
@@ -49,6 +48,7 @@ const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
 const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
 const SecurityMonitor = lazy(() => import('@/components/security/SecurityMonitor'));
 const ClientTypePage = lazy(() => import('@/pages/ClientTypePage'));
+const ApplicationFormPage = lazy(() => import('@/pages/ApplicationFormPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -194,6 +194,10 @@ function App() {
                       
                       <Route path="/client-types" element={
                         <ProtectedRouteWrapper><ClientTypePage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/application/form" element={
+                        <ProtectedRouteWrapper><ApplicationFormPage /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/data-quality" element={
