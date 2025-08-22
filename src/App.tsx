@@ -48,6 +48,7 @@ const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'
 const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
 const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
 const SecurityMonitor = lazy(() => import('@/components/security/SecurityMonitor'));
+const ClientTypePage = lazy(() => import('@/pages/ClientTypePage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -191,6 +192,9 @@ function App() {
                         <ProtectedRouteWrapper><SecurityMonitor /></ProtectedRouteWrapper>
                       } />
                       
+                      <Route path="/client-types" element={
+                        <ProtectedRouteWrapper><ClientTypePage /></ProtectedRouteWrapper>
+                      } />
                       
                       <Route path="/data-quality" element={
                         <ProtectedRouteWrapper><EmployeeDashboardPage /></ProtectedRouteWrapper>
