@@ -11,6 +11,7 @@ import { RealFrenchDocumentTesting } from '@/components/RealFrenchDocumentTestin
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Clock, FileCheck, Target, TrendingUp } from 'lucide-react';
 import { quickFunctionTest, testRealProcessing } from '@/utils/quickFunctionTest';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TestResult {
   id: string;
@@ -229,12 +230,58 @@ export default function ValidationPage() {
                     >
                       Test Hybrid Extraction
                     </button>
+                    
+                    <button
+                      onClick={async () => {
+                        console.log('🆚 Testing Document AI vs Vision API...');
+                        try {
+                          const { data, error } = await supabase.functions.invoke('test-document-ai', {
+                            body: {
+                              fileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+                              fileName: 'test-comparison.png',
+                              testType: 'both'
+                            }
+                          });
+
+                          if (error) {
+                            console.error('❌ Document AI test error:', error);
+                            addTestResult({
+                              type: 'diagnostic',
+                              name: 'Document AI vs Vision API Test',
+                              status: 'failed',
+                              details: { error: error.message }
+                            });
+                          } else {
+                            console.log('✅ Document AI test results:', data);
+                            addTestResult({
+                              type: 'diagnostic',
+                              name: 'Document AI vs Vision API Test',
+                              status: 'completed',
+                              details: data,
+                              accuracy: data.summary?.documentAIConfidence * 100 || 0
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Document AI test failed:', error);
+                          addTestResult({
+                            type: 'diagnostic',
+                            name: 'Document AI vs Vision API Test',
+                            status: 'failed',
+                            details: { error: error.message }
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      🆚 Test Document AI vs Vision API
+                    </button>
                   </div>
                   
                   <div className="text-sm text-muted-foreground">
                     <p>• <strong>Function Deployment Test:</strong> Checks if all 3 edge functions respond</p>
                     <p>• <strong>Real Processing Test:</strong> Creates an actual async processing job</p>
                     <p>• <strong>Hybrid Extraction Test:</strong> Tests the hybrid-extraction function directly to isolate issues</p>
+                    <p>• <strong>Document AI vs Vision API Test:</strong> Compare accuracy between current Vision API and Google's Document AI</p>
                     <p>• Results will appear in the "Test Results" tab automatically</p>
                   </div>
                 </div>
