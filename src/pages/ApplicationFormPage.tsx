@@ -182,8 +182,20 @@ const ApplicationFormPage = () => {
             errors={validation.errors}
             onChange={handleFieldChange}
             onSubmit={handleSubmitApplication}
-            isSubmitting={step === 'submitting'}
+            isSubmitting={false}
           />
+        )}
+
+        {step === 'submitting' && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Submitting Application</h3>
+              <p className="text-gray-600 text-center max-w-md">
+                Processing your subsidy application...
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
