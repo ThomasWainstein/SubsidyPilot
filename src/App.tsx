@@ -49,6 +49,7 @@ const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
 const SecurityMonitor = lazy(() => import('@/components/security/SecurityMonitor'));
 const ClientTypePage = lazy(() => import('@/pages/ClientTypePage'));
 const ApplicationFormPage = lazy(() => import('@/pages/ApplicationFormPage'));
+const RomanianScrapingTest = lazy(() => import('@/pages/RomanianScrapingTest'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // 🚀 PERFORMANCE: Optimized QueryClient configuration
@@ -142,6 +143,10 @@ function App() {
                       
                       <Route path="/cloud-run-test" element={
                         <ProtectedRouteWrapper><CloudRunTestPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/romanian-scraping-test" element={
+                        <ProtectedRouteWrapper><RomanianScrapingTest /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/farm/:farmId/training" element={
