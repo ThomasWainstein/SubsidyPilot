@@ -8,13 +8,14 @@ const corsHeaders = {
 };
 
 interface UploadRequest {
-  farmId?: string; // Made optional for test scenarios
+  farmId?: string; // Legacy - being phased out
   fileName: string;
   fileSize: number;
   documentType: string;
-  category?: string; // Made optional for test scenarios
+  category?: string;
   clientType?: 'individual' | 'business' | 'municipality' | 'ngo' | 'farm';
-  userId?: string; // Add userId for test scenarios
+  userId?: string;
+  useCase?: 'client-onboarding' | 'subsidy-intelligence'; // New: distinguish processing type
 }
 
 serve(async (req) => {
@@ -28,51 +29,78 @@ serve(async (req) => {
 
   try {
     const uploadData = await req.json() as UploadRequest;
-    console.log(`📤 Initiating async upload for ${uploadData.fileName}`);
+    console.log(`📤 Initiating ${uploadData.useCase || 'client-onboarding'} upload for ${uploadData.fileName}`);
 
-    // Handle test scenarios - create or get test farm ID
-    let farmId = uploadData.farmId;
+    // Universal client profile handling (replaces farm-only logic)
+    let clientProfileId = null;
+    let documentStoragePath = '';
     let category = uploadData.category || 'test-documents';
     
-    if (!farmId && uploadData.userId) {
-      // For test scenarios, create a default test farm for the user
-      console.log('🧪 Test upload detected, checking for test farm...');
+    if (uploadData.userId && !uploadData.farmId) {
+      // Modern approach: Use universal client profiles
+      console.log(`🌍 Universal upload detected for ${uploadData.clientType || 'unknown'} client`);
       
-      // Try to find existing test farm for user
-      const { data: existingFarm } = await supabase
-        .from('farms')
-        .select('id')
-        .eq('name', 'Test Farm')
+      // Get or create client profile based on type
+      const clientType = uploadData.clientType || 'individual';
+      const profileName = getTestProfileName(clientType);
+      
+      // Try to find existing test profile for user and type
+      const { data: existingProfile } = await supabase
+        .from('client_profiles')
+        .select('id, profile_data')
         .eq('user_id', uploadData.userId)
-        .single();
+        .eq('profile_data->>test_profile_type', clientType)
+        .maybeSingle();
       
-      if (existingFarm) {
-        farmId = existingFarm.id;
-        console.log(`✅ Using existing test farm: ${farmId}`);
+      if (existingProfile) {
+        clientProfileId = existingProfile.id;
+        console.log(`✅ Using existing ${clientType} profile: ${clientProfileId}`);
       } else {
-        // Create test farm for user
-        const { data: newFarm, error: farmError } = await supabase
-          .from('farms')
+        // Get applicant type ID
+        const { data: applicantType } = await supabase
+          .from('applicant_types')
+          .select('id')
+          .eq('type_name', clientType)
+          .single();
+        
+        if (!applicantType) {
+          throw new Error(`Unknown client type: ${clientType}`);
+        }
+        
+        // Create new test client profile
+        const { data: newProfile, error: profileError } = await supabase
+          .from('client_profiles')
           .insert({
-            name: 'Test Farm',
             user_id: uploadData.userId,
-            address: 'Test Address',
-            total_hectares: 0,
-            legal_status: 'individual',
-            country: 'Test Country'
+            applicant_type_id: applicantType.id,
+            status: 'active',
+            profile_data: {
+              test_profile_type: clientType,
+              business_name: profileName,
+              created_for_testing: true,
+              document_use_case: uploadData.useCase || 'client-onboarding'
+            }
           })
           .select('id')
           .single();
         
-        if (farmError || !newFarm) {
-          throw new Error(`Failed to create test farm: ${farmError?.message}`);
+        if (profileError || !newProfile) {
+          throw new Error(`Failed to create ${clientType} profile: ${profileError?.message}`);
         }
         
-        farmId = newFarm.id;
-        console.log(`✅ Created new test farm: ${farmId}`);
+        clientProfileId = newProfile.id;
+        console.log(`✅ Created new ${clientType} profile: ${clientProfileId}`);
       }
-    } else if (!farmId) {
-      throw new Error('farmId or userId must be provided');
+      
+      // Set storage path based on client profile
+      documentStoragePath = `client-profiles/${clientProfileId}/${category}`;
+      
+    } else if (uploadData.farmId) {
+      // Legacy support for existing farm-based uploads
+      console.log('🚜 Legacy farm upload detected');
+      documentStoragePath = `${uploadData.farmId}/${category}`;
+    } else {
+      throw new Error('Either userId (for universal clients) or farmId (legacy) must be provided');
     }
 
     // Validate file constraints
@@ -89,7 +117,7 @@ serve(async (req) => {
 
     // Generate upload URL and document ID
     const documentId = crypto.randomUUID();
-    const filePath = `${farmId}/${category}/${uploadData.fileName}`;
+    const filePath = `${documentStoragePath}/${uploadData.fileName}`;
     
     // Create signed upload URL
     const { data: uploadUrl, error: urlError } = await supabase.storage
@@ -102,20 +130,44 @@ serve(async (req) => {
       throw new Error(`Failed to create upload URL: ${urlError.message}`);
     }
 
-    // Create document record
-    const { error: docError } = await supabase
-      .from('farm_documents')
-      .insert({
-        id: documentId,
-        farm_id: farmId,
-        file_name: uploadData.fileName,
-        file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
-        file_size: uploadData.fileSize,
-        category: category,
-        mime_type: getMimeType(uploadData.fileName),
-        processing_status: 'upload_pending',
-        uploaded_at: new Date().toISOString()
-      });
+    // Create document record (universal approach)
+    let docError = null;
+    
+    if (clientProfileId) {
+      // Modern approach: Store as client document (to be implemented when we have client_documents table)
+      console.log(`📋 Will create client document record for profile ${clientProfileId} when table is ready`);
+      // For now, create as farm document with special handling
+      const { error } = await supabase
+        .from('farm_documents')
+        .insert({
+          id: documentId,
+          farm_id: uploadData.farmId || '00000000-0000-0000-0000-000000000000', // Placeholder for legacy compatibility
+          file_name: uploadData.fileName,
+          file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
+          file_size: uploadData.fileSize,
+          category: category,
+          mime_type: getMimeType(uploadData.fileName),
+          processing_status: 'upload_pending',
+          uploaded_at: new Date().toISOString()
+        });
+      docError = error;
+    } else {
+      // Legacy approach: Store as farm document
+      const { error } = await supabase
+        .from('farm_documents')
+        .insert({
+          id: documentId,
+          farm_id: uploadData.farmId,
+          file_name: uploadData.fileName,
+          file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
+          file_size: uploadData.fileSize,
+          category: category,
+          mime_type: getMimeType(uploadData.fileName),
+          processing_status: 'upload_pending',
+          uploaded_at: new Date().toISOString()
+        });
+      docError = error;
+    }
 
     if (docError) {
       throw new Error(`Failed to create document record: ${docError.message}`);
@@ -228,4 +280,16 @@ function getMimeType(fileName: string): string {
   };
   
   return mimeTypes[extension || 'pdf'] || 'application/octet-stream';
+}
+
+function getTestProfileName(clientType: string): string {
+  const profileNames = {
+    'individual': 'Test Individual Entrepreneur',
+    'business': 'Test Tech Startup',
+    'municipality': 'Test City Council',
+    'ngo': 'Test Environmental NGO',
+    'farm': 'Test Agricultural Enterprise'
+  };
+  
+  return profileNames[clientType as keyof typeof profileNames] || `Test ${clientType} Entity`;
 }

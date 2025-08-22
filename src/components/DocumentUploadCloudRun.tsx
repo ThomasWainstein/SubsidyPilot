@@ -73,7 +73,7 @@ export const DocumentUploadCloudRun = ({
         .from('farm-documents')
         .getPublicUrl(filePath);
 
-      // Create document record
+      // Create document record using universal approach
       const { data: docData, error: docError } = await supabase.functions.invoke(
         'document-upload-handler',
         {
@@ -84,6 +84,8 @@ export const DocumentUploadCloudRun = ({
             fileType: file.type,
             documentType: documentType,
             userId: (await supabase.auth.getUser()).data.user?.id,
+            clientType: 'individual', // Default for test, could be made configurable
+            useCase: 'client-onboarding', // Default use case for this component
             category: 'test-documents'
           }
         }
