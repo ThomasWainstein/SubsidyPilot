@@ -172,3 +172,12 @@ verify_jwt = false
 
 [functions.check-sanctions]
 verify_jwt = false
+
+[functions.romanian-subsidy-processor]
+verify_jwt = false
+
+[functions.pocu-poc-scraper]
+verify_jwt = false
+
+[functions.romanian-pipeline-monitor]
+verify_jwt = false

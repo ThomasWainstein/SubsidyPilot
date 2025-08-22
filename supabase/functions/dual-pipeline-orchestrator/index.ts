@@ -171,7 +171,7 @@ serve(async (req) => {
 
     if (action === 'trigger_harvesting') {
       const countries = execution_config?.countries || ['france', 'romania'];
-      const results = await triggerHarvestingPipeline(countries, execution_config, supabase);
+      const results = await triggerHarvestingPipeline(countries, execution_config, supabase, `harvest-${Date.now()}`);
       
       return new Response(JSON.stringify({
         success: true,
@@ -252,7 +252,8 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
     const harvestingResults = await triggerHarvestingPipeline(
       execution.config.countries, 
       execution.config, 
-      supabase
+      supabase,
+      execution_id
     );
     
     execution.metrics.pages_scraped = harvestingResults.total_pages_scraped;
@@ -329,7 +330,7 @@ async function startFullPipeline(config: any, supabase: any): Promise<PipelineEx
   return execution;
 }
 
-async function triggerHarvestingPipeline(countries: string[], config: any, supabase: any) {
+async function triggerHarvestingPipeline(countries: string[], config: any, supabase: any, execution_id?: string) {
   return PerformanceMonitor.trackOperation('HarvestingPipeline', async () => {
     const results = {
       total_pages_discovered: 0,
@@ -350,12 +351,34 @@ async function triggerHarvestingPipeline(countries: string[], config: any, supab
               }
             });
           } else if (country === 'romania') {
-            return await supabase.functions.invoke('afir-harvester', {
+            // Run AFIR/APIA harvester
+            const afirResult = await supabase.functions.invoke('afir-harvester', {
               body: {
                 action: 'scrape',
-                max_pages: config.max_pages_per_country || 20
+                max_pages: Math.ceil((config.max_pages_per_country || 20) * 0.6),
+                sources: ['apia', 'afir']
               }
             });
+            
+            // Run POCU/POC/POR scraper
+            const euProgramsResult = await supabase.functions.invoke('pocu-poc-scraper', {
+              body: {
+                action: 'scrape',
+                max_pages: Math.ceil((config.max_pages_per_country || 20) * 0.4),
+                programs: ['pocu', 'poc', 'por'],
+                run_id: execution_id || `pipeline-${Date.now()}`
+              }
+            });
+            
+            return {
+              data: {
+                success: (afirResult?.data?.success && euProgramsResult?.data?.success),
+                pages_scraped: (afirResult?.data?.pages_scraped_returned || 0) + (euProgramsResult?.data?.pages_scraped || 0),
+                afir_pages: afirResult?.data?.pages_scraped_returned || 0,
+                eu_programs_pages: euProgramsResult?.data?.pages_scraped || 0,
+                sources: ['APIA', 'AFIR', 'POCU', 'POC', 'POR']
+              }
+            };
           } else {
             throw new Error(`Unsupported country: ${country}`);
           }
