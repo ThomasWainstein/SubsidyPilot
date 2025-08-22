@@ -181,3 +181,6 @@ verify_jwt = false
 
 [functions.romanian-pipeline-monitor]
 verify_jwt = false
+
+[functions.streaming-job-processor]
+verify_jwt = false
