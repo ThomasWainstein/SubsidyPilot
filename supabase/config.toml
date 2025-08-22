@@ -154,3 +154,21 @@ verify_jwt = true
 
 [functions.cloud-run-proxy]
 verify_jwt = false
+
+[functions.validate-vat]
+verify_jwt = false
+
+[functions.validate-company-registry]
+verify_jwt = false
+
+[functions.geocode-address]
+verify_jwt = false
+
+[functions.get-financial-data]
+verify_jwt = false
+
+[functions.classify-nace]
+verify_jwt = false
+
+[functions.check-sanctions]
+verify_jwt = false
