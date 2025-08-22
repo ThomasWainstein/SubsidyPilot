@@ -31,121 +31,278 @@ class FastPatternExtractor {
   extractPatterns(text: string): { [key: string]: ExtractionResult | undefined } {
     const results: { [key: string]: ExtractionResult | undefined } = {};
     
-    // Basic patterns for common business data
-    results.vatNumber = this.extractVATNumber(text);
-    results.companyName = this.extractCompanyName(text);
-    results.registrationNumber = this.extractRegistrationNumber(text);
-    results.turnover = this.extractTurnover(text);
-    results.employees = this.extractEmployees(text);
+    // Use comprehensive EU pattern extractor
+    const euResults = this.extractEUPatterns(text);
+    
+    // Map to simplified interface for backward compatibility
+    results.vatNumber = euResults.vatNumber;
+    results.companyName = euResults.companyName;
+    results.registrationNumber = euResults.siretNumber || euResults.kvkNumber || euResults.hrbNumber || euResults.cuiNumber;
+    results.turnover = euResults.turnover;
+    results.employees = euResults.employees;
+    results.email = euResults.email;
+    results.phone = euResults.phone;
+    results.address = euResults.address;
+    
+    // Add SME classification as additional field
+    if (euResults.smeClassification) {
+      results.smeClassification = euResults.smeClassification;
+    }
+    
+    // Add document metadata
+    if (euResults.documentLanguage) {
+      results.documentLanguage = euResults.documentLanguage;
+    }
+    
+    if (euResults.documentType) {
+      results.documentType = euResults.documentType;
+    }
     
     return results;
   }
 
-  private extractVATNumber(text: string): ExtractionResult | undefined {
-    const patterns = [
-      /(?:VAT|TVA|CIF|CUI)[:\s]*(?:RO)?(\d{6,10})/gi,
-      /(?:N°\s*TVA)[:\s]*FR(\d{11})/gi,
-      /RO(\d{6,10})/gi,
-      /FR(\d{11})/gi
+  private extractEUPatterns(text: string): any {
+    // Embedded EU extraction logic for edge function
+    const results: any = {};
+    
+    // PIC Code (9 digits)
+    const picPattern = /(?:PIC|Participant\s+Identification\s+Code)[:\s]*(\d{9})\b/gi;
+    const picMatch = picPattern.exec(text);
+    if (picMatch) {
+      results.picCode = {
+        value: picMatch[1],
+        confidence: 0.95,
+        source: 'pattern',
+        raw: picMatch[0]
+      };
+    }
+
+    // Enhanced VAT patterns for multiple countries
+    const vatPatterns = [
+      /(?:VAT|TVA|IVA|BTW)[:\s]*FR(\d{11})\b/gi,  // France
+      /(?:VAT|USt-IdNr)[:\s]*DE(\d{9})\b/gi,      // Germany
+      /(?:VAT|BTW)[:\s]*NL(\d{9})B\d{2}\b/gi,     // Netherlands
+      /(?:VAT|TVA|CIF)[:\s]*RO(\d{6,10})\b/gi,    // Romania
+      /(?:VAT|IVA)[:\s]*ES([A-Z]\d{7}[A-Z]|\d{8}[A-Z])\b/gi, // Spain
+      /(?:VAT|TVA|CIF|CUI)[:\s]*(?:RO)?(\d{6,10})/gi // General
     ];
 
-    for (const pattern of patterns) {
+    for (const pattern of vatPatterns) {
       const match = pattern.exec(text);
       if (match) {
-        return {
+        results.vatNumber = {
           value: match[1],
-          confidence: 0.85,
-          source: 'pattern',
-          position: { start: match.index!, end: match.index! + match[0].length },
-          raw: match[0]
-        };
-      }
-    }
-    return undefined;
-  }
-
-  private extractCompanyName(text: string): ExtractionResult | undefined {
-    const patterns = [
-      /(?:Denumirea|Dénomination|Company\s+name)[:\s]*([^\n]{3,100})/gi,
-      /(?:S\.R\.L\.|S\.A\.|SRL|SA)\s*([^\n]{3,50})/gi
-    ];
-
-    for (const pattern of patterns) {
-      const match = pattern.exec(text);
-      if (match) {
-        return {
-          value: match[1].trim(),
-          confidence: 0.75,
-          source: 'pattern',
-          raw: match[0]
-        };
-      }
-    }
-    return undefined;
-  }
-
-  private extractRegistrationNumber(text: string): ExtractionResult | undefined {
-    const patterns = [
-      /J(\d{2})\/(\d{1,9})\/(\d{4})/gi, // Romanian
-      /(?:SIREN|SIRET)[:\s]*(\d{9,14})/gi, // French
-      /(?:RCS)[:\s]*([A-Z\s]+\d{3}\s*\d{3}\s*\d{3})/gi
-    ];
-
-    for (const pattern of patterns) {
-      const match = pattern.exec(text);
-      if (match) {
-        return {
-          value: match[0],
           confidence: 0.90,
           source: 'pattern',
           raw: match[0]
         };
+        break;
       }
     }
-    return undefined;
-  }
 
-  private extractTurnover(text: string): ExtractionResult | undefined {
-    const patterns = [
-      /(?:cifra\s+de\s+afaceri|chiffre\s+d'affaires|turnover)[:\s]*([€$£]?[\d\s,\.]+)/gi,
-      /([€$£][\d\s,\.]+)(?:\s*(?:EUR|RON|USD))/gi
-    ];
-
-    for (const pattern of patterns) {
-      const match = pattern.exec(text);
-      if (match) {
-        const value = match[1].replace(/[€$£\s,]/g, '');
-        if (!isNaN(Number(value))) {
-          return {
-            value: value,
-            confidence: 0.70,
-            source: 'pattern',
-            raw: match[0]
-          };
-        }
-      }
+    // SIRET (France - 14 digits)
+    const siretPattern = /(?:SIRET|Numéro\s+SIRET)[:\s]*(\d{14})\b/gi;
+    const siretMatch = siretPattern.exec(text);
+    if (siretMatch) {
+      results.siretNumber = {
+        value: siretMatch[1],
+        confidence: 0.95,
+        source: 'pattern',
+        raw: siretMatch[0]
+      };
     }
-    return undefined;
-  }
 
-  private extractEmployees(text: string): ExtractionResult | undefined {
-    const patterns = [
-      /(?:angajați|employés|employees)[:\s]*(\d+)/gi,
-      /(\d+)\s*(?:angajați|employés|employees)/gi
+    // KVK (Netherlands - 8 digits)
+    const kvkPattern = /(?:KVK|Kamer\s+van\s+Koophandel)[:\s]*(\d{8})\b/gi;
+    const kvkMatch = kvkPattern.exec(text);
+    if (kvkMatch) {
+      results.kvkNumber = {
+        value: kvkMatch[1],
+        confidence: 0.90,
+        source: 'pattern',
+        raw: kvkMatch[0]
+      };
+    }
+
+    // Enhanced company name extraction
+    const companyPatterns = [
+      /(?:company\s+name|nom\s+de\s+l'entreprise|denominación)[:\s]*([^\n]{3,100})/gi,
+      /([A-Z][a-zA-ZÀ-ÿ\s&]{2,50})\s*(?:S\.R\.L\.|S\.A\.|SRL|SA|B\.V\.|GmbH|Ltd|Inc)/gi,
+      /(?:société|company|empresa)[:\s]*([^\n]{3,80})/gi
     ];
 
-    for (const pattern of patterns) {
+    for (const pattern of companyPatterns) {
       const match = pattern.exec(text);
       if (match) {
-        return {
-          value: match[1],
+        results.companyName = {
+          value: match[1].trim(),
           confidence: 0.80,
           source: 'pattern',
           raw: match[0]
         };
+        break;
       }
     }
-    return undefined;
+
+    // Enhanced financial data extraction
+    const turnoverPatterns = [
+      /(?:chiffre\s+d'affaires|turnover|cifra\s+de\s+afaceri|facturación)[:\s]*([€$£]?[\d\s,\.]+)(?:\s*(?:EUR|RON|USD|GBP))?/gi,
+      /(?:revenue|revenus|venituri|ingresos)[:\s]*([€$£]?[\d\s,\.]+)/gi
+    ];
+
+    for (const pattern of turnoverPatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        const cleanValue = this.cleanFinancialValue(match[1]);
+        if (cleanValue) {
+          results.turnover = {
+            value: cleanValue,
+            confidence: 0.75,
+            source: 'pattern',
+            raw: match[0]
+          };
+          break;
+        }
+      }
+    }
+
+    // Enhanced employee extraction
+    const employeePatterns = [
+      /(?:employés|employees|angajați|empleados|werknemers)[:\s]*(\d{1,6})\b/gi,
+      /(\d{1,6})\s*(?:employés|employees|angajați|empleados)/gi,
+      /(?:staff|personnel|personal)[:\s]*(\d{1,6})\b/gi
+    ];
+
+    for (const pattern of employeePatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        const employeeCount = parseInt(match[1]);
+        if (employeeCount > 0 && employeeCount < 1000000) {
+          results.employees = {
+            value: employeeCount.toString(),
+            confidence: 0.85,
+            source: 'pattern',
+            raw: match[0]
+          };
+          break;
+        }
+      }
+    }
+
+    // SME Classification calculation
+    if (results.employees || results.turnover) {
+      const employees = results.employees ? parseInt(results.employees.value) : null;
+      const turnover = results.turnover ? this.parseFinancialValue(results.turnover.value) : null;
+
+      let smeClass = 'unknown';
+      if ((employees !== null && employees < 10) || (turnover !== null && turnover < 2000000)) {
+        smeClass = 'micro';
+      } else if ((employees !== null && employees < 50) || (turnover !== null && turnover < 10000000)) {
+        smeClass = 'small';
+      } else if ((employees !== null && employees < 250) || (turnover !== null && turnover < 50000000)) {
+        smeClass = 'medium';
+      } else {
+        smeClass = 'large';
+      }
+
+      results.smeClassification = {
+        value: smeClass,
+        confidence: 0.90,
+        source: 'calculated',
+        metadata: { employees, turnover }
+      };
+    }
+
+    // Language detection
+    const languagePatterns = {
+      french: /\b(?:société|entreprise|siret|chiffre|affaires)\b/gi,
+      english: /\b(?:company|business|turnover|revenue|employees)\b/gi,
+      spanish: /\b(?:empresa|sociedad|facturación|empleados)\b/gi,
+      romanian: /\b(?:societate|cifra|afaceri|angajați)\b/gi,
+      german: /\b(?:unternehmen|gesellschaft|umsatz|mitarbeiter)\b/gi,
+      dutch: /\b(?:bedrijf|onderneming|omzet|werknemers)\b/gi
+    };
+
+    let maxMatches = 0;
+    let detectedLanguage = 'unknown';
+    for (const [language, pattern] of Object.entries(languagePatterns)) {
+      const matches = (text.match(pattern) || []).length;
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        detectedLanguage = language;
+      }
+    }
+
+    if (maxMatches > 0) {
+      results.documentLanguage = {
+        value: detectedLanguage,
+        confidence: Math.min(0.95, 0.5 + (maxMatches * 0.1)),
+        source: 'pattern'
+      };
+    }
+
+    // Enhanced contact info
+    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+    const emailMatch = emailPattern.exec(text);
+    if (emailMatch) {
+      results.email = {
+        value: emailMatch[0],
+        confidence: 0.90,
+        source: 'pattern',
+        raw: emailMatch[0]
+      };
+    }
+
+    const phonePatterns = [
+      /\+\d{1,3}[\s\-]?\d{1,4}[\s\-]?\d{1,4}[\s\-]?\d{1,9}/g,
+      /\b\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,4}\b/g
+    ];
+
+    for (const pattern of phonePatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        results.phone = {
+          value: match[0],
+          confidence: 0.75,
+          source: 'pattern',
+          raw: match[0]
+        };
+        break;
+      }
+    }
+
+    // Address extraction
+    const addressPatterns = [
+      /(?:address|adresse|dirección|endereço)[:\s]*([^\n]{10,100})/gi,
+      /(?:rue|street|str\.|strada|calle)[:\s]*([^\n]{5,80})/gi
+    ];
+
+    for (const pattern of addressPatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        results.address = {
+          value: match[1].trim(),
+          confidence: 0.70,
+          source: 'pattern',
+          raw: match[0]
+        };
+        break;
+      }
+    }
+
+    return results;
+  }
+
+  private cleanFinancialValue(value: string): string | null {
+    const cleaned = value.replace(/[€$£\s,]/g, '').replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return !isNaN(parsed) && parsed > 0 ? parsed.toString() : null;
+  }
+
+  private parseFinancialValue(value: string): number | null {
+    const cleaned = value.replace(/[€$£\s,]/g, '').replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return !isNaN(parsed) && parsed > 0 ? parsed : null;
   }
 
   assessQuality(results: { [key: string]: ExtractionResult | undefined }): {
