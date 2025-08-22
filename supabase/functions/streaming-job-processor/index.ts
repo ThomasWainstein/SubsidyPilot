@@ -80,7 +80,7 @@ serve(async (req) => {
               document_id: job.document_id,
               user_id: job.user_id,
               source_table: 'universal',
-              status_v2: 'processing',
+              status_v2: 'extracting',
               extracted_data: {},
               confidence_score: 0,
               progress_metadata: {
@@ -176,7 +176,7 @@ async function processJobStages(supabase: any, job: any, extractionId: string) {
           extraction_method: 'streaming-pipeline',
           last_updated: new Date().toISOString()
         },
-        status_v2: stage.progress === 100 ? 'completed' : 'processing',
+        status_v2: stage.progress === 100 ? 'completed' : 'extracting',
         updated_at: new Date().toISOString()
       })
       .eq('id', extractionId);
