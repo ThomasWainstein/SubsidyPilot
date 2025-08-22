@@ -134,9 +134,31 @@ serve(async (req) => {
     let docError = null;
     
     if (clientProfileId) {
-      // Modern approach: For universal clients, we'll skip the farm document creation
-      // and just track in document_extractions for now until we have client_documents table
-      console.log(`📋 Universal client document - skipping farm_documents table for profile ${clientProfileId}`);
+      // Modern approach: Store in client_documents table for universal clients
+      console.log(`📋 Creating client document for profile ${clientProfileId}`);
+      
+      const { error } = await supabase
+        .from('client_documents')
+        .insert({
+          id: documentId,
+          client_profile_id: clientProfileId,
+          user_id: uploadData.userId,
+          file_name: uploadData.fileName,
+          file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
+          file_size: uploadData.fileSize,
+          mime_type: getMimeType(uploadData.fileName),
+          document_type: uploadData.documentType,
+          category: category,
+          processing_status: 'upload_pending',
+          uploaded_at: new Date().toISOString(),
+          metadata: {
+            client_type: uploadData.clientType,
+            use_case: uploadData.useCase,
+            test_profile: true
+          }
+        });
+      
+      docError = error;
     } else {
       // Legacy approach: Store as farm document
       const { error } = await supabase
@@ -159,7 +181,9 @@ serve(async (req) => {
       throw new Error(`Failed to create document record: ${docError.message}`);
     }
 
-    // Create extraction record for tracking
+    // Create extraction record for tracking with proper source_table
+    const sourceTable = clientProfileId ? 'client_documents' : 'farm_documents';
+    
     const { error: extractionError } = await supabase
       .from('document_extractions')
       .insert({
@@ -167,6 +191,7 @@ serve(async (req) => {
         user_id: uploadData.userId || null,
         status: 'uploading',
         status_v2: 'uploading',
+        source_table: sourceTable,
         extracted_data: {},
         confidence_score: 0.0,
         progress_metadata: {
@@ -174,7 +199,8 @@ serve(async (req) => {
           client_type: uploadData.clientType,
           use_case: uploadData.useCase,
           file_size: uploadData.fileSize,
-          file_path: filePath
+          file_path: filePath,
+          source_table: sourceTable
         },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
