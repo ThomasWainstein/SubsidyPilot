@@ -151,3 +151,6 @@ verify_jwt = false
 
 [functions.document-upload-handler]
 verify_jwt = true
+
+[functions.cloud-run-proxy]
+verify_jwt = false
