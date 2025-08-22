@@ -54,55 +54,56 @@ export const DocumentUploadCloudRun = ({
     setIsUploading(true);
 
     try {
-      console.log('📤 Uploading file to Supabase storage...');
+      console.log('📤 Starting upload process...');
       
-      // Upload to Supabase storage
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `documents/${fileName}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('farm-documents')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('farm-documents')
-        .getPublicUrl(filePath);
-
-      // Create document record using universal approach
-      const { data: docData, error: docError } = await supabase.functions.invoke(
+      // Step 1: Get upload URL and create document record
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
         'document-upload-handler',
         {
           body: {
             fileName: file.name,
-            filePath: filePath,
             fileSize: file.size,
-            fileType: file.type,
             documentType: documentType,
             userId: (await supabase.auth.getUser()).data.user?.id,
-            clientType: 'individual', // Default for test, could be made configurable
-            useCase: 'client-onboarding', // Default use case for this component
+            clientType: 'individual',
+            useCase: 'client-onboarding',
             category: 'other'
           }
         }
       );
 
-      if (docError || !docData?.success) {
-        throw new Error(docError?.message || docData?.error || 'Failed to create document record');
+      if (uploadError || !uploadData?.success) {
+        throw new Error(uploadError?.message || uploadData?.error || 'Failed to create upload URL');
+      }
+
+      console.log('✅ Upload URL created, uploading file...');
+
+      // Step 2: Upload file to the signed URL
+      const uploadResponse = await fetch(uploadData.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
       }
 
       console.log('✅ File uploaded successfully');
-      setUploadedDocumentId(docData.documentId);
+      setUploadedDocumentId(uploadData.documentId);
       setIsUploading(false);
 
-      // Start Cloud Run processing
+      // Step 3: Get the public URL for processing
+      const { data: urlData } = supabase.storage
+        .from('farm-documents')
+        .getPublicUrl(uploadData.filePath);
+
+      // Step 4: Start Cloud Run processing
       toast.success('File uploaded! Starting processing...');
       await processWithCloudRun(
-        docData.documentId,
+        uploadData.documentId,
         urlData.publicUrl,
         file.name,
         documentType
