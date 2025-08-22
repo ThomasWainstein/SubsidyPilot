@@ -10,35 +10,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Clock, Zap, CheckCircle, AlertTriangle } from 'lucide-react';
-import { getPatternExtractionService, PatternExtractionResults } from '@/services/patternExtractionService';
+import { getEnhancedPatternExtractor, CountrySpecificResults } from '@/services/enhancedPatternExtractor';
+import { ValidationService } from '@/services/validationService';
+import { ExtractionResult } from '@/services/patternExtractionService';
 
 export const PatternExtractionDemo: React.FC = () => {
   const [inputText, setInputText] = useState(`
-ACME TECHNOLOGIES SARL
-VAT: FR12345678901
-SIREN: 123 456 789
-Registration: HRB123456
-Email: contact@acme-tech.fr
-Phone: +33 1 23 45 67 89
-Website: www.acme-tech.fr
-
-Turnover: €2,500,000
-Employees: 45
-Balance Sheet: €5,200,000
-IBAN: FR1420041010050500013M02606
-BIC: CCBPFRPP
-
-Incorporated: 15/03/2018
-Legal Form: SARL
-Country: France
-Postal Code: 75001
+TECH SOLUTIONS SRL
+CUI: 18547290
+CIF: RO18547290
+J40/8302/1997
+Email: contact@tech-solutions.ro
+Phone: +40 21 123 4567
+Website: www.tech-solutions.ro
+Turnover: 2.500.000 RON
+Employees: 35
+IBAN: RO16RZBR6343423217922456
+CNP: 1801011234567
   `.trim());
 
-  const [results, setResults] = useState<PatternExtractionResults | null>(null);
+  const [results, setResults] = useState<CountrySpecificResults | null>(null);
   const [processingTime, setProcessingTime] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const patternService = getPatternExtractionService();
+  const patternService = getEnhancedPatternExtractor();
 
   const handleExtract = () => {
     setIsProcessing(true);
@@ -48,7 +43,7 @@ Postal Code: 75001
     
     // Simulate a small delay to show the processing state
     setTimeout(() => {
-      const extractedResults = patternService.extractPatterns(inputText);
+      const extractedResults = patternService.extractPatternsEnhanced(inputText);
       const endTime = Date.now();
       
       setResults(extractedResults);
@@ -57,9 +52,9 @@ Postal Code: 75001
     }, 100);
   };
 
-  const loadSampleDocument = (type: 'business' | 'financial' | 'mixed') => {
-    const samples = {
-      business: `
+  const loadSampleDocument = (type: 'business' | 'financial' | 'mixed' | 'romanian' | 'french_kbis') => {
+        const samples = {
+          business: `
 SOCIÉTÉ GÉNÉRALE CONSTRUCTION SAS
 Registration Number: 12345678901234
 VAT Number: FR87654321098
@@ -70,8 +65,8 @@ Website: www.sgc-construction.com
 Incorporated: 12/06/2015
 Legal Form: SAS
 Address: 123 Rue de la Paix, 69000 Lyon, France
-      `,
-      financial: `
+          `,
+          financial: `
 FINANCIAL STATEMENT 2023
 Company: INNOVTECH SOLUTIONS SARL
 VAT: DE123456789
@@ -81,8 +76,8 @@ Balance Sheet Total: €8,750,000
 IBAN: DE89370400440532013000
 Annual Revenue: 4.2M EUR
 Staff Count: 87 people
-      `,
-      mixed: `
+          `,
+          mixed: `
 EUROTECH INDUSTRIES S.A.
 VAT Number: IT12345678901
 Registration: Companies House 87654321
@@ -101,8 +96,54 @@ Financial Data 2023:
 Incorporation Date: 25/09/2010
 Legal Status: Società per Azioni (S.A.)
 Headquarters: Milano, Italy 20121
-      `
-    };
+          `,
+          romanian: `
+REGISTRUL COMERȚULUI - CERTIFICAT DE ÎNREGISTRARE
+OFICIUL NAȚIONAL AL REGISTRULUI COMERȚULUI
+
+Denumirea societății: TECH SOLUTIONS SRL
+CUI: 18547290
+CIF: RO18547290
+Numărul de ordine în Registrul Comerţului: J40/8302/1997
+
+Date de contact:
+Email: contact@tech-solutions.ro
+Telefon: +40 21 123 4567
+Site web: www.tech-solutions.ro
+
+Date financiare:
+Cifra de afaceri: 2.500.000 RON
+Numărul de angajați: 35
+IBAN: RO16RZBR6343423217922456
+
+Personal cheie:
+Director General - CNP: 1801011234567
+          `,
+          french_kbis: `
+RÉPUBLIQUE FRANÇAISE
+GREFFE DU TRIBUNAL DE COMMERCE DE PARIS
+REGISTRE DU COMMERCE ET DES SOCIÉTÉS
+
+EXTRAIT K BIS
+Code de vérification: ABC123456
+
+Dénomination sociale: INNOVATION STARTUP SAS
+SIREN: 712049618
+SIRET: 71204961800019
+RCS PARIS 712 049 618
+
+N° TVA: FR25712049618
+APE: 6201Z (Programmation informatique)
+
+Adresse du siège social:
+123 Avenue des Champs-Élysées
+75008 Paris, France
+
+IBAN: FR1420041010050500013M02606
+Capital social: €150,000
+Nombre de salariés: 24
+          `
+        };
     
     setInputText(samples[type]);
     setResults(null);
@@ -160,6 +201,20 @@ Headquarters: Milano, Italy 20121
               onClick={() => loadSampleDocument('mixed')}
             >
               Load Mixed Document
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => loadSampleDocument('romanian')}
+            >
+              Load Romanian Document
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => loadSampleDocument('french_kbis')}
+            >
+              Load French KBIS
             </Button>
           </div>
 
@@ -245,6 +300,8 @@ Headquarters: Milano, Italy 20121
               {Object.entries(results).map(([fieldName, result]) => {
                 if (!result) return null;
                 
+                const typedResult = result as ExtractionResult;
+                
                 return (
                   <div key={fieldName} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
@@ -252,25 +309,25 @@ Headquarters: Milano, Italy 20121
                         {fieldName.replace(/([A-Z])/g, ' $1').trim()}
                       </div>
                       <div className="text-sm text-muted-foreground font-mono">
-                        {String(result.value)}
+                        {String(typedResult.value)}
                       </div>
-                      {result.raw && result.raw !== String(result.value) && (
+                      {typedResult.raw && typedResult.raw !== String(typedResult.value) && (
                         <div className="text-xs text-muted-foreground mt-1">
-                          Raw: "{result.raw}"
+                          Raw: "{typedResult.raw}"
                         </div>
                       )}
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <Badge 
-                        className={`${getConfidenceColor(result.confidence)} flex items-center gap-1`}
+                        className={`${getConfidenceColor(typedResult.confidence)} flex items-center gap-1`}
                         variant="outline"
                       >
-                        {getConfidenceIcon(result.confidence)}
-                        {(result.confidence * 100).toFixed(0)}%
+                        {getConfidenceIcon(typedResult.confidence)}
+                        {(typedResult.confidence * 100).toFixed(0)}%
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
-                        {result.source}
+                        {typedResult.source}
                       </Badge>
                     </div>
                   </div>

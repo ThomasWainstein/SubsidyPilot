@@ -139,6 +139,70 @@ class PatternExtractionService {
     spa: /\b(S\.p\.A\.)\b/gi,
   };
 
+  // Romanian-specific patterns
+  private readonly romanianPatterns = {
+    // CUI (Company Unique Registration Code) - 6-10 digits
+    cui: /(?:CUI|Cod\s+Unic\s+de\s+[IÎ]nregistrare)[:\s]*(\d{6,10})/gi,
+    cuiGeneral: /\b(\d{6,10})\b/g, // Fallback pattern
+    
+    // CIF (Fiscal Identification Code) - RO + 6-10 digits
+    cif: /(?:CIF|VAT)[:\s]*(?:RO)?(\d{6,10})|RO(\d{6,10})/gi,
+    
+    // Trade Register Number - J + county code + / + number + / + year
+    tradeRegister: /(?:Numărul\s+de\s+ordine\s+în\s+Registrul\s+Comerţului[:\s]*)?J(\d{2})\/(\d{1,9})\/(\d{4})/gi,
+    
+    // Romanian IBAN - RO + 22 digits total
+    iban: /\b(?:IBAN[:\s]*)?RO(\d{22})\b/gi,
+    
+    // CNP (Personal Numerical Code) - 13 digits starting with 1-8
+    cnp: /(?:CNP|Cod\s+Numeric\s+Personal)[:\s]*([1-8]\d{12})\b/gi,
+    
+    // ANAF Tax Certificate
+    anafCertificate: /(?:Certificat\s+de\s+cazier\s+fiscal|Tax\s+clearance\s+certificate|ANAF|Agenția\s+Națională\s+de\s+Administrare\s+Fiscală)/gi,
+  };
+
+  // French-specific patterns  
+  private readonly frenchPatterns = {
+    // SIREN - 9 digits
+    siren: /(?:SIREN|Numéro\s+SIREN)[:\s]*(\d{9})\b/gi,
+    sirenGeneral: /\b(\d{9})\b/g, // Fallback for validation
+    
+    // SIRET - 14 digits (SIREN + 5 digit establishment code)
+    siret: /(?:SIRET|Numéro\s+SIRET)[:\s]*(\d{14})\b/gi,
+    siretGeneral: /\b(\d{14})\b/g,
+    
+    // RCS Registration
+    rcs: /(?:RCS|Registre\s+du\s+Commerce\s+et\s+des\s+Sociétés)\s+([A-Z\s]+)(\d{3})\s*(\d{3})\s*(\d{3})/gi,
+    
+    // French VAT - FR + 2 check digits + 9 digit SIREN
+    vatFr: /(?:TVA|N°\s*TVA)[:\s]*FR(\d{11})\b/gi,
+    
+    // APE/NAF Code - 4 digits + 1 letter
+    apeNaf: /(?:APE|NAF)[:\s]*(\d{4}[A-Z])\b/gi,
+    
+    // French IBAN - FR + 25 digits total
+    ibanFr: /\b(?:IBAN[:\s]*)?FR(\d{25})\b/gi,
+    
+    // KBIS Extract identifiers
+    kbis: /(?:EXTRAIT\s+K\s*BIS|Greffe\s+du\s+Tribunal\s+de\s+Commerce|Code\s+de\s+vérification|Dénomination\s+sociale)/gi,
+  };
+
+  // Document type detection patterns
+  private readonly documentHeaders = {
+    romanian: [
+      /REGISTRUL\s+COMERȚULUI/gi,
+      /OFICIUL\s+NAȚIONAL\s+AL\s+REGISTRULUI\s+COMERȚULUI/gi,
+      /AGENȚIA\s+NAȚIONALĂ\s+DE\s+ADMINISTRARE\s+FISCALĂ/gi,
+      /ANAF/gi
+    ],
+    french: [
+      /RÉPUBLIQUE\s+FRANÇAISE/gi,
+      /GREFFE\s+DU\s+TRIBUNAL\s+DE\s+COMMERCE/gi,
+      /REGISTRE\s+DU\s+COMMERCE\s+ET\s+DES\s+SOCIÉTÉS/gi,
+      /INSEE/gi
+    ]
+  };
+
   /**
    * Extract patterns from document text
    */
