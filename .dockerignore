@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build files
+dist/
+build/
+.next/
+out/
+
+# Development files
+.env*
+.git/
+.gitignore
+README.md
+*.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Cache directories
+.npm/
+.yarn/cache/
+
+# Frontend source (not needed for backend)
+src/
+public/
+components/
+pages/
+styles/
+tests/
+*.config.js
+*.config.ts
