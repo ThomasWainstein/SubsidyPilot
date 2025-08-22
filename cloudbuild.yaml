@@ -41,7 +41,7 @@ images:
 
 # Build options
 options:
-  logging: LEGACY
+  logging: CLOUD_LOGGING_ONLY
   substitution_option: 'ALLOW_LOOSE'
 
 # Build timeout
