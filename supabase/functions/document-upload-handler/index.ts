@@ -187,15 +187,56 @@ serve(async (req) => {
 
     console.log(`✅ Upload prepared for ${uploadData.fileName}, document ID: ${documentId}`);
 
+    // Create processing job instead of immediate processing
+    const { data: jobData, error: jobError } = await supabase
+      .from('document_processing_jobs')
+      .insert({
+        document_id: documentId,
+        file_url: `${supabaseUrl}/storage/v1/object/public/farm-documents/${filePath}`,
+        file_name: uploadData.fileName,
+        client_type: uploadData.clientType || 'individual',
+        document_type: uploadData.documentType,
+        status: 'queued',
+        priority: 'medium',
+        config: {
+          includeOCR: true,
+          confidenceThreshold: 0.7,
+          extractTables: true,
+          extractImages: false
+        },
+        metadata: {
+          client_profile_id: clientProfileId,
+          client_type: uploadData.clientType,
+          use_case: uploadData.useCase,
+          file_size: uploadData.fileSize,
+          file_path: filePath,
+          created_via: 'upload-handler'
+        },
+        retry_attempt: 0,
+        max_retries: 3,
+        scheduled_for: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (jobError) {
+      console.error('⚠️ Failed to create processing job:', jobError);
+      // Continue without failing - fallback to manual processing
+    } else {
+      console.log(`📋 Processing job ${jobData.id} created for document ${documentId}`);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       documentId,
       uploadUrl: uploadUrl.signedUrl,
       filePath,
+      jobId: jobData?.id,
       processingConfig: {
         async: true,
         estimatedTime: getEstimatedProcessingTime(uploadData.documentType, uploadData.fileName),
-        maxFileSize: `${Math.round(maxSize/1024/1024)}MB`
+        maxFileSize: `${Math.round(maxSize/1024/1024)}MB`,
+        jobBased: true
       },
       instructions: {
         step1: 'Upload file to the provided signed URL',

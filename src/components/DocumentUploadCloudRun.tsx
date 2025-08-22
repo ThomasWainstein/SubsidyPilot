@@ -9,8 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Upload, FileText, CheckCircle, XCircle, Cloud, Zap } from 'lucide-react';
-import { useCloudRunProcessing } from '@/hooks/useCloudRunProcessing';
+import { Upload, FileText, CheckCircle, XCircle, Cloud, Zap, Clock } from 'lucide-react';
+import { useAsyncProcessing } from '@/hooks/useAsyncProcessing';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -30,19 +30,24 @@ export const DocumentUploadCloudRun = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const {
-    processWithCloudRun,
+    createProcessingJob,
+    job,
     isProcessing,
-    progress,
     result,
-    error: processingError
-  } = useCloudRunProcessing({
+    error: processingError,
+    progressPercentage,
+    estimatedTimeRemaining,
+    status
+  } = useAsyncProcessing({
     onComplete: (result) => {
       console.log('✅ Processing completed:', result);
-      onComplete?.(result.extractedData);
+      onComplete?.(result);
+      toast.success('Document processed successfully!');
     },
     onError: (error) => {
       console.error('❌ Processing failed:', error);
       onError?.(error);
+      toast.error(`Processing failed: ${error}`);
     }
   });
 
@@ -100,13 +105,21 @@ export const DocumentUploadCloudRun = ({
         .from('farm-documents')
         .getPublicUrl(uploadData.filePath);
 
-      // Step 4: Start Cloud Run processing
-      toast.success('File uploaded! Starting processing...');
-      await processWithCloudRun(
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get file URL for processing');
+      }
+
+      console.log('🚀 Creating async processing job...');
+      toast.success('File uploaded! Processing started...');
+      
+      // Step 3: Create async processing job
+      await createProcessingJob(
         uploadData.documentId,
         urlData.publicUrl,
         file.name,
-        documentType
+        'individual',
+        documentType,
+        'medium'
       );
 
     } catch (err) {
@@ -116,7 +129,7 @@ export const DocumentUploadCloudRun = ({
       toast.error(errorMessage);
       onError?.(errorMessage);
     }
-  }, [documentType, processWithCloudRun, onComplete, onError]);
+  }, [documentType, createProcessingJob, onComplete, onError]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -147,8 +160,25 @@ export const DocumentUploadCloudRun = ({
     }
   };
 
-  const isComplete = result?.success && !processingError;
-  const hasError = processingError || (!isProcessing && !result?.success);
+  const isComplete = result && !processingError;
+  const hasError = processingError || (status === 'failed');
+
+  const getCurrentProgress = () => {
+    if (isUploading) return 25;
+    if (status === 'queued') return 35;
+    if (status === 'processing') return 75;
+    if (status === 'completed') return 100;
+    return progressPercentage || 0;
+  };
+
+  const getStatusText = () => {
+    if (isUploading) return 'Uploading file...';
+    if (status === 'queued') return 'Queued for processing...';
+    if (status === 'processing') return 'Processing with Cloud Run...';
+    if (status === 'completed') return 'Processing complete!';
+    if (status === 'failed') return 'Processing failed';
+    return 'Ready';
+  };
 
   return (
     <Card className="w-full">
@@ -203,31 +233,50 @@ export const DocumentUploadCloudRun = ({
             </div>
             {isComplete && <CheckCircle className="h-5 w-5 text-green-500" />}
             {hasError && <XCircle className="h-5 w-5 text-red-500" />}
+            {isProcessing && <Clock className="h-5 w-5 text-blue-500 animate-spin" />}
+          </div>
+        )}
+
+        {/* Job Status */}
+        {job && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+              <span className="text-sm font-medium text-blue-700">
+                Job ID: {job.job_id}
+              </span>
+              <Badge variant="outline" className="text-blue-600 border-blue-300">
+                {status}
+              </Badge>
+            </div>
+            {estimatedTimeRemaining && (
+              <p className="text-xs text-blue-600">
+                Estimated time remaining: {Math.ceil(estimatedTimeRemaining / 60)} minutes
+              </p>
+            )}
           </div>
         )}
 
         {/* Progress */}
-        {(isUploading || isProcessing || progress > 0) && (
+        {(isUploading || isProcessing || getCurrentProgress() > 0) && (
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                {isUploading ? 'Uploading...' : 
-                 isProcessing ? 'Processing with Cloud Run...' : 
-                 'Complete'}
+                {getStatusText()}
               </span>
-              <span className="font-medium">{progress}%</span>
+              <span className="font-medium">{getCurrentProgress()}%</span>
             </div>
-            <Progress value={isUploading ? 30 : progress} className="h-2" />
+            <Progress value={getCurrentProgress()} className="h-2" />
           </div>
         )}
 
         {/* Results */}
-        {result?.success && (
+        {result && (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
-              Document processed successfully! Extracted {Object.keys(result.extractedData || {}).length} data fields 
-              in {result.processingTime}ms using {result.metadata?.model || 'Cloud Run AI'}.
+              Document processed successfully! Extracted {Object.keys(result || {}).length} data fields 
+              using async Cloud Run processing.
             </AlertDescription>
           </Alert>
         )}

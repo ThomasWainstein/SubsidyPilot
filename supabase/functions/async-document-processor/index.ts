@@ -1,279 +1,21 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-interface AsyncDocumentProcessorRequest {
-  documentId: string;
-  fileUrl: string;
-  fileName: string;
-  clientType: string;
-  documentType: string;
-  userId?: string;
-}
-
-interface AsyncDocumentProcessorResponse {
-  success: boolean;
-  jobId: string;
-  message: string;
-  error?: string;
-}
-
-async function processDocumentInBackground(
-  jobId: string,
-  documentId: string,
-  fileUrl: string,
-  fileName: string,
-  clientType: string,
-  documentType: string,
-  userId?: string
-) {
-  const processingStartTime = Date.now();
-  const requestId = crypto.randomUUID().slice(0, 8);
-  
-  try {
-    console.log(`[${requestId}] 🔄 Background processing started for job ${jobId}`);
-    console.log(`[${requestId}] 📋 Processing parameters:`, {
-      documentId,
-      fileUrl,
-      fileName,
-      documentType,
-      clientType,
-      userId: userId || 'anonymous'
-    });
-    
-    // Update job status to processing
-    await supabase
-      .from('document_processing_jobs')
-      .update({ 
-        status: 'processing',
-        started_at: new Date().toISOString()
-      })
-      .eq('id', jobId);
-
-    // Validate file URL accessibility before processing
-    const fileSize = await getFileSize(fileUrl);
-    console.log(`[${requestId}] 📏 File size: ${Math.round(fileSize / 1024 / 1024)}MB`);
-    
-    // Only block processing if file is completely inaccessible (0 bytes from HTTP URLs)
-    if (fileSize === 0 && !fileUrl.startsWith('data:')) {
-      console.error(`[${requestId}] ❌ HTTP file is not accessible - cannot process`);
-      throw new Error(`File at URL ${fileUrl.substring(0, 100)}... is not accessible. Please check the file URL and permissions.`);
-    }
-    
-    if (fileSize > 10 * 1024 * 1024) { // 10MB+
-      console.log(`[${requestId}] ⏳ Large file detected, adding processing delay`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-
-    // Call hybrid extraction for processing with direct HTTP call (more reliable than supabase.functions.invoke)
-    console.log(`[${requestId}] 🔄 Calling hybrid-extraction function via direct HTTP`);
-    
-    let hybridData;
-    try {
-      const hybridResponse = await fetch(`${supabaseUrl}/functions/v1/hybrid-extraction`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-          'Content-Type': 'application/json',
-          'apikey': supabaseServiceKey
-        },
-        body: JSON.stringify({
-          fileUrl,
-          fileName,
-          documentType,
-          processingMode: 'async'
-        })
-      });
-
-      console.log(`[${requestId}] 📝 Hybrid extraction HTTP response:`, {
-        status: hybridResponse.status,
-        statusText: hybridResponse.statusText,
-        ok: hybridResponse.ok
-      });
-
-      if (!hybridResponse.ok) {
-        const errorText = await hybridResponse.text();
-        console.error(`[${requestId}] ❌ Hybrid extraction HTTP error:`, {
-          status: hybridResponse.status,
-          statusText: hybridResponse.statusText,
-          errorText: errorText
-        });
-        throw new Error(`Hybrid extraction HTTP error: ${hybridResponse.status} ${hybridResponse.statusText} - ${errorText}`);
-      }
-
-      hybridData = await hybridResponse.json();
-      console.log(`[${requestId}] ✅ Hybrid extraction successful: confidence ${hybridData.confidence}, method ${hybridData.method}`);
-      
-      if (!hybridData) {
-        console.error(`[${requestId}] ❌ No data returned from hybrid extraction:`, hybridData);
-        throw new Error(`Hybrid extraction returned no data.`);
-      }
-    } catch (fetchError) {
-      console.error(`[${requestId}] ❌ Failed to call hybrid-extraction:`, fetchError);
-      throw new Error(`Hybrid extraction failed: ${fetchError.message}`);
-    }
-    
-    // Store extraction results
-    console.log(`[${requestId}] 💾 Storing extraction results`);
-    const { error: extractionError } = await supabase
-      .from('document_extractions')
-      .insert({
-        document_id: documentId,
-        user_id: userId,
-        extracted_data: hybridData.structuredData,
-        confidence_score: hybridData.confidence,
-        extraction_type: hybridData.method,
-        ocr_metadata: hybridData.ocrMetadata,
-        status: 'completed',
-        model_used: hybridData.method === 'openai_fallback' ? 'gpt-4o-mini' : 'google_vision',
-        processing_time_ms: hybridData.processingTime,
-        session_id: jobId,
-        triggered_by: 'async_processor'
-      });
-
-    if (extractionError) {
-      console.error(`[${requestId}] ❌ Database insertion error:`, extractionError);
-      throw extractionError;
-    }
-
-    const totalProcessingTime = Date.now() - processingStartTime;
-
-    // Update job status to completed
-    await supabase
-      .from('document_processing_jobs')
-      .update({ 
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        processing_time_ms: totalProcessingTime,
-        metadata: {
-          ...hybridData.ocrMetadata,
-          confidence: hybridData.confidence,
-          extractionMethod: hybridData.method,
-          textLength: hybridData.extractedText.length,
-          requestId
-        }
-      })
-      .eq('id', jobId);
-
-    console.log(`[${requestId}] ✅ Background processing completed for job ${jobId} in ${totalProcessingTime}ms`);
-
-  } catch (error) {
-    const totalProcessingTime = Date.now() - processingStartTime;
-    console.error(`[${requestId}] ❌ Background processing failed for job ${jobId} at ${totalProcessingTime}ms:`, {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    // Update job status to failed
-    await supabase
-      .from('document_processing_jobs')
-      .update({ 
-        status: 'failed',
-        error_message: error.message,
-        completed_at: new Date().toISOString(),
-        processing_time_ms: totalProcessingTime
-      })
-      .eq('id', jobId);
-
-    // Create failed extraction record for tracking
-    await supabase
-      .from('document_extractions')
-      .insert({
-        document_id: documentId,
-        user_id: userId,
-        extracted_data: {},
-        confidence_score: 0,
-        extraction_type: 'async_failed',
-        status: 'failed',
-        error_message: error.message,
-        session_id: jobId,
-        triggered_by: 'async_processor'
-      });
-  }
-}
-
-async function getFileSize(url: string): Promise<number> {
-  const requestId = crypto.randomUUID().slice(0, 8);
-  console.log(`[${requestId}] 🔍 Checking file size for URL type: ${url.substring(0, 50)}...`);
-  
-  if (!url) {
-    console.error(`[${requestId}] ❌ Empty URL provided to getFileSize`);
-    return 0;
-  }
-  
-  // Handle base64 data URLs
-  if (url.startsWith('data:')) {
-    console.log(`[${requestId}] 📦 Base64 data URL detected - estimating size`);
-    try {
-      // Estimate size from base64 data
-      const base64Data = url.substring(url.indexOf(',') + 1);
-      const estimatedSize = Math.floor((base64Data.length * 3) / 4);
-      console.log(`[${requestId}] ✅ Base64 data estimated size: ${estimatedSize} bytes`);
-      return estimatedSize;
-    } catch (error) {
-      console.error(`[${requestId}] ❌ Failed to estimate base64 size:`, error);
-      return 1024; // Return 1KB as fallback for base64 data
-    }
-  }
-  
-  try {
-    console.log(`[${requestId}] 📡 Making HEAD request to: ${url}`);
-    const response = await fetch(url, { 
-      method: 'HEAD',
-      headers: {
-        'User-Agent': 'Supabase-Edge-Function/1.0'
-      }
-    });
-    
-    console.log(`[${requestId}] 📊 HEAD response status: ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      console.warn(`[${requestId}] ⚠️ HEAD request failed, trying GET request for size`);
-      // Fallback to partial GET request
-      try {
-        const getResponse = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Supabase-Edge-Function/1.0',
-            'Range': 'bytes=0-1023' // Only get first 1KB to check if accessible
-          }
-        });
-        if (getResponse.ok) {
-          const contentLength = getResponse.headers.get('content-length') || 
-                               getResponse.headers.get('content-range')?.split('/')[1];
-          const size = contentLength ? parseInt(contentLength, 10) : 1024;
-          console.log(`[${requestId}] ✅ File accessible via GET, estimated size: ${size} bytes`);
-          return size;
-        }
-      } catch (getFallbackError) {
-        console.error(`[${requestId}] ❌ GET fallback also failed:`, getFallbackError);
-      }
-      return 0;
-    }
-    
-    const contentLength = response.headers.get('content-length');
-    const size = contentLength ? parseInt(contentLength, 10) : 1024; // Default to 1KB if unknown
-    console.log(`[${requestId}] ✅ File size determined: ${size} bytes (${Math.round(size / 1024 / 1024)}MB)`);
-    return size;
-  } catch (error) {
-    console.error(`[${requestId}] ❌ getFileSize error for URL ${url.substring(0, 100)}:`, {
-      message: error.message,
-      name: error.name
-    });
-    // For network errors, return 1KB to allow processing to continue
-    return 1024;
-  }
+interface ProcessingJob {
+  id: string;
+  document_id: string;
+  file_url: string;
+  file_name: string;
+  client_type: string;
+  document_type?: string;
+  config: any;
+  metadata: any;
 }
 
 serve(async (req) => {
@@ -281,107 +23,189 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Add debug endpoints for testing
-  const url = new URL(req.url);
-  if (url.searchParams.get('test') === 'health') {
-    return new Response(JSON.stringify({
-      status: 'healthy',
-      service: 'async-document-processor',
-      version: '1.0.0',
-      timestamp: new Date().toISOString(),
-      supabase: {
-        url: supabaseUrl ? 'configured' : 'missing',
-        serviceKey: supabaseServiceKey ? 'configured' : 'missing'
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  try {
+    console.log('🔄 Async document processor starting...');
+
+    // Get next job to process
+    const { data: jobs, error: jobError } = await supabase
+      .from('document_processing_jobs')
+      .select('*')
+      .eq('status', 'queued')
+      .lte('scheduled_for', new Date().toISOString())
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (jobError) {
+      console.error('❌ Error fetching jobs:', jobError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch jobs' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!jobs || jobs.length === 0) {
+      console.log('ℹ️ No jobs to process');
+      return new Response(JSON.stringify({ message: 'No jobs to process' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const job = jobs[0] as ProcessingJob;
+    console.log(`📋 Processing job ${job.id} for document ${job.document_id}`);
+
+    // Update job status to processing
+    await supabase
+      .from('document_processing_jobs')
+      .update({
+        status: 'processing',
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', job.id);
+
+    const startTime = Date.now();
+
+    try {
+      // Call Cloud Run service for processing
+      const cloudRunUrl = 'https://subsidypilot-form-parser-838836299668.europe-west1.run.app/process-document';
+      
+      console.log(`🚀 Calling Cloud Run with: ${job.file_url}`);
+      
+      const formData = new FormData();
+      
+      // Download file and add to form data
+      const fileResponse = await fetch(job.file_url);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to download file: ${fileResponse.statusText}`);
       }
+      
+      const fileBlob = await fileResponse.blob();
+      formData.append('document', fileBlob, job.file_name);
+      formData.append('document_id', job.document_id);
+      formData.append('document_type', job.document_type || 'general');
+
+      const cloudRunResponse = await fetch(cloudRunUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!cloudRunResponse.ok) {
+        throw new Error(`Cloud Run processing failed: ${cloudRunResponse.statusText}`);
+      }
+
+      const result = await cloudRunResponse.json();
+      const processingTime = Date.now() - startTime;
+
+      if (result.success && result.extractedData) {
+        console.log('✅ Cloud Run processing successful');
+        
+        // Update document_extractions with results
+        await supabase
+          .from('document_extractions')
+          .update({
+            status_v2: 'completed',
+            extracted_data: result.extractedData,
+            confidence_score: result.confidence || 0,
+            progress_metadata: {
+              ...job.metadata,
+              processing_time_ms: processingTime,
+              extraction_method: 'cloud-run-async',
+              model: result.metadata?.model,
+              version: result.metadata?.version
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('document_id', job.document_id);
+
+        // Mark job as completed
+        await supabase
+          .from('document_processing_jobs')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            processing_time_ms: processingTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+
+        console.log(`✅ Job ${job.id} completed successfully in ${processingTime}ms`);
+
+      } else {
+        throw new Error(result.error || 'Processing failed');
+      }
+
+    } catch (processingError) {
+      console.error('❌ Processing error:', processingError);
+      
+      const processingTime = Date.now() - startTime;
+      const shouldRetry = job.retry_attempt < job.max_retries;
+      
+      if (shouldRetry) {
+        // Schedule retry with exponential backoff
+        const retryDelay = Math.min(300 * Math.pow(2, job.retry_attempt), 3600); // Max 1 hour
+        const retryTime = new Date(Date.now() + retryDelay * 1000);
+
+        await supabase
+          .from('document_processing_jobs')
+          .update({
+            status: 'retry_scheduled',
+            retry_attempt: job.retry_attempt + 1,
+            scheduled_for: retryTime.toISOString(),
+            error_message: processingError.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+
+        console.log(`🔄 Job ${job.id} scheduled for retry ${job.retry_attempt + 1} at ${retryTime.toISOString()}`);
+      } else {
+        // Mark as failed
+        await supabase
+          .from('document_processing_jobs')
+          .update({
+            status: 'failed',
+            completed_at: new Date().toISOString(),
+            processing_time_ms: processingTime,
+            error_message: processingError.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+
+        // Update document_extractions
+        await supabase
+          .from('document_extractions')
+          .update({
+            status_v2: 'failed',
+            failure_detail: processingError.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('document_id', job.document_id);
+
+        console.log(`❌ Job ${job.id} failed permanently after ${job.retry_attempt} retries`);
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      jobId: job.id,
+      documentId: job.document_id,
+      status: 'processed'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-  }
-
-  try {
-    const { documentId, fileUrl, fileName, clientType, documentType, userId }: AsyncDocumentProcessorRequest = await req.json();
-    const requestId = crypto.randomUUID().slice(0, 8);
-
-    console.log(`[${requestId}] 🔄 Creating async processing job for document ${documentId}`);
-
-    // Validate input
-    if (!documentId || !fileUrl || !fileName || !clientType || !documentType) {
-      throw new Error('Missing required parameters: documentId, fileUrl, fileName, clientType, documentType');
-    }
-
-    // Determine priority based on file size and type
-    const fileSize = await getFileSize(fileUrl);
-    const priority = fileSize > 50 * 1024 * 1024 ? 'high' : 'normal'; // High priority for files > 50MB
-    console.log(`[${requestId}] 📏 File size: ${Math.round(fileSize / 1024 / 1024)}MB, priority: ${priority}`);
-
-    // Create job record
-    const { data: jobData, error: jobError } = await supabase
-      .from('document_processing_jobs')
-      .insert({
-        document_id: documentId,
-        user_id: userId,
-        file_url: fileUrl,
-        file_name: fileName,
-        client_type: clientType,
-        document_type: documentType,
-        status: 'queued',
-        priority,
-        scheduled_for: new Date().toISOString(),
-        config: {
-          async: true,
-          timeout: 300000, // 5 minutes
-          retryOnFailure: true
-        },
-        metadata: {
-          fileSize,
-          createdBy: 'async-document-processor',
-          version: '1.0',
-          requestId
-        }
-      })
-      .select()
-      .single();
-
-    if (jobError) {
-      console.error(`[${requestId}] ❌ Job creation failed:`, jobError);
-      throw jobError;
-    }
-
-    const jobId = jobData.id;
-    console.log(`[${requestId}] ✅ Created job ${jobId} with priority ${priority}`);
-
-    // Start background processing using EdgeRuntime.waitUntil for memory safety
-    EdgeRuntime.waitUntil(
-      processDocumentInBackground(jobId, documentId, fileUrl, fileName, clientType, documentType, userId)
-    );
-
-    const response: AsyncDocumentProcessorResponse = {
-      success: true,
-      jobId,
-      message: `Document processing job created successfully. Job ID: ${jobId}`
-    };
-
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
 
   } catch (error) {
-    console.error('❌ Async document processor error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+    console.error('❌ Async processor error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-    return new Response(
-      JSON.stringify({ 
-        success: false,
-        jobId: '',
-        message: 'Failed to create processing job',
-        error: error.message
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
   }
 });
