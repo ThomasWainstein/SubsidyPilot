@@ -328,6 +328,207 @@ class FastPatternExtractor {
 }
 
 // Helper functions
+async function updateJobStatus(
+  documentId: string, 
+  status: string, 
+  stage: string, 
+  progress: number
+) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Update document extraction status
+  await supabase
+    .from('document_extractions')
+    .update({
+      status_v2: status === 'processing' ? 'processing' : status,
+      progress_metadata: {
+        stage,
+        progress,
+        timestamp: new Date().toISOString()
+      },
+      last_event_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('document_id', documentId);
+
+  console.log(`📊 Status updated: ${stage} (${progress}%)`);
+}
+
+async function performDatabaseEnrichment(
+  patternResults: { [key: string]: ExtractionResult | undefined },
+  clientType: string
+): Promise<any> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const enrichmentResults: any = {};
+  
+  try {
+    // Extract raw data for enrichment
+    const extractedData: Record<string, any> = {};
+    for (const [key, result] of Object.entries(patternResults)) {
+      if (result) {
+        extractedData[key] = result.value;
+      }
+    }
+
+    // VAT Number Validation
+    if (extractedData.vatNumber) {
+      try {
+        const { data: vatResult } = await supabase.functions.invoke('validate-vat', {
+          body: { 
+            countryCode: extractedData.vatNumber.substring(0, 2), 
+            vatNumber: extractedData.vatNumber.substring(2) 
+          }
+        });
+        
+        if (vatResult?.valid) {
+          enrichmentResults.vatValidation = {
+            value: 'valid',
+            confidence: 0.95,
+            source: 'eu_vies',
+            enrichedData: vatResult
+          };
+        }
+      } catch (error) {
+        console.log('VAT validation error:', error);
+      }
+    }
+
+    // Company Registry Validation
+    if (extractedData.registrationNumber) {
+      try {
+        const { data: registryResult } = await supabase.functions.invoke('validate-company-registry', {
+          body: { 
+            registrationNumber: extractedData.registrationNumber,
+            country: extractedData.country || 'FR'
+          }
+        });
+        
+        if (registryResult?.valid) {
+          enrichmentResults.companyValidation = {
+            value: 'valid',
+            confidence: 0.90,
+            source: 'company_registry',
+            enrichedData: registryResult
+          };
+        }
+      } catch (error) {
+        console.log('Company registry validation error:', error);
+      }
+    }
+
+    // Address Geocoding
+    if (extractedData.address) {
+      try {
+        const { data: geoResult } = await supabase.functions.invoke('geocode-address', {
+          body: { address: extractedData.address }
+        });
+        
+        if (geoResult?.found) {
+          enrichmentResults.addressValidation = {
+            value: 'valid',
+            confidence: geoResult.confidence || 0.80,
+            source: 'geocoding',
+            enrichedData: geoResult
+          };
+        }
+      } catch (error) {
+        console.log('Geocoding error:', error);
+      }
+    }
+
+    // NACE Classification
+    if (extractedData.businessDescription || extractedData.activities) {
+      try {
+        const { data: naceResult } = await supabase.functions.invoke('classify-nace', {
+          body: { description: extractedData.businessDescription || extractedData.activities }
+        });
+        
+        if (naceResult?.code) {
+          enrichmentResults.naceCode = {
+            value: naceResult.code,
+            confidence: naceResult.confidence || 0.70,
+            source: 'nace_classification',
+            enrichedData: naceResult
+          };
+        }
+      } catch (error) {
+        console.log('NACE classification error:', error);
+      }
+    }
+
+    return enrichmentResults;
+  } catch (error) {
+    console.error('Database enrichment error:', error);
+    return {};
+  }
+}
+
+function identifyFieldsForAI(
+  patternResults: { [key: string]: ExtractionResult | undefined },
+  enrichmentResults: any
+): string[] {
+  const fieldsForAI: string[] = [];
+  const requiredFields = ['companyName', 'registrationNumber', 'vatNumber', 'turnover', 'employees', 'address'];
+  
+  for (const field of requiredFields) {
+    const patternResult = patternResults[field];
+    const enrichmentResult = enrichmentResults[`${field}Validation`] || enrichmentResults[field];
+    
+    // Need AI if:
+    // - No pattern result or low confidence
+    // - No enrichment result
+    // - Pattern result has confidence < 0.7
+    const needsAI = !patternResult || 
+                   patternResult.confidence < 0.7 || 
+                   (!enrichmentResult && !patternResult);
+    
+    if (needsAI) {
+      fieldsForAI.push(field);
+    }
+  }
+  
+  return fieldsForAI;
+}
+
+function mergeAllResults(
+  patternResults: { [key: string]: ExtractionResult | undefined },
+  enrichmentResults: any,
+  aiResults: any
+): { [key: string]: ExtractionResult | undefined } {
+  const merged: { [key: string]: ExtractionResult | undefined } = { ...patternResults };
+  
+  // Priority: Enrichment > Pattern > AI
+  
+  // Add enrichment results (highest priority for validation)
+  for (const [key, result] of Object.entries(enrichmentResults || {})) {
+    if (result && typeof result === 'object' && 'value' in result) {
+      merged[key] = result as ExtractionResult;
+    }
+  }
+  
+  // Add AI results for missing fields or low confidence pattern results
+  for (const [key, value] of Object.entries(aiResults || {})) {
+    const patternResult = patternResults[key];
+    const enrichmentResult = enrichmentResults[key];
+    
+    // Use AI result if no pattern/enrichment result or pattern has low confidence
+    if ((!patternResult || patternResult.confidence < 0.7) && !enrichmentResult) {
+      merged[key] = {
+        value: value as string,
+        confidence: 0.8,
+        source: 'ai',
+        raw: `AI extracted: ${value}`
+      };
+    }
+  }
+  
+  return merged;
+}
 async function extractTextFromBlob(blob: Blob, fileName: string): Promise<string> {
   try {
     if (fileName.toLowerCase().endsWith('.txt')) {
@@ -437,8 +638,10 @@ serve(async (req) => {
     const startTime = Date.now();
 
     try {
-      // PHASE 1: Download and extract text from document
-      console.log(`📄 Downloading document: ${job.file_url}`);
+      // Stage 1: Upload Processing
+      const documentId = job.document_id;
+      await updateJobStatus(documentId, 'processing', 'upload_processing', 10);
+      console.log(`📄 Stage 1: Downloading document: ${job.file_url}`);
       
       const fileResponse = await fetch(job.file_url);
       if (!fileResponse.ok) {
@@ -446,51 +649,73 @@ serve(async (req) => {
       }
       
       const fileBlob = await fileResponse.blob();
+      
+      // Stage 2: Text Extraction
+      await updateJobStatus(documentId, 'processing', 'text_extraction', 25);
+      console.log('📝 Stage 2: Text extraction starting...');
       const documentText = await extractTextFromBlob(fileBlob, job.file_name);
       
-      // PHASE 2: Fast Pattern Extraction
+      // Stage 3: Pattern Analysis
+      await updateJobStatus(documentId, 'processing', 'pattern_analysis', 40);
       const patternStartTime = Date.now();
-      console.log('🔍 Phase 1: Pattern extraction starting...');
+      console.log('🔍 Stage 3: Pattern extraction starting...');
       
       const patternExtractor = new FastPatternExtractor();
       const patternResults = patternExtractor.extractPatterns(documentText);
       const patternTime = Date.now() - patternStartTime;
       
       console.log(`✅ Pattern extraction completed in ${patternTime}ms`);
+
+      // Stage 4: Database Enrichment
+      await updateJobStatus(documentId, 'processing', 'database_enrichment', 55);
+      console.log('🏛️ Stage 4: Database enrichment starting...');
       
-      // PHASE 3: Assess if AI processing is needed
+      const enrichmentStartTime = Date.now();
+      const enrichmentResults = await performDatabaseEnrichment(patternResults, job.client_type);
+      const enrichmentTime = Date.now() - enrichmentStartTime;
+      
+      console.log(`✅ Database enrichment completed in ${enrichmentTime}ms`);
+      
+      // Stage 5: AI Processing (selective)
+      await updateJobStatus(documentId, 'processing', 'ai_processing', 70);
       const quality = patternExtractor.assessQuality(patternResults);
       console.log(`📊 Pattern quality: ${quality.overallConfidence.toFixed(2)} confidence, ${quality.extractedFields}/${quality.totalFields} fields extracted`);
       
-      let finalResults = patternResults;
-      let processingMethod = 'pattern-only';
+      let aiResults = null;
+      let processingMethod = 'pattern-enrichment';
       let cloudRunTime = 0;
       
-      // PHASE 4: Conditional AI Processing
-      if (quality.needsAI) {
+      const fieldsForAI = identifyFieldsForAI(patternResults, enrichmentResults);
+      
+      if (fieldsForAI.length > 0 && quality.needsAI) {
         const aiStartTime = Date.now();
-        console.log(`🤖 Phase 2: AI processing needed (confidence: ${quality.overallConfidence.toFixed(2)})`);
+        console.log(`🤖 Stage 5: AI processing needed for fields: ${fieldsForAI.join(', ')}`);
         
         try {
           const cloudRunResults = await processWithCloudRun(fileBlob, job);
           cloudRunTime = Date.now() - aiStartTime;
           
           if (cloudRunResults.success && cloudRunResults.extractedData) {
-            // Merge pattern results with AI results (patterns have priority for high-confidence fields)
-            finalResults = mergeResults(patternResults, cloudRunResults.extractedData);
-            processingMethod = 'hybrid-pattern-ai';
+            aiResults = cloudRunResults.extractedData;
+            processingMethod = 'hybrid-pattern-enrichment-ai';
             console.log(`✅ AI processing completed in ${cloudRunTime}ms`);
           } else {
-            console.log('⚠️ AI processing failed, using pattern results only');
-            processingMethod = 'pattern-fallback';
+            console.log('⚠️ AI processing failed, using pattern + enrichment results');
+            processingMethod = 'pattern-enrichment-fallback';
           }
         } catch (aiError) {
-          console.log(`⚠️ AI processing error: ${aiError.message}, using pattern results`);
-          processingMethod = 'pattern-fallback';
+          console.log(`⚠️ AI processing error: ${aiError.message}, using pattern + enrichment results`);
+          processingMethod = 'pattern-enrichment-fallback';
         }
       } else {
-        console.log('⚡ No AI processing needed - pattern extraction sufficient');
+        console.log('⚡ No AI processing needed - pattern + enrichment sufficient');
       }
+
+      // Stage 6: Data Merging & Validation
+      await updateJobStatus(documentId, 'processing', 'data_merging', 85);
+      console.log('🔀 Stage 6: Data merging and validation...');
+      
+      const finalResults = mergeAllResults(patternResults, enrichmentResults, aiResults);
       
       const totalProcessingTime = Date.now() - startTime;
       

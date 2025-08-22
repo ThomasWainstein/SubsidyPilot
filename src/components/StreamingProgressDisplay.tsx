@@ -1,306 +1,178 @@
-/**
- * Streaming Progress Display Component
- * Phase 3: Real-time progress visualization with stage breakdown
- */
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Loader2, 
-  FileText, 
-  Search, 
-  Brain, 
-  Merge, 
-  Shield,
-  Upload
-} from 'lucide-react';
-import { ProcessingStage } from '@/hooks/useStreamingProcessing';
+import { useRealTimeProcessing } from '@/hooks/useRealTimeProcessing';
 
-interface StreamingProgressDisplayProps {
-  stages: ProcessingStage[];
-  overallProgress: number;
-  currentStage: string | null;
-  partialResults: { [key: string]: any };
-  isComplete: boolean;
-  error: string | null;
-  totalProcessingTime: number;
-  estimatedTimeRemaining: number;
+interface RealTimeProgressDisplayProps {
+  documentId: string;
+  onComplete?: (extractedData: any) => void;
 }
 
-const getStageIcon = (stageId: string) => {
-  switch (stageId) {
-    case 'upload': return Upload;
-    case 'text-extraction': return FileText;
-    case 'pattern-analysis': return Search;
-    case 'ai-processing': return Brain;
-    case 'data-merging': return Merge;
-    case 'validation': return Shield;
-    default: return Clock;
+export function RealTimeProgressDisplay({ documentId, onComplete }: RealTimeProgressDisplayProps) {
+  const { processingState, isConnected, getProcessingSummary } = useRealTimeProcessing(documentId);
+  
+  const summary = getProcessingSummary();
+
+  useEffect(() => {
+    if (processingState?.isComplete && processingState.extractedData && onComplete) {
+      onComplete(processingState.extractedData);
+    }
+  }, [processingState?.isComplete, processingState?.extractedData, onComplete]);
+
+  if (!processingState) {
+    return (
+      <div className="bg-card rounded-lg border p-6">
+        <div className="flex items-center gap-3">
+          <div className="animate-pulse w-4 h-4 bg-primary/20 rounded-full" />
+          <span className="text-muted-foreground">Initializing processing...</span>
+        </div>
+      </div>
+    );
   }
-};
-
-const getStageColor = (status: ProcessingStage['status']) => {
-  switch (status) {
-    case 'completed': return 'text-success';
-    case 'processing': return 'text-primary';
-    case 'failed': return 'text-destructive';
-    default: return 'text-muted-foreground';
-  }
-};
-
-const getStatusIcon = (status: ProcessingStage['status']) => {
-  switch (status) {
-    case 'completed': return CheckCircle;
-    case 'processing': return Loader2;
-    case 'failed': return XCircle;
-    default: return Clock;
-  }
-};
-
-export const StreamingProgressDisplay: React.FC<StreamingProgressDisplayProps> = ({
-  stages,
-  overallProgress,
-  currentStage,
-  partialResults,
-  isComplete,
-  error,
-  totalProcessingTime,
-  estimatedTimeRemaining
-}) => {
-  const formatTime = (ms: number) => {
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    const seconds = Math.round(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
-
-  const getProcessingStats = () => {
-    const completed = stages.filter(s => s.status === 'completed').length;
-    const failed = stages.filter(s => s.status === 'failed').length;
-    const processing = stages.filter(s => s.status === 'processing').length;
-    
-    return { completed, failed, processing, total: stages.length };
-  };
-
-  const stats = getProcessingStats();
 
   return (
-    <Card className="w-full">
-      <CardHeader className="space-y-1">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            Streaming Processing Pipeline
-          </CardTitle>
-          <Badge 
-            variant={isComplete ? "secondary" : error ? "destructive" : "default"}
-            className="font-mono"
-          >
-            {overallProgress}%
-          </Badge>
+    <div className="space-y-6">
+      {/* Connection Status */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success animate-pulse' : 'bg-destructive'}`} />
+          <span className="text-sm text-muted-foreground">
+            {isConnected ? 'Real-time connection active' : 'Connection lost'}
+          </span>
         </div>
         
-        {/* Overall Progress */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
-              {currentStage || (isComplete ? 'Complete' : error ? 'Failed' : 'Starting...')}
-            </span>
-            <span className="font-mono">
-              {stats.completed}/{stats.total} stages
+        {processingState.totalTime && (
+          <div className="text-sm text-muted-foreground">
+            Completed in {(processingState.totalTime / 1000).toFixed(1)}s
+          </div>
+        )}
+      </div>
+
+      {/* Overall Progress */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Processing Progress</h3>
+          <span className="text-sm font-medium">
+            {summary?.completed || 0}/{summary?.total || 6} stages
+          </span>
+        </div>
+        
+        <div className="relative">
+          <Progress 
+            value={processingState.overallProgress} 
+            className="h-3"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs font-medium text-primary-foreground">
+              {processingState.overallProgress}%
             </span>
           </div>
-          <Progress value={overallProgress} className="h-2" />
         </div>
+      </div>
 
-        {/* Time Information */}
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>
-            Total: {formatTime(totalProcessingTime)}
-          </span>
-          {!isComplete && !error && estimatedTimeRemaining > 0 && (
-            <span>
-              ETA: {formatTime(estimatedTimeRemaining)}
-            </span>
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Stage Breakdown */}
-        <div className="space-y-3">
-          <h4 className="font-semibold text-sm">Processing Stages</h4>
-          
-          {stages.map((stage, index) => {
-            const StageIcon = getStageIcon(stage.id);
-            const StatusIcon = getStatusIcon(stage.status);
-            const stageTime = stage.startTime && stage.endTime 
-              ? stage.endTime - stage.startTime 
-              : 0;
-            
-            return (
-              <div key={stage.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                <div className={`flex-shrink-0 ${getStageColor(stage.status)}`}>
-                  <StageIcon className="h-4 w-4" />
+      {/* Stage Details */}
+      <div className="space-y-3">
+        {processingState.stages.map((stage, index) => (
+          <div key={stage.id} className="bg-card rounded-lg border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  stage.status === 'completed' ? 'bg-success text-success-foreground' :
+                  stage.status === 'processing' ? 'bg-primary text-primary-foreground animate-pulse' :
+                  stage.status === 'error' ? 'bg-destructive text-destructive-foreground' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {stage.status === 'completed' ? '✓' :
+                   stage.status === 'processing' ? '○' :
+                   stage.status === 'error' ? '✗' :
+                   index + 1}
                 </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">{stage.name}</span>
-                    <div className="flex items-center gap-2">
-                      {stageTime > 0 && (
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {formatTime(stageTime)}
-                        </span>
-                      )}
-                      <div className={getStageColor(stage.status)}>
-                        <StatusIcon 
-                          className={`h-4 w-4 ${
-                            stage.status === 'processing' ? 'animate-spin' : ''
-                          }`} 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Stage Progress */}
-                  <div className="space-y-1">
-                    <Progress value={stage.progress} className="h-1" />
-                    <div className="flex justify-between text-xs">
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          stage.status === 'completed' ? 'border-success text-success' :
-                          stage.status === 'processing' ? 'border-primary text-primary' :
-                          stage.status === 'failed' ? 'border-destructive text-destructive' :
-                          'border-muted-foreground text-muted-foreground'
-                        }`}
-                      >
-                        {stage.status}
-                      </Badge>
-                      <span className="text-muted-foreground font-mono">
-                        {stage.progress}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Stage Error */}
-                  {stage.error && (
-                    <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
-                      {stage.error}
-                    </div>
+                <div>
+                  <h4 className="font-medium">{stage.name}</h4>
+                  {stage.status === 'processing' && (
+                    <p className="text-sm text-muted-foreground">In progress...</p>
+                  )}
+                  {stage.status === 'error' && stage.error && (
+                    <p className="text-sm text-destructive">{stage.error}</p>
                   )}
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Partial Results */}
-        {Object.keys(partialResults).length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Progressive Results</h4>
               
-              {Object.entries(partialResults).map(([stageId, results]) => {
-                const stage = stages.find(s => s.id === stageId);
-                const fieldsCount = results && typeof results === 'object' 
-                  ? Object.keys(results).length 
-                  : 0;
-                
-                if (fieldsCount === 0) return null;
-                
-                return (
-                  <div key={stageId} className="p-3 bg-success/5 border border-success/20 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm text-success">
-                        {stage?.name || stageId} Results
-                      </span>
-                      <Badge variant="secondary" className="text-xs">
-                        {fieldsCount} fields
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-xs max-h-32 overflow-y-auto">
-                      {Object.entries(results).slice(0, 8).map(([key, value]) => (
-                        <div key={key} className="flex justify-between">
-                          <span className="text-muted-foreground capitalize truncate">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}:
-                          </span>
-                          <span className="font-mono text-right max-w-24 truncate">
-                            {String(value) || 'N/A'}
-                          </span>
-                        </div>
-                      ))}
-                      {fieldsCount > 8 && (
-                        <div className="col-span-2 text-center text-muted-foreground">
-                          ... and {fieldsCount - 8} more
-                        </div>
-                      )}
-                    </div>
+              <div className="text-right">
+                <div className="text-sm font-medium">
+                  {stage.progress}%
+                </div>
+                {stage.endTime && stage.startTime && (
+                  <div className="text-xs text-muted-foreground">
+                    {((stage.endTime.getTime() - stage.startTime.getTime()) / 1000).toFixed(1)}s
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
-          </>
-        )}
+            
+            <Progress value={stage.progress} className="h-2" />
+            
+            {stage.results && (
+              <div className="mt-3 text-xs text-muted-foreground">
+                <details>
+                  <summary className="cursor-pointer hover:text-foreground">
+                    View results
+                  </summary>
+                  <pre className="mt-2 bg-muted p-2 rounded text-xs overflow-auto max-h-32">
+                    {JSON.stringify(stage.results, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
-        {/* Processing Stats */}
-        <Separator />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div className="space-y-1">
-            <div className="text-lg font-semibold text-success">{stats.completed}</div>
-            <div className="text-xs text-muted-foreground">Completed</div>
+      {/* Final Results */}
+      {processingState.isComplete && processingState.extractedData && (
+        <div className="bg-success/5 border border-success/20 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-success">Processing Complete!</h3>
+            <div className="flex items-center gap-4 text-sm">
+              {processingState.confidenceScore && (
+                <span className="text-muted-foreground">
+                  Confidence: {(processingState.confidenceScore * 100).toFixed(1)}%
+                </span>
+              )}
+              {processingState.processingMethod && (
+                <span className="text-muted-foreground">
+                  Method: {processingState.processingMethod}
+                </span>
+              )}
+            </div>
           </div>
           
-          <div className="space-y-1">
-            <div className="text-lg font-semibold text-primary">{stats.processing}</div>
-            <div className="text-xs text-muted-foreground">Processing</div>
-          </div>
-          
-          <div className="space-y-1">
-            <div className="text-lg font-semibold text-destructive">{stats.failed}</div>
-            <div className="text-xs text-muted-foreground">Failed</div>
-          </div>
-          
-          <div className="space-y-1">
-            <div className="text-lg font-semibold">{stats.total}</div>
-            <div className="text-xs text-muted-foreground">Total</div>
+          <div className="space-y-2">
+            <h4 className="font-medium">Extracted Data:</h4>
+            <div className="bg-background rounded border p-4 max-h-64 overflow-auto">
+              <pre className="text-sm">
+                {JSON.stringify(processingState.extractedData, null, 2)}
+              </pre>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Global Error */}
-        {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <div className="flex items-center gap-2 text-destructive font-medium text-sm mb-1">
-              <XCircle className="h-4 w-4" />
-              Processing Failed
+      {/* Error State */}
+      {processingState.hasError && (
+        <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+              ✗
             </div>
-            <p className="text-xs text-destructive/80">{error}</p>
+            <h3 className="text-lg font-semibold text-destructive">Processing Failed</h3>
           </div>
-        )}
-
-        {/* Success Message */}
-        {isComplete && !error && (
-          <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-            <div className="flex items-center gap-2 text-success font-medium text-sm">
-              <CheckCircle className="h-4 w-4" />
-              Processing Complete!
-            </div>
-            <p className="text-xs text-success/80 mt-1">
-              All stages completed successfully in {formatTime(totalProcessingTime)}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          <p className="text-sm text-muted-foreground">
+            The document processing encountered an error during the {processingState.currentStage} stage.
+            Please try uploading the document again or contact support if the issue persists.
+          </p>
+        </div>
+      )}
+    </div>
   );
-};
+}

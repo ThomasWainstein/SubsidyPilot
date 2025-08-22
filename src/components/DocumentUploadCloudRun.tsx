@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Upload, FileText, CheckCircle, XCircle, Waves, Zap } from 'lucide-react';
 import { useStreamingProcessing } from '@/hooks/useStreamingProcessing';
-import { StreamingProgressDisplay } from '@/components/StreamingProgressDisplay';
+import { RealTimeProgressDisplay } from './StreamingProgressDisplay';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -234,17 +234,15 @@ export const DocumentUploadCloudRun = ({
           </div>
         )}
 
-        {/* Streaming Progress Display */}
-        {(isProcessing || isComplete || hasError) && stages.length > 0 && (
-          <StreamingProgressDisplay
-            stages={stages}
-            overallProgress={overallProgress}
-            currentStage={currentStage}
-            partialResults={partialResults}
-            isComplete={isComplete}
-            error={processingError}
-            totalProcessingTime={totalProcessingTime}
-            estimatedTimeRemaining={estimatedTimeRemaining}
+        {/* Real-time Progress Display */}
+        {uploadedDocumentId && (
+          <RealTimeProgressDisplay 
+            documentId={uploadedDocumentId} 
+            onComplete={(results) => {
+              console.log('✅ All processing completed:', results);
+              onComplete?.(results);
+              toast.success(`Document processed successfully with ${Object.keys(results || {}).length} fields extracted.`);
+            }}
           />
         )}
 
