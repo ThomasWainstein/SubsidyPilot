@@ -2,9 +2,9 @@
 FROM node:18-alpine
 
 # Set working directory
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy server package files
+# Copy server package files first for better caching
 COPY server/package*.json ./
 
 # Install dependencies
@@ -13,12 +13,15 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy server source code
 COPY server/ ./
 
+# Ensure index.js is executable
+RUN ls -la /app && cat /app/package.json
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
 # Change ownership to non-root user
-RUN chown -R nextjs:nodejs /workspace
+RUN chown -R nextjs:nodejs /app
 USER nextjs
 
 # Expose port
