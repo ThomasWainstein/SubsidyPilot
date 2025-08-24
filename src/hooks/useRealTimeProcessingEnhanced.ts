@@ -103,8 +103,16 @@ export function useRealTimeProcessingEnhanced({ documentId }: { documentId: stri
       if (isMounted && data) {
         setJob(data);
         
-        // Update stages based on job metadata
-        if (data.metadata && typeof data.metadata === 'object' && 'stage' in data.metadata) {
+        // Update stages based on job status
+        if (data.status === 'completed') {
+          // Mark all stages as completed
+          setStages(prev => prev.map(stage => ({
+            ...stage,
+            status: 'completed' as const,
+            progress: 100,
+            endTime: stage.endTime || new Date()
+          })));
+        } else if (data.metadata && typeof data.metadata === 'object' && 'stage' in data.metadata) {
           const metadata = data.metadata as any;
           updateStage(metadata.stage, {
             status: data.status === 'processing' ? 'processing' : 'completed',
@@ -209,7 +217,15 @@ export function useRealTimeProcessingEnhanced({ documentId }: { documentId: stri
             setLastEventAt(Date.now());
             
             // Update stages based on polled data
-            if (data.metadata && typeof data.metadata === 'object' && 'stage' in data.metadata) {
+            if (data.status === 'completed') {
+              // Mark all stages as completed
+              setStages(prev => prev.map(stage => ({
+                ...stage,
+                status: 'completed' as const,
+                progress: 100,
+                endTime: stage.endTime || new Date()
+              })));
+            } else if (data.metadata && typeof data.metadata === 'object' && 'stage' in data.metadata) {
               const metadata = data.metadata as any;
               updateStage(metadata.stage, {
                 status: data.status === 'processing' ? 'processing' : 'completed',
@@ -239,7 +255,7 @@ export function useRealTimeProcessingEnhanced({ documentId }: { documentId: stri
       if (pollingRef.current) clearInterval(pollingRef.current);
       clearTimeout(stopFallbackTimeout);
     };
-  }, [documentId, initializeStages, updateStage, stages]);
+  }, [documentId, initializeStages, updateStage]);
 
   return { 
     job, 
