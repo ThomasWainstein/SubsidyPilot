@@ -42,11 +42,11 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   const [showFullReview, setShowFullReview] = useState(false);
 
   const extraction = documentDetail?.document_extractions?.[0];
-  const extractionStatus = { status: extraction?.status || 'not_extracted' };
+  const extractionStatus = { status: (extraction as any)?.status || 'not_extracted' };
 
   useEffect(() => {
-    if (extraction?.extracted_data && typeof extraction.extracted_data === 'object') {
-      setExtractedFields(extraction.extracted_data as Record<string, any>);
+    if ((extraction as any)?.extracted_data && typeof (extraction as any).extracted_data === 'object') {
+      setExtractedFields((extraction as any).extracted_data as Record<string, any>);
     }
   }, [extraction]);
 
@@ -71,8 +71,8 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
     try {
       await submitCorrection.mutateAsync({
         correction: {
-          extractionId: extraction.id,
-          originalData: extraction.extracted_data as Record<string, any>,
+          extractionId: (extraction as any).id,
+          originalData: (extraction as any).extracted_data as Record<string, any>,
           correctedData: extractedFields,
           reviewerNotes,
           status: reviewStatus
@@ -95,13 +95,13 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
         uploadDate: documentDetail?.uploaded_at
       },
       extraction: extraction ? {
-        id: extraction.id,
-        status: extraction.status,
-        confidence: extraction.confidence_score,
-        extractionType: extraction.extraction_type,
+        id: (extraction as any).id,
+        status: (extraction as any).status,
+        confidence: (extraction as any).confidence_score,
+        extractionType: (extraction as any).extraction_type,
         extractedData: extractedFields,
-        createdAt: extraction.created_at,
-        debugInfo: extraction.debug_info
+        createdAt: (extraction as any).created_at,
+        debugInfo: (extraction as any).debug_info
       } : null,
       review: {
         status: reviewStatus,
@@ -129,7 +129,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
   const getStatusIcon = () => {
     switch (extractionStatus.status) {
       case 'completed':
-        return extraction?.confidence_score && extraction.confidence_score < 70
+        return (extraction as any)?.confidence_score && (extraction as any).confidence_score < 70
           ? <AlertTriangle className="h-5 w-5 text-yellow-500" />
           : <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'failed':
@@ -275,16 +275,16 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
                   <label className="text-sm font-medium text-muted-foreground">Confidence Score</label>
                   <Badge
                     variant="secondary"
-                    className={`mt-1 block w-fit ${getConfidenceColor(extraction.confidence_score || 0)}`}
-                  >
-                    {extraction.confidence_score || 0}%
+                     className={`mt-1 block w-fit ${getConfidenceColor((extraction as any).confidence_score || 0)}`}
+                   >
+                     {(extraction as any).confidence_score || 0}%
                   </Badge>
                 </div>
 
 
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Extraction Type</label>
-                  <p className="text-sm mt-1">{extraction.extraction_type}</p>
+                  <p className="text-sm mt-1">{(extraction as any).extraction_type}</p>
                 </div>
 
               </>
@@ -301,7 +301,7 @@ const DocumentReviewDetail = ({ farmId, documentId }: DocumentReviewDetailProps)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {extraction?.extracted_data ? (
+            {(extraction as any)?.extracted_data ? (
               <div className="space-y-4">
                 {Object.entries(extractedFields).map(([key, value]) => (
                   <div key={key} className="space-y-2">

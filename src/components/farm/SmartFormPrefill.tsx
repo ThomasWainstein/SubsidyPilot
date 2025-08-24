@@ -135,7 +135,7 @@ const SmartFormPrefill: React.FC<SmartFormPrefillProps> = ({
           {uniqueExtractions.slice(0, 3).map((extraction) => {
             const extractedData = extraction.extracted_data as any;
             const confidence = extractedData?.confidence || 0;
-            const documentName = extraction.farm_documents?.file_name || 'Document';
+            const documentName = (extraction as any).farm_documents?.file_name || 'Document';
             const hasError = extractedData?.error;
             
             // Get mapping result for this extraction
