@@ -286,19 +286,43 @@ async function performOCR(context: any) {
     
     console.log(`📄 File converted to base64: ${base64Data.length} characters`);
     
-    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: base64Data },
-          features: [
-            { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
-            { type: 'TEXT_DETECTION', maxResults: 1 }
-          ]
-        }]
-      })
-    });
+    // Check if it's a PDF file and handle accordingly
+    const isPDF = context.job.file_name?.toLowerCase().endsWith('.pdf');
+    
+    let response;
+    if (isPDF) {
+      // For PDF files, use the batch annotate API with different configuration
+      response = await fetch(`https://vision.googleapis.com/v1/files:annotate?key=${googleVisionApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            inputConfig: {
+              content: base64Data,
+              mimeType: 'application/pdf'
+            },
+            features: [
+              { type: 'DOCUMENT_TEXT_DETECTION' }
+            ]
+          }]
+        })
+      });
+    } else {
+      // For image files, use the standard images:annotate API
+      response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64Data },
+            features: [
+              { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
+              { type: 'TEXT_DETECTION', maxResults: 1 }
+            ]
+          }]
+        })
+      });
+    }
 
     if (!response.ok) {
       throw new Error(`Google Vision API returned ${response.status}: ${response.statusText}`);
