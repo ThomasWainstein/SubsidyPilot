@@ -49,8 +49,13 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
     estimatedTimeRemaining: 0
   });
 
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [lastEventReceived, setLastEventReceived] = useState<number | null>(null);
+  
   const channelRef = useRef<RealtimeChannel | null>(null);
   const startTimeRef = useRef<number>(0);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fallbackPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize processing stages
   const initializeStages = useCallback(() => {
@@ -188,42 +193,72 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
     }
   }, [initializeStages, updateStage, options]);
 
-  // Setup realtime subscription for job updates
+  // Setup realtime subscription for job updates with enhanced debugging and fallback
   const setupRealtimeSubscription = useCallback((jobId: string, documentId: string) => {
-    console.log('📡 Setting up realtime subscription for job:', jobId, 'document:', documentId);
+    console.log('📡 Setting up enhanced realtime subscription:', { jobId, documentId });
     
     const channel = supabase
-      .channel(`job-updates-${jobId}`)
+      .channel(`job-and-doc-updates-${jobId}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // Listen to ALL events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'document_processing_jobs',
           filter: `id=eq.${jobId}`
         },
         (payload) => {
-          console.log('📨 Job update received:', payload.new);
+          console.log('📨 Job update received:', {
+            eventType: payload.eventType,
+            old: payload.old,
+            new: payload.new,
+            timestamp: new Date().toISOString()
+          });
+          setLastEventReceived(Date.now());
           handleJobUpdate(payload.new);
         }
       )
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'document_extractions',
-          filter: `document_id=eq.${documentId}` // Use the actual document_id
+          filter: `document_id=eq.${documentId}`
         },
         (payload) => {
-          console.log('📨 Extraction update received:', payload.new);
+          console.log('📨 Document extraction update:', {
+            eventType: payload.eventType,
+            new: payload.new,
+            timestamp: new Date().toISOString()
+          });
+          setLastEventReceived(Date.now());
           handleExtractionUpdate(payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) {
+          console.error('❌ Subscription error:', err);
+          setConnectionStatus('error');
+        } else {
+          console.log('✅ Subscription status:', status);
+          setConnectionStatus(status === 'SUBSCRIBED' ? 'connected' : 'connecting');
+        }
+      });
 
     channelRef.current = channel;
-  }, []);
+    
+    // Set up fallback polling if no events are received within 5 seconds
+    const fallbackTimer = setTimeout(() => {
+      if (!lastEventReceived || (Date.now() - lastEventReceived) > 5000) {
+        console.log('🔄 No real-time events received, starting fallback polling');
+        startFallbackPolling(jobId, documentId);
+      }
+    }, 5000);
+    
+    // Store timer for cleanup
+    pollingTimerRef.current = fallbackTimer;
+  }, [lastEventReceived]);
 
   // Handle job status updates
   const handleJobUpdate = useCallback((jobData: any) => {
@@ -307,7 +342,51 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
     }
   }, [updateStage]);
 
-  // Cleanup subscription
+  // Fallback polling mechanism
+  const startFallbackPolling = useCallback((jobId: string, documentId: string) => {
+    console.log('🔄 Starting fallback polling for job:', jobId);
+    
+    fallbackPollingRef.current = setInterval(async () => {
+      console.log('📊 Polling job status:', jobId);
+      
+      const { data: jobData, error: jobError } = await supabase
+        .from('document_processing_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+      
+      if (jobData && !jobError) {
+        console.log('📊 Polled job status:', jobData.status, 'metadata:', jobData.metadata);
+        
+        // Update local state with polled data
+        if (jobData.metadata && typeof jobData.metadata === 'object' && 'stage' in jobData.metadata && 'progress' in jobData.metadata) {
+          const metadata = jobData.metadata as any;
+          updateStage(metadata.stage, {
+            status: 'processing',
+            progress: metadata.progress
+          });
+        }
+        
+        if (jobData.status === 'completed' || jobData.status === 'failed') {
+          if (fallbackPollingRef.current) {
+            clearInterval(fallbackPollingRef.current);
+            fallbackPollingRef.current = null;
+          }
+        }
+      }
+    }, 2000); // Poll every 2 seconds
+    
+    // Stop polling after 60 seconds to avoid long-running timers
+    setTimeout(() => {
+      if (fallbackPollingRef.current) {
+        console.log('⏰ Stopping fallback polling after 60s');
+        clearInterval(fallbackPollingRef.current);
+        fallbackPollingRef.current = null;
+      }
+    }, 60000);
+  }, [updateStage]);
+
+  // Cleanup subscription and timers
   useEffect(() => {
     return () => {
       if (channelRef.current) {
@@ -315,14 +394,32 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+        pollingTimerRef.current = null;
+      }
+      if (fallbackPollingRef.current) {
+        clearInterval(fallbackPollingRef.current);
+        fallbackPollingRef.current = null;
+      }
     };
   }, []);
 
-  // Reset state
+  // Reset state and cleanup
   const reset = useCallback(() => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
+    }
+    
+    if (pollingTimerRef.current) {
+      clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+    
+    if (fallbackPollingRef.current) {
+      clearInterval(fallbackPollingRef.current);
+      fallbackPollingRef.current = null;
     }
     
     setState({
@@ -337,6 +434,8 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
       estimatedTimeRemaining: 0
     });
     
+    setConnectionStatus('connecting');
+    setLastEventReceived(null);
     startTimeRef.current = 0;
   }, []);
 
@@ -344,6 +443,8 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
     ...state,
     createStreamingJob,
     reset,
+    connectionStatus,
+    lastEventReceived,
     isProcessing: !state.isComplete && !state.error && state.jobId !== null
   };
 };

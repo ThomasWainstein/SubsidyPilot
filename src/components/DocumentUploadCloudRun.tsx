@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Upload, FileText, CheckCircle, XCircle, Waves, Zap } from 'lucide-react';
 import { useStreamingProcessing } from '@/hooks/useStreamingProcessing';
-import { RealTimeProgressDisplay } from './StreamingProgressDisplay';
+import { EnhancedProgressDisplay } from './EnhancedProgressDisplay';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -128,14 +128,18 @@ export const DocumentUploadCloudRun = ({
       toast.success('File uploaded! Streaming processing started...');
       
       // Step 3: Create streaming processing job
-      await createStreamingJob(
+      const jobData = await createStreamingJob(
         uploadData.documentId,
         urlData.publicUrl,
         file.name,
         'individual',
         documentType,
-        'medium'
+        'high' // Use high priority for immediate processing
       );
+
+      // Step 4: Trigger immediate processing via database trigger
+      // The database trigger will automatically call the streaming-job-processor
+      // No additional API call needed - the database handles it!
 
     } catch (err) {
       console.error('❌ Upload failed:', err);
@@ -234,14 +238,14 @@ export const DocumentUploadCloudRun = ({
           </div>
         )}
 
-        {/* Real-time Progress Display */}
+        {/* Enhanced Real-time Progress Display */}
         {uploadedDocumentId && (
-          <RealTimeProgressDisplay 
+          <EnhancedProgressDisplay 
             documentId={uploadedDocumentId} 
             onComplete={(results) => {
               console.log('✅ All processing completed:', results);
               onComplete?.(results);
-              toast.success(`Document processed successfully with ${Object.keys(results || {}).length} fields extracted.`);
+              toast.success(`Document processed successfully with ${results?.fields || 'multiple'} fields extracted.`);
             }}
           />
         )}
