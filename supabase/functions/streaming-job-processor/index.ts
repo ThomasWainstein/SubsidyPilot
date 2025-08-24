@@ -373,21 +373,25 @@ async function performOCR(context: any) {
       throw new Error(`Failed to parse service account key: ${parseError.message}`);
     }
     
-    // Convert ArrayBuffer to base64 safely
+    // Convert ArrayBuffer to base64 properly
     const uint8Array = new Uint8Array(context.fileBuffer);
-    let base64Data = '';
-    const chunkSize = 1024;
+    
+    // Use TextDecoder to convert bytes to string, then btoa for base64
+    let binaryString = '';
+    const chunkSize = 8192; // Use larger chunks for efficiency
     
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
       const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-      let chunkString = '';
-      for (let j = 0; j < chunk.length; j++) {
-        chunkString += String.fromCharCode(chunk[j]);
-      }
-      base64Data += btoa(chunkString);
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
     }
     
-    console.log(`📄 File converted to base64: ${base64Data.length} characters`);
+    const base64Data = btoa(binaryString);
+    console.log(`📄 File converted to base64: ${base64Data.length} characters (from ${uint8Array.length} bytes)`);
+    
+    // Validate base64 is not empty
+    if (!base64Data || base64Data.length === 0) {
+      throw new Error('Base64 conversion resulted in empty string');
+    }
     
     // Get OAuth2 access token using service account
     const accessToken = await getAccessToken(credentials);
