@@ -33,6 +33,7 @@ const DocumentReviewPage = lazy(() => import('@/pages/DocumentReviewPage'));
 const DocumentReviewDetailPage = lazy(() => import('@/pages/DocumentReviewDetailPage'));
 const ExtractionAnalyticsPage = lazy(() => import('@/pages/ExtractionAnalyticsPage'));
 const CloudRunTestPage = lazy(() => import('@/pages/CloudRunTestPage'));
+const EnhancedExtractionTest = lazy(() => import('@/pages/EnhancedExtractionTest'));
 const SupportedFileTypesPage = lazy(() => import('@/pages/SupportedFileTypesPage'));
 const ReviewWorkflowDocsPage = lazy(() => import('@/pages/ReviewWorkflowDocsPage'));
 const TrainingPipelinePage = lazy(() => import('@/pages/TrainingPipelinePage'));
@@ -143,6 +144,10 @@ function App() {
                       
                       <Route path="/cloud-run-test" element={
                         <ProtectedRouteWrapper><CloudRunTestPage /></ProtectedRouteWrapper>
+                      } />
+                      
+                      <Route path="/enhanced-extraction" element={
+                        <ProtectedRouteWrapper><EnhancedExtractionTest /></ProtectedRouteWrapper>
                       } />
                       
                       <Route path="/romanian-scraping-test" element={

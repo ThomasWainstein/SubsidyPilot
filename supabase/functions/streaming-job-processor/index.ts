@@ -269,7 +269,17 @@ async function performOCR(context: any) {
   }
 
   try {
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(context.fileBuffer)));
+    // Convert ArrayBuffer to base64 in chunks to avoid stack overflow
+    const uint8Array = new Uint8Array(context.fileBuffer);
+    let base64Data = '';
+    const chunkSize = 8192; // 8KB chunks
+    
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+      base64Data += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
+    }
+    
+    console.log(`📄 File converted to base64: ${base64Data.length} characters`);
     
     const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`, {
       method: 'POST',
@@ -278,30 +288,52 @@ async function performOCR(context: any) {
         requests: [{
           image: { content: base64Data },
           features: [
-            { type: 'TEXT_DETECTION', maxResults: 1 },
-            { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }
+            { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
+            { type: 'TEXT_DETECTION', maxResults: 1 }
           ]
         }]
       })
     });
 
+    if (!response.ok) {
+      throw new Error(`Google Vision API returned ${response.status}: ${response.statusText}`);
+    }
+
     const data = await response.json();
+    console.log(`🔍 Google Vision API response:`, JSON.stringify(data, null, 2));
     
     let extractedText = '';
     let confidence = 0;
 
+    // Check for errors in the response
+    if (data.responses?.[0]?.error) {
+      throw new Error(`Google Vision API error: ${data.responses[0].error.message}`);
+    }
+
+    // Try to extract text from fullTextAnnotation first (more complete)
     if (data.responses?.[0]?.fullTextAnnotation?.text) {
       extractedText = data.responses[0].fullTextAnnotation.text;
       confidence = 0.9;
-    } else if (data.responses?.[0]?.textAnnotations?.[0]) {
+      console.log(`✅ Full text extraction successful: ${extractedText.length} characters`);
+    } 
+    // Fallback to textAnnotations
+    else if (data.responses?.[0]?.textAnnotations?.[0]?.description) {
       extractedText = data.responses[0].textAnnotations[0].description;
       confidence = 0.8;
+      console.log(`✅ Text annotations extraction: ${extractedText.length} characters`);
+    }
+    // If no text found, provide helpful error
+    else {
+      console.log(`⚠️ No text detected in document. Response:`, data.responses?.[0]);
+      extractedText = '';
+      confidence = 0;
     }
 
-    console.log(`✅ OCR extracted ${extractedText.length} characters, confidence: ${confidence}`);
+    console.log(`✅ OCR completed: ${extractedText.length} characters, confidence: ${confidence}`);
     
     return { ...context, extractedText, confidence };
   } catch (error) {
+    console.error(`❌ OCR processing error:`, error);
     throw new Error(`OCR failed: ${error.message}`);
   }
 }
