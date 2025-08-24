@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AdminProvider } from '@/contexts/AdminContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { LanguageProvider } from '@/contexts/language';
 import { RoleProvider } from '@/contexts/RoleContext';
 import { CalendarProvider } from '@/contexts/CalendarContext';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
