@@ -4972,6 +4972,7 @@ export type Database = {
         | "ai"
         | "completed"
         | "failed"
+        | "needs_review"
       user_type: "farmer" | "consultant" | "organization"
     }
     CompositeTypes: {
@@ -5140,6 +5141,7 @@ export const Constants = {
         "ai",
         "completed",
         "failed",
+        "needs_review",
       ],
       user_type: ["farmer", "consultant", "organization"],
     },
