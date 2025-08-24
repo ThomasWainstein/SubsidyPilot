@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, AlertCircle, Clock, Wifi, WifiOff } from 'lucide-react';
 import { useRealTimeProcessingEnhanced } from '@/hooks/useRealTimeProcessingEnhanced';
+import { ExtractedDataViewer } from './ExtractedDataViewer';
 
 interface EnhancedProgressDisplayProps {
   documentId: string;
@@ -28,9 +29,11 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
     hasError
   } = useRealTimeProcessingEnhanced({ documentId });
 
-  // Trigger completion callback
+  // Trigger completion callback only once per job
+  const [hasTriggeredCompletion, setHasTriggeredCompletion] = React.useState(false);
+  
   React.useEffect(() => {
-    if (isComplete && job && onComplete) {
+    if (isComplete && job && onComplete && !hasTriggeredCompletion) {
       // Simulate extracted data from job metadata
       const extractedData = job.metadata?.extractedData || { 
         fields: Object.keys(job.metadata || {}).length,
@@ -38,8 +41,9 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
         method: job.metadata?.processing_method || 'ai-enhanced'
       };
       onComplete(extractedData);
+      setHasTriggeredCompletion(true);
     }
-  }, [isComplete, job, onComplete]);
+  }, [isComplete, job, onComplete, hasTriggeredCompletion]);
 
   if (!job) {
     return (
@@ -188,7 +192,7 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
         ))}
       </div>
 
-      {/* Processing Complete */}
+      {/* Processing Complete with Extracted Data */}
       {isComplete && !hasError() && (
         <Card className="border-success bg-success/5">
           <CardContent className="pt-6">
@@ -203,7 +207,7 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
             </div>
             
             {job.metadata && (
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                 <div>
                   <span className="font-medium">Processing Method:</span>
                   <p className="text-muted-foreground">{job.metadata.processing_method || 'AI Enhanced'}</p>
@@ -214,6 +218,8 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
                 </div>
               </div>
             )}
+            
+            <ExtractedDataViewer documentId={job.document_id} />
           </CardContent>
         </Card>
       )}
