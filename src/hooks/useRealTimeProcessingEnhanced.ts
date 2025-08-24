@@ -100,11 +100,14 @@ export function useRealTimeProcessingEnhanced({ documentId }: { documentId: stri
         return;
       }
       
+      console.log(`[realtime-enhanced] Initial job data:`, data);
+      
       if (isMounted && data) {
         setJob(data);
         
         // Update stages based on job status
         if (data.status === 'completed') {
+          console.log(`[realtime-enhanced] Job is completed, marking all stages as done`);
           // Mark all stages as completed
           setStages(prev => prev.map(stage => ({
             ...stage,
@@ -114,6 +117,7 @@ export function useRealTimeProcessingEnhanced({ documentId }: { documentId: stri
           })));
         } else if (data.metadata && typeof data.metadata === 'object' && 'stage' in data.metadata) {
           const metadata = data.metadata as any;
+          console.log(`[realtime-enhanced] Job in progress, current stage: ${metadata.stage}`);
           updateStage(metadata.stage, {
             status: data.status === 'processing' ? 'processing' : 'completed',
             progress: metadata.progress || 50
