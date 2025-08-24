@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ErrorTaxonomy, ErrorCode, ProcessingError } from './error-taxonomy.ts';
+import { SizeLimitGuard, PROCESSING_LIMITS } from './size-limits.ts';
+import { CostMonitor, PerformanceMonitor } from './cost-monitoring.ts';
 
 // JWT utility functions for Google Cloud authentication
 async function base64UrlEncode(data: Uint8Array): Promise<string> {
@@ -192,7 +195,19 @@ serve(async (req) => {
         
       } catch (error) {
         console.error(`❌ Error processing job ${job.id}:`, error);
-        await markJobFailed(job.id, error.message);
+        
+        let structuredError: ProcessingError;
+        if (error.code) {
+          structuredError = error;
+        } else {
+          structuredError = ErrorTaxonomy.createError(
+            ErrorTaxonomy.categorizeError(error),
+            error,
+            { jobId: job.id, documentId: job.document_id }
+          );
+        }
+        
+        await markJobFailed(job.id, structuredError);
       }
     }
 
@@ -286,26 +301,52 @@ async function processDocumentPipeline(job: any, extractionId: string) {
       // Execute stage handler
       processingContext = await stage.handler(processingContext);
       
-    } catch (error) {
-      console.error(`❌ Stage ${stage.name} failed for job ${job.id}:`, error);
-      
-      // Implement auto-retry with better models
-      if (stage.name === 'structured-extraction' && processingContext.retryCount < 2) {
-        console.log(`🔄 Retrying ${stage.name} with better model...`);
-        processingContext.retryCount++;
-        processingContext.processingTier = processingContext.retryCount === 1 ? 'balanced' : 'premium';
+      } catch (error) {
+        console.error(`❌ Stage ${stage.name} failed for job ${job.id}:`, error);
         
-        // Retry the current stage
-        try {
-          processingContext = await stage.handler(processingContext);
-        } catch (retryError) {
-          console.error(`❌ Retry failed for stage ${stage.name}:`, retryError);
-          throw retryError;
+        let structuredError: ProcessingError;
+        if (error.code) {
+          structuredError = error;
+        } else {
+          structuredError = ErrorTaxonomy.createError(
+            ErrorTaxonomy.categorizeError(error),
+            error,
+            { stage: stage.name, jobId: job.id }
+          );
         }
-      } else {
-        throw error;
+        
+        // Implement auto-retry with better models for retryable errors
+        const shouldRetry = ErrorTaxonomy.shouldRetry(structuredError, processingContext.retryCount + 1);
+        
+        if (shouldRetry && stage.name === 'structured-extraction' && processingContext.retryCount < 2) {
+          console.log(`🔄 Retrying ${stage.name} with better model... (attempt ${processingContext.retryCount + 1})`);
+          processingContext.retryCount++;
+          processingContext.processingTier = processingContext.retryCount === 1 ? 'balanced' : 'premium';
+          
+          const retryDelay = ErrorTaxonomy.getRetryDelay(structuredError, processingContext.retryCount);
+          console.log(`⏱️ Waiting ${retryDelay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          
+          // Retry the current stage
+          try {
+            processingContext = await stage.handler(processingContext);
+          } catch (retryError) {
+            console.error(`❌ Retry failed for stage ${stage.name}:`, retryError);
+            
+            // Convert retry error to structured error if needed
+            if (!retryError.code) {
+              retryError = ErrorTaxonomy.createError(
+                ErrorTaxonomy.categorizeError(retryError),
+                retryError,
+                { stage: stage.name, jobId: job.id, retryAttempt: processingContext.retryCount }
+              );
+            }
+            throw retryError;
+          }
+        } else {
+          throw structuredError;
+        }
       }
-    }
   }
 
   // Mark job as completed
@@ -328,15 +369,93 @@ async function downloadDocument(context: any) {
   try {
     const response = await fetch(context.job.file_url);
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.FILE_DOWNLOAD_FAILED,
+        new Error(`HTTP ${response.status}: ${response.statusText}`),
+        { url: context.job.file_url, status: response.status }
+      );
+      throw error;
     }
     
     const fileBuffer = await response.arrayBuffer();
     console.log(`✅ Downloaded ${fileBuffer.byteLength} bytes`);
     
-    return { ...context, fileBuffer };
+    // Analyze document size and determine processing mode
+    const sizeAnalysis = SizeLimitGuard.analyzeDocument(
+      fileBuffer.byteLength,
+      context.job.file_name,
+      context.job.metadata?.mimeType
+    );
+    
+    console.log(`📊 Size analysis:`, {
+      size: SizeLimitGuard.formatSize(sizeAnalysis.fileSize),
+      estimatedPages: sizeAnalysis.estimatedPages,
+      processingMode: sizeAnalysis.processingMode,
+      reasoning: sizeAnalysis.reasoning,
+      warnings: sizeAnalysis.warnings
+    });
+    
+    // Check if document should be rejected
+    if (SizeLimitGuard.isRejected(sizeAnalysis)) {
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.FILE_TOO_LARGE,
+        new Error(sizeAnalysis.reasoning),
+        { sizeAnalysis }
+      );
+      throw error;
+    }
+    
+    // Log warnings
+    if (sizeAnalysis.warnings.length > 0) {
+      console.log(`⚠️ Processing warnings:`, sizeAnalysis.warnings);
+    }
+    
+    // For now, continue with sync processing but log if async would be better
+    if (SizeLimitGuard.shouldUseAsyncProcessing(sizeAnalysis)) {
+      console.log(`🚨 RECOMMENDATION: Document should use async processing for optimal performance`);
+      console.log(`📝 ${SizeLimitGuard.getProcessingRecommendation(sizeAnalysis)}`);
+    }
+    
+    const costEstimate = SizeLimitGuard.getCostEstimate(sizeAnalysis);
+    console.log(`💰 ${costEstimate.explanation}`);
+    
+    // Enhanced cost tracking
+    const costBreakdown = CostMonitor.getCostBreakdown(
+      sizeAnalysis.estimatedPages,
+      sizeAnalysis.fileSize
+    );
+    console.log(`💰 Detailed cost breakdown: ${costBreakdown.breakdown}`);
+    
+    // Check quotas before processing
+    const quotaCheck = await CostMonitor.checkQuotas(
+      context.job.user_id || 'anonymous',
+      costBreakdown.totalEstimated
+    );
+    
+    if (!quotaCheck.allowed) {
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.QUOTA_EXCEEDED_429,
+        new Error(quotaCheck.reason),
+        { quotaCheck, costBreakdown }
+      );
+      throw error;
+    }
+    
+    console.log(`✅ Quota check passed. Remaining budget: $${quotaCheck.remainingBudget?.toFixed(2)}`);
+    
+    return { ...context, fileBuffer, sizeAnalysis, costBreakdown };
   } catch (error) {
-    throw new Error(`File download failed: ${error.message}`);
+    if (error.code) {
+      // Already a ProcessingError
+      throw error;
+    }
+    
+    const structuredError = ErrorTaxonomy.createError(
+      ErrorTaxonomy.categorizeError(error),
+      error,
+      { url: context.job.file_url }
+    );
+    throw structuredError;
   }
 }
 
@@ -354,14 +473,25 @@ async function performOCR(context: any) {
   
   // For PDF processing, use Service Account authentication (recommended by Google)
   if (!serviceAccountKey) {
-    throw new Error('Google Cloud Service Account key not configured - required for PDF processing');
+    const error = ErrorTaxonomy.createError(
+      ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
+      new Error('Google Cloud Service Account key not configured'),
+      { required: 'GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY' }
+    );
+    throw error;
   }
   
   if (!projectId) {
-    throw new Error('Google Cloud Project ID not configured');
+    const error = ErrorTaxonomy.createError(
+      ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
+      new Error('Google Cloud Project ID not configured'),
+      { required: 'GOOGLE_CLOUD_PROJECT_ID' }
+    );
+    throw error;
   }
 
   try {
+    const startTime = Date.now();
     const isPDF = context.job.file_name?.toLowerCase().endsWith('.pdf');
     
     // Parse service account credentials
@@ -370,7 +500,12 @@ async function performOCR(context: any) {
       credentials = JSON.parse(serviceAccountKey);
       console.log(`🔑 Service account parsed: ${credentials.client_email}`);
     } catch (parseError) {
-      throw new Error(`Failed to parse service account key: ${parseError.message}`);
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
+        parseError,
+        { serviceAccountKeyLength: serviceAccountKey?.length }
+      );
+      throw error;
     }
     
     // Convert ArrayBuffer to base64 properly
@@ -390,7 +525,12 @@ async function performOCR(context: any) {
     
     // Validate base64 is not empty
     if (!base64Data || base64Data.length === 0) {
-      throw new Error('Base64 conversion resulted in empty string');
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.ENCODING_FAIL,
+        new Error('Base64 conversion resulted in empty string'),
+        { originalSize: uint8Array.length }
+      );
+      throw error;
     }
     
     // Get OAuth2 access token using service account
@@ -450,6 +590,8 @@ async function performOCR(context: any) {
 
     if (!response.ok) {
       let errorDetails = '';
+      let errorCode = ErrorCode.VISION_API_ERROR;
+      
       try {
         const errorResponse = await response.json();
         errorDetails = JSON.stringify(errorResponse, null, 2);
@@ -458,7 +600,27 @@ async function performOCR(context: any) {
         errorDetails = await response.text();
         console.error(`❌ Google Vision API error text:`, errorDetails);
       }
-      throw new Error(`Google Vision API returned ${response.status}: ${response.statusText}. Details: ${errorDetails}`);
+      
+      // Categorize specific Vision API errors
+      if (response.status === 429) {
+        errorCode = ErrorCode.QUOTA_EXCEEDED_429;
+      } else if (response.status >= 500) {
+        errorCode = ErrorCode.VISION_5XX;
+      } else if (response.status === 401 || response.status === 403) {
+        errorCode = ErrorCode.AUTH_OAUTH_FAIL;
+      }
+      
+      const error = ErrorTaxonomy.createError(
+        errorCode,
+        new Error(`Google Vision API returned ${response.status}: ${response.statusText}`),
+        { 
+          status: response.status,
+          statusText: response.statusText,
+          errorDetails,
+          endpoint: isPDF ? 'files:annotate' : 'images:annotate'
+        }
+      );
+      throw error;
     }
 
     const data = await response.json();
@@ -469,7 +631,12 @@ async function performOCR(context: any) {
 
     // Check for errors in the response
     if (data.responses?.[0]?.error) {
-      throw new Error(`Google Vision API error: ${data.responses[0].error.message}`);
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.VISION_API_ERROR,
+        new Error(data.responses[0].error.message),
+        { visionError: data.responses[0].error }
+      );
+      throw error;
     }
 
     // Try to extract text from fullTextAnnotation first
@@ -491,11 +658,32 @@ async function performOCR(context: any) {
     }
 
     console.log(`✅ OCR completed: ${extractedText.length} characters, confidence: ${confidence}`);
-    return { ...context, extractedText, confidence };
+    
+    // Record performance metrics
+    const ocrTime = Date.now() - startTime;
+    PerformanceMonitor.recordMetric('ocr_processing_time', ocrTime, {
+      fileSize: context.fileBuffer.byteLength,
+      documentType: isPDF ? 'pdf' : 'image',
+      textLength: extractedText.length,
+      confidence
+    });
+    
+    return { ...context, extractedText, confidence, ocrTime };
     
   } catch (error) {
     console.error(`❌ OCR processing error:`, error);
-    throw new Error(`OCR failed: ${error.message}`);
+    
+    if (error.code) {
+      // Already a ProcessingError
+      throw error;
+    }
+    
+    const structuredError = ErrorTaxonomy.createError(
+      ErrorTaxonomy.categorizeError(error),
+      error,
+      { stage: 'ocr-extraction' }
+    );
+    throw structuredError;
   }
 }
 
@@ -701,6 +889,26 @@ async function finalizeExtraction(context: any) {
   // Determine if manual review is needed
   const needsReview = context.confidence < 0.7 || context.validationErrors?.length > 0;
   
+  // Log performance summary
+  PerformanceMonitor.logPerformanceSummary();
+  
+  // Create final cost tracking entry
+  const finalCostTracker = CostMonitor.createCostEntry(
+    'document_extraction',
+    context.job.document_id,
+    context.costBreakdown?.totalEstimated || 0,
+    {
+      fileSize: context.fileBuffer?.byteLength || 0,
+      pages: context.sizeAnalysis?.estimatedPages || 1,
+      processingTier: context.processingTier,
+      tokensUsed: context.tokensUsed || 0,
+      processingTimeMs: context.ocrTime || 0
+    },
+    context.job.user_id
+  );
+  
+  console.log(CostMonitor.formatCostSummary(finalCostTracker));
+  
   // Update final extraction record
   await supabase
     .from('document_extractions')
@@ -751,13 +959,41 @@ async function updateExtractionProgress(extractionId: string, stage: string, pro
     .eq('id', extractionId);
 }
 
-async function markJobFailed(jobId: string, errorMessage: string) {
+async function markJobFailed(jobId: string, error: ProcessingError | string) {
+  let errorData: any;
+  let userMessage: string;
+  
+  if (typeof error === 'string') {
+    errorData = { message: error, code: 'UNKNOWN_ERROR' };
+    userMessage = 'An unexpected error occurred. Please try again.';
+  } else {
+    errorData = {
+      code: error.code,
+      message: error.message,
+      userMessage: error.userMessage,
+      retryable: error.retryable,
+      metadata: error.metadata,
+      timestamp: error.timestamp
+    };
+    userMessage = error.userMessage;
+  }
+  
   await supabase
     .from('document_processing_jobs')
     .update({
       status: 'failed',
-      error_message: errorMessage,
+      error_message: userMessage,
+      metadata: {
+        ...((await supabase.from('document_processing_jobs').select('metadata').eq('id', jobId).single()).data?.metadata || {}),
+        error: errorData
+      },
       updated_at: new Date().toISOString()
     })
     .eq('id', jobId);
+    
+  console.log(`📝 Job ${jobId} marked as failed:`, {
+    code: errorData.code,
+    userMessage,
+    retryable: errorData.retryable
+  });
 }
