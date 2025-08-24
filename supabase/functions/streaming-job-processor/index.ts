@@ -264,6 +264,7 @@ async function downloadDocument(context: any) {
 async function performOCR(context: any) {
   console.log(`👁️ Performing OCR extraction`);
   
+  const googleVisionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
   if (!googleVisionApiKey) {
     throw new Error('Google Vision API key not configured');
   }
