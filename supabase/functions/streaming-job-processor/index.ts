@@ -2,6 +2,85 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// JWT utility functions for Google Cloud authentication
+async function base64UrlEncode(data: Uint8Array): Promise<string> {
+  const base64 = btoa(String.fromCharCode(...data));
+  return base64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+async function signJWT(header: any, payload: any, privateKeyPem: string): Promise<string> {
+  const encoder = new TextEncoder();
+  
+  // Encode header and payload
+  const headerB64 = await base64UrlEncode(encoder.encode(JSON.stringify(header)));
+  const payloadB64 = await base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+  const message = `${headerB64}.${payloadB64}`;
+  
+  // Import private key
+  const keyData = privateKeyPem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s/g, '');
+  
+  const keyBytes = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyBytes,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  // Sign the message
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    encoder.encode(message)
+  );
+  
+  const signatureB64 = await base64UrlEncode(new Uint8Array(signature));
+  return `${message}.${signatureB64}`;
+}
+
+async function getAccessToken(credentials: any): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+    kid: credentials.private_key_id
+  };
+  
+  const payload = {
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600 // 1 hour
+  };
+  
+  const jwt = await signJWT(header, payload, credentials.private_key);
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt
+    })
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('OAuth2 token request failed:', errorText);
+    throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`);
+  }
+  
+  const tokenData = await response.json();
+  return tokenData.access_token;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -264,13 +343,35 @@ async function downloadDocument(context: any) {
 async function performOCR(context: any) {
   console.log(`👁️ Performing OCR extraction`);
   
+  // Debug: Verify environment variable access
   const googleVisionApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
-  if (!googleVisionApiKey) {
-    throw new Error('Google Vision API key not configured');
+  const serviceAccountKey = Deno.env.get('GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY');
+  const projectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
+  
+  console.log(`🔍 Debug - API Key present: ${googleVisionApiKey ? 'YES' : 'NO'}`);
+  console.log(`🔍 Debug - Service Account Key present: ${serviceAccountKey ? 'YES' : 'NO'}`);
+  console.log(`🔍 Debug - Project ID present: ${projectId ? 'YES' : 'NO'}`);
+  
+  // For PDF processing, use Service Account authentication (recommended by Google)
+  if (!serviceAccountKey) {
+    throw new Error('Google Cloud Service Account key not configured - required for PDF processing');
+  }
+  
+  if (!projectId) {
+    throw new Error('Google Cloud Project ID not configured');
   }
 
   try {
     const isPDF = context.job.file_name?.toLowerCase().endsWith('.pdf');
+    
+    // Parse service account credentials
+    let credentials;
+    try {
+      credentials = JSON.parse(serviceAccountKey);
+      console.log(`🔑 Service account parsed: ${credentials.client_email}`);
+    } catch (parseError) {
+      throw new Error(`Failed to parse service account key: ${parseError.message}`);
+    }
     
     // Convert ArrayBuffer to base64 safely
     const uint8Array = new Uint8Array(context.fileBuffer);
@@ -288,32 +389,49 @@ async function performOCR(context: any) {
     
     console.log(`📄 File converted to base64: ${base64Data.length} characters`);
     
+    // Get OAuth2 access token using service account
+    const accessToken = await getAccessToken(credentials);
+    console.log(`🔐 Access token obtained: ${accessToken ? 'YES' : 'NO'}`);
+    
     let response;
+    const requestPayload = {
+      requests: [{
+        inputConfig: {
+          content: base64Data,
+          mimeType: isPDF ? 'application/pdf' : 'image/jpeg'
+        },
+        features: [
+          { type: 'DOCUMENT_TEXT_DETECTION' }
+        ]
+      }]
+    };
+    
+    console.log(`📋 Request payload preview:`, {
+      mimeType: requestPayload.requests[0].inputConfig.mimeType,
+      contentLength: base64Data.length,
+      features: requestPayload.requests[0].features
+    });
     
     if (isPDF) {
-      // Use files:annotate endpoint for PDFs and other file types
-      console.log(`📄 Processing PDF with files:annotate endpoint`);
-      response = await fetch(`https://vision.googleapis.com/v1/files:annotate?key=${googleVisionApiKey}`, {
+      // Use files:annotate endpoint for PDFs
+      console.log(`📄 Processing PDF with files:annotate endpoint using service account auth`);
+      response = await fetch(`https://vision.googleapis.com/v1/files:annotate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [{
-            inputConfig: {
-              content: base64Data,
-              mimeType: 'application/pdf'
-            },
-            features: [
-              { type: 'DOCUMENT_TEXT_DETECTION' }
-            ]
-          }]
-        })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify(requestPayload)
       });
     } else {
       // Use images:annotate endpoint for image files
-      console.log(`🖼️ Processing image with images:annotate endpoint`);
-      response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${googleVisionApiKey}`, {
+      console.log(`🖼️ Processing image with images:annotate endpoint using service account auth`);
+      response = await fetch(`https://vision.googleapis.com/v1/images:annotate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           requests: [{
             image: { content: base64Data },
