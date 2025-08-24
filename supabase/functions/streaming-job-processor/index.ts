@@ -269,14 +269,19 @@ async function performOCR(context: any) {
   }
 
   try {
-    // Convert ArrayBuffer to base64 in chunks to avoid stack overflow
+    // Convert ArrayBuffer to base64 safely to avoid stack overflow
     const uint8Array = new Uint8Array(context.fileBuffer);
     let base64Data = '';
-    const chunkSize = 8192; // 8KB chunks
+    const chunkSize = 1024; // Smaller chunks to avoid apply() limits
     
     for (let i = 0; i < uint8Array.length; i += chunkSize) {
       const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-      base64Data += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
+      // Convert chunk to string without using apply() which has size limits
+      let chunkString = '';
+      for (let j = 0; j < chunk.length; j++) {
+        chunkString += String.fromCharCode(chunk[j]);
+      }
+      base64Data += btoa(chunkString);
     }
     
     console.log(`📄 File converted to base64: ${base64Data.length} characters`);
