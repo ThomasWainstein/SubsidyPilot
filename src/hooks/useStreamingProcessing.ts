@@ -176,7 +176,7 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
       setState(prev => ({ ...prev, jobId: data.id }));
       
       // Set up real-time subscription
-      setupRealtimeSubscription(data.id);
+      setupRealtimeSubscription(data.id, documentId);
       
       return data;
     } catch (error) {
@@ -189,8 +189,8 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
   }, [initializeStages, updateStage, options]);
 
   // Setup realtime subscription for job updates
-  const setupRealtimeSubscription = useCallback((jobId: string) => {
-    console.log('📡 Setting up realtime subscription for job:', jobId);
+  const setupRealtimeSubscription = useCallback((jobId: string, documentId: string) => {
+    console.log('📡 Setting up realtime subscription for job:', jobId, 'document:', documentId);
     
     const channel = supabase
       .channel(`job-updates-${jobId}`)
@@ -213,7 +213,7 @@ export const useStreamingProcessing = (options: UseStreamingProcessingOptions = 
           event: 'UPDATE',
           schema: 'public',
           table: 'document_extractions',
-          filter: `document_id=eq.${jobId.split('-')[0]}` // Assuming document_id relation
+          filter: `document_id=eq.${documentId}` // Use the actual document_id
         },
         (payload) => {
           console.log('📨 Extraction update received:', payload.new);
