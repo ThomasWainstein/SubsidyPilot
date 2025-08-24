@@ -51,6 +51,18 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
     fetchExtractedData();
   }, [documentId]);
 
+  const getActualExtractedFields = (data: any) => {
+    // Handle nested structure from streaming pipeline
+    if (data?.extracted_fields) {
+      return data.extracted_fields;
+    }
+    // Handle direct structure
+    if (data && typeof data === 'object') {
+      return data;
+    }
+    return {};
+  };
+
   const formatValue = (key: string, value: any): string => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -82,7 +94,17 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
     );
   }
 
-  const dataFields = typeof extractedData === 'object' ? Object.entries(extractedData) : [];
+  const actualFields = getActualExtractedFields(extractedData);
+  const dataFields = typeof actualFields === 'object' ? Object.entries(actualFields) : [];
+  
+  const isProtectedDocument = dataFields.length <= 3 && 
+    dataFields.some(([key]) => key === 'content' || key === 'title') &&
+    !dataFields.some(([key, value]) => 
+      key.toLowerCase().includes('amount') || 
+      key.toLowerCase().includes('date') ||
+      key.toLowerCase().includes('name') ||
+      key.toLowerCase().includes('address')
+    );
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -121,6 +143,30 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
         
         <CollapsibleContent>
           <CardContent className="space-y-3">
+            {isProtectedDocument && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                <div className="flex items-center gap-2 text-amber-800 mb-2">
+                  <span className="text-lg">🔒</span>
+                  <span className="font-medium">Protected Document Detected</span>
+                </div>
+                <p className="text-sm text-amber-700 mb-3">
+                  This PDF appears to be password-protected or has restricted text extraction. 
+                  The system processed it but could only extract basic metadata.
+                </p>
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-amber-800 font-medium hover:text-amber-900">
+                    Solutions for protected PDFs
+                  </summary>
+                  <div className="mt-2 space-y-2 text-amber-700">
+                    <p>• <strong>Convert to unprotected PDF:</strong> Use PDF tools to remove restrictions</p>
+                    <p>• <strong>Print to PDF:</strong> Open the document and print as a new PDF</p>
+                    <p>• <strong>OCR processing:</strong> Enable enhanced OCR in processing settings</p>
+                    <p>• <strong>Image extraction:</strong> Convert pages to images first</p>
+                  </div>
+                </details>
+              </div>
+            )}
+            
             {dataFields.length > 0 ? (
               <div className="space-y-3">
                 {dataFields.map(([key, value], index) => (
@@ -149,6 +195,11 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
                 <strong>Why AI was used:</strong> Document extraction requires intelligent parsing to identify 
                 and structure information from unstructured documents. AI helps recognize patterns, 
                 extract relevant fields, and handle various document formats automatically.
+                {isProtectedDocument && (
+                  <span className="text-amber-600 block mt-1">
+                    <strong>Note:</strong> This document appears to be protected, limiting text extraction capabilities.
+                  </span>
+                )}
               </p>
             </div>
           </CardContent>
