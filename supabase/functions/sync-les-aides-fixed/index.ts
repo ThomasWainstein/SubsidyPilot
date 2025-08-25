@@ -6,483 +6,414 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Rate limiting constants
+const DAILY_QUOTA = 720;
+const API_BASE_URL = 'https://api.les-aides.fr';
+
+// Rate limiting helper using simple counter (in production, use Redis)
+let dailyRequestCount = 0;
+let lastResetDate = new Date().toDateString();
+
+function checkRateLimit(): boolean {
+  const today = new Date().toDateString();
+  if (today !== lastResetDate) {
+    dailyRequestCount = 0;
+    lastResetDate = today;
+  }
+  
+  if (dailyRequestCount >= DAILY_QUOTA) {
+    return false;
+  }
+  
+  dailyRequestCount++;
+  return true;
+}
+
+async function makeApiRequest(path: string, params: Record<string, any> = {}) {
+  if (!checkRateLimit()) {
+    throw new Error(`Daily quota of ${DAILY_QUOTA} requests exceeded`);
+  }
+
+  // Get credentials from environment
+  const idcKey = Deno.env.get('LES_AIDES_IDC') || '711e55108232352685cca98b49777e6b836bfb79';
+  const email = Deno.env.get('LES_AIDES_EMAIL');
+  const password = Deno.env.get('LES_AIDES_PASSWORD');
+
+  // Build query string
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach(v => searchParams.append(`${key}[]`, String(v)));
+    } else if (value !== undefined && value !== null) {
+      searchParams.append(key, String(value));
+    }
+  });
+
+  const url = `${API_BASE_URL}${path}?${searchParams.toString()}`;
+  console.log(`🌐 API Request: ${url}`);
+
+  // Prepare headers
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip',
+    'User-Agent': 'SubsidyPilot/1.0 (backend)',
+  };
+
+  // Try X-IDC first, then fallback to Basic auth
+  if (idcKey) {
+    headers['X-IDC'] = idcKey;
+  } else if (email && password) {
+    const credentials = btoa(`${email}:${password}`);
+    headers['Authorization'] = `Basic ${credentials}`;
+  } else {
+    throw new Error('No authentication credentials available');
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers,
+    signal: AbortSignal.timeout(30000)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    console.error(`❌ API Error ${response.status}:`, errorText);
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed - check credentials');
+    } else if (response.status === 403) {
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(`API Error: ${errorData.exception} (field: ${errorData.field})`);
+      } catch {
+        throw new Error(`API Error 403: ${errorText}`);
+      }
+    } else if (response.status === 429) {
+      throw new Error('Rate limit exceeded');
+    }
+    
+    throw new Error(`API Error ${response.status}: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+async function searchAides(params: {
+  ape?: string;
+  domaine?: number | number[];
+  siret?: string;
+  siren?: string;
+  moyen?: number | number[];
+  filiere?: number;
+  region?: number;
+  departement?: string;
+  commune?: number | string;
+}) {
+  return await makeApiRequest('/aides/', params);
+}
+
+async function loadFiche(requete: number, dispositif: number) {
+  return await makeApiRequest('/aide/', { requete, dispositif });
+}
+
+async function getReferenceLists() {
+  const lists: Record<string, any> = {};
+  const endpoints = [
+    'domaines',
+    'moyens',
+    'filieres',
+    'regions',
+    'departements'
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`📋 Fetching reference list: ${endpoint}`);
+      lists[endpoint] = await makeApiRequest(`/liste/${endpoint}`);
+      // Small delay between reference requests
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`Failed to fetch ${endpoint}:`, error.message);
+      lists[endpoint] = [];
+    }
+  }
+
+  return lists;
+}
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Starting les-aides.fr sync (fixed version)');
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
-    })
+    );
 
-    const { sync_type = 'incremental' } = await req.json().catch(() => ({}))
+    console.log('🚀 Starting les-aides.fr API sync...');
 
     // Log sync start
-    const { data: syncLog } = await supabase
+    const { data: logData } = await supabase
       .from('api_sync_logs')
       .insert({
-        api_source: 'les-aides-fr', // Match database source name
-        sync_type,
+        api_source: 'les-aides-fr',
+        sync_type: 'api_sync',
         status: 'running'
       })
-      .select('id')
-      .single()
+      .select()
+      .single();
 
-    const logId = syncLog?.id
+    if (!logData) {
+      throw new Error('Failed to create sync log');
+    }
+
+    const syncLogId = logData.id;
 
     try {
-      // 🎯 SIMPLIFIED API SEARCH - Test without domain filtering first
-      console.log('🚀 === SIMPLIFIED SYNC STARTED ===');
-      console.log('📊 Current time:', new Date().toISOString());
-      console.log('🔧 Sync type:', sync_type);
+      console.log('🔑 Testing API authentication...');
       
-      // Use documented IDC key
-      const idcKey = '711e55108232352685cca98b49777e6b836bfb79';
-      console.log('🔑 Using documented IDC key from API documentation');
-      
-      // Updated search strategies - API requires both APE and domain parameters
+      // First, get reference lists to validate API access and cache them
+      console.log('📋 Fetching reference lists...');
+      const referenceLists = await getReferenceLists();
+      console.log('✅ Reference lists loaded successfully');
+      console.log(`📊 Loaded ${Object.keys(referenceLists).length} reference lists`);
+
+      // Log available domains for reference
+      if (referenceLists.domaines && Array.isArray(referenceLists.domaines)) {
+        console.log('📋 Available domains:');
+        referenceLists.domaines.slice(0, 10).forEach((domain: any) => {
+          console.log(`   ${domain.numero}: ${domain.libelle}`);
+        });
+      }
+
+      // Clean existing data
+      console.log('🧹 Cleaning existing data...');
+      const purgeResult = await supabase.rpc('safe_data_purge');
+      console.log('✅ Data purged:', purgeResult.data);
+
+      // Define search strategies using proper API parameters from documentation
+      // Using real domain numbers from the reference list
       const searchStrategies = [
-        { name: 'Agriculture - Aides agricoles', params: { ape: 'A', domaine: '1' } },
-        { name: 'Agriculture - Environnement', params: { ape: 'A', domaine: '2' } },
-        { name: 'Manufacturing - Innovation', params: { ape: 'C', domaine: '3' } },
-        { name: 'Manufacturing - Emploi', params: { ape: 'C', domaine: '4' } },
-        { name: 'Commerce - Développement économique', params: { ape: 'G', domaine: '5' } },
-        { name: 'Commerce - Tourisme', params: { ape: 'G', domaine: '6' } },
-        { name: 'Services - Numérique', params: { ape: 'J', domaine: '7' } },
-        { name: 'All sectors - Formation', params: { ape: 'P', domaine: '8' } }
+        // Agriculture sector
+        { name: 'Agriculture - Création/Reprise', params: { ape: 'A', domaine: 790 } },
+        { name: 'Agriculture - Développement', params: { ape: 'A', domaine: 798 } },
+        { name: 'Agriculture - Innovation', params: { ape: 'A', domaine: 799 } },
+        
+        // Manufacturing
+        { name: 'Industrie - Innovation', params: { ape: 'C', domaine: 798 } },
+        { name: 'Industrie - Création', params: { ape: 'C', domaine: 790 } },
+        
+        // Commerce
+        { name: 'Commerce - Développement', params: { ape: 'G', domaine: 798 } },
+        { name: 'Commerce - Création', params: { ape: 'G', domaine: 790 } },
+        
+        // Services
+        { name: 'Services - Numérique', params: { ape: 'J', domaine: 798 } },
+        { name: 'Services - Création', params: { ape: 'J', domaine: 790 } },
+        
+        // Multi-domain searches
+        { name: 'All sectors - Multiple domains', params: { ape: 'A', domaine: [790, 798] } },
+        
+        // Specific funding types
+        { name: 'Subventions tous secteurs', params: { ape: 'A', domaine: 798, moyen: 833 } },
+        { name: 'Prêts tous secteurs', params: { ape: 'C', domaine: 798, moyen: 827 } }
       ];
 
       let allSubsidies: any[] = [];
-      let totalApiCalls = 0;
-      let totalDepassements = 0;
-      
-      console.log(`🔍 Testing simplified search strategies: ${searchStrategies.length} different approaches`);
-      
-      // Try each search strategy
+      let totalSearches = 0;
+      let errors: any[] = [];
+
+      console.log(`🔍 Starting ${searchStrategies.length} search strategies...`);
+
       for (const strategy of searchStrategies) {
-        console.log(`\n📡 Trying Strategy: ${strategy.name}`);
-        
-        const searchParams = new URLSearchParams(strategy.params as any);
-        const requestUrl = `https://api.les-aides.fr/aides/?${searchParams}`;
-        console.log('🌐 URL:', requestUrl);
-        
-        const headers = {
-          'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
-          'Accept': 'application/json',
-          'X-IDC': idcKey,
-        };
+        console.log(`🎯 Trying strategy: ${strategy.name}`);
         
         try {
-          totalApiCalls++;
-          const response = await fetch(requestUrl, { headers });
+          // Add delay between searches to respect rate limits
+          if (totalSearches > 0) {
+            console.log('⏱️ Rate limiting delay...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+
+          const searchResult = await searchAides(strategy.params);
           
-          console.log('📊 Status:', response.status);
-          console.log('📊 Status Text:', response.statusText);
-          console.log('📊 Response Headers:', Object.fromEntries(response.headers.entries()));
+          console.log(`📊 Strategy ${strategy.name}: Found ${searchResult.nb_dispositifs || 0} dispositifs`);
           
-          if (response.ok) {
-            const apiData = await response.json();
-            
-            console.log('✅ Success:', {
-              dispositifs: apiData.dispositifs?.length || 0,
-              depassement: apiData.depassement,
-              nb_dispositifs: apiData.nb_dispositifs,
-              idr: apiData.idr
-            });
-            
-            if (apiData.dispositifs && Array.isArray(apiData.dispositifs)) {
-              // Add strategy context to each subsidy for tracking
-              const subsidiesWithContext = apiData.dispositifs.map((dispositif: any) => ({
-                ...dispositif,
-                _source_strategy: strategy.name
-              }));
-              
-              allSubsidies.push(...subsidiesWithContext);
-              
-              // Track depassement flags - critical for understanding data limits
-              if (apiData.depassement) {
-                totalDepassements++;
-                console.log('⚠️ DEPASSEMENT=true: More than 200 results available for this search!');
-                console.log(`   • Strategy: ${strategy.name}`);
-                console.log(`   • Total available: ${apiData.nb_dispositifs || 'Unknown'}`);
-                console.log(`   • Retrieved: ${apiData.dispositifs.length}`);
+          if (searchResult.depassement) {
+            console.warn(`⚠️ Too many results for ${strategy.name} - refining search recommended`);
+          }
+          
+          if (searchResult.dispositifs && searchResult.dispositifs.length > 0) {
+            // Process each dispositif
+            for (const dispositif of searchResult.dispositifs.slice(0, 20)) { // Limit to first 20 to conserve quota
+              try {
+                // Map dispositif to our schema
+                const subsidy = {
+                  code: `les-aides-${dispositif.numero}`,
+                  title: { fr: dispositif.nom },
+                  description: { fr: dispositif.resume || '' },
+                  source_url: dispositif.uri,
+                  source: 'les-aides-fr',
+                  country: 'france',
+                  status: 'open',
+                  agency: dispositif.sigle || 'les-aides.fr',
+                  external_id: `les-aides-${dispositif.numero}`,
+                  level: dispositif.implantation === 'E' ? 'european' : 
+                         dispositif.implantation === 'N' ? 'national' : 'regional',
+                  tags: dispositif.domaines ? dispositif.domaines.map((d: number) => `domain-${d}`) : [],
+                  funding_type: dispositif.moyens && dispositif.moyens.length > 0 ? 
+                    (dispositif.moyens.includes(833) ? 'grant' : 
+                     dispositif.moyens.includes(827) ? 'loan' : 'other') : 'grant',
+                  last_synced_at: new Date().toISOString(),
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  raw_data: dispositif
+                };
+
+                allSubsidies.push(subsidy);
+                
+              } catch (mappingError) {
+                console.error('Mapping error for dispositif:', mappingError);
+                errors.push({
+                  strategy: strategy.name,
+                  dispositif: dispositif.numero,
+                  error: mappingError.message
+                });
               }
             }
-            
-            // Respect rate limiting (720 calls/day per API documentation)
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-          } else {
-            // Enhanced error logging for debugging
-            const errorText = await response.text();
-            console.log('❌ API Error Details:', {
-              status: response.status,
-              statusText: response.statusText,
-              url: requestUrl,
-              strategy: strategy.name,
-              errorBody: errorText
-            });
-            
-            // Check for specific error types
-            if (response.status === 403) {
-              console.log('🚨 403 Forbidden - Possible causes:');
-              console.log('   • IDC Key invalid or expired');
-              console.log('   • Daily quota exceeded (720 requests/day)');
-              console.log('   • API access restricted');
-              console.log('   • Request format incorrect');
-            } else if (response.status === 429) {
-              console.log('🚨 429 Too Many Requests - Rate limited');
-              console.log('   • Need to slow down requests');
-              console.log('   • Consider longer delays between calls');
+
+            // Store search metadata for potential reuse
+            if (searchResult.idr) {
+              console.log(`💾 Search IDR for ${strategy.name}: ${searchResult.idr}`);
             }
-            
-            // Don't throw error immediately, try other strategies
-            console.log('⏭️ Continuing with next strategy...');
           }
+          
+          totalSearches++;
           
         } catch (error) {
-          console.log('❌ Request failed with exception:', {
-            error: error.message,
+          console.error(`❌ Strategy ${strategy.name} failed:`, error.message);
+          errors.push({
             strategy: strategy.name,
-            url: requestUrl
+            error: error.message
           });
         }
-        
-        // Pause between strategies
-        await new Promise(resolve => setTimeout(resolve, 1500));
       }
-      
-      console.log(`\n📈 COMPREHENSIVE SEARCH SUMMARY:`);
-      console.log(`Total API calls made: ${totalApiCalls}`);
-      console.log(`Total subsidies collected: ${allSubsidies.length}`);
-      console.log(`Depassement flags encountered: ${totalDepassements}`);
-      console.log(`Unique subsidies: ${new Set(allSubsidies.map(s => s.numero)).size}`);
-      
-      if (totalDepassements > 0) {
-        console.log(`🚨 CRITICAL: ${totalDepassements} searches hit the 200-result limit!`);
-        console.log(`    This indicates MANY MORE subsidies are available than we're importing.`);
-      }
+
+      console.log(`📊 Total subsidies found: ${allSubsidies.length}`);
       
       if (allSubsidies.length === 0) {
-        throw new Error('No subsidies found across all search strategies');
+        throw new Error(`No subsidies found. Errors: ${JSON.stringify(errors, null, 2)}`);
       }
-      
-      // Remove duplicates based on numero (dispositif ID from API)
+
+      // Remove duplicates based on external_id
       const uniqueSubsidies = allSubsidies.filter((subsidy, index, array) => 
-        array.findIndex(s => s.numero === subsidy.numero) === index
+        array.findIndex(s => s.external_id === subsidy.external_id) === index
       );
-      
+
       console.log(`📊 After deduplication: ${uniqueSubsidies.length} unique subsidies`);
-      
-      // Create mock response structure for existing code compatibility
-      const bestStrategy = {
-        strategy: { name: `Simplified search (${searchStrategies.length} strategies)` },
-        data: {
-          dispositifs: uniqueSubsidies,
-          depassement: totalDepassements > 0,
-          nb_dispositifs: allSubsidies.length, // Conservative estimate
-        },
-        url: 'Multiple strategy searches'
-      };
-      
-      let maxSubsidies = uniqueSubsidies.length;
-      
-      const apiResponse = { ok: true, status: 200 };
-      const subsidies = bestStrategy.data;
-      
-      // Determine the actual subsidies array from the API response
-      let subsidiesArray = [];
-      if (Array.isArray(subsidies)) {
-        subsidiesArray = subsidies;
-      } else if (subsidies.dispositifs) {
-        subsidiesArray = subsidies.dispositifs;
-      } else if (subsidies.results) {
-        subsidiesArray = subsidies.results;
-      }
 
-      console.log(`📊 Processing ${subsidiesArray.length} subsidies from best strategy`);
-      console.log('📊 Sample subsidy structure:', subsidiesArray[0] ? Object.keys(subsidiesArray[0]) : 'No subsidies found');
-      
-      if (subsidies.depassement) {
-        console.log('⚠️ CRITICAL: DEPASSEMENT FLAG = TRUE');
-        console.log('⚠️ This means there are MORE than 200 subsidies available!');
-        console.log('⚠️ Current sync will only get first 200 - need pagination strategy');
-      }
-      
-      if (subsidies.nb_dispositifs) {
-        console.log(`📊 API reports total subsidies available: ${subsidies.nb_dispositifs}`);
-        console.log(`📊 We are importing: ${subsidiesArray.length}`);
-        console.log(`📊 Potential missing: ${subsidies.nb_dispositifs - subsidiesArray.length}`);
-      }
+      // Insert subsidies into database
+      console.log('💾 Inserting subsidies into database...');
+      let insertedCount = 0;
+      let skippedCount = 0;
 
-      console.log('\n🔍 === DATABASE STATE ANALYSIS ===');
-      
-      // Check current database state before sync
-      const { data: currentSubsidies, error: dbError } = await supabase
-        .from('subsidies')
-        .select('id, title, source, external_id, created_at, updated_at')
-        .eq('source', 'les-aides-fr')
-        .order('external_id', { ascending: true });
-      
-      if (dbError) {
-        console.log('❌ Error checking current database state:', dbError.message);
-      } else {
-        console.log(`📊 Current database has ${currentSubsidies.length} les-aides-fr subsidies`);
-        if (currentSubsidies.length > 0) {
-          const externalIds = currentSubsidies.map(s => s.external_id).filter(id => id);
-          console.log('📋 Current external_id range:', {
-            min: Math.min(...externalIds.map(id => parseInt(id)).filter(n => !isNaN(n))),
-            max: Math.max(...externalIds.map(id => parseInt(id)).filter(n => !isNaN(n))),
-            sample_ids: externalIds.slice(0, 5)
-          });
-          
-          const latestUpdated = Math.max(...currentSubsidies.map(s => new Date(s.updated_at).getTime()));
-          console.log('📅 Most recent update:', new Date(latestUpdated).toISOString());
+      for (const subsidy of uniqueSubsidies) {
+        try {
+          const { error: insertError } = await supabase
+            .from('subsidies')
+            .insert(subsidy);
+
+          if (insertError) {
+            console.error('Insert error:', insertError);
+            skippedCount++;
+          } else {
+            insertedCount++;
+          }
+        } catch (insertError) {
+          console.error('Exception during insert:', insertError);
+          skippedCount++;
         }
       }
 
-      let processed = 0;
-      let added = 0;
-      let updated = 0;
-      const errors: any[] = [];
+      // Update sync log with success
+      await supabase
+        .from('api_sync_logs')
+        .update({
+          status: 'completed',
+          records_processed: uniqueSubsidies.length,
+          records_added: insertedCount,
+          completed_at: new Date().toISOString(),
+          errors: errors.length > 0 ? { 
+            errors, 
+            skipped: skippedCount, 
+            quota_used: dailyRequestCount,
+            reference_lists_loaded: Object.keys(referenceLists).length
+          } : null
+        })
+        .eq('id', syncLogId);
 
-      // Process each subsidy with detailed logging
-      if (subsidiesArray.length > 0) {
-        console.log('\n🔄 === STARTING SUBSIDY PROCESSING ===');
-        console.log(`📊 Total subsidies to process: ${subsidiesArray.length}`);
-        
-        for (let i = 0; i < subsidiesArray.length; i++) {
-          const subsidy = subsidiesArray[i];
-          try {
-            console.log(`\n📄 Processing subsidy ${i + 1}/${subsidiesArray.length}:`);
-            console.log('📋 Subsidy raw data keys:', Object.keys(subsidy));
-            console.log('📋 Subsidy ID:', subsidy.numero || subsidy.id || 'NO_ID');
-            console.log('📋 Subsidy name:', subsidy.nom?.substring(0, 60) || subsidy.title?.substring(0, 60) || 'NO_NAME');
-            
-            // Generate proper UUID for database, use external_id to track Les-Aides numero
-            const externalId = (subsidy.numero || subsidy.id)?.toString() || null;
-            
-            // Check if subsidy already exists using external_id and source
-            console.log('🔍 Checking if subsidy exists using external_id:', externalId);
-            const { data: existingSubsidy, error: selectError } = await supabase
-              .from('subsidies')
-              .select('id, title, updated_at, external_id')
-              .eq('external_id', externalId)
-              .eq('source', 'les-aides-fr')
-              .maybeSingle();
-            
-            if (selectError) {
-              console.log('❌ Error checking existing subsidy:', selectError.message);
-              errors.push({ subsidy: `external_id:${externalId}`, error: `Select error: ${selectError.message}` });
-              continue;
-            }
-            
-            // Use existing UUID or generate new one
-            const subsidyId = existingSubsidy?.id || crypto.randomUUID();
-            
-            if (existingSubsidy) {
-              console.log('🔄 FOUND existing subsidy:', existingSubsidy.title?.substring(0, 50));
-              console.log('🕒 Last updated:', existingSubsidy.updated_at);
-            } else {
-              console.log('✨ NEW subsidy - will be added to database');
-            }
-            
-            // Map Les-Aides API fields to correct database schema
-            const subsidyData = {
-              id: subsidyId,
-              code: externalId || `les-aides-${Date.now()}`, // Required field
-              title: { 
-                fr: subsidy.nom || subsidy.title || 'Untitled Aid' 
-              }, // JSONB format
-              description: { 
-                fr: subsidy.objectif || subsidy.description || subsidy.details || '' 
-              }, // JSONB format
-              amount_min: subsidy.montant_min || null,
-              amount_max: subsidy.montant_max || subsidy.montant || subsidy.amount || null,
-              region: subsidy.territoire ? [subsidy.territoire] : (subsidy.region ? [subsidy.region] : ['France']), // Array format
-              deadline: subsidy.date_fin || subsidy.deadline || subsidy.end_date || null,
-              eligibility_criteria: subsidy.beneficiaires ? { 
-                fr: Array.isArray(subsidy.beneficiaires) ? subsidy.beneficiaires.join(', ') : subsidy.beneficiaires 
-              } : null, // JSONB format
-              categories: subsidy.domaine ? [subsidy.domaine] : (subsidy.sector ? [subsidy.sector] : [subsidy.category || 'General']), // Array format
-              funding_type: subsidy.type_aide || subsidy.funding_type || 'Grant',
-              application_url: subsidy.url || subsidy.application_link || null,
-              source: 'les-aides-fr',
-              status: 'active',
-              external_id: externalId,
-              api_source: 'les-aides-fr',
-              currency: 'EUR',
-              language: ['fr'],
-              created_at: existingSubsidy ? undefined : new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              last_synced_at: new Date().toISOString()
-            };
-            
-            console.log('💾 Attempting database upsert...');
-            console.log('📝 Subsidy data preview:', {
-              id: subsidyData.id,
-              title: subsidyData.title?.fr?.substring(0, 50),
-              description: subsidyData.description?.fr?.substring(0, 50),
-              external_id: subsidyData.external_id
-            });
-
-            // Upsert subsidy
-            const { error: upsertError } = await supabase
-              .from('subsidies')
-              .upsert(subsidyData, { 
-                onConflict: 'id',
-                ignoreDuplicates: false 
-              });
-
-            if (upsertError) {
-              console.log('❌ Database upsert failed:', upsertError.message);
-              errors.push({ subsidy: subsidyId, error: upsertError.message });
-            } else {
-              if (existingSubsidy) {
-                console.log('✅ Successfully UPDATED existing subsidy');
-                updated++;
-              } else {
-                console.log('✅ Successfully ADDED new subsidy');
-                added++;
-              }
-            }
-            processed++;
-
-          } catch (error) {
-            console.log('❌ Error processing subsidy:', error.message);
-            errors.push({ subsidy: `item-${processed}`, error: (error as Error).message });
-            processed++;
-          }
-          
-          // Log progress every 10 subsidies
-          if ((i + 1) % 10 === 0) {
-            console.log(`📊 Progress: ${i + 1}/${subsidiesArray.length} processed (${Math.round((i + 1) / subsidiesArray.length * 100)}%)`);
-          }
-        }
-        
-        console.log('\n🏁 === PROCESSING COMPLETE ===');
-        console.log(`📊 Final counts: ${processed} processed, ${added} added, ${updated} updated, ${errors.length} errors`);
-      } else {
-        console.log('⚠️ No subsidies found to process');
-      }
-
-      // Update sync log
-      if (logId) {
-        await supabase
-          .from('api_sync_logs')
-          .update({
-            status: errors.length > 0 ? 'completed_with_errors' : 'completed',
-            completed_at: new Date().toISOString(),
-            records_processed: processed,
-            records_added: added,
-            records_updated: updated,
-            errors: errors.length > 0 ? { error_count: errors.length, errors: errors.slice(0, 5) } : null
-          })
-          .eq('id', logId);
-      }
-
-      console.log(`✅ Sync completed: ${processed} processed, ${added} added, ${updated} updated, ${errors.length} errors`);
-
-      // Final comprehensive analysis
-      console.log('\n📊 === COMPREHENSIVE SYNC ANALYSIS ===');
-      console.log('🎯 KEY DISCOVERIES:');
-      console.log(`   • Best API strategy: ${bestStrategy.strategy.name}`);
-      console.log(`   • API returned: ${subsidiesArray.length} subsidies`);
-      console.log(`   • Total API subsidies available: ${subsidies.nb_dispositifs || 'Unknown'}`);
-      console.log(`   • Database before sync: ${currentSubsidies?.length || 'Unknown'} subsidies`);
-      console.log(`   • New subsidies added: ${added}`);
-      console.log(`   • Existing subsidies updated: ${updated}`);
-      
-      if (subsidies.depassement) {
-        console.log('⚠️ CRITICAL FINDINGS:');
-        console.log('   • DEPASSEMENT FLAG = TRUE (More than 200 results available)');
-        console.log('   • Current sync strategy only gets first 200 subsidies');
-        console.log('   • Need to implement pagination or multiple domain searches');
-      }
-      
-      if (subsidies.nb_dispositifs && subsidies.nb_dispositifs > subsidiesArray.length) {
-        console.log('🚨 MISSING SUBSIDIES DETECTED:');
-        console.log(`   • API reports ${subsidies.nb_dispositifs} total available`);
-        console.log(`   • We only imported ${subsidiesArray.length}`);
-        console.log(`   • Missing: ${subsidies.nb_dispositifs - subsidiesArray.length} subsidies`);
-      }
-      
-      if (added === 0 && updated > 0) {
-        console.log('🔄 SYNC STATUS: Update Mode');
-        console.log('   • All subsidies already existed in database');
-        console.log('   • This sync updated existing records only');
-        console.log('   • No new subsidies were discovered');
-      } else if (added > 0) {
-        console.log('✨ SYNC STATUS: Expansion Mode');
-        console.log(`   • Found ${added} new subsidies not in database`);
-        console.log('   • Database was expanded with new entries');
-      }
-      
-      console.log('\n💡 RECOMMENDATIONS:');
-      if (subsidies.depassement) {
-        console.log('   1. Implement pagination strategy to get ALL subsidies');
-        console.log('   2. Search multiple domains (not just 790)');
-      }
-      if (added === 0 && subsidiesArray.length <= 44) {
-        console.log('   1. API search parameters may be too restrictive');
-        console.log('   2. Try broader searches (remove geographic/sector filters)');
-      }
-      console.log('   3. Monitor for "depassement" flag in future syncs');
-      console.log('='.repeat(60));
-
-      return new Response(JSON.stringify({
+      const result = {
         success: true,
-        processed,
-        added,
-        updated,
-        errors,
-        sync_log_id: logId
-      }), {
+        sync_log_id: syncLogId,
+        total_found: allSubsidies.length,
+        unique_subsidies: uniqueSubsidies.length,
+        inserted: insertedCount,
+        skipped: skippedCount,
+        searches_performed: totalSearches,
+        strategies_used: searchStrategies.length,
+        quota_used: dailyRequestCount,
+        quota_remaining: DAILY_QUOTA - dailyRequestCount,
+        reference_lists_loaded: Object.keys(referenceLists).length,
+        errors: errors.length > 0 ? errors : undefined
+      };
+
+      console.log('🎉 API Sync completed successfully:', result);
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       });
 
     } catch (error) {
-      console.error('❌ Sync failed:', error);
+      console.error('💥 Sync failed:', error);
       
-      // Update sync log with error
-      if (logId) {
-        await supabase
-          .from('api_sync_logs')
-          .update({
-            status: 'failed',
-            completed_at: new Date().toISOString(),
-            errors: { error: (error as Error).message }
-          })
-          .eq('id', logId);
-      }
+      // Update sync log with failure
+      await supabase
+        .from('api_sync_logs')
+        .update({
+          status: 'failed',
+          errors: { message: error.message, stack: error.stack, quota_used: dailyRequestCount },
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', syncLogId);
 
       return new Response(JSON.stringify({
         success: false,
-        error: (error as Error).message,
-        sync_log_id: logId
+        error: error.message,
+        sync_log_id: syncLogId,
+        quota_used: dailyRequestCount
       }), {
-        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
       });
     }
 
   } catch (error) {
-    console.error('❌ Function error:', error);
+    console.error('🚨 Critical error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: (error as Error).message
+      error: error.message
     }), {
-      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
     });
   }
-})
+});
