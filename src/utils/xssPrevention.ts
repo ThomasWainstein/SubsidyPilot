@@ -14,22 +14,66 @@ interface SanitizeOptions {
  * Sanitize HTML content for safe rendering
  */
 export function sanitizeHTML(htmlContent: string, options: SanitizeOptions = {}): string {
-  const allowedTags = options.allowedTags || ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-  const forbiddenTags = options.forbiddenTags || ['script', 'iframe', 'object', 'embed', 'style'];
+  const allowedTags = options.allowedTags || ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span', 'div', 'code', 'pre'];
+  const allowedAttributes = options.allowedAttributes || { 'a': ['href', 'target', 'rel', 'title'], '*': ['class'] };
+  const forbiddenTags = options.forbiddenTags || ['script', 'iframe', 'object', 'embed', 'style', 'form', 'input', 'button', 'meta', 'link'];
+  const forbiddenAttributes = options.forbiddenAttributes || ['on*', 'javascript:', 'vbscript:', 'data:'];
 
   let sanitized = htmlContent;
 
-  // Remove forbidden tags completely
+  // Remove forbidden tags completely (including content)
   forbiddenTags.forEach(tag => {
-    const regex = new RegExp(`<${tag}\\b[^>]*>.*?<\\/${tag}>`, 'gi');
+    const regex = new RegExp(`<${tag}\\b[^>]*>.*?<\\/${tag}>`, 'gis');
     sanitized = sanitized.replace(regex, '');
+    // Also remove self-closing versions
+    const selfClosingRegex = new RegExp(`<${tag}\\b[^>]*/>`, 'gi');
+    sanitized = sanitized.replace(selfClosingRegex, '');
   });
 
-  // Remove all HTML attributes except allowed ones
-  sanitized = sanitized.replace(/<(\w+)\s+[^>]*>/g, (match, tagName) => {
-    if (allowedTags.includes(tagName.toLowerCase())) {
-      return `<${tagName}>`;
+  // Remove dangerous protocols and javascript
+  sanitized = sanitized
+    .replace(/javascript:/gi, '')
+    .replace(/data:text\/html/gi, '')
+    .replace(/vbscript:/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '') // Remove all event handlers
+    .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+    .replace(/url\s*\(\s*javascript:/gi, ''); // Remove javascript: in CSS
+
+  // Clean up remaining HTML, keeping only allowed tags and attributes
+  sanitized = sanitized.replace(/<(\/?[\w\s="':\-;.]+)>/g, (match, tagContent) => {
+    const parts = tagContent.trim().split(/\s+/);
+    const isClosing = tagContent.startsWith('/');
+    const tagName = (isClosing ? parts[0].substring(1) : parts[0]).toLowerCase();
+    
+    if (allowedTags.includes(tagName)) {
+      if (isClosing) {
+        return `</${tagName}>`;
+      }
+      
+      // Filter and validate attributes
+      const tagAllowedAttrs = allowedAttributes[tagName] || allowedAttributes['*'] || [];
+      const validAttributes = parts.slice(1).map(attr => {
+        if (!attr.includes('=')) return '';
+        
+        const [attrName, ...attrValueParts] = attr.split('=');
+        const attrValue = attrValueParts.join('=').replace(/^["']|["']$/g, '');
+        
+        if (tagAllowedAttrs.includes(attrName.toLowerCase())) {
+          // Additional validation for href attributes
+          if (attrName.toLowerCase() === 'href') {
+            if (/^https?:\/\/|^\/|^#|^mailto:|^tel:/.test(attrValue)) {
+              return `${attrName}="${attrValue}"`;
+            }
+            return '';
+          }
+          return `${attrName}="${attrValue}"`;
+        }
+        return '';
+      }).filter(Boolean);
+      
+      return `<${tagName}${validAttributes.length ? ' ' + validAttributes.join(' ') : ''}>`;
     }
+    
     return '';
   });
 
