@@ -84,6 +84,14 @@ const SuspenseWrapper = React.memo(({ children }: { children: React.ReactNode })
 // Security monitoring wrapper component
 const SecurityWrapper = React.memo(({ children }: { children: React.ReactNode }) => {
   useSecurityMonitoring();
+  
+  // 🚀 PERFORMANCE: Preload critical chunks when idle
+  React.useEffect(() => {
+    import('@/utils/dynamicImports').then(({ preloadCriticalChunks }) => {
+      preloadCriticalChunks();
+    });
+  }, []);
+  
   return <>{children}</>;
 });
 
