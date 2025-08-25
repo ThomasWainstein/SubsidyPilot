@@ -8,9 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ExtractedDataViewerProps {
   documentId: string;
+  autoRefresh?: boolean;  // Add prop to trigger refresh
 }
 
-export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
+export function ExtractedDataViewer({ documentId, autoRefresh = false }: ExtractedDataViewerProps) {
   const [extractedData, setExtractedData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -39,6 +40,11 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
         setExtractedData(data.extracted_data);
         setConfidence((data.confidence_score || 0) * 100);
         setModelUsed(data.model_used || 'AI Enhanced');
+        
+        // Auto-open when data is available for the first time
+        if (data.extracted_data && !isOpen) {
+          setIsOpen(true);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch extracted data:', err);
@@ -50,6 +56,14 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
   useEffect(() => {
     fetchExtractedData();
   }, [documentId]);
+
+  // Add periodic refresh when autoRefresh is enabled
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(fetchExtractedData, 2000); // Poll every 2 seconds
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
 
   const getActualExtractedFields = (data: any) => {
     // Handle nested structure from streaming pipeline - check for fields first

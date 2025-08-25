@@ -219,7 +219,7 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
               </div>
             )}
             
-            <ExtractedDataViewer documentId={job.document_id} />
+            <ExtractedDataViewer documentId={job.document_id} autoRefresh={!isComplete} />
           </CardContent>
         </Card>
       )}
