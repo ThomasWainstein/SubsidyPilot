@@ -15,6 +15,16 @@ interface LesAidesItem {
   organization?: string;
   region?: string;
   sector?: string;
+  agency?: string;
+  implantation?: string; // E/N/T
+  domains?: number[];
+  means?: number[];
+  aps?: boolean;
+  nouveau?: boolean;
+  validation?: string;
+  generation?: string;
+  revision?: number;
+  raw_api_data?: any;
 }
 
 interface ParsedSubsidy {
@@ -197,36 +207,56 @@ async function parseItem(item: LesAidesItem, supabase: any): Promise<ParsedSubsi
   try {
     const now = new Date().toISOString()
     
-    // Parse amount
+    // Parse amount - check both amount field and raw API data
     let amountMin, amountMax
     if (item.amount) {
       const amounts = parseAmount(item.amount)
       amountMin = amounts.min
       amountMax = amounts.max
+    } else if (item.raw_api_data?.details?.montants) {
+      const amounts = parseAmount(item.raw_api_data.details.montants)
+      amountMin = amounts.min
+      amountMax = amounts.max
     }
     
-    // Parse deadline
+    // Parse deadline - prefer details if available
     let deadline: string | undefined
     if (item.deadline) {
       deadline = parseDeadline(item.deadline)
     }
 
-    // Resolve or create agency
+    // Resolve or create agency - prefer agency field over organization
     let agencyId: string | undefined
-    if (item.organization) {
-      agencyId = await resolveAgency(supabase, item.organization)
+    const agencyName = item.agency || item.organization
+    if (agencyName) {
+      agencyId = await resolveAgency(supabase, agencyName)
     }
+
+    // Build tags from multiple sources
+    const tags = []
+    if (item.sector) tags.push(item.sector)
+    if (item.implantation === 'E') tags.push('european')
+    else if (item.implantation === 'N') tags.push('national')
+    else if (item.implantation === 'T') tags.push('territorial')
+    if (item.aps) tags.push('aps')
+    if (item.nouveau) tags.push('nouveau')
+
+    // Determine funding type from means if available
+    let fundingType = 'public'
+    if (item.means?.includes(822)) fundingType = 'equity' // Intervention en fonds propres
+    else if (item.means?.includes(827)) fundingType = 'loan' // Avance − Prêts − Garanties
+    else if (item.means?.includes(833)) fundingType = 'grant' // Subvention
 
     const parsedData: ParsedSubsidy = {
       source: 'les-aides-fr',
-      external_id: item.id || item.url,
-      title: { fr: item.title },
+      external_id: item.id,
+      title: { fr: item.title || 'Aide sans titre' },
       description: { fr: item.description || '' },
-      agency: item.organization,
+      agency: agencyName,
       agency_id: agencyId,
       region: item.region ? [item.region] : undefined,
-      tags: item.sector ? [item.sector] : undefined,
-      funding_type: 'public',
+      tags: tags.length > 0 ? tags : undefined,
+      funding_type: fundingType,
       status: 'open',
       source_url: item.url,
       amount_min: amountMin,
@@ -237,20 +267,24 @@ async function parseItem(item: LesAidesItem, supabase: any): Promise<ParsedSubsi
       last_synced_at: now
     }
 
-    // Compute version hash
+    // Compute version hash including more fields for better change detection
     parsedData.version_hash = await computeHash(JSON.stringify({
       title: parsedData.title,
       description: parsedData.description,
       amount_min: parsedData.amount_min,
       amount_max: parsedData.amount_max,
       deadline: parsedData.deadline,
-      agency: parsedData.agency
+      agency: parsedData.agency,
+      funding_type: parsedData.funding_type,
+      tags: parsedData.tags,
+      validation: item.validation,
+      revision: item.revision
     }))
 
     return parsedData
 
   } catch (error) {
-    console.error('Parse item error:', error)
+    console.error('Parse item error:', error, 'Item:', JSON.stringify(item, null, 2))
     return null
   }
 }
