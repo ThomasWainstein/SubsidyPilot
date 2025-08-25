@@ -807,8 +807,13 @@ export class FrenchSubsidyParser {
     
     switch (primary.type) {
       case 'percentage_with_range':
+        // If we have calculated aid amounts, show only those
+        if (primary.minAmount && primary.maxAmount) {
+          return `€${primary.minAmount.toLocaleString()} - €${primary.maxAmount.toLocaleString()}`;
+        }
+        // Otherwise show the percentage with investment range
         if (primary.percentage && primary.investmentMin && primary.investmentMax) {
-          return `${primary.percentage}% sur investissement €${primary.investmentMin.toLocaleString()} - €${primary.investmentMax.toLocaleString()} (aide: €${primary.minAmount?.toLocaleString()} - €${primary.maxAmount?.toLocaleString()})`;
+          return `${primary.percentage}% sur investissement €${primary.investmentMin.toLocaleString()} - €${primary.investmentMax.toLocaleString()}`;
         }
         return `${primary.percentage}% de subvention`;
       case 'percentage':
