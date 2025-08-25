@@ -3278,6 +3278,7 @@ export type Database = {
         Row: {
           agency: string | null
           agency_id: string | null
+          ai_enhancement_status: string | null
           amount_max: number | null
           amount_min: number | null
           api_source: string | null
@@ -3293,6 +3294,7 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
+          enhanced_eligibility_info: Json | null
           enhanced_funding_info: Json | null
           external_id: string | null
           extraction_batch_id: string | null
@@ -3301,6 +3303,7 @@ export type Database = {
           id: string
           import_job_id: string | null
           language: string[] | null
+          last_enhanced_at: string | null
           last_synced_at: string | null
           legal_entities: string[] | null
           matching_tags: string[] | null
@@ -3320,6 +3323,7 @@ export type Database = {
         Insert: {
           agency?: string | null
           agency_id?: string | null
+          ai_enhancement_status?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3335,6 +3339,7 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          enhanced_eligibility_info?: Json | null
           enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
@@ -3343,6 +3348,7 @@ export type Database = {
           id?: string
           import_job_id?: string | null
           language?: string[] | null
+          last_enhanced_at?: string | null
           last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
@@ -3362,6 +3368,7 @@ export type Database = {
         Update: {
           agency?: string | null
           agency_id?: string | null
+          ai_enhancement_status?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3377,6 +3384,7 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          enhanced_eligibility_info?: Json | null
           enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
@@ -3385,6 +3393,7 @@ export type Database = {
           id?: string
           import_job_id?: string | null
           language?: string[] | null
+          last_enhanced_at?: string | null
           last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null

@@ -78,10 +78,10 @@ export const useEnhancedSubsidyParser = (options: UseEnhancedSubsidyParserOption
       // STEP 1: Check for existing cached data first
       if (!forceReprocess) {
         const { data: existingSubsidy, error: fetchError } = await supabase
-          .from('subsidies_structured')
-          .select('*')
-          .eq('id', subsidyId)
-          .single();
+        .from('subsidies')
+        .select('*')
+        .eq('id', subsidyId)
+        .single();
 
         // Check if we have cached enhanced data (this field may not exist yet)
         const cachedData = (existingSubsidy as any)?.enhanced_funding_info;
@@ -95,7 +95,7 @@ export const useEnhancedSubsidyParser = (options: UseEnhancedSubsidyParserOption
 
       // STEP 2: Get subsidy data for processing
       const { data: subsidy, error: fetchError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('id', subsidyId)
         .single();
@@ -342,7 +342,7 @@ export const useEnhancedSubsidyParser = (options: UseEnhancedSubsidyParserOption
   const cacheResult = async (subsidyId: string, result: ParsedSubsidyData) => {
     try {
       await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .update({
           enhanced_funding_info: JSON.parse(JSON.stringify(result)),
           extraction_completeness_score: Math.round(result.confidence * 100),
