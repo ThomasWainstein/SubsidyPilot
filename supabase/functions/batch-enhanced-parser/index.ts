@@ -348,13 +348,17 @@ function parseEnhancedFrench(content: string): any {
     }
   }
 
-  // Basic percentage patterns (fallback)
+  // Basic percentage patterns (fallback) - only for reasonable percentages
   if (funding.type === 'unknown') {
-    const percentageMatch = content.match(/(\d+(?:[.,]\d+)?)\s*%/);
+    const percentageMatch = content.match(/(?:aide|subvention|financement|taux).*?(\d+(?:[.,]\d+)?)\s*%|(\d+(?:[.,]\d+)?)\s*%.*?(?:aide|subvention|financement|taux)/gi);
     if (percentageMatch) {
-      funding.type = 'percentage';
-      funding.percentage = parseFloat(percentageMatch[1].replace(',', '.'));
-      confidence += 0.2;
+      const percentage = parseFloat((percentageMatch[1] || percentageMatch[2]).replace(',', '.'));
+      // Only accept reasonable percentages (0-100%)
+      if (percentage > 0 && percentage <= 100) {
+        funding.type = 'percentage';
+        funding.percentage = percentage;
+        confidence += 0.2;
+      }
     }
   }
 
