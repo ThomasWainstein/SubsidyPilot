@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, ExternalLink, MapPin, Building2, Calendar, Euro, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Heart, ExternalLink, MapPin, Building2, Calendar, Euro, Clock, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSubsidyTitle, getSubsidyDescription } from '@/utils/subsidyFormatting';
 import { getDeadlineStatus } from '@/utils/subsidyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useEnhancedSubsidyParser } from '@/hooks/useEnhancedSubsidyParser';
+import { FrenchSubsidyParser } from '@/lib/extraction/french-subsidy-parser';
 import OrganizationLogo from './OrganizationLogo';
 
 interface EnhancedSubsidyCardProps {
@@ -24,10 +26,46 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+  const { parsedData, parseSubsidy, isProcessing, getFundingDisplay, getEligibilityDisplay } = useEnhancedSubsidyParser();
+  const [localParsedData, setLocalParsedData] = useState(null);
   
-  // Get clean funding amount display
-  const getFundingDisplay = () => {
+  const deadlineStatus = getDeadlineStatus(subsidy.deadline);
+
+  // Try to use enhanced data if available, otherwise use local parsing
+  useEffect(() => {
+    // Check if we already have enhanced data
+    if (subsidy.enhanced_funding_info) {
+      setLocalParsedData(subsidy.enhanced_funding_info);
+    } else {
+      // Try local parsing first as fallback
+      const content = [subsidy.title, subsidy.description, subsidy.eligibility, subsidy.funding_markdown]
+        .filter(Boolean)
+        .join('\n\n');
+      
+      if (content.trim()) {
+        const parsed = FrenchSubsidyParser.parse(content);
+        if (parsed.confidence > 0.3) {
+          setLocalParsedData(parsed);
+        }
+      }
+    }
+  }, [subsidy]);
+  
+  // Get enhanced funding display or fall back to original
+  const getEnhancedFundingDisplay = () => {
+    if (localParsedData && localParsedData.funding) {
+      return getFundingDisplay(localParsedData);
+    }
+    
+    // Fallback to local parsing
+    if (subsidy.description || subsidy.funding_markdown) {
+      const content = [subsidy.description, subsidy.funding_markdown].filter(Boolean).join('\n\n');
+      return FrenchSubsidyParser.formatFundingDisplay(
+        FrenchSubsidyParser.parse(content).funding
+      );
+    }
+    
+    // Original fallback
     if (subsidy.amount_min && subsidy.amount_max) {
       return `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`;
     }
@@ -35,6 +73,15 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
       return `€${subsidy.amount.toLocaleString()}`;
     }
     return 'Variable Amount';
+  };
+
+  // Get enhanced eligibility display
+  const getEnhancedEligibilityDisplay = () => {
+    if (localParsedData?.eligibility) {
+      const eligibilityTypes = getEligibilityDisplay(localParsedData);
+      return eligibilityTypes.length > 0 ? eligibilityTypes : ['All Businesses'];
+    }
+    return ['All Businesses'];
   };
 
   // Get organization name for logo
@@ -95,6 +142,8 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
 
   const deadlineInfo = getDeadlineInfo();
   const isClosed = deadlineInfo?.isClosed || deadlineStatus.status === 'Application closed';
+  const enhancedFunding = getEnhancedFundingDisplay();
+  const enhancedEligibility = getEnhancedEligibilityDisplay();
 
   return (
     <Card className="group hover:shadow-xl transition-all duration-500 border border-border/50 bg-card hover:border-primary/20 overflow-hidden">
@@ -119,6 +168,12 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
                   <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-medium">
                     Grant
                   </Badge>
+                  {localParsedData?.confidence && localParsedData.confidence > 0.7 && (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-medium">
+                      <Zap className="w-3 h-3 mr-1" />
+                      AI Enhanced
+                    </Badge>
+                  )}
                   {showMatchScore && (
                     <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-medium">
                       {subsidy.matchConfidence}% {t('subsidies.matchConfidence')}
@@ -172,7 +227,7 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
           </p>
         </div>
 
-        {/* Key Information Grid */}
+        {/* Key Information Grid - Enhanced with AI Data */}
         <div className="px-6 pb-4">
           <div className="grid grid-cols-2 gap-4">
             {/* Eligibility */}
@@ -181,10 +236,17 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
                 {t('subsidies.eligibilityCriteria')}
               </span>
               <div className="flex flex-wrap gap-1">
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  All Businesses
-                </Badge>
+                {enhancedEligibility.slice(0, 2).map((type, index) => (
+                  <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                    <Building2 className="w-3 h-3 mr-1" />
+                    {type}
+                  </Badge>
+                ))}
+                {enhancedEligibility.length > 2 && (
+                  <span className="text-xs text-muted-foreground">
+                    +{enhancedEligibility.length - 2}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -203,7 +265,7 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
           </div>
         </div>
 
-        {/* Funding Section - Enhanced */}
+        {/* Enhanced Funding Section */}
         <div className="mx-6 mb-6 p-5 bg-gradient-to-br from-primary/5 via-purple-50/80 to-blue-50/80 border border-primary/10 rounded-xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -211,12 +273,22 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
                 <Euro className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Funding
-                </p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Funding
+                  </p>
+                  {localParsedData?.confidence && localParsedData.confidence > 0.7 && (
+                    <Zap className="h-3 w-3 text-primary" />
+                  )}
+                </div>
                 <p className="text-2xl font-bold text-primary">
-                  {getFundingDisplay()}
+                  {enhancedFunding}
                 </p>
+                {localParsedData?.funding?.conditions && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {localParsedData.funding.conditions}
+                  </p>
+                )}
               </div>
             </div>
             

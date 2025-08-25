@@ -59,6 +59,9 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
+[functions.enhanced-subsidy-parser]
+verify_jwt = false
+
 [functions.upload-farm-document]
 verify_jwt = true
 
