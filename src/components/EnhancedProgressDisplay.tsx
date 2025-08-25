@@ -9,11 +9,50 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, AlertCircle, Clock, Wifi, WifiOff } from 'lucide-react';
 import { useRealTimeProcessingEnhanced } from '@/hooks/useRealTimeProcessingEnhanced';
 import { ExtractedDataViewer } from './ExtractedDataViewer';
+import { useLatestDocumentExtraction } from '@/hooks/useDocumentExtractions';
 
 interface EnhancedProgressDisplayProps {
   documentId: string;
   onComplete?: (extractedData: any) => void;
 }
+
+// Component to display processing method from extraction metadata
+const ProcessingMethodDisplay = ({ job }: { job: any }) => {
+  const { data: extraction } = useLatestDocumentExtraction(job.document_id);
+  
+  const getProcessingMethod = () => {
+    // First check extraction metadata
+    try {
+      const extractedData = extraction?.extracted_data;
+      if (extractedData && typeof extractedData === 'object' && extractedData !== null) {
+        const metadata = (extractedData as any).processing_metadata;
+        if (metadata?.processing_method) {
+          const method = metadata.processing_method;
+          return method === 'pattern-only' ? 'Pattern-Only' : 
+                 method === 'ai-enhanced' ? 'AI Enhanced' : 
+                 method === 'hybrid' ? 'Hybrid' : method;
+        }
+      }
+    } catch (error) {
+      console.log('Error parsing extraction metadata:', error);
+    }
+    
+    // Fallback to job metadata
+    if (job.metadata?.processing_method) {
+      return job.metadata.processing_method;
+    }
+    
+    // Default fallback
+    return 'AI Enhanced';
+  };
+
+  return (
+    <div>
+      <span className="font-medium">Processing Method:</span>
+      <p className="text-muted-foreground">{getProcessingMethod()}</p>
+    </div>
+  );
+};
 
 export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProgressDisplayProps) {
   const { 
@@ -208,10 +247,7 @@ export function EnhancedProgressDisplay({ documentId, onComplete }: EnhancedProg
             
             {job.metadata && (
               <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <span className="font-medium">Processing Method:</span>
-                  <p className="text-muted-foreground">{job.metadata.processing_method || 'AI Enhanced'}</p>
-                </div>
+                <ProcessingMethodDisplay job={job} />
                 <div>
                   <span className="font-medium">Fields Extracted:</span>
                   <p className="text-muted-foreground">{Object.keys(job.metadata || {}).length}</p>

@@ -259,37 +259,52 @@ function performPatternExtraction(text: string): any {
     };
   }
   
-  // Company name extraction
-  const companyNameMatch = text.match(/(?:Dénomination|Raison\s+sociale|Nom\s+de\s+l'entreprise)[:\s]*(.+?)(?:\n|$)/i);
+  // Company name extraction - improved patterns for SIRENE documents
+  const companyNameMatch = text.match(/(?:Dénomination|Raison\s+sociale)\s*\n\s*(.+?)(?:\s*\n|$)/i) ||
+                           text.match(/(?:Dénomination|Raison\s+sociale)[:\s]*(.+?)(?:\s*\n|$)/i);
   if (companyNameMatch) {
-    results.company_name = {
-      value: companyNameMatch[1].trim(),
-      confidence: 1.0,
-      source: 'pattern',
-      source_snippet: companyNameMatch[0]
-    };
+    const name = companyNameMatch[1].trim();
+    // Skip if it's a label or category
+    if (!name.match(/^(Catégorie\s+juridique|Activité\s+Principale|APE|Adresse|SIREN|SIRET)$/i)) {
+      results.company_name = {
+        value: name,
+        confidence: 1.0,
+        source: 'pattern',
+        source_snippet: companyNameMatch[0]
+      };
+    }
   }
   
-  // Legal form extraction
-  const legalFormMatch = text.match(/(?:Catégorie\s+juridique|Forme\s+juridique)[:\s]*(?:\d+\s*-\s*)?(.+?)(?:\n|$)/i);
+  // Legal form extraction - improved patterns for SIRENE documents
+  const legalFormMatch = text.match(/(?:Catégorie\s+juridique|Forme\s+juridique)\s*\n\s*(?:\d+\s*-\s*)?(.+?)(?:\s*\n|$)/i) ||
+                         text.match(/(?:Catégorie\s+juridique|Forme\s+juridique)[:\s]*(?:\d+\s*-\s*)?(.+?)(?:\s*\n|$)/i);
   if (legalFormMatch) {
-    results.legal_form = {
-      value: legalFormMatch[1].trim(),
-      confidence: 1.0,
-      source: 'pattern',
-      source_snippet: legalFormMatch[0]
-    };
+    const form = legalFormMatch[1].trim();
+    // Skip if it's a label or category
+    if (!form.match(/^(Dénomination|Activité\s+Principale|APE|Adresse|SIREN|SIRET)$/i)) {
+      results.legal_form = {
+        value: form,
+        confidence: 1.0,
+        source: 'pattern',
+        source_snippet: legalFormMatch[0]
+      };
+    }
   }
   
-  // Address extraction
-  const addressMatch = text.match(/(?:Adresse)[:\s]*(.+?)(?:\n\d{5}|\n[A-Z]{2,})/i);
+  // Address extraction - improved patterns for SIRENE documents
+  const addressMatch = text.match(/(?:Adresse)\s*\n\s*(.+?)(?:\s*\n|$)/i) ||
+                       text.match(/(?:Adresse)[:\s]*(.+?)(?:\s*\n\d{5}|\s*\n[A-Z]{2,}|\s*\n|$)/i);
   if (addressMatch) {
-    results.address = {
-      value: addressMatch[1].trim(),
-      confidence: 0.9,
-      source: 'pattern',
-      source_snippet: addressMatch[0]
-    };
+    const address = addressMatch[1].trim();
+    // Skip if it's a label or category
+    if (!address.match(/^(Activité\s+Principale|APE|Catégorie\s+juridique|Dénomination|SIREN|SIRET)$/i)) {
+      results.address = {
+        value: address,
+        confidence: 0.9,
+        source: 'pattern',
+        source_snippet: addressMatch[0]
+      };
+    }
   }
   
   // APE Code extraction
