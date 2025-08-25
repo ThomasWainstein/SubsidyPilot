@@ -1052,20 +1052,66 @@ async function performOCR(context: any) {
       throw error;
     }
 
+    // Handle nested response structure from Vision API
+    // For PDF files, response structure is: responses[0].responses[0].fullTextAnnotation
+    // For image files, response structure is: responses[0].fullTextAnnotation
+    let visionResponse = data.responses?.[0];
+    
+    // Check if this is a nested PDF response
+    if (visionResponse?.responses?.[0]) {
+      console.log(`📄 Processing nested PDF response structure`);
+      visionResponse = visionResponse.responses[0];
+    }
+
     // Try to extract text from fullTextAnnotation first
-    if (data.responses?.[0]?.fullTextAnnotation?.text) {
-      extractedText = data.responses[0].fullTextAnnotation.text;
+    if (visionResponse?.fullTextAnnotation?.text) {
+      extractedText = visionResponse.fullTextAnnotation.text;
       confidence = 0.9;
       console.log(`✅ Full text extraction successful: ${extractedText.length} characters`);
     } 
     // Fallback to textAnnotations
-    else if (data.responses?.[0]?.textAnnotations?.[0]?.description) {
-      extractedText = data.responses[0].textAnnotations[0].description;
+    else if (visionResponse?.textAnnotations?.[0]?.description) {
+      extractedText = visionResponse.textAnnotations[0].description;
       confidence = 0.8;
       console.log(`✅ Text annotations extraction: ${extractedText.length} characters`);
     }
+    // Try to construct text from blocks/paragraphs/words (comprehensive fallback)
+    else if (visionResponse?.fullTextAnnotation?.pages?.[0]?.blocks) {
+      console.log(`🔧 Constructing text from blocks/paragraphs structure`);
+      const blocks = visionResponse.fullTextAnnotation.pages[0].blocks;
+      const textParts: string[] = [];
+      
+      for (const block of blocks) {
+        if (block.paragraphs) {
+          for (const paragraph of block.paragraphs) {
+            if (paragraph.words) {
+              const paragraphText = paragraph.words.map((word: any) => {
+                if (word.symbols) {
+                  return word.symbols.map((symbol: any) => symbol.text).join('');
+                }
+                return '';
+              }).join(' ');
+              textParts.push(paragraphText);
+            }
+          }
+          textParts.push('\n'); // Add line break after each block
+        }
+      }
+      
+      extractedText = textParts.join('').trim();
+      confidence = 0.7;
+      console.log(`✅ Text constructed from blocks: ${extractedText.length} characters`);
+    }
     else {
       console.log(`⚠️ No text detected in document`);
+      console.log(`🔍 Response structure debug:`, {
+        hasResponses: !!data.responses,
+        responsesLength: data.responses?.length,
+        firstResponseKeys: data.responses?.[0] ? Object.keys(data.responses[0]) : [],
+        hasNestedResponses: !!data.responses?.[0]?.responses,
+        nestedResponsesLength: data.responses?.[0]?.responses?.length,
+        nestedResponseKeys: data.responses?.[0]?.responses?.[0] ? Object.keys(data.responses[0].responses[0]) : []
+      });
       extractedText = '';
       confidence = 0;
     }
