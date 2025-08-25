@@ -59,7 +59,7 @@ const DataQualityDashboard: React.FC = () => {
       
       // Fetch all subsidies
       const { data: subsidies, error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .order('created_at', { ascending: false });
 

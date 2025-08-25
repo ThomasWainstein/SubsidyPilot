@@ -78,7 +78,7 @@ export const ManualPipelineDebugger = () => {
 
       // Step 4: Check final results
       const { data: finalSubsidies } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .order('created_at', { ascending: false });
 

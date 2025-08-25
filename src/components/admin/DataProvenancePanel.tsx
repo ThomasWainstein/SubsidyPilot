@@ -45,7 +45,7 @@ export const DataProvenancePanel = () => {
     try {
       // First count records to be deleted
       const { data: beforeCounts, error: countError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*', { count: 'exact', head: true });
       
       if (countError) throw countError;

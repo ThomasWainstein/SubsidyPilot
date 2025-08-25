@@ -43,7 +43,7 @@ const RecordEditModal = ({ record, isOpen, onClose, onSave }: RecordEditModalPro
     try {
       setLoadingRecord(true);
       const { data, error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('id', record.id)
         .single();
@@ -68,27 +68,21 @@ const RecordEditModal = ({ record, isOpen, onClose, onSave }: RecordEditModalPro
     try {
       setLoading(true);
       
-      // Update the record with admin corrections
+      // Update the record with admin corrections - simplified for new structure
       const updateData = {
         ...formData,
-        // Update audit trail
-        audit: {
-          ...fullRecord.audit,
+        // Add audit information in parsed_data
+        parsed_data: {
+          ...formData.parsed_data,
           admin_edited_at: new Date().toISOString(),
           admin_corrections: Object.keys(formData).filter(key => 
-            formData[key] !== fullRecord[key] && record.missing_fields.includes(key)
+            formData[key] !== fullRecord[key]
           ),
-        },
-        // Remove fields from missing_fields that have been filled
-        missing_fields: record.missing_fields.filter(field => 
-          !formData[field] || formData[field] === '' || 
-          (Array.isArray(formData[field]) && formData[field].length === 0)
-        ),
-        audit_notes: `${fullRecord.audit_notes || ''}\nAdmin review completed: ${new Date().toISOString()}`
+        }
       };
 
       const { error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .update(updateData)
         .eq('id', record.id);
 

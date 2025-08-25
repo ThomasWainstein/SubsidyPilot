@@ -41,9 +41,9 @@ export const StatusDashboard: React.FC<StatusDashboardProps> = ({ className }) =
         .from('raw_scraped_pages')
         .select('id', { count: 'exact' });
 
-      // Fetch structured subsidies count  
-      const { data: structuredSubsidies, error: structuredError } = await supabase
-        .from('subsidies_structured')
+      // Fetch all subsidies count  
+      const { data: allSubsidies, error: structuredError } = await supabase
+        .from('subsidies')
         .select('id', { count: 'exact' });
 
       // Fetch recent pipeline executions
@@ -55,7 +55,7 @@ export const StatusDashboard: React.FC<StatusDashboardProps> = ({ className }) =
 
       // Fetch recent AI processing results
       const { data: aiResults, error: aiError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('created_at')
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false });
@@ -70,9 +70,9 @@ export const StatusDashboard: React.FC<StatusDashboardProps> = ({ className }) =
           trend: 'stable'
         },
         {
-          label: 'Structured Subsidies',
-          value: structuredSubsidies?.length || 0,
-          status: (structuredSubsidies?.length || 0) > 0 ? 'ready' : 'pending',
+          label: 'Total Subsidies',
+          value: allSubsidies?.length || 0,
+          status: (allSubsidies?.length || 0) > 0 ? 'ready' : 'pending',
           tooltip: 'Number of subsidies processed by AI into structured format',
           icon: Database,
           trend: 'up'

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, MapPin, Euro, FileText, AlertCircle, CheckCircle, Clock, Building, Phone, Mail, ExternalLink, Download, Heart, Share2, Check, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/language';
 import { getLocalizedContent } from '@/utils/language';
-import { parseEnhancedFundingAmount } from '@/utils/subsidyFormatting';
+import { useSimplifiedSubsidyParser } from '@/hooks/useSimplifiedSubsidyParser';
 import { cleanHtmlContent, extractTextContent, containsHtml } from '@/utils/htmlUtils';
 import OrganizationLogo from './OrganizationLogo';
 import { analytics } from '@/lib/analytics/events';
@@ -92,6 +92,9 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState('overview');
   const [isFavorited, setIsFavorited] = useState(false);
+  
+  // Use the new simplified parser for enhanced data extraction
+  const { funding, entityTypes, region: parsedRegion, confidence } = useSimplifiedSubsidyParser(subsidy);
 
   // Handle share functionality with comprehensive debugging
   const handleShare = async () => {
@@ -235,7 +238,6 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
   const agency = cleanHtmlContent(rawAgency);
   const amount = formatAmount(subsidy.amount || subsidy.funding_amount || subsidy.amount_max);
   const deadline = subsidy.deadline || subsidy.application_deadline || subsidy.application_window_end;
-  const region = cleanHtmlContent(safeString(subsidy.geographic_scope || subsidy.region || categories[0]));
 
   // DEBUG: Log entity cleaning results
   console.log('🔍 HTML Entity Cleaning Debug:', {
@@ -245,8 +247,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     cleanedDescription: description.substring(0, 100),
     rawAgency,
     cleanedAgency: agency,
-    rawRegion: safeString(subsidy.geographic_scope || subsidy.region || categories[0]),
-    cleanedRegion: region
+    parsedRegion
   });
 
   // Helper function to safely render content - avoid HTML in production
@@ -287,107 +288,14 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
     );
   };
 
-  // Extract funding amount from les-aides data if available
+  // Use the parsed funding amount from our enhanced parser
   const getFundingAmount = () => {
-    return parseEnhancedFundingAmount(subsidy, subsidy.raw_data?.fiche);
+    return funding; // Already formatted by the simplified parser
   };
 
-  const getRegion = () => {
-    // First check enhanced extraction data (raw_data.fiche)
-    if (subsidy.raw_data?.fiche) {
-      const ficheText = typeof subsidy.raw_data.fiche === 'string' 
-        ? subsidy.raw_data.fiche 
-        : JSON.stringify(subsidy.raw_data.fiche);
-      
-      const cleanText = ficheText.toLowerCase().replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      
-      // Look for common French regions
-      const regionPatterns = [
-        { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
-        { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
-        { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
-        { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
-        { pattern: /occitanie/i, name: 'Occitanie' },
-        { pattern: /grand[-\s]est/i, name: 'Grand Est' },
-        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: "Provence-Alpes-Côte d'Azur" },
-        { pattern: /bretagne/i, name: 'Bretagne' },
-        { pattern: /normandie/i, name: 'Normandie' },
-        { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
-        { pattern: /bourgogne[-\s]franche[-\s]comté/i, name: 'Bourgogne-Franche-Comté' },
-        { pattern: /pays.de.la.loire/i, name: 'Pays de la Loire' },
-        { pattern: /corsica|corse/i, name: 'Corsica' },
-        { pattern: /martinique/i, name: 'Martinique' },
-        { pattern: /guadeloupe/i, name: 'Guadeloupe' },
-        { pattern: /guyane/i, name: 'Guyane' },
-        { pattern: /réunion/i, name: 'La Réunion' },
-        { pattern: /mayotte/i, name: 'Mayotte' }
-      ];
-      
-      for (const { pattern, name } of regionPatterns) {
-        if (pattern.test(cleanText)) {
-          return name;
-        }
-      }
-      
-      // Look for organization indicators
-      if (cleanText.includes('conseil régional') || cleanText.includes('région')) {
-        const regionMatch = cleanText.match(/(?:conseil\s+régional|région)\s+(?:de\s+)?([a-záàâäçéèêëïîôöùûüÿñ\s-]+)/i);
-        if (regionMatch) {
-          return regionMatch[1].trim().replace(/\b\w/g, l => l.toUpperCase());
-        }
-      }
-    }
-    
-    // Check organisme data
-    if (organisme?.raison_sociale) {
-      const orgName = organisme.raison_sociale.toLowerCase();
-      
-      // Check for specific regions in organization name
-      const regionPatterns = [
-        { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
-        { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
-        { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
-        { pattern: /auvergne[-\s]rhône[-\s]alpes/i, name: 'Auvergne-Rhône-Alpes' },
-        { pattern: /occitanie/i, name: 'Occitanie' },
-        { pattern: /grand[-\s]est/i, name: 'Grand Est' },
-        { pattern: /provence[-\s]alpes[-\s]côte.d.azur/i, name: "Provence-Alpes-Côte d'Azur" },
-        { pattern: /bretagne/i, name: 'Bretagne' },
-        { pattern: /normandie/i, name: 'Normandie' },
-        { pattern: /centre[-\s]val.de.loire/i, name: 'Centre-Val de Loire' },
-        { pattern: /bourgogne[-\s]franche[-\s]comté/i, name: 'Bourgogne-Franche-Comté' },
-        { pattern: /pays.de.la.loire/i, name: 'Pays de la Loire' }
-      ];
-      
-      for (const { pattern, name } of regionPatterns) {
-        if (pattern.test(orgName)) {
-          return name;
-        }
-      }
-      
-      if (orgName.includes('région')) {
-        const regionMatch = orgName.match(/région\s+([^,]+)/);
-        if (regionMatch) {
-          return regionMatch[1].trim().replace(/\b\w/g, l => l.toUpperCase());
-        }
-      }
-    }
-    
-    // Check if description mentions a region
-    const descText = (lesAidesData?.objet || description || '').toLowerCase();
-    const regionPatterns = [
-      { pattern: /hauts[-\s]de[-\s]france/i, name: 'Hauts-de-France' },
-      { pattern: /île[-\s]de[-\s]france/i, name: 'Île-de-France' },
-      { pattern: /nouvelle[-\s]aquitaine/i, name: 'Nouvelle-Aquitaine' },
-      { pattern: /occitanie/i, name: 'Occitanie' }
-    ];
-    
-    for (const { pattern, name } of regionPatterns) {
-      if (pattern.test(descText)) {
-        return name;
-      }
-    }
-    
-    return safeString(subsidy.geographic_scope || subsidy.region || categories[0]);
+  // Use the parsed region from simplified parser
+  const displayRegion = () => {
+    return parsedRegion; // Use the parsed region from simplified parser
   };
 
   // Extract category from les-aides domaines
@@ -452,7 +360,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                   {getStatusBadge(getStatus())}
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-white/20 text-white">
                     <MapPin className="w-4 h-4 mr-1" />
-                    {getRegion()}
+                    {displayRegion()}
                   </span>
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold mb-3">{title}</h1>
@@ -934,7 +842,7 @@ export const DetailedSubsidyDisplay: React.FC<DetailedSubsidyDisplayProps> = ({
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Region</div>
-                  <div className="font-medium">{getRegion()}</div>
+                  <div className="font-medium">{displayRegion()}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Category</div>

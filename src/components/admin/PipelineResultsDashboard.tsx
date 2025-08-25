@@ -43,9 +43,9 @@ export const PipelineResultsDashboard = () => {
         .from('raw_scraped_pages')
         .select('id, status, created_at', { count: 'exact' });
 
-      // Get processed subsidies count  
+      // Get processed subsidies count - now from main subsidies table  
       const { data: processedSubsidies, error: processedError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('id, created_at', { count: 'exact' });
 
       // Get total subsidies (including manual ones)
