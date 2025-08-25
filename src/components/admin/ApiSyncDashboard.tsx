@@ -336,19 +336,21 @@ export const ApiSyncDashboard: React.FC = () => {
                          body: { max_pages: 2 }
                        });
                        if (error) throw error;
-                       toast.success('Quick test completed', {
-                         description: `Found ${data?.processed || 0} subsidies`
+                       toast.success('Quick test started', {
+                         description: 'Sync running in background - check logs below for progress'
                        });
+                       // Refresh metrics after a brief delay to show progress
+                       setTimeout(() => fetchApiMetrics(), 2000);
                      } catch (error: any) {
                        toast.error('Quick test failed', { description: error?.message });
                      } finally {
                        setSyncing(null);
                      }
-                   }}
-                   disabled={syncing === 'les-aides-dry-run'}
-                   variant="outline"
-                   className="w-full"
-                 >
+                    }}
+                    disabled={syncing === 'les-aides-dry-run'}
+                    variant="outline"
+                    className="w-full"
+                  >
                    {syncing === 'les-aides-dry-run' ? (
                      <>
                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -367,10 +369,11 @@ export const ApiSyncDashboard: React.FC = () => {
                          body: { max_pages: 20 }
                        });
                        if (error) throw error;
-                       toast.success('Full sync completed', {
-                         description: `Processed ${data?.processed || 0} subsidies`
-                       });
-                       await fetchApiMetrics();
+                        toast.success('Full sync started', {
+                          description: 'Processing 20 pages in background - check logs below for progress'
+                        });
+                        // Refresh metrics after a brief delay to show progress
+                        setTimeout(() => fetchApiMetrics(), 2000);
                      } catch (error: any) {
                        toast.error('Full sync failed', { description: error?.message });
                      } finally {
