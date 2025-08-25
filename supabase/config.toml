@@ -199,3 +199,6 @@ verify_jwt = false
 
 [functions.automatic-subsidy-enrichment]
 verify_jwt = false
+
+[functions.fix-import-system]
+verify_jwt = false
