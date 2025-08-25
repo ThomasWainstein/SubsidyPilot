@@ -4,6 +4,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ErrorTaxonomy, ErrorCode, ProcessingError } from './error-taxonomy.ts';
 import { SizeLimitGuard, PROCESSING_LIMITS } from './size-limits.ts';
 import { CostMonitor, PerformanceMonitor } from './cost-monitoring.ts';
+import { ProcessingPolicyEngine, AsyncGCSProcessor } from './async-gcs-processor.ts';
+import { CircuitBreakerManager } from './circuit-breaker.ts';
+import { PIIRedactor, EUComplianceManager, LogRingBuffer } from './pii-redaction.ts';
 
 // JWT utility functions for Google Cloud authentication
 async function base64UrlEncode(data: Uint8Array): Promise<string> {
@@ -93,6 +96,14 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const googleVisionApiKey = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+
+// Initialize compliance and monitoring
+const piiRedactor = new PIIRedactor({
+  enableRedaction: true,
+  logSamplingRate: 0.1,
+  retentionTtlDays: 90
+});
+const logBuffer = new LogRingBuffer(1000);
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -184,12 +195,13 @@ serve(async (req) => {
           })
           .eq('id', job.id);
 
-        // Create or update extraction record
-        const extractionId = await ensureExtractionRecord(job);
-        console.log(`📊 Using extraction ${extractionId} for job ${job.id}`);
+        // Create or update extraction record with correlation ID
+        const correlationId = crypto.randomUUID();
+        const extractionId = await ensureExtractionRecord(job, correlationId);
+        console.log(`📊 Using extraction ${extractionId} for job ${job.id} [${correlationId}]`);
 
-        // Process through real stages
-        await processDocumentPipeline(job, extractionId);
+        // Process through real stages with correlation tracking
+        await processDocumentPipeline(job, extractionId, correlationId);
         
         processed++;
         
@@ -203,7 +215,12 @@ serve(async (req) => {
           structuredError = ErrorTaxonomy.createError(
             ErrorTaxonomy.categorizeError(error),
             error,
-            { jobId: job.id, documentId: job.document_id }
+            { correlationId, jobId: job.id, documentId: job.document_id },
+            {
+              stage: 'job-processing',
+              jobId: job.id,
+              tenantId: job.user_id
+            }
           );
         }
         
@@ -234,7 +251,7 @@ serve(async (req) => {
   }
 });
 
-async function ensureExtractionRecord(job: any): Promise<string> {
+async function ensureExtractionRecord(job: any, correlationId: string): Promise<string> {
   const { data: existingExtraction } = await supabase
     .from('document_extractions')
     .select('id')
@@ -259,7 +276,8 @@ async function ensureExtractionRecord(job: any): Promise<string> {
         job_id: job.id,
         stage: 'downloading',
         progress: 10,
-        processing_method: 'enhanced-pipeline'
+        processing_method: 'enhanced-pipeline',
+        correlation_id: correlationId
       }
     })
     .select('id')
@@ -269,7 +287,7 @@ async function ensureExtractionRecord(job: any): Promise<string> {
   return newExtraction.id;
 }
 
-async function processDocumentPipeline(job: any, extractionId: string) {
+async function processDocumentPipeline(job: any, extractionId: string, correlationId: string) {
   const stages = [
     { name: 'downloading', progress: 10, handler: downloadDocument },
     { name: 'ocr-extraction', progress: 25, handler: performOCR },
@@ -282,13 +300,15 @@ async function processDocumentPipeline(job: any, extractionId: string) {
   let processingContext = {
     job,
     extractionId,
+    correlationId,
     fileBuffer: null,
     extractedText: '',
     documentType: job.document_type || 'unknown',
     confidence: 0,
     structuredData: {},
     processingTier: 'fast',
-    retryCount: 0
+    retryCount: 0,
+    useAsyncProcessing: false
   };
 
   for (const stage of stages) {
@@ -311,7 +331,13 @@ async function processDocumentPipeline(job: any, extractionId: string) {
           structuredError = ErrorTaxonomy.createError(
             ErrorTaxonomy.categorizeError(error),
             error,
-            { stage: stage.name, jobId: job.id }
+            { correlationId, stage: stage.name, jobId: job.id },
+            {
+              stage: stage.name,
+              jobId: job.id,
+              tenantId: job.user_id,
+              attempt: processingContext.retryCount
+            }
           );
         }
         
@@ -338,7 +364,13 @@ async function processDocumentPipeline(job: any, extractionId: string) {
               retryError = ErrorTaxonomy.createError(
                 ErrorTaxonomy.categorizeError(retryError),
                 retryError,
-                { stage: stage.name, jobId: job.id, retryAttempt: processingContext.retryCount }
+                { correlationId, stage: stage.name, jobId: job.id, retryAttempt: processingContext.retryCount },
+                {
+                  stage: stage.name,
+                  jobId: job.id,
+                  tenantId: job.user_id,
+                  attempt: processingContext.retryCount
+                }
               );
             }
             throw retryError;
@@ -372,7 +404,17 @@ async function downloadDocument(context: any) {
       const error = ErrorTaxonomy.createError(
         ErrorCode.FILE_DOWNLOAD_FAILED,
         new Error(`HTTP ${response.status}: ${response.statusText}`),
-        { url: context.job.file_url, status: response.status }
+        { 
+          correlationId: context.correlationId,
+          url: context.job.file_url, 
+          status: response.status 
+        },
+        {
+          stage: 'downloading',
+          jobId: context.job.id,
+          tenantId: context.job.user_id,
+          httpStatus: response.status
+        }
       );
       throw error;
     }
@@ -400,7 +442,12 @@ async function downloadDocument(context: any) {
       const error = ErrorTaxonomy.createError(
         ErrorCode.FILE_TOO_LARGE,
         new Error(sizeAnalysis.reasoning),
-        { sizeAnalysis }
+        { correlationId: context.correlationId, sizeAnalysis },
+        {
+          stage: 'size-validation',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
       );
       throw error;
     }
@@ -410,10 +457,20 @@ async function downloadDocument(context: any) {
       console.log(`⚠️ Processing warnings:`, sizeAnalysis.warnings);
     }
     
-    // For now, continue with sync processing but log if async would be better
-    if (SizeLimitGuard.shouldUseAsyncProcessing(sizeAnalysis)) {
-      console.log(`🚨 RECOMMENDATION: Document should use async processing for optimal performance`);
+    // Determine processing path using policy engine
+    const policyDecision = ProcessingPolicyEngine.shouldUseAsync(
+      sizeAnalysis.fileSize,
+      sizeAnalysis.estimatedPages
+    );
+    
+    if (policyDecision.useAsync) {
+      console.log(`🔄 Policy decision: ${policyDecision.reason}`);
+      context.useAsyncProcessing = true;
+      
+      // For demo purposes, log the recommendation but continue with sync
+      // In production, this would trigger async+GCS processing
       console.log(`📝 ${SizeLimitGuard.getProcessingRecommendation(sizeAnalysis)}`);
+      console.log(`⚠️ ASYNC PROCESSING REQUIRED but not yet implemented - proceeding with sync as fallback`);
     }
     
     const costEstimate = SizeLimitGuard.getCostEstimate(sizeAnalysis);
@@ -436,7 +493,16 @@ async function downloadDocument(context: any) {
       const error = ErrorTaxonomy.createError(
         ErrorCode.QUOTA_EXCEEDED_429,
         new Error(quotaCheck.reason),
-        { quotaCheck, costBreakdown }
+        { 
+          correlationId: context.correlationId,
+          quotaCheck, 
+          costBreakdown 
+        },
+        {
+          stage: 'quota-validation',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
       );
       throw error;
     }
@@ -453,7 +519,15 @@ async function downloadDocument(context: any) {
     const structuredError = ErrorTaxonomy.createError(
       ErrorTaxonomy.categorizeError(error),
       error,
-      { url: context.job.file_url }
+      { 
+        correlationId: context.correlationId,
+        url: context.job.file_url 
+      },
+      {
+        stage: 'downloading',
+        jobId: context.job.id,
+        tenantId: context.job.user_id
+      }
     );
     throw structuredError;
   }
@@ -476,7 +550,15 @@ async function performOCR(context: any) {
     const error = ErrorTaxonomy.createError(
       ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
       new Error('Google Cloud Service Account key not configured'),
-      { required: 'GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY' }
+      { 
+        correlationId: context.correlationId,
+        required: 'GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY' 
+      },
+      {
+        stage: 'ocr-auth',
+        jobId: context.job.id,
+        tenantId: context.job.user_id
+      }
     );
     throw error;
   }
@@ -485,7 +567,15 @@ async function performOCR(context: any) {
     const error = ErrorTaxonomy.createError(
       ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
       new Error('Google Cloud Project ID not configured'),
-      { required: 'GOOGLE_CLOUD_PROJECT_ID' }
+      { 
+        correlationId: context.correlationId,
+        required: 'GOOGLE_CLOUD_PROJECT_ID' 
+      },
+      {
+        stage: 'ocr-auth',
+        jobId: context.job.id,
+        tenantId: context.job.user_id
+      }
     );
     throw error;
   }
@@ -503,7 +593,15 @@ async function performOCR(context: any) {
       const error = ErrorTaxonomy.createError(
         ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID,
         parseError,
-        { serviceAccountKeyLength: serviceAccountKey?.length }
+        { 
+          correlationId: context.correlationId,
+          serviceAccountKeyLength: serviceAccountKey?.length 
+        },
+        {
+          stage: 'ocr-auth-parse',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
       );
       throw error;
     }
@@ -528,7 +626,15 @@ async function performOCR(context: any) {
       const error = ErrorTaxonomy.createError(
         ErrorCode.ENCODING_FAIL,
         new Error('Base64 conversion resulted in empty string'),
-        { originalSize: uint8Array.length }
+        { 
+          correlationId: context.correlationId,
+          originalSize: uint8Array.length 
+        },
+        {
+          stage: 'ocr-encoding',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
       );
       throw error;
     }
@@ -556,36 +662,54 @@ async function performOCR(context: any) {
       features: requestPayload.requests[0].features
     });
     
+    // Use resilient API client with circuit breaker
+    const visionClient = CircuitBreakerManager.getClient('google-vision');
+    const baseUrl = ProcessingPolicyEngine.getEndpointUrl();
+    
     if (isPDF) {
-      // Use files:annotate endpoint for PDFs
-      console.log(`📄 Processing PDF with files:annotate endpoint using service account auth`);
-      response = await fetch(`https://vision.googleapis.com/v1/files:annotate`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(requestPayload)
-      });
+      // Use files:annotate endpoint for PDFs with EU compliance
+      console.log(`📄 Processing PDF with files:annotate endpoint using EU endpoint: ${baseUrl}`);
+      response = await visionClient.callWithResilience(
+        () => fetch(`${baseUrl}/v1/files:annotate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(requestPayload)
+        }),
+        {
+          operationName: 'vision-files-annotate',
+          correlationId: context.correlationId,
+          tenantId: context.job.user_id
+        }
+      );
     } else {
-      // Use images:annotate endpoint for image files
-      console.log(`🖼️ Processing image with images:annotate endpoint using service account auth`);
-      response = await fetch(`https://vision.googleapis.com/v1/images:annotate`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          requests: [{
-            image: { content: base64Data },
-            features: [
-              { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
-              { type: 'TEXT_DETECTION', maxResults: 1 }
-            ]
-          }]
-        })
-      });
+      // Use images:annotate endpoint for image files with EU compliance
+      console.log(`🖼️ Processing image with images:annotate endpoint using EU endpoint: ${baseUrl}`);
+      response = await visionClient.callWithResilience(
+        () => fetch(`${baseUrl}/v1/images:annotate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            requests: [{
+              image: { content: base64Data },
+              features: [
+                { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
+                { type: 'TEXT_DETECTION', maxResults: 1 }
+              ]
+            }]
+          })
+        }),
+        {
+          operationName: 'vision-images-annotate',
+          correlationId: context.correlationId,
+          tenantId: context.job.user_id
+        }
+      );
     }
 
     if (!response.ok) {
@@ -614,10 +738,17 @@ async function performOCR(context: any) {
         errorCode,
         new Error(`Google Vision API returned ${response.status}: ${response.statusText}`),
         { 
+          correlationId: context.correlationId,
           status: response.status,
           statusText: response.statusText,
-          errorDetails,
+          errorDetails: piiRedactor.redactText(errorDetails).redacted,
           endpoint: isPDF ? 'files:annotate' : 'images:annotate'
+        },
+        {
+          stage: 'ocr-vision-api',
+          jobId: context.job.id,
+          tenantId: context.job.user_id,
+          httpStatus: response.status
         }
       );
       throw error;

@@ -41,6 +41,14 @@ export interface ProcessingError {
   userMessage: string;
   retryable: boolean;
   retryDelay?: number; // milliseconds
+  severity: 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+  source: 'USER' | 'SYSTEM' | 'EXTERNAL';
+  stage?: string;
+  httpStatus?: number;
+  correlationId: string;
+  tenantId?: string;
+  jobId?: string;
+  attempt?: number;
   metadata?: Record<string, any>;
   timestamp: string;
 }
@@ -49,13 +57,26 @@ export class ErrorTaxonomy {
   static createError(
     code: ErrorCode,
     originalError: any,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    options?: {
+      stage?: string;
+      tenantId?: string;
+      jobId?: string;
+      attempt?: number;
+      httpStatus?: number;
+    }
   ): ProcessingError {
     const baseError = this.getErrorTemplate(code);
     
     return {
       ...baseError,
       message: originalError?.message || baseError.message,
+      correlationId: metadata?.correlationId || crypto.randomUUID(),
+      stage: options?.stage,
+      tenantId: options?.tenantId,
+      jobId: options?.jobId,
+      attempt: options?.attempt,
+      httpStatus: options?.httpStatus,
       metadata: {
         ...metadata,
         originalStack: originalError?.stack,
@@ -65,152 +86,196 @@ export class ErrorTaxonomy {
     };
   }
 
-  private static getErrorTemplate(code: ErrorCode): Omit<ProcessingError, 'timestamp' | 'message'> {
-    const templates: Record<ErrorCode, Omit<ProcessingError, 'timestamp' | 'message'>> = {
+  private static getErrorTemplate(code: ErrorCode): Omit<ProcessingError, 'timestamp' | 'message' | 'correlationId'> {
+    const templates: Record<ErrorCode, Omit<ProcessingError, 'timestamp' | 'message' | 'correlationId'>> = {
       [ErrorCode.FILE_DOWNLOAD_FAILED]: {
         code,
         userMessage: "Unable to download the document. Please check the file URL and try again.",
         retryable: true,
-        retryDelay: 5000
+        retryDelay: 5000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.FILE_TOO_LARGE]: {
         code,
         userMessage: "Document is too large for processing. Maximum size is 50MB. Consider using a smaller file or splitting the document.",
-        retryable: false
+        retryable: false,
+        severity: 'ERROR',
+        source: 'USER'
       },
       
       [ErrorCode.FILE_CORRUPTED]: {
         code,
         userMessage: "The document appears to be corrupted or encrypted. Please upload a valid, unprotected file.",
-        retryable: false
+        retryable: false,
+        severity: 'ERROR',
+        source: 'USER'
       },
       
       [ErrorCode.ENCODING_FAIL]: {
         code,
         userMessage: "Failed to process the document format. Please try uploading again or use a different file format.",
         retryable: true,
-        retryDelay: 3000
+        retryDelay: 3000,
+        severity: 'WARN',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.MIME_UNSUPPORTED]: {
         code,
         userMessage: "File type not supported. Please upload PDF, DOCX, XLSX, or image files only.",
-        retryable: false
+        retryable: false,
+        severity: 'ERROR',
+        source: 'USER'
       },
       
       [ErrorCode.AUTH_OAUTH_FAIL]: {
         code,
         userMessage: "Authentication error occurred. Please try again in a few minutes.",
         retryable: true,
-        retryDelay: 30000
+        retryDelay: 30000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.AUTH_SERVICE_ACCOUNT_INVALID]: {
         code,
         userMessage: "Service configuration error. Please contact support.",
-        retryable: false
+        retryable: false,
+        severity: 'FATAL',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.AUTH_TOKEN_EXPIRED]: {
         code,
         userMessage: "Authentication expired. Retrying with fresh credentials.",
         retryable: true,
-        retryDelay: 1000
+        retryDelay: 1000,
+        severity: 'WARN',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.QUOTA_EXCEEDED_429]: {
         code,
         userMessage: "Service temporarily at capacity. Your document will be processed shortly.",
         retryable: true,
-        retryDelay: 60000 // 1 minute
+        retryDelay: 60000, // 1 minute
+        severity: 'WARN',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.RATE_LIMITED]: {
         code,
         userMessage: "Processing queue is busy. Your document will be processed shortly.",
         retryable: true,
-        retryDelay: 30000
+        retryDelay: 30000,
+        severity: 'WARN',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.VISION_TIMEOUT]: {
         code,
         userMessage: "Document processing timed out. This may be due to document complexity. Please try again.",
         retryable: true,
-        retryDelay: 10000
+        retryDelay: 10000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.VISION_5XX]: {
         code,
         userMessage: "Processing service temporarily unavailable. Please try again in a few minutes.",
         retryable: true,
-        retryDelay: 120000 // 2 minutes
+        retryDelay: 120000, // 2 minutes
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.OCR_NO_TEXT]: {
         code,
         userMessage: "No readable text found in the document. Please ensure the document contains clear, readable text.",
-        retryable: false
+        retryable: false,
+        severity: 'WARN',
+        source: 'USER'
       },
       
       [ErrorCode.OCR_LOW_CONFIDENCE]: {
         code,
         userMessage: "Text extraction had low confidence. Results may be incomplete. Consider uploading a clearer version.",
-        retryable: false
+        retryable: false,
+        severity: 'WARN',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.AI_PROCESSING_FAILED]: {
         code,
         userMessage: "Failed to extract structured data from the document. Please try again or contact support.",
         retryable: true,
-        retryDelay: 5000
+        retryDelay: 5000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.VALIDATION_FAILED]: {
         code,
         userMessage: "Extracted data failed validation. The document may be missing required information.",
-        retryable: false
+        retryable: false,
+        severity: 'WARN',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.TIMEOUT]: {
         code,
         userMessage: "Processing timed out. Please try again with a smaller or simpler document.",
         retryable: true,
-        retryDelay: 15000
+        retryDelay: 15000,
+        severity: 'ERROR',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.MEMORY_LIMIT]: {
         code,
         userMessage: "Document too complex for current processing limits. Please try a smaller file.",
-        retryable: false
+        retryable: false,
+        severity: 'ERROR',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.NETWORK_ERROR]: {
         code,
         userMessage: "Network connectivity issue. Please try again.",
         retryable: true,
-        retryDelay: 10000
+        retryDelay: 10000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.DATABASE_ERROR]: {
         code,
         userMessage: "Database error occurred. Please try again.",
         retryable: true,
-        retryDelay: 5000
+        retryDelay: 5000,
+        severity: 'ERROR',
+        source: 'SYSTEM'
       },
       
       [ErrorCode.VISION_API_ERROR]: {
         code,
         userMessage: "Vision processing error. Please try again.",
         retryable: true,
-        retryDelay: 5000
+        retryDelay: 5000,
+        severity: 'ERROR',
+        source: 'EXTERNAL'
       },
       
       [ErrorCode.UNKNOWN_ERROR]: {
         code,
         userMessage: "An unexpected error occurred. Please try again or contact support.",
         retryable: true,
-        retryDelay: 10000
+        retryDelay: 10000,
+        severity: 'ERROR',
+        source: 'SYSTEM'
       }
     };
 
