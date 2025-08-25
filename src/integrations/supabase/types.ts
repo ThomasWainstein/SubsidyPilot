@@ -4417,6 +4417,140 @@ export type Database = {
         }
         Relationships: []
       }
+      universal_applications: {
+        Row: {
+          applicant_profile_id: string
+          application_data: Json | null
+          application_reference: string | null
+          awarded_amount: number | null
+          created_at: string | null
+          currency_code: string | null
+          deadline_date: string | null
+          decision_date: string | null
+          history: Json | null
+          id: string
+          notes: string | null
+          review_status: string | null
+          status: string | null
+          submitted_at: string | null
+          subsidy_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applicant_profile_id: string
+          application_data?: Json | null
+          application_reference?: string | null
+          awarded_amount?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          deadline_date?: string | null
+          decision_date?: string | null
+          history?: Json | null
+          id?: string
+          notes?: string | null
+          review_status?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          subsidy_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applicant_profile_id?: string
+          application_data?: Json | null
+          application_reference?: string | null
+          awarded_amount?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          deadline_date?: string | null
+          decision_date?: string | null
+          history?: Json | null
+          id?: string
+          notes?: string | null
+          review_status?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          subsidy_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "universal_applications_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "universal_applications_subsidy_id_fkey"
+            columns: ["subsidy_id"]
+            isOneToOne: false
+            referencedRelation: "subsidies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      universal_documents: {
+        Row: {
+          applicant_profile_id: string
+          category: string | null
+          created_at: string | null
+          document_type: string
+          file_name: string
+          file_size: number
+          file_url: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          processed_at: string | null
+          processing_status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applicant_profile_id: string
+          category?: string | null
+          created_at?: string | null
+          document_type: string
+          file_name: string
+          file_size: number
+          file_url: string
+          id?: string
+          metadata?: Json | null
+          mime_type: string
+          processed_at?: string | null
+          processing_status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applicant_profile_id?: string
+          category?: string | null
+          created_at?: string | null
+          document_type?: string
+          file_name?: string
+          file_size?: number
+          file_url?: string
+          id?: string
+          metadata?: Json | null
+          mime_type?: string
+          processed_at?: string | null
+          processing_status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "universal_documents_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_events: {
         Row: {
           created_at: string | null
