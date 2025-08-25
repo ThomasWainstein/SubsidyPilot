@@ -332,7 +332,7 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-dry-run');
                      try {
-                       const { data, error } = await supabase.functions.invoke('les-aides-enhanced', {
+                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
                          body: { max_pages: 2 }
                        });
                        if (error) throw error;
@@ -365,7 +365,7 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-backfill');
                      try {
-                       const { data, error } = await supabase.functions.invoke('les-aides-enhanced', {
+                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
                          body: { max_pages: 20 }
                        });
                        if (error) throw error;
