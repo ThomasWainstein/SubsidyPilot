@@ -15,68 +15,194 @@ if (!supabaseServiceRoleKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-// Simple rate limiting tracking
-let dailyRequestCount = 0
-let lastResetDate = new Date().toDateString()
-
-function updateRequestCount(): void {
-  const today = new Date().toDateString()
-  if (today !== lastResetDate) {
-    dailyRequestCount = 0
-    lastResetDate = today
-  }
-  dailyRequestCount++
+// Account configuration and rotation management
+interface ApiAccount {
+  id: string
+  email?: string
+  password?: string
+  apiKey?: string
+  requestsUsed: number
+  dailyLimit: number
+  lastResetDate: string
+  isActive: boolean
 }
 
-function checkRateLimit(): boolean {
-  const today = new Date().toDateString()
-  if (today !== lastResetDate) {
-    dailyRequestCount = 0
-    lastResetDate = today
-  }
-  
-  const dailyLimit = 720 // Les-Aides.fr daily quota
-  console.log(`📊 API usage today: ${dailyRequestCount}/${dailyLimit}`)
-  
-  return dailyRequestCount < dailyLimit
-}
-
-// Les-Aides.fr API client following exact spec
-class LesAidesClient {
-  private baseUrl = 'https://api.les-aides.fr'
-  private headers: Record<string, string>
+class MultiAccountManager {
+  private accounts: ApiAccount[] = []
+  private currentAccountIndex = 0
   
   constructor() {
-    // Try X-IDC first, fallback to Basic auth (per spec)
-    const idc = Deno.env.get('LES_AIDES_IDC')?.trim()
-    const email = Deno.env.get('LES_AIDES_EMAIL')
-    const password = Deno.env.get('LES_AIDES_PASSWORD')
+    // Initialize all three accounts
+    this.initializeAccounts()
+  }
+  
+  private initializeAccounts(): void {
+    const today = new Date().toDateString()
     
-    this.headers = {
+    // Account 1
+    const email1 = Deno.env.get('LES_AIDES_EMAIL')
+    const password1 = Deno.env.get('LES_AIDES_PASSWORD')
+    const apiKey1 = Deno.env.get('LES_AIDES_API_KEY')
+    
+    if (email1 && password1) {
+      this.accounts.push({
+        id: 'account-1',
+        email: email1,
+        password: password1,
+        apiKey: apiKey1,
+        requestsUsed: 0,
+        dailyLimit: 750,
+        lastResetDate: today,
+        isActive: true
+      })
+    }
+    
+    // Account 2
+    const email2 = Deno.env.get('LES_AIDES_EMAIL_2')
+    const password2 = Deno.env.get('LES_AIDES_PASSWORD_2')
+    const apiKey2 = Deno.env.get('LES_AIDES_API_KEY_2')
+    
+    if (email2 && password2) {
+      this.accounts.push({
+        id: 'account-2',
+        email: email2,
+        password: password2,
+        apiKey: apiKey2,
+        requestsUsed: 0,
+        dailyLimit: 750,
+        lastResetDate: today,
+        isActive: true
+      })
+    }
+    
+    // Account 3
+    const email3 = Deno.env.get('LES_AIDES_EMAIL_3')
+    const password3 = Deno.env.get('LES_AIDES_PASSWORD_3')
+    const apiKey3 = Deno.env.get('LES_AIDES_API_KEY_3')
+    
+    if (email3 && password3) {
+      this.accounts.push({
+        id: 'account-3',
+        email: email3,
+        password: password3,
+        apiKey: apiKey3,
+        requestsUsed: 0,
+        dailyLimit: 750,
+        lastResetDate: today,
+        isActive: true
+      })
+    }
+    
+    console.log(`🔧 Initialized ${this.accounts.length} API accounts`)
+    this.logAccountStatus()
+  }
+  
+  private resetDailyCountsIfNeeded(): void {
+    const today = new Date().toDateString()
+    
+    for (const account of this.accounts) {
+      if (account.lastResetDate !== today) {
+        account.requestsUsed = 0
+        account.lastResetDate = today
+        account.isActive = true
+        console.log(`🔄 Reset daily count for ${account.id}`)
+      }
+    }
+  }
+  
+  private logAccountStatus(): void {
+    console.log('📊 Account Status:')
+    for (const account of this.accounts) {
+      console.log(`   ${account.id}: ${account.requestsUsed}/${account.dailyLimit} requests (${account.isActive ? 'Active' : 'Quota exceeded'})`)
+    }
+    
+    const totalUsed = this.accounts.reduce((sum, acc) => sum + acc.requestsUsed, 0)
+    const totalLimit = this.accounts.reduce((sum, acc) => sum + acc.dailyLimit, 0)
+    console.log(`📈 Total usage: ${totalUsed}/${totalLimit} requests`)
+  }
+  
+  getCurrentAccount(): ApiAccount | null {
+    this.resetDailyCountsIfNeeded()
+    
+    // Find next available account starting from current index
+    for (let i = 0; i < this.accounts.length; i++) {
+      const index = (this.currentAccountIndex + i) % this.accounts.length
+      const account = this.accounts[index]
+      
+      if (account.isActive && account.requestsUsed < account.dailyLimit) {
+        this.currentAccountIndex = index
+        return account
+      }
+    }
+    
+    console.log('🚫 All accounts have reached their daily quota')
+    return null
+  }
+  
+  recordRequest(success: boolean = true): void {
+    const account = this.accounts[this.currentAccountIndex]
+    if (account) {
+      account.requestsUsed++
+      
+      if (account.requestsUsed >= account.dailyLimit) {
+        account.isActive = false
+        console.log(`⚠️ Account ${account.id} has reached daily quota`)
+        
+        // Try to switch to next account
+        const nextAccount = this.getCurrentAccount()
+        if (nextAccount && nextAccount.id !== account.id) {
+          console.log(`🔄 Switched to ${nextAccount.id}`)
+        }
+      }
+    }
+    
+    this.logAccountStatus()
+  }
+  
+  getTotalAvailableRequests(): number {
+    this.resetDailyCountsIfNeeded()
+    return this.accounts.reduce((sum, acc) => 
+      sum + (acc.isActive ? acc.dailyLimit - acc.requestsUsed : 0), 0
+    )
+  }
+  
+  hasAvailableAccount(): boolean {
+    return this.getCurrentAccount() !== null
+  }
+}
+
+// Enhanced Les-Aides.fr API client with multi-account support
+class LesAidesClient {
+  private baseUrl = 'https://api.les-aides.fr'
+  private accountManager: MultiAccountManager
+  
+  constructor() {
+    this.accountManager = new MultiAccountManager()
+  }
+  
+  private getAuthHeaders(account: ApiAccount): Record<string, string> {
+    const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Accept-Encoding': 'gzip',
       'User-Agent': 'SubsidyPilot/1.0'
     }
     
-    if (idc) {
-      this.headers['X-IDC'] = idc
-      console.log('🔑 Using X-IDC authentication')
-    } else if (email && password) {
-      const credentials = btoa(`${email}:${password}`)
-      this.headers['Authorization'] = `Basic ${credentials}`
-      console.log('🔑 Using Basic authentication')
-    } else {
-      throw new Error('No authentication credentials found. Set LES_AIDES_IDC or LES_AIDES_EMAIL + LES_AIDES_PASSWORD')
+    if (account.apiKey) {
+      headers['X-IDC'] = account.apiKey
+    } else if (account.email && account.password) {
+      const credentials = btoa(`${account.email}:${account.password}`)
+      headers['Authorization'] = `Basic ${credentials}`
     }
+    
+    return headers
   }
 
   async makeRequest(endpoint: string, params: Record<string, any> = {}): Promise<any> {
-    // Rate limiting check
-    if (!checkRateLimit()) {
-      throw new Error('Daily quota of 720 requests exceeded')
-    }
+    const account = this.accountManager.getCurrentAccount()
     
-    updateRequestCount()
+    if (!account) {
+      throw new Error(`No available accounts. Total requests available: ${this.accountManager.getTotalAvailableRequests()}`)
+    }
     
     const url = new URL(endpoint, this.baseUrl)
     
@@ -89,12 +215,12 @@ class LesAidesClient {
       }
     })
 
-    console.log(`🌐 API Request: ${url.toString()}`)
+    console.log(`🌐 API Request (${account.id}): ${url.toString()}`)
     
     try {
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: this.headers,
+        headers: this.getAuthHeaders(account),
         signal: AbortSignal.timeout(30000)
       })
       
@@ -103,6 +229,22 @@ class LesAidesClient {
       if (!response.ok) {
         const errorMsg = `API Error ${response.status}: ${responseText}`
         console.log(`❌ ${errorMsg}`)
+        
+        // Record the request attempt
+        this.accountManager.recordRequest(false)
+        
+        // If quota exceeded, try next account
+        if (response.status === 403 && responseText.includes('Quota journalier')) {
+          console.log(`💡 Quota exceeded for ${account.id}, trying next account...`)
+          
+          // Force account switch and retry once
+          const nextAccount = this.accountManager.getCurrentAccount()
+          if (nextAccount && nextAccount.id !== account.id) {
+            console.log(`🔄 Retrying with ${nextAccount.id}...`)
+            return this.makeRequest(endpoint, params) // Recursive retry with new account
+          }
+        }
+        
         throw new Error(errorMsg)
       }
       
@@ -113,12 +255,33 @@ class LesAidesClient {
         throw new Error(`Invalid JSON response: ${responseText}`)
       }
       
+      // Record successful request
+      this.accountManager.recordRequest(true)
+      
       console.log(`✅ Success: ${Array.isArray(data) ? data.length + ' items' : 'data received'}`)
       return data
       
     } catch (error) {
+      if (!error.message.includes('API Error')) {
+        // Only record network/other errors, not API errors (already recorded above)
+        this.accountManager.recordRequest(false)
+      }
+      
       console.log(`❌ Request failed: ${error.message}`)
       throw error
+    }
+  }
+  
+  getAccountStatus(): any {
+    return {
+      totalAccounts: this.accountManager['accounts'].length,
+      availableRequests: this.accountManager.getTotalAvailableRequests(),
+      accountDetails: this.accountManager['accounts'].map(acc => ({
+        id: acc.id,
+        requestsUsed: acc.requestsUsed,
+        dailyLimit: acc.dailyLimit,
+        isActive: acc.isActive
+      }))
     }
   }
 }
@@ -146,16 +309,16 @@ async function loadReferenceData(client: LesAidesClient): Promise<ReferenceCache
   try {
     // Fetch reference data sequentially with delays to respect rate limits
     references.domaines = await client.makeRequest('/liste/domaines')
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 200))
     
     references.moyens = await client.makeRequest('/liste/moyens') 
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 200))
     
     references.naf = await client.makeRequest('/liste/naf')
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 200))
     
     references.regions = await client.makeRequest('/liste/regions')
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 200))
     
     references.departements = await client.makeRequest('/liste/departements')
     
@@ -171,9 +334,9 @@ async function loadReferenceData(client: LesAidesClient): Promise<ReferenceCache
 }
 
 async function performSearches(client: LesAidesClient, references: ReferenceCache): Promise<any[]> {
-  // Check quota before starting
-  if (!checkRateLimit()) {
-    throw new Error('Daily quota exceeded before starting searches')
+  // Check available requests across all accounts
+  if (!client.getAccountStatus().availableRequests) {
+    throw new Error('No API requests available across all accounts')
   }
 
   // Build search strategies using valid domain IDs from reference data
@@ -221,11 +384,12 @@ async function performSearches(client: LesAidesClient, references: ReferenceCach
   const errors: any[] = []
   
   console.log(`🔍 Starting ${searchStrategies.length} search strategies...`)
+  console.log(`📊 Available requests across all accounts: ${client.getAccountStatus().availableRequests}`)
 
   for (const [index, strategy] of searchStrategies.entries()) {
-    // Check quota before each search
-    if (!checkRateLimit()) {
-      console.log('🚫 Daily quota reached, stopping searches')
+    // Check if we still have available accounts
+    if (!client.getAccountStatus().availableRequests) {
+      console.log('🚫 No more API requests available across all accounts, stopping searches')
       break
     }
     
@@ -234,7 +398,7 @@ async function performSearches(client: LesAidesClient, references: ReferenceCach
     try {
       // Add delay between searches
       if (index > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
 
       const searchResult = await client.makeRequest('/aides/', strategy.params)
@@ -247,7 +411,7 @@ async function performSearches(client: LesAidesClient, references: ReferenceCach
       
       if (searchResult.dispositifs && Array.isArray(searchResult.dispositifs)) {
         // Process dispositifs and map to subsidy format
-        for (const dispositif of searchResult.dispositifs.slice(0, 10)) { // Limit to conserve quota
+        for (const dispositif of searchResult.dispositifs.slice(0, 15)) { // Increased limit since we have more quota
           try {
             const subsidy = {
               code: `les-aides-${dispositif.numero}`,
@@ -295,6 +459,8 @@ async function performSearches(client: LesAidesClient, references: ReferenceCach
   }
 
   console.log(`📊 Total subsidies collected: ${allSubsidies.length}`)
+  console.log(`🏁 Final account status:`)
+  console.log(JSON.stringify(client.getAccountStatus(), null, 2))
   
   if (allSubsidies.length === 0) {
     throw new Error(`No subsidies found. Errors: ${JSON.stringify(errors, null, 2)}`)
@@ -310,7 +476,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting les-aides.fr API sync...')
+    console.log('🚀 Starting les-aides.fr API sync with multi-account support...')
 
     // Log sync start
     const { data: logData } = await supabase
@@ -321,7 +487,7 @@ Deno.serve(async (req) => {
         status: 'running'
       })
       .select()
-      .single()
+      .maybeSingle()
 
     if (!logData) {
       throw new Error('Failed to create sync log')
@@ -330,8 +496,12 @@ Deno.serve(async (req) => {
     const syncLogId = logData.id
 
     try {
-      // Initialize API client
+      // Initialize API client with multi-account support
       const client = new LesAidesClient()
+      
+      // Log initial account status
+      console.log('📊 Initial account status:')
+      console.log(JSON.stringify(client.getAccountStatus(), null, 2))
       
       // Load reference data first
       const references = await loadReferenceData(client)
@@ -380,6 +550,9 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Get final account statistics
+      const accountStats = client.getAccountStatus()
+
       // Update sync log with success
       await supabase
         .from('api_sync_logs')
@@ -390,8 +563,9 @@ Deno.serve(async (req) => {
           completed_at: new Date().toISOString(),
           errors: skippedCount > 0 ? { 
             skipped: skippedCount,
-            reference_lists_loaded: Object.keys(references).length
-          } : null
+            reference_lists_loaded: Object.keys(references).length,
+            account_stats: accountStats
+          } : { account_stats: accountStats }
         })
         .eq('id', syncLogId)
 
@@ -402,7 +576,8 @@ Deno.serve(async (req) => {
         unique_subsidies: uniqueSubsidies.length,
         inserted: insertedCount,
         skipped: skippedCount,
-        reference_lists_loaded: Object.keys(references).length
+        reference_lists_loaded: Object.keys(references).length,
+        account_statistics: accountStats
       }
 
       console.log('🎉 API Sync completed successfully:', result)
