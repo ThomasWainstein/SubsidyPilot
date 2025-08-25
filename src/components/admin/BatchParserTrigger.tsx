@@ -50,6 +50,15 @@ export const BatchParserTrigger: React.FC = () => {
         throw new Error(data.error || 'Batch processing failed');
       }
 
+      // Handle case where no subsidies are found
+      if (data.totalSubsidies === 0) {
+        toast.warning('Aucune subvention trouvée à traiter', { 
+          duration: 4000,
+          description: 'Vérifiez que des subventions existent dans la base de données'
+        });
+        return;
+      }
+
       setJobId(data.jobId);
       
       toast.success(

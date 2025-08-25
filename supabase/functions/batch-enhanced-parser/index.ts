@@ -27,9 +27,9 @@ serve(async (req) => {
     
     console.log('🚀 Starting batch enhanced parsing for existing subsidies...');
 
-    // Fetch all subsidies
+    // Fetch all subsidies from the correct table
     const { data: subsidies, error: fetchError } = await supabase
-      .from('subsidies_structured')
+      .from('subsidies')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(testMode ? 5 : 1000);
