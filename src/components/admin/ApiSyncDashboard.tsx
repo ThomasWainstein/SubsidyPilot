@@ -313,7 +313,87 @@ export const ApiSyncDashboard: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
+          {/* Les Aides Advanced Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                Les Aides Orchestrator
+              </CardTitle>
+              <CardDescription>
+                Advanced Les Aides synchronization with backfill options
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button 
+                  onClick={async () => {
+                    setSyncing('les-aides-dry-run');
+                    try {
+                      const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
+                        body: { dry_run: true, max_requests: 10, backfill: true }
+                      });
+                      if (error) throw error;
+                      toast.success('Dry run completed successfully', {
+                        description: `Processed: ${data?.processed || 0} subsidies`
+                      });
+                    } catch (error: any) {
+                      toast.error('Dry run failed', { description: error?.message });
+                    } finally {
+                      setSyncing(null);
+                    }
+                  }}
+                  disabled={syncing === 'les-aides-dry-run'}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {syncing === 'les-aides-dry-run' ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    'Dry Run Test'
+                  )}
+                </Button>
+                
+                <Button 
+                  onClick={async () => {
+                    setSyncing('les-aides-backfill');
+                    try {
+                      const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
+                        body: { dry_run: false, max_requests: 50, backfill: true }
+                      });
+                      if (error) throw error;
+                      toast.success('Full backfill completed', {
+                        description: `Processed: ${data?.processed || 0} subsidies`
+                      });
+                      await fetchApiMetrics();
+                    } catch (error: any) {
+                      toast.error('Full backfill failed', { description: error?.message });
+                    } finally {
+                      setSyncing(null);
+                    }
+                  }}
+                  disabled={syncing === 'les-aides-backfill'}
+                  className="w-full"
+                >
+                  {syncing === 'les-aides-backfill' ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    'Full Backfill'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card className="opacity-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
