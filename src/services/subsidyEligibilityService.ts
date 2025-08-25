@@ -40,8 +40,8 @@ export class SubsidyEligibilityService {
       .select('category, processing_status')
       .eq('farm_id', farmId);
 
-    // Get available subsidies 
-    const { data: subsidies } = await supabase
+    // Get available subsidies with explicit type
+    const { data: subsidies }: { data: any[] | null } = await supabase
       .from('subsidies')
       .select('id, title, description, amount_max, deadline, region, categories')
       .eq('archived', false);

@@ -68,17 +68,16 @@ export class SubsidyDataManager {
     console.log('🔄 Fetching fresh unified subsidies');
     
     try {
-      // Primary source: subsidies (has processed data)
-      const { data: structuredSubsidies, error: structuredError } = await supabase
-        .from('subsidies')
-        .select('*')
-        .eq('archived', false)
+      // Primary source: subsidies (has processed data)  
+      const subsidiesQuery = supabase.from('subsidies');
+      const { data: structuredSubsidies, error: structuredError } = await subsidiesQuery
+        .select('id, title, description, agency, amount_max, amount_min, deadline, region, categories, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       // Fallback source: subsidies (raw API data)
-      const { data: rawSubsidies, error: rawError } = await supabase
-        .from('subsidies')
-        .select('*')
+      const rawQuery = supabase.from('subsidies');
+      const { data: rawSubsidies, error: rawError } = await rawQuery
+        .select('id, title, description, agency, amount_max, amount_min, deadline, region, categories, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (structuredError && rawError) {
