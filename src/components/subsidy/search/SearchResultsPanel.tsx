@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/language';
 import { parseEnhancedFundingAmount, getSubsidyTitle, getSubsidyDescription, getDeadlineStatus } from '@/utils/subsidyFormatting';
 import { getSectorDisplayFromDomains, getEligibilityStatus } from '@/utils/sectorMappings';
 import OrganizationLogo from '../OrganizationLogo';
+import { EnhancedSubsidyCard } from '../EnhancedSubsidyCard';
 
 interface Subsidy {
   id: string;
@@ -356,9 +357,9 @@ const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
                         Funding programs currently accepting applications
                       </span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                       {openSubsidies.map((subsidy) => (
-                        <CleanSubsidyCard 
+                        <EnhancedSubsidyCard
                           key={subsidy.id} 
                           subsidy={subsidy} 
                           showMatchScore={Boolean(farmId)}
