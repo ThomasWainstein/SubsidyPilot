@@ -5520,6 +5520,10 @@ export type Database = {
           subsidies_parsed: number
         }[]
       }
+      trigger_2025_collection: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       update_extraction_status: {
         Args: {
           p_extraction_id: string
