@@ -193,17 +193,7 @@ const RecommendationCard: React.FC<{
         {getCategoryIcon(rec.score, rec.reasons)}
       </div>
       
-      <div className="flex items-center gap-2 mb-2">
-        <Badge variant="secondary" className="text-xs">
-          {subsidy.agency}
-        </Badge>
-        {rec.estimatedValue && <Badge variant="outline" className="text-xs">
-            {rec.estimatedValue}
-          </Badge>}
-        <Badge variant={rec.score >= 80 ? "default" : "outline"} className="text-xs">
-          {rec.score}% match
-        </Badge>
-      </div>
+      
 
       {rec.reasons.length > 0 && <p className="text-xs text-muted-foreground">
           {rec.reasons[0]}
