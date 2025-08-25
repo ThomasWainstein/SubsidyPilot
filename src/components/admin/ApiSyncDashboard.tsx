@@ -91,7 +91,7 @@ export const ApiSyncDashboard: React.FC = () => {
       
       // Map API sources to actual function names
       const functionMap: { [key: string]: string } = {
-        'les-aides-enhanced': 'ingest-les-aides-orchestrator', // Fixed mapping
+        'les-aides-enhanced': 'sync-les-aides-optimal', // Use authenticated function
         'aides-territoires': 'sync-aides-territoires',
         'romania-data': 'sync-romania-data'
       };
@@ -342,9 +342,9 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-dry-run');
                      try {
-                        const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
-                          body: { max_pages: 2 }
-                       });
+                         const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
+                           body: { sync_type: 'manual', max_pages: 2 }
+                        });
                        if (error) throw error;
                        toast.success('Quick test started', {
                          description: 'Sync running in background - check logs below for progress'
@@ -375,9 +375,9 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-backfill');
                      try {
-                        const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
-                          body: { max_pages: 20 }
-                       });
+                         const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
+                           body: { sync_type: 'manual', max_pages: 20 }
+                        });
                        if (error) throw error;
                         toast.success('Full sync started', {
                           description: 'Processing 20 pages in background - check logs below for progress'
