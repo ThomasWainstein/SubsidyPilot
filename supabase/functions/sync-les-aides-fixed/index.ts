@@ -103,6 +103,8 @@ serve(async (req) => {
             const response = await fetch(requestUrl, { headers });
             
             console.log('📊 Status:', response.status);
+            console.log('📊 Status Text:', response.statusText);
+            console.log('📊 Response Headers:', Object.fromEntries(response.headers.entries()));
             
             if (response.ok) {
               const apiData = await response.json();
@@ -139,12 +141,41 @@ serve(async (req) => {
               await new Promise(resolve => setTimeout(resolve, 800));
               
             } else {
+              // Enhanced error logging for debugging
               const errorText = await response.text();
-              console.log('❌ API Error:', response.status, errorText);
+              console.log('❌ API Error Details:', {
+                status: response.status,
+                statusText: response.statusText,
+                url: requestUrl,
+                domain: domain.name,
+                ape: ape,
+                errorBody: errorText
+              });
+              
+              // Check for specific error types
+              if (response.status === 403) {
+                console.log('🚨 403 Forbidden - Possible causes:');
+                console.log('   • IDC Key invalid or expired');
+                console.log('   • Daily quota exceeded (720 requests/day)');
+                console.log('   • API access restricted');
+                console.log('   • Request format incorrect');
+              } else if (response.status === 429) {
+                console.log('🚨 429 Too Many Requests - Rate limited');
+                console.log('   • Need to slow down requests');
+                console.log('   • Consider longer delays between calls');
+              }
+              
+              // Don't throw error immediately, try other combinations
+              console.log('⏭️ Continuing with next API call...');
             }
             
           } catch (error) {
-            console.log('❌ Request failed:', error);
+            console.log('❌ Request failed with exception:', {
+              error: error.message,
+              domain: domain.name,
+              ape: ape,
+              url: requestUrl
+            });
           }
         }
         

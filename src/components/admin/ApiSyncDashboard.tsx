@@ -114,7 +114,7 @@ export const ApiSyncDashboard: React.FC = () => {
         
         // Provide specific error messages for common issues
         if (error.message.includes('non-2xx status code')) {
-          throw new Error(`API Authentication failed. Please check your LES_AIDES_IDC_KEY secret in Supabase Edge Function settings.`);
+          throw new Error(`Sync function returned an error. Check the Edge Function logs for detailed diagnostics of API responses and authentication status.`);
         }
         throw error;
       }
