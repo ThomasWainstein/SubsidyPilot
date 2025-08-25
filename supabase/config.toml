@@ -193,3 +193,6 @@ verify_jwt = false
 
 [functions.ingest-les-aides-orchestrator]
 verify_jwt = false
+
+[functions.batch-enhanced-parser]
+verify_jwt = false

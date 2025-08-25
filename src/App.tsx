@@ -53,6 +53,7 @@ const OCRTestDashboard = lazy(() => import('@/components/admin/OCRTestDashboard'
 const ProofOfConcept = lazy(() => import('@/pages/admin/ProofOfConcept'));
 const ValidationPage = lazy(() => import('@/pages/ValidationPage'));
 const SecurityMonitor = lazy(() => import('@/components/security/SecurityMonitor'));
+const BatchParserTest = lazy(() => import('@/pages/admin/BatchParserTest'));
 const ClientTypePage = lazy(() => import('@/pages/ClientTypePage'));
 const ApplicationFormPage = lazy(() => import('@/pages/ApplicationFormPage'));
 const RomanianScrapingTest = lazy(() => import('@/pages/RomanianScrapingTest'));
@@ -222,9 +223,13 @@ function App() {
                         <ProtectedRouteWrapper><ProofOfConcept /></ProtectedRouteWrapper>
                       } />
                       
-                      <Route path="/admin/security" element={
-                        <ProtectedRouteWrapper><SecurityMonitor /></ProtectedRouteWrapper>
-                      } />
+                       <Route path="/admin/security" element={
+                         <ProtectedRouteWrapper><SecurityMonitor /></ProtectedRouteWrapper>
+                       } />
+                       
+                       <Route path="/admin/batch-parser" element={
+                         <ProtectedRouteWrapper><BatchParserTest /></ProtectedRouteWrapper>
+                       } />
                       
                       <Route path="/client-types" element={
                         <ProtectedRouteWrapper><ClientTypePage /></ProtectedRouteWrapper>
