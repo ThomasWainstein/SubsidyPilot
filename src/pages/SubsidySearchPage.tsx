@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -19,14 +18,16 @@ import { Search, AlertCircle, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import AdminPanelLink from '@/components/admin/AdminPanelLink';
-
 const SubsidySearchPage = () => {
-  const { farmId } = useParams<{ farmId: string }>();
+  const {
+    farmId
+  } = useParams<{
+    farmId: string;
+  }>();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false); // Start with filters hidden on mobile
   const [savedFilterSets, setSavedFilterSets] = useState<FilterSet[]>([]);
-
   const [filters, setFilters] = useState({
     confidenceFilter: [0],
     regions: [] as string[],
@@ -39,22 +40,22 @@ const SubsidySearchPage = () => {
     documentsRequired: [] as string[],
     applicationFormats: [] as string[],
     sustainabilityGoals: [] as string[],
-    deadlineStatuses: [] as string[],
+    deadlineStatuses: [] as string[]
   });
 
   // Use the new filtering hook - farmId is now optional
-  const { 
-    subsidies, 
-    loading, 
-    error, 
-    totalCount, 
-    filteredCount 
+  const {
+    subsidies,
+    loading,
+    error,
+    totalCount,
+    filteredCount
   } = useSubsidyFiltering(farmId, filters, searchQuery);
 
   // Get filter options from database
-  const { 
-    regions: availableRegions, 
-    categories: availableCategories, 
+  const {
+    regions: availableRegions,
+    categories: availableCategories,
     fundingTypes: availableFundingTypes,
     organizations: availableOrganizations,
     amountRanges: availableAmountRanges,
@@ -67,7 +68,6 @@ const SubsidySearchPage = () => {
       handleApiError(error, 'Subsidy Search');
     }
   }, [error]);
-
   const clearFilters = () => {
     setFilters({
       confidenceFilter: [0],
@@ -81,24 +81,22 @@ const SubsidySearchPage = () => {
       documentsRequired: [],
       applicationFormats: [],
       sustainabilityGoals: [],
-      deadlineStatuses: [],
+      deadlineStatuses: []
     });
   };
-
   const saveCurrentFilterSet = (name: string) => {
     const newSet: FilterSet = {
       id: uuidv4(),
       name,
-      filters: { ...filters }
+      filters: {
+        ...filters
+      }
     };
-
     setSavedFilterSets([...savedFilterSets, newSet]);
   };
-
   const applyFilterSet = (set: FilterSet) => {
     setFilters(set.filters);
   };
-
   const removeFilterSet = (id: string) => {
     setSavedFilterSets(savedFilterSets.filter(set => set.id !== id));
   };
@@ -109,27 +107,8 @@ const SubsidySearchPage = () => {
   if (loading) {
     return <SearchLoadingState />;
   }
-
-  const FiltersContent = () => (
-    <SearchFiltersPanel
-      filters={filters}
-      setFilters={setFilters}
-      savedFilterSets={savedFilterSets}
-      onApplyFilterSet={applyFilterSet}
-      onRemoveFilterSet={removeFilterSet}
-      onSaveCurrentFilters={saveCurrentFilterSet}
-      onClearFilters={clearFilters}
-      availableRegions={availableRegions}
-      availableCategories={availableCategories}
-      availableFundingTypes={availableFundingTypes}
-      availableOrganizations={availableOrganizations}
-      availableAmountRanges={availableAmountRanges}
-      availableSectors={availableSectors}
-    />
-  );
-
-  return (
-    <PageErrorBoundary pageName="Subsidy Search">
+  const FiltersContent = () => <SearchFiltersPanel filters={filters} setFilters={setFilters} savedFilterSets={savedFilterSets} onApplyFilterSet={applyFilterSet} onRemoveFilterSet={removeFilterSet} onSaveCurrentFilters={saveCurrentFilterSet} onClearFilters={clearFilters} availableRegions={availableRegions} availableCategories={availableCategories} availableFundingTypes={availableFundingTypes} availableOrganizations={availableOrganizations} availableAmountRanges={availableAmountRanges} availableSectors={availableSectors} />;
+  return <PageErrorBoundary pageName="Subsidy Search">
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <Navbar />
 
@@ -139,28 +118,15 @@ const SubsidySearchPage = () => {
             <div className="border-b bg-white dark:bg-gray-800 px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex-1">
-                  <SearchHeader 
-                    subsidyCount={filteredCount}
-                    lastUpdated={subsidies.length > 0 ? new Date(Math.max(...subsidies.map(s => new Date((s as any).updated_at || (s as any).created_at).getTime()))) : undefined}
-                    loading={loading}
-                  />
+                  <SearchHeader subsidyCount={filteredCount} lastUpdated={subsidies.length > 0 ? new Date(Math.max(...subsidies.map(s => new Date((s as any).updated_at || (s as any).created_at).getTime()))) : undefined} loading={loading} />
                 </div>
                 <AdminPanelLink />
               </div>
             </div>
 
-            {error ? (
-              <div className="px-6 py-8">
-                <EmptyState
-                  icon={AlertCircle}
-                  title="Error Loading Subsidies"
-                  description="Unable to load subsidy data. Please try again or contact support if the problem persists."
-                  actionLabel="Retry"
-                  onAction={() => navigate(0)}
-                />
-              </div>
-            ) : (
-              <div className="flex min-h-screen">
+            {error ? <div className="px-6 py-8">
+                <EmptyState icon={AlertCircle} title="Error Loading Subsidies" description="Unable to load subsidy data. Please try again or contact support if the problem persists." actionLabel="Retry" onAction={() => navigate(0)} />
+              </div> : <div className="flex min-h-screen">
                 {/* Desktop Sidebar - Always visible */}
                 <aside className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0">
                   <div className="p-6">
@@ -198,38 +164,16 @@ const SubsidySearchPage = () => {
                     </div>
 
                     {/* Personalized Recommendations */}
-                    <div className="mb-6">
-                      <SubsidyErrorBoundary>
-                        <RecommendedSection 
-                          farmId={farmId} 
-                          searchQuery={searchQuery} 
-                        />
-                      </SubsidyErrorBoundary>
-                    </div>
+                    
 
                     {/* Search Results */}
-                    <SearchResultsPanel
-                      searchQuery={searchQuery}
-                      onSearchQueryChange={setSearchQuery}
-                      showFilters={showFilters}
-                      onToggleFilters={() => setShowFilters(!showFilters)}
-                      subsidies={subsidies as any}
-                      totalCount={totalCount}
-                      filteredCount={filteredCount}
-                      loading={loading}
-                      error={error}
-                      farmId={farmId}
-                      onClearFilters={clearFilters}
-                    />
+                    <SearchResultsPanel searchQuery={searchQuery} onSearchQueryChange={setSearchQuery} showFilters={showFilters} onToggleFilters={() => setShowFilters(!showFilters)} subsidies={subsidies as any} totalCount={totalCount} filteredCount={filteredCount} loading={loading} error={error} farmId={farmId} onClearFilters={clearFilters} />
                   </div>
                 </main>
-              </div>
-            )}
+              </div>}
           </div>
         </main>
       </div>
-    </PageErrorBoundary>
-  );
+    </PageErrorBoundary>;
 };
-
 export default SubsidySearchPage;
