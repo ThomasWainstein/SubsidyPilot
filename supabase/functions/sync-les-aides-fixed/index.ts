@@ -15,45 +15,30 @@ if (!supabaseServiceRoleKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-// Rate limiting - check daily quota
-async function checkRateLimit(): Promise<boolean> {
-  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-  const { data, error } = await supabase
-    .from('api_rate_limits')
-    .select('request_count')
-    .eq('api_source', 'les-aides-fr')
-    .eq('date', today)
-    .single()
+// Simple rate limiting tracking
+let dailyRequestCount = 0
+let lastResetDate = new Date().toDateString()
 
-  if (error && error.code !== 'PGRST116') { // Ignore "not found" errors
-    console.log(`⚠️ Rate limit check failed: ${error.message}`)
-    return true // Allow on error
+function updateRequestCount(): void {
+  const today = new Date().toDateString()
+  if (today !== lastResetDate) {
+    dailyRequestCount = 0
+    lastResetDate = today
   }
-
-  const currentCount = data?.request_count || 0
-  const dailyLimit = 720 // Les-Aides.fr daily quota
-  
-  console.log(`📊 API usage today: ${currentCount}/${dailyLimit}`)
-  
-  if (currentCount >= dailyLimit) {
-    console.log('🚫 Daily quota exceeded, stopping sync')
-    return false
-  }
-  
-  return true
+  dailyRequestCount++
 }
 
-async function incrementRateLimit(): Promise<void> {
-  const today = new Date().toISOString().split('T')[0]
-  
-  const { error } = await supabase.rpc('increment_api_rate_count', {
-    p_api_source: 'les-aides-fr',
-    p_date: today
-  })
-
-  if (error) {
-    console.log(`⚠️ Failed to update rate limit: ${error.message}`)
+function checkRateLimit(): boolean {
+  const today = new Date().toDateString()
+  if (today !== lastResetDate) {
+    dailyRequestCount = 0
+    lastResetDate = today
   }
+  
+  const dailyLimit = 720 // Les-Aides.fr daily quota
+  console.log(`📊 API usage today: ${dailyRequestCount}/${dailyLimit}`)
+  
+  return dailyRequestCount < dailyLimit
 }
 
 // Les-Aides.fr API client following exact spec
@@ -86,8 +71,12 @@ class LesAidesClient {
   }
 
   async makeRequest(endpoint: string, params: Record<string, any> = {}): Promise<any> {
-    // Rate limiting
-    await incrementRateLimit()
+    // Rate limiting check
+    if (!checkRateLimit()) {
+      throw new Error('Daily quota of 720 requests exceeded')
+    }
+    
+    updateRequestCount()
     
     const url = new URL(endpoint, this.baseUrl)
     
@@ -105,7 +94,8 @@ class LesAidesClient {
     try {
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: this.headers
+        headers: this.headers,
+        signal: AbortSignal.timeout(30000)
       })
       
       const responseText = await response.text()
@@ -182,7 +172,7 @@ async function loadReferenceData(client: LesAidesClient): Promise<ReferenceCache
 
 async function performSearches(client: LesAidesClient, references: ReferenceCache): Promise<any[]> {
   // Check quota before starting
-  if (!await checkRateLimit()) {
+  if (!checkRateLimit()) {
     throw new Error('Daily quota exceeded before starting searches')
   }
 
@@ -234,7 +224,7 @@ async function performSearches(client: LesAidesClient, references: ReferenceCach
 
   for (const [index, strategy] of searchStrategies.entries()) {
     // Check quota before each search
-    if (!await checkRateLimit()) {
+    if (!checkRateLimit()) {
       console.log('🚫 Daily quota reached, stopping searches')
       break
     }
@@ -346,9 +336,16 @@ Deno.serve(async (req) => {
       // Load reference data first
       const references = await loadReferenceData(client)
       
-      // Clean existing data
+      // Clean existing data (simplified approach)
       console.log('🧹 Cleaning existing data...')
-      await supabase.rpc('safe_data_purge')
+      const { error: deleteError } = await supabase
+        .from('subsidies')
+        .delete()
+        .eq('source', 'les-aides-fr')
+      
+      if (deleteError) {
+        console.log('⚠️ Warning: Could not delete existing data:', deleteError.message)
+      }
       
       // Perform searches
       const allSubsidies = await performSearches(client, references)

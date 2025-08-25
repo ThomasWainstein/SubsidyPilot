@@ -5,194 +5,207 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const BASE = 'https://api.les-aides.fr';
+const BASE = 'https://api.les-aides.fr'
 
-function authHeaders() {
-  const idc = Deno.env.get('LES_AIDES_IDC')?.trim();
-  const email = Deno.env.get('LES_AIDES_EMAIL');
-  const password = Deno.env.get('LES_AIDES_PASSWORD');
-  const h: Record<string,string> = {
+function getAuthHeaders(): Record<string,string> {
+  const idc = Deno.env.get('LES_AIDES_IDC')?.trim()
+  const email = Deno.env.get('LES_AIDES_EMAIL')
+  const password = Deno.env.get('LES_AIDES_PASSWORD')
+  
+  const headers: Record<string,string> = {
     'Accept': 'application/json',
     'Accept-Encoding': 'gzip',
     'User-Agent': 'SubsidyPilot/1.0',
-  };
-  if (idc) h['X-IDC'] = idc; else if (email && password) {
-    const b64 = btoa(`${email}:${password}`);
-    h['Authorization'] = `Basic ${b64}`;
   }
-  return h;
+  
+  if (idc) {
+    headers['X-IDC'] = idc
+  } else if (email && password) {
+    const credentials = btoa(`${email}:${password}`)
+    headers['Authorization'] = `Basic ${credentials}`
+  }
+  
+  return headers
 }
 
-async function jget(path: string, params?: Record<string,any>) {
-  const q = new URLSearchParams();
-  Object.entries(params ?? {}).forEach(([k,v]) => {
-    if (Array.isArray(v)) v.forEach(x => q.append(`${k}[]`, String(x)));
-    else if (v !== undefined && v !== null) q.append(k, String(v));
-  });
-  const url = `${BASE}${path}${q.toString()?`?${q}`:''}`;
+async function testApiCall(path: string, params?: Record<string,any>) {
+  const url = new URL(path, BASE)
   
-  console.log(`🌐 Testing: ${url}`);
-  
-  const res = await fetch(url, { headers: authHeaders(), method: 'GET' });
-  const text = await res.text();
-  let body: any = undefined; 
-  try { 
-    body = JSON.parse(text); 
-  } catch {
-    // Keep original text if not JSON
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach(v => url.searchParams.append(`${key}[]`, String(v)))
+      } else if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value))
+      }
+    })
   }
+
+  console.log(`🌐 Testing: ${url.toString()}`)
   
-  if (!res.ok) {
-    console.log(`❌ Error ${res.status}: ${text}`);
+  try {
+    const response = await fetch(url.toString(), { 
+      headers: getAuthHeaders(), 
+      method: 'GET',
+      signal: AbortSignal.timeout(10000)
+    })
+    
+    const text = await response.text()
+    let data: any = undefined
+    
+    try { 
+      data = JSON.parse(text)
+    } catch {
+      // Keep original text if not JSON
+    }
+    
+    if (!response.ok) {
+      console.log(`❌ Error ${response.status}: ${text}`)
+      return { 
+        success: false, 
+        status: response.status, 
+        url: url.toString(), 
+        error: data ?? text 
+      }
+    }
+    
+    console.log(`✅ Success ${response.status}: ${Array.isArray(data) ? data.length + ' items' : 'data received'}`)
     return { 
-      ok: false, 
-      status: res.status, 
-      url, 
-      headers: Object.fromEntries(res.headers), 
-      body: body ?? text 
-    };
+      success: true, 
+      status: response.status, 
+      url: url.toString(), 
+      data 
+    }
+    
+  } catch (error) {
+    console.log(`💥 Request failed: ${error.message}`)
+    return { 
+      success: false, 
+      status: 0, 
+      url: url.toString(), 
+      error: error.message 
+    }
   }
-  
-  console.log(`✅ Success ${res.status}: ${Array.isArray(body) ? body.length + ' items' : 'data received'}`);
-  return { ok: true, status: res.status, url, body };
 }
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('🔍 Starting Les-Aides.fr API Health Check...');
-    const diagnostics: any = { 
+    console.log('🔍 Starting Les-Aides.fr API Health Check...')
+    
+    const results: any = { 
       timestamp: new Date().toISOString(),
-      auth_method: null,
-      steps: {}
-    };
+      auth_configured: false,
+      tests: {}
+    }
 
-    // Check which auth method we're using
-    const idc = Deno.env.get('LES_AIDES_IDC')?.trim();
-    const email = Deno.env.get('LES_AIDES_EMAIL');
-    const password = Deno.env.get('LES_AIDES_PASSWORD');
+    // Check auth configuration
+    const idc = Deno.env.get('LES_AIDES_IDC')?.trim()
+    const email = Deno.env.get('LES_AIDES_EMAIL')
+    const password = Deno.env.get('LES_AIDES_PASSWORD')
     
     if (idc) {
-      diagnostics.auth_method = 'X-IDC';
+      results.auth_method = 'X-IDC'
+      results.auth_configured = true
     } else if (email && password) {
-      diagnostics.auth_method = 'Basic Auth (email/password)';
+      results.auth_method = 'Basic Auth (email/password)'
+      results.auth_configured = true
     } else {
-      diagnostics.auth_method = 'No auth configured';
+      results.auth_method = 'No auth configured'
+      results.auth_configured = false
     }
     
-    console.log(`🔑 Auth method: ${diagnostics.auth_method}`);
+    console.log(`🔑 Auth method: ${results.auth_method}`)
 
-    // Step 1: Test connectivity and auth via domains list
-    console.log('📋 Step 1: Testing auth with /liste/domaines...');
-    const domains = await jget('/liste/domaines');
-    diagnostics.steps.domains = {
-      success: domains.ok,
-      status: domains.status,
-      url: domains.url,
-      count: domains.ok ? domains.body?.length : 0,
-      error: domains.ok ? null : domains.body
-    };
-
-    if (!domains.ok) {
-      console.log('💥 Auth test failed, stopping here');
-      return new Response(JSON.stringify({ 
-        step: 'domains_auth_failed', 
-        diagnostics 
+    // Test 1: Load domains list (auth test)
+    console.log('📋 Test 1: Loading domains list...')
+    const domainsTest = await testApiCall('/liste/domaines')
+    results.tests.domains = domainsTest
+    
+    if (!domainsTest.success) {
+      console.log('💥 Domains test failed - stopping here')
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Authentication or domains API failed',
+        results
       }, null, 2), { 
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      })
     }
 
-    // Step 2: Get a valid domaine ID for testing
-    const domaine = domains.body?.[0]?.numero;
-    console.log(`🎯 Using domaine ${domaine} (${domains.body?.[0]?.libelle}) for tests`);
+    // Test 2: Basic search with first domain
+    const firstDomain = domainsTest.data?.[0]?.numero
+    if (firstDomain) {
+      console.log(`🔍 Test 2: Testing search with domain ${firstDomain}...`)
+      const searchTest = await testApiCall('/aides/', { ape: 'A', domaine: firstDomain })
+      results.tests.search = {
+        ...searchTest,
+        params: { ape: 'A', domaine: firstDomain },
+        results_count: searchTest.success ? searchTest.data?.nb_dispositifs : 0
+      }
 
-    // Step 3: Test basic search - cereal farms + creation domain
-    console.log('🔍 Step 2: Testing search /aides/ with known-good params...');
-    const search = await jget('/aides/', { ape: '0111Z', domaine });
-    diagnostics.steps.search = {
-      success: search.ok,
-      status: search.status,
-      url: search.url,
-      params: { ape: '0111Z', domaine },
-      results: search.ok ? {
-        idr: search.body?.idr,
-        nb_dispositifs: search.body?.nb_dispositifs,
-        depassement: search.body?.depassement,
-        dispositifs_count: search.body?.dispositifs?.length || 0
-      } : null,
-      error: search.ok ? null : search.body
-    };
-
-    // Step 4: If we got results, try fetching one detail
-    if (search.ok && search.body?.dispositifs?.length) {
-      console.log('📄 Step 3: Testing details fetch /aide/...');
-      const idr = search.body.idr;
-      const numero = search.body.dispositifs[0].numero;
-      
-      const details = await jget('/aide/', { requete: idr, dispositif: numero });
-      diagnostics.steps.details = {
-        success: details.ok,
-        status: details.status,
-        url: details.url,
-        params: { requete: idr, dispositif: numero },
-        has_fiche: details.ok && details.body?.ficheDispositif ? true : false,
-        error: details.ok ? null : details.body
-      };
-    } else {
-      console.log('⚠️ Skipping details test - no search results');
-      diagnostics.steps.details = {
-        skipped: 'No search results to test with'
-      };
+      // Test 3: Details fetch if we have results
+      if (searchTest.success && searchTest.data?.dispositifs?.length) {
+        console.log('📄 Test 3: Testing details fetch...')
+        const idr = searchTest.data.idr
+        const numero = searchTest.data.dispositifs[0].numero
+        
+        const detailsTest = await testApiCall('/aide/', { requete: idr, dispositif: numero })
+        results.tests.details = {
+          ...detailsTest,
+          params: { requete: idr, dispositif: numero }
+        }
+      }
     }
 
-    // Step 5: Test other reference lists
-    console.log('📚 Step 4: Testing other reference lists...');
-    const otherLists = ['moyens', 'naf', 'regions'];
-    diagnostics.steps.reference_lists = {};
+    // Test 4: Other reference lists
+    console.log('📚 Test 4: Testing other reference lists...')
+    const referenceLists = ['moyens', 'naf', 'regions']
+    results.tests.reference_lists = {}
     
-    for (const listType of otherLists) {
-      const result = await jget(`/liste/${listType}`);
-      diagnostics.steps.reference_lists[listType] = {
-        success: result.ok,
-        status: result.status,
-        count: result.ok ? result.body?.length : 0,
-        error: result.ok ? null : result.body
-      };
+    for (const listType of referenceLists) {
+      const listTest = await testApiCall(`/liste/${listType}`)
+      results.tests.reference_lists[listType] = {
+        success: listTest.success,
+        count: listTest.success ? listTest.data?.length : 0,
+        error: listTest.success ? null : listTest.error
+      }
     }
 
-    const overallSuccess = diagnostics.steps.domains.success && 
-                          diagnostics.steps.search.success;
+    const overallSuccess = results.tests.domains.success && 
+                          (results.tests.search?.success || false)
     
-    console.log(`🏁 Health check complete. Overall: ${overallSuccess ? 'SUCCESS' : 'FAILED'}`);
+    console.log(`🏁 Health check complete. Overall: ${overallSuccess ? 'SUCCESS' : 'FAILED'}`)
 
     return new Response(JSON.stringify({
       success: overallSuccess,
       summary: {
-        auth_working: diagnostics.steps.domains.success,
-        search_working: diagnostics.steps.search.success,
-        details_working: diagnostics.steps.details?.success || false,
-        total_subsidies_found: diagnostics.steps.search?.results?.nb_dispositifs || 0
+        auth_configured: results.auth_configured,
+        auth_working: results.tests.domains.success,
+        search_working: results.tests.search?.success || false,
+        details_working: results.tests.details?.success || false,
+        total_subsidies_available: results.tests.search?.results_count || 0
       },
-      diagnostics
+      results
     }, null, 2), { 
       status: overallSuccess ? 200 : 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    })
 
   } catch (e) {
-    console.log(`💥 Health check failed with exception: ${e}`);
+    console.log(`💥 Health check failed with exception: ${e}`)
     return new Response(JSON.stringify({ 
+      success: false,
       error: String(e),
       stack: e instanceof Error ? e.stack : undefined
     }), { 
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    })
   }
-});
+})
