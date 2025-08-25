@@ -87,7 +87,15 @@ export const ApiSyncDashboard: React.FC = () => {
     try {
       console.log(`Starting sync for ${apiSource}...`);
       
-      const { data, error } = await supabase.functions.invoke(`sync-${apiSource}`, {
+      // Map API sources to actual function names
+      const functionMap: { [key: string]: string } = {
+        'les-aides-enhanced': 'sync-les-aides-optimal',
+        'aides-territoires': 'sync-aides-territoires', // TODO: Create this function
+        'romania-data': 'sync-romania-data' // TODO: Create this function
+      };
+      
+      const functionName = functionMap[apiSource] || `sync-${apiSource}`;
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: { sync_type: 'incremental' }
       });
 
