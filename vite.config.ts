@@ -31,26 +31,19 @@ export default defineConfig(({ mode }) => ({
           'supabase-vendor': ['@supabase/supabase-js'],
           'utils-vendor': ['date-fns', 'clsx', 'class-variance-authority', 'tailwind-merge'],
           'chart-vendor': ['recharts'], // Heavy charting library
-          'data-vendor': ['mammoth', 'pdf-parse', 'xlsx'], // Heavy document processing libraries
         }
       }
     },
-    // Enable tree shaking and minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: mode === 'production',
-        drop_debugger: mode === 'production',
-        pure_funcs: mode === 'production' ? ['console.log', 'console.warn'] : [],
-      }
-    },
+    // Enable CSS code splitting to reduce blocking
+    cssCodeSplit: true,
+    // Enable minification without terser
+    minify: mode === 'production',
     // Reduce chunk size threshold to split large chunks
     chunkSizeWarningLimit: 200, // KB
   },
   // Optimize dependencies
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-    exclude: ['recharts', 'mammoth', 'pdf-parse', 'xlsx'] // Exclude heavy libs from pre-bundling
+    include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query']
   },
   // Improve build performance and reduce bundle size
   esbuild: {
