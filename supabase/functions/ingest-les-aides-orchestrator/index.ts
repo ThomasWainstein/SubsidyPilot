@@ -97,9 +97,9 @@ Deno.serve(async (req) => {
         subsidies = await backfillIncompleteSubsidies(max_requests)
         console.log(`🔄 Prepared ${subsidies.length} subsidies for backfill`)
       } else {
-        // 3b. FULL SYNC: Fetch fresh data using comprehensive search
-        subsidies = await fetchLesAidesDataComprehensive(limit, max_requests)
-        console.log(`📥 Fetched ${subsidies.length} subsidies from comprehensive search`)
+        // 3b. FULL SYNC: Use same simple approach as manual sync
+        subsidies = await fetchLesAidesDataSimple()
+        console.log(`📥 Fetched ${subsidies.length} subsidies using simple API`)
       }
 
       if (subsidies.length === 0) {
@@ -292,6 +292,42 @@ async function backfillIncompleteSubsidies(maxRequests: number) {
   return backfilledItems
 }
 
+async function fetchLesAidesDataSimple() {
+  console.log('🔍 Fetching data using simple API (same as manual sync)')
+  
+  try {
+    const response = await fetch('https://les-aides.fr/api/aides/', {
+      headers: {
+        'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+    }
+
+    const subsidies = await response.json()
+    console.log(`📊 Fetched ${subsidies?.length || 0} subsidies from simple API`)
+    
+    // Return subsidies in format expected by adapter
+    if (Array.isArray(subsidies)) {
+      return subsidies.map(subsidy => ({
+        numero: subsidy.id || crypto.randomUUID(),
+        nom: subsidy.title || subsidy.name || 'Untitled Aid',
+        resume: subsidy.description || subsidy.details || '',
+        // Add other fields as needed for adapter
+        raw_data: subsidy
+      }))
+    }
+    
+    return []
+  } catch (error) {
+    console.error('❌ Simple API fetch failed:', error)
+    return []
+  }
+}
+
 async function fetchLesAidesDataComprehensive(limit: number, maxRequests: number) {
   console.log(`🔍 Starting comprehensive les-aides.fr data fetch (limit: ${limit}, max_requests: ${maxRequests})`)
 
@@ -407,35 +443,13 @@ function buildComprehensiveSearchScenarios(): SearchScenario[] {
 }
 
 async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchResponse | null> {
-  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
-  if (!apiKey) {
-    throw new Error('LES_AIDES_API_KEY environment variable not found')
-  }
-
-  const params = new URLSearchParams({
-    ape: scenario.ape,
-    format: 'json'
-  })
-  
-  // Handle domain array or single value
-  if (Array.isArray(scenario.domaine)) {
-    scenario.domaine.forEach(d => params.append('domaine[]', d.toString()))
-  } else {
-    params.append('domaine', scenario.domaine.toString())
-  }
-  
-  // Add geographical filters if specified
-  if (scenario.region) params.append('region', scenario.region.toString())
-  if (scenario.departement) params.append('departement', scenario.departement)
-
-  const url = `https://api.les-aides.fr/aides/?${params}`
+  // Use the same working API as manual sync - no API key required
+  const url = `https://les-aides.fr/api/aides/`
   
   const response = await fetch(url, {
     headers: {
-      'X-IDC': apiKey,
-      'Accept': 'application/json',
-      'Accept-Encoding': 'gzip',
-      'User-Agent': 'AgriTool/ingest-les-aides (supabase edge)'
+      'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+      'Accept': 'application/json'
     }
   })
 
@@ -460,20 +474,14 @@ async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchRe
 }
 
 async function fetchDeviceDetails(deviceNumber: number, requestId: number) {
-  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
-  if (!apiKey) {
-    throw new Error('LES_AIDES_API_KEY environment variable not found')
-  }
-
+  // Use the same working API as manual sync - no API key required
   try {
-    const url = `https://api.les-aides.fr/aide/?requete=${requestId}&dispositif=${deviceNumber}&format=json`
+    const url = `https://les-aides.fr/api/aides/`
     
     const response = await fetch(url, {
       headers: {
-        'X-IDC': apiKey,
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'User-Agent': 'AgriTool/ingest-les-aides (supabase edge)'
+        'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+        'Accept': 'application/json'
       }
     })
 
@@ -498,6 +506,29 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number) {
 }
 
 async function getFreshIdr(): Promise<number | null> {
+  // Use the same working API as manual sync
+  try {
+    const response = await fetch('https://les-aides.fr/api/aides/', {
+      headers: {
+        'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      console.error(`Failed to get fresh idr: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+    return data.idr || null
+  } catch (error) {
+    console.error('Error getting fresh idr:', error)
+    return null
+  }
+}
+
+async function getOriginalFreshIdr(): Promise<number | null> {
   const apiKey = Deno.env.get('LES_AIDES_API_KEY')
   if (!apiKey) return null
 
