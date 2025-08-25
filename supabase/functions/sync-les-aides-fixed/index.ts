@@ -287,30 +287,42 @@ serve(async (req) => {
               console.log('✨ NEW subsidy - will be added to database');
             }
             
-            // Map Les-Aides API fields to our database schema
+            // Map Les-Aides API fields to correct database schema
             const subsidyData = {
               id: subsidyId,
-              title: subsidy.nom || subsidy.title || 'Untitled Aid',
-              description: subsidy.objectif || subsidy.description || subsidy.details || '',
-              amount: subsidy.montant || subsidy.amount || subsidy.budget || null,
-              region: subsidy.territoire || subsidy.region || 'France',
+              code: externalId || `les-aides-${Date.now()}`, // Required field
+              title: { 
+                fr: subsidy.nom || subsidy.title || 'Untitled Aid' 
+              }, // JSONB format
+              description: { 
+                fr: subsidy.objectif || subsidy.description || subsidy.details || '' 
+              }, // JSONB format
+              amount_min: subsidy.montant_min || null,
+              amount_max: subsidy.montant_max || subsidy.montant || subsidy.amount || null,
+              region: subsidy.territoire ? [subsidy.territoire] : (subsidy.region ? [subsidy.region] : ['France']), // Array format
               deadline: subsidy.date_fin || subsidy.deadline || subsidy.end_date || null,
-              eligibility: subsidy.beneficiaires || (Array.isArray(subsidy.eligibility) ? subsidy.eligibility.join(', ') : subsidy.eligibility) || '',
-              sector: subsidy.domaine || subsidy.sector || subsidy.category || 'General',
+              eligibility_criteria: subsidy.beneficiaires ? { 
+                fr: Array.isArray(subsidy.beneficiaires) ? subsidy.beneficiaires.join(', ') : subsidy.beneficiaires 
+              } : null, // JSONB format
+              categories: subsidy.domaine ? [subsidy.domaine] : (subsidy.sector ? [subsidy.sector] : [subsidy.category || 'General']), // Array format
               funding_type: subsidy.type_aide || subsidy.funding_type || 'Grant',
               application_url: subsidy.url || subsidy.application_link || null,
               source: 'les-aides-fr',
               status: 'active',
+              external_id: externalId,
+              api_source: 'les-aides-fr',
+              currency: 'EUR',
+              language: ['fr'],
               created_at: existingSubsidy ? undefined : new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              external_id: (subsidy.numero || subsidy.id)?.toString() || null
+              last_synced_at: new Date().toISOString()
             };
             
             console.log('💾 Attempting database upsert...');
             console.log('📝 Subsidy data preview:', {
               id: subsidyData.id,
-              title: subsidyData.title?.substring(0, 50),
-              description: subsidyData.description?.substring(0, 50),
+              title: subsidyData.title?.fr?.substring(0, 50),
+              description: subsidyData.description?.fr?.substring(0, 50),
               external_id: subsidyData.external_id
             });
 
