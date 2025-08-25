@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      agencies: {
+        Row: {
+          agency_type: string | null
+          code: string | null
+          contact_info: Json | null
+          country_code: string | null
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          agency_type?: string | null
+          code?: string | null
+          contact_info?: Json | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          agency_type?: string | null
+          code?: string | null
+          contact_info?: Json | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       ai_content_errors: {
         Row: {
           created_at: string | null
@@ -2184,6 +2220,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ingestion_sources: {
+        Row: {
+          base_url: string | null
+          code: string
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          last_success_at: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_url?: string | null
+          code: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_success_at?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_url?: string | null
+          code?: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_success_at?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       integration_audit_log: {
         Row: {
           component_from: string
@@ -3205,6 +3277,7 @@ export type Database = {
       subsidies: {
         Row: {
           agency: string | null
+          agency_id: string | null
           amount_max: number | null
           amount_min: number | null
           api_source: string | null
@@ -3226,6 +3299,7 @@ export type Database = {
           id: string
           import_job_id: string | null
           language: string[] | null
+          last_synced_at: string | null
           legal_entities: string[] | null
           matching_tags: string[] | null
           raw_content: Json | null
@@ -3233,14 +3307,17 @@ export type Database = {
           record_status: string | null
           region: string[] | null
           scrape_date: string | null
+          source: string | null
           source_url: string | null
           status: string | null
           tags: string[] | null
           title: Json
           updated_at: string | null
+          version_hash: string | null
         }
         Insert: {
           agency?: string | null
+          agency_id?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3262,6 +3339,7 @@ export type Database = {
           id?: string
           import_job_id?: string | null
           language?: string[] | null
+          last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
@@ -3269,14 +3347,17 @@ export type Database = {
           record_status?: string | null
           region?: string[] | null
           scrape_date?: string | null
+          source?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
           title: Json
           updated_at?: string | null
+          version_hash?: string | null
         }
         Update: {
           agency?: string | null
+          agency_id?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3298,6 +3379,7 @@ export type Database = {
           id?: string
           import_job_id?: string | null
           language?: string[] | null
+          last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
           raw_content?: Json | null
@@ -3305,13 +3387,23 @@ export type Database = {
           record_status?: string | null
           region?: string[] | null
           scrape_date?: string | null
+          source?: string | null
           source_url?: string | null
           status?: string | null
           tags?: string[] | null
           title?: Json
           updated_at?: string | null
+          version_hash?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subsidies_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subsidies_backup: {
         Row: {
@@ -4465,6 +4557,56 @@ export type Database = {
           },
         ]
       }
+      sync_items: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          error_type: string | null
+          external_id: string
+          id: string
+          item_data: Json | null
+          item_type: string | null
+          processed_at: string | null
+          retry_count: number | null
+          run_id: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          external_id: string
+          id?: string
+          item_data?: Json | null
+          item_type?: string | null
+          processed_at?: string | null
+          retry_count?: number | null
+          run_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          external_id?: string
+          id?: string
+          item_data?: Json | null
+          item_type?: string | null
+          processed_at?: string | null
+          retry_count?: number | null
+          run_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sync_progress: {
         Row: {
           api_source: string
@@ -4510,6 +4652,57 @@ export type Database = {
           sync_session_id?: string
           total_pages?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sync_runs: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          error_message: string | null
+          failed: number | null
+          finished_at: string | null
+          id: string
+          inserted: number | null
+          run_type: string | null
+          skipped: number | null
+          source_code: string
+          started_at: string | null
+          status: string | null
+          total: number | null
+          updated: number | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          failed?: number | null
+          finished_at?: string | null
+          id?: string
+          inserted?: number | null
+          run_type?: string | null
+          skipped?: number | null
+          source_code: string
+          started_at?: string | null
+          status?: string | null
+          total?: number | null
+          updated?: number | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          failed?: number | null
+          finished_at?: string | null
+          id?: string
+          inserted?: number | null
+          run_type?: string | null
+          skipped?: number | null
+          source_code?: string
+          started_at?: string | null
+          status?: string | null
+          total?: number | null
+          updated?: number | null
         }
         Relationships: []
       }
@@ -5029,6 +5222,10 @@ export type Database = {
       check_production_readiness: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      cleanup_stuck_syncs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       complete_data_purge: {
         Args: Record<PropertyKey, never>

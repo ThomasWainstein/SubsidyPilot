@@ -184,3 +184,9 @@ verify_jwt = false
 
 [functions.streaming-job-processor]
 verify_jwt = false
+
+[functions.adapter-les-aides-fr]
+verify_jwt = false
+
+[functions.ingest-les-aides-orchestrator]
+verify_jwt = false
