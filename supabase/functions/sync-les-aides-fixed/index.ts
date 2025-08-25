@@ -5,160 +5,322 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Rate limiting constants
-const DAILY_QUOTA = 720;
-const API_BASE_URL = 'https://api.les-aides.fr';
+// Initialize Supabase client
+const supabaseUrl = 'https://gvfgvbztagafjykncwto.supabase.co'
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-// Rate limiting helper using simple counter (in production, use Redis)
-let dailyRequestCount = 0;
-let lastResetDate = new Date().toDateString();
-
-function checkRateLimit(): boolean {
-  const today = new Date().toDateString();
-  if (today !== lastResetDate) {
-    dailyRequestCount = 0;
-    lastResetDate = today;
-  }
-  
-  if (dailyRequestCount >= DAILY_QUOTA) {
-    return false;
-  }
-  
-  dailyRequestCount++;
-  return true;
+if (!supabaseServiceRoleKey) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
 }
 
-async function makeApiRequest(path: string, params: Record<string, any> = {}) {
-  if (!checkRateLimit()) {
-    throw new Error(`Daily quota of ${DAILY_QUOTA} requests exceeded`);
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+
+// Rate limiting - check daily quota
+async function checkRateLimit(): Promise<boolean> {
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  const { data, error } = await supabase
+    .from('api_rate_limits')
+    .select('request_count')
+    .eq('api_source', 'les-aides-fr')
+    .eq('date', today)
+    .single()
+
+  if (error && error.code !== 'PGRST116') { // Ignore "not found" errors
+    console.log(`⚠️ Rate limit check failed: ${error.message}`)
+    return true // Allow on error
   }
 
-  // Get credentials from environment
-  const idcKey = Deno.env.get('LES_AIDES_IDC') || '711e55108232352685cca98b49777e6b836bfb79';
-  const email = Deno.env.get('LES_AIDES_EMAIL');
-  const password = Deno.env.get('LES_AIDES_PASSWORD');
-
-  // Build query string
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach(v => searchParams.append(`${key}[]`, String(v)));
-    } else if (value !== undefined && value !== null) {
-      searchParams.append(key, String(value));
-    }
-  });
-
-  const url = `${API_BASE_URL}${path}?${searchParams.toString()}`;
-  console.log(`🌐 API Request: ${url}`);
-
-  // Prepare headers
-  const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'Accept-Encoding': 'gzip',
-    'User-Agent': 'SubsidyPilot/1.0 (backend)',
-  };
-
-  // Try X-IDC first, then fallback to Basic auth
-  if (idcKey) {
-    headers['X-IDC'] = idcKey;
-  } else if (email && password) {
-    const credentials = btoa(`${email}:${password}`);
-    headers['Authorization'] = `Basic ${credentials}`;
-  } else {
-    throw new Error('No authentication credentials available');
+  const currentCount = data?.request_count || 0
+  const dailyLimit = 720 // Les-Aides.fr daily quota
+  
+  console.log(`📊 API usage today: ${currentCount}/${dailyLimit}`)
+  
+  if (currentCount >= dailyLimit) {
+    console.log('🚫 Daily quota exceeded, stopping sync')
+    return false
   }
+  
+  return true
+}
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers,
-    signal: AbortSignal.timeout(30000)
-  });
+async function incrementRateLimit(): Promise<void> {
+  const today = new Date().toISOString().split('T')[0]
+  
+  const { error } = await supabase.rpc('increment_api_rate_count', {
+    p_api_source: 'les-aides-fr',
+    p_date: today
+  })
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    console.error(`❌ API Error ${response.status}:`, errorText);
+  if (error) {
+    console.log(`⚠️ Failed to update rate limit: ${error.message}`)
+  }
+}
+
+// Les-Aides.fr API client following exact spec
+class LesAidesClient {
+  private baseUrl = 'https://api.les-aides.fr'
+  private headers: Record<string, string>
+  
+  constructor() {
+    // Try X-IDC first, fallback to Basic auth (per spec)
+    const idc = Deno.env.get('LES_AIDES_IDC')?.trim()
+    const email = Deno.env.get('LES_AIDES_EMAIL')
+    const password = Deno.env.get('LES_AIDES_PASSWORD')
     
-    if (response.status === 401) {
-      throw new Error('Authentication failed - check credentials');
-    } else if (response.status === 403) {
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(`API Error: ${errorData.exception} (field: ${errorData.field})`);
-      } catch {
-        throw new Error(`API Error 403: ${errorText}`);
+    this.headers = {
+      'Accept': 'application/json',
+      'Accept-Encoding': 'gzip',
+      'User-Agent': 'SubsidyPilot/1.0'
+    }
+    
+    if (idc) {
+      this.headers['X-IDC'] = idc
+      console.log('🔑 Using X-IDC authentication')
+    } else if (email && password) {
+      const credentials = btoa(`${email}:${password}`)
+      this.headers['Authorization'] = `Basic ${credentials}`
+      console.log('🔑 Using Basic authentication')
+    } else {
+      throw new Error('No authentication credentials found. Set LES_AIDES_IDC or LES_AIDES_EMAIL + LES_AIDES_PASSWORD')
+    }
+  }
+
+  async makeRequest(endpoint: string, params: Record<string, any> = {}): Promise<any> {
+    // Rate limiting
+    await incrementRateLimit()
+    
+    const url = new URL(endpoint, this.baseUrl)
+    
+    // Handle array parameters with proper syntax (domaine[]=value&domaine[]=value2)
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach(v => url.searchParams.append(`${key}[]`, String(v)))
+      } else if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value))
       }
-    } else if (response.status === 429) {
-      throw new Error('Rate limit exceeded');
+    })
+
+    console.log(`🌐 API Request: ${url.toString()}`)
+    
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.headers
+      })
+      
+      const responseText = await response.text()
+      
+      if (!response.ok) {
+        const errorMsg = `API Error ${response.status}: ${responseText}`
+        console.log(`❌ ${errorMsg}`)
+        throw new Error(errorMsg)
+      }
+      
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        throw new Error(`Invalid JSON response: ${responseText}`)
+      }
+      
+      console.log(`✅ Success: ${Array.isArray(data) ? data.length + ' items' : 'data received'}`)
+      return data
+      
+    } catch (error) {
+      console.log(`❌ Request failed: ${error.message}`)
+      throw error
+    }
+  }
+}
+
+// Reference data cache with proper typing
+interface ReferenceCache {
+  domaines: Array<{numero: number, libelle: string}>
+  moyens: Array<{numero: number, libelle: string}>
+  naf: Array<{code: string, libelle: string}>
+  regions: Array<{numero: string, nom: string}>
+  departements: Array<{numero: string, nom: string}>
+}
+
+async function loadReferenceData(client: LesAidesClient): Promise<ReferenceCache> {
+  console.log('📋 Fetching reference lists...')
+  
+  const references: ReferenceCache = {
+    domaines: [],
+    moyens: [],
+    naf: [],
+    regions: [],
+    departements: []
+  }
+
+  try {
+    // Fetch reference data sequentially with delays to respect rate limits
+    references.domaines = await client.makeRequest('/liste/domaines')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    references.moyens = await client.makeRequest('/liste/moyens') 
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    references.naf = await client.makeRequest('/liste/naf')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    references.regions = await client.makeRequest('/liste/regions')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    references.departements = await client.makeRequest('/liste/departements')
+    
+    console.log(`✅ Reference lists loaded successfully`)
+    console.log(`📊 Loaded domains: ${references.domaines.length}, moyens: ${references.moyens.length}, NAF: ${references.naf.length}`)
+    
+    return references
+    
+  } catch (error) {
+    console.error(`❌ Failed to load reference data: ${error.message}`)
+    throw error
+  }
+}
+
+async function performSearches(client: LesAidesClient, references: ReferenceCache): Promise<any[]> {
+  // Check quota before starting
+  if (!await checkRateLimit()) {
+    throw new Error('Daily quota exceeded before starting searches')
+  }
+
+  // Build search strategies using valid domain IDs from reference data
+  const searchStrategies: Array<{name: string, params: Record<string, any>}> = []
+  
+  // Find specific domains by label
+  const creationDomain = references.domaines.find(d => d.libelle.toLowerCase().includes('création'))
+  const developmentDomain = references.domaines.find(d => d.libelle.toLowerCase().includes('développement'))
+  const innovationDomain = references.domaines.find(d => d.libelle.toLowerCase().includes('innovation'))
+  
+  // Fallback to first few domains if specific ones not found
+  const fallbackDomains = references.domaines.slice(0, 3).map(d => d.numero)
+  
+  if (creationDomain) {
+    searchStrategies.push(
+      { name: 'Agriculture - Création', params: { ape: 'A', domaine: creationDomain.numero } },
+      { name: 'Industrie - Création', params: { ape: 'C', domaine: creationDomain.numero } }
+    )
+  }
+  
+  if (developmentDomain) {
+    searchStrategies.push(
+      { name: 'Agriculture - Développement', params: { ape: 'A', domaine: developmentDomain.numero } },
+      { name: 'Services - Développement', params: { ape: 'J', domaine: developmentDomain.numero } }
+    )
+  }
+  
+  // Add some multi-domain searches using first available domains
+  if (fallbackDomains.length >= 2) {
+    searchStrategies.push(
+      { name: 'Multi-secteur Agriculture', params: { ape: 'A', domaine: fallbackDomains.slice(0, 2) } },
+      { name: 'Multi-secteur Services', params: { ape: 'J', domaine: fallbackDomains.slice(0, 2) } }
+    )
+  }
+  
+  // Single domain fallback if no good matches found
+  if (searchStrategies.length === 0 && fallbackDomains.length > 0) {
+    searchStrategies.push(
+      { name: 'Agriculture - Premier domaine', params: { ape: 'A', domaine: fallbackDomains[0] } },
+      { name: 'Services - Premier domaine', params: { ape: 'J', domaine: fallbackDomains[0] } }
+    )
+  }
+
+  const allSubsidies: any[] = []
+  const errors: any[] = []
+  
+  console.log(`🔍 Starting ${searchStrategies.length} search strategies...`)
+
+  for (const [index, strategy] of searchStrategies.entries()) {
+    // Check quota before each search
+    if (!await checkRateLimit()) {
+      console.log('🚫 Daily quota reached, stopping searches')
+      break
     }
     
-    throw new Error(`API Error ${response.status}: ${errorText}`);
-  }
-
-  return await response.json();
-}
-
-async function searchAides(params: {
-  ape?: string;
-  domaine?: number | number[];
-  siret?: string;
-  siren?: string;
-  moyen?: number | number[];
-  filiere?: number;
-  region?: number;
-  departement?: string;
-  commune?: number | string;
-}) {
-  return await makeApiRequest('/aides/', params);
-}
-
-async function loadFiche(requete: number, dispositif: number) {
-  return await makeApiRequest('/aide/', { requete, dispositif });
-}
-
-async function getReferenceLists() {
-  const lists: Record<string, any> = {};
-  const endpoints = [
-    'domaines',
-    'moyens',
-    'filieres',
-    'regions',
-    'departements'
-  ];
-
-  for (const endpoint of endpoints) {
+    console.log(`🎯 Strategy ${index + 1}/${searchStrategies.length}: ${strategy.name}`)
+    
     try {
-      console.log(`📋 Fetching reference list: ${endpoint}`);
-      lists[endpoint] = await makeApiRequest(`/liste/${endpoint}`);
-      // Small delay between reference requests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Add delay between searches
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const searchResult = await client.makeRequest('/aides/', strategy.params)
+      
+      console.log(`📊 Found ${searchResult.nb_dispositifs || 0} dispositifs`)
+      
+      if (searchResult.depassement) {
+        console.warn(`⚠️ Results truncated due to depassement for ${strategy.name}`)
+      }
+      
+      if (searchResult.dispositifs && Array.isArray(searchResult.dispositifs)) {
+        // Process dispositifs and map to subsidy format
+        for (const dispositif of searchResult.dispositifs.slice(0, 10)) { // Limit to conserve quota
+          try {
+            const subsidy = {
+              code: `les-aides-${dispositif.numero}`,
+              title: { fr: dispositif.nom || 'Untitled' },
+              description: { fr: dispositif.resume || '' },
+              source_url: dispositif.uri,
+              source: 'les-aides-fr',
+              country: 'france',
+              status: 'open',
+              agency: dispositif.sigle || 'les-aides.fr',
+              external_id: String(dispositif.numero),
+              level: dispositif.implantation === 'E' ? 'european' : 
+                     dispositif.implantation === 'N' ? 'national' : 'regional',
+              tags: dispositif.domaines ? dispositif.domaines.map((d: number) => `domain-${d}`) : [],
+              funding_type: 'grant', // Default for now
+              last_synced_at: new Date().toISOString(),
+              raw_data: dispositif
+            }
+
+            allSubsidies.push(subsidy)
+            
+          } catch (mappingError) {
+            console.error(`Mapping error for dispositif ${dispositif.numero}:`, mappingError)
+            errors.push({
+              strategy: strategy.name,
+              dispositif: dispositif.numero,
+              error: mappingError.message
+            })
+          }
+        }
+        
+        // Log search metadata
+        if (searchResult.idr) {
+          console.log(`💾 Search IDR: ${searchResult.idr}`)
+        }
+      }
+      
     } catch (error) {
-      console.error(`Failed to fetch ${endpoint}:`, error.message);
-      lists[endpoint] = [];
+      console.error(`❌ Strategy ${strategy.name} failed:`, error.message)
+      errors.push({
+        strategy: strategy.name,
+        error: error.message
+      })
     }
   }
 
-  return lists;
+  console.log(`📊 Total subsidies collected: ${allSubsidies.length}`)
+  
+  if (allSubsidies.length === 0) {
+    throw new Error(`No subsidies found. Errors: ${JSON.stringify(errors, null, 2)}`)
+  }
+  
+  return allSubsidies
 }
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    console.log('🚀 Starting les-aides.fr API sync...');
+    console.log('🚀 Starting les-aides.fr API sync...')
 
     // Log sync start
     const { data: logData } = await supabase
@@ -169,177 +331,55 @@ Deno.serve(async (req) => {
         status: 'running'
       })
       .select()
-      .single();
+      .single()
 
     if (!logData) {
-      throw new Error('Failed to create sync log');
+      throw new Error('Failed to create sync log')
     }
 
-    const syncLogId = logData.id;
+    const syncLogId = logData.id
 
     try {
-      console.log('🔑 Testing API authentication...');
+      // Initialize API client
+      const client = new LesAidesClient()
       
-      // First, get reference lists to validate API access and cache them
-      console.log('📋 Fetching reference lists...');
-      const referenceLists = await getReferenceLists();
-      console.log('✅ Reference lists loaded successfully');
-      console.log(`📊 Loaded ${Object.keys(referenceLists).length} reference lists`);
-
-      // Log available domains for reference
-      if (referenceLists.domaines && Array.isArray(referenceLists.domaines)) {
-        console.log('📋 Available domains:');
-        referenceLists.domaines.slice(0, 10).forEach((domain: any) => {
-          console.log(`   ${domain.numero}: ${domain.libelle}`);
-        });
-      }
-
+      // Load reference data first
+      const references = await loadReferenceData(client)
+      
       // Clean existing data
-      console.log('🧹 Cleaning existing data...');
-      const purgeResult = await supabase.rpc('safe_data_purge');
-      console.log('✅ Data purged:', purgeResult.data);
-
-      // Define search strategies using proper API parameters from documentation
-      // Using real domain numbers from the reference list
-      const searchStrategies = [
-        // Agriculture sector
-        { name: 'Agriculture - Création/Reprise', params: { ape: 'A', domaine: 790 } },
-        { name: 'Agriculture - Développement', params: { ape: 'A', domaine: 798 } },
-        { name: 'Agriculture - Innovation', params: { ape: 'A', domaine: 799 } },
-        
-        // Manufacturing
-        { name: 'Industrie - Innovation', params: { ape: 'C', domaine: 798 } },
-        { name: 'Industrie - Création', params: { ape: 'C', domaine: 790 } },
-        
-        // Commerce
-        { name: 'Commerce - Développement', params: { ape: 'G', domaine: 798 } },
-        { name: 'Commerce - Création', params: { ape: 'G', domaine: 790 } },
-        
-        // Services
-        { name: 'Services - Numérique', params: { ape: 'J', domaine: 798 } },
-        { name: 'Services - Création', params: { ape: 'J', domaine: 790 } },
-        
-        // Multi-domain searches
-        { name: 'All sectors - Multiple domains', params: { ape: 'A', domaine: [790, 798] } },
-        
-        // Specific funding types
-        { name: 'Subventions tous secteurs', params: { ape: 'A', domaine: 798, moyen: 833 } },
-        { name: 'Prêts tous secteurs', params: { ape: 'C', domaine: 798, moyen: 827 } }
-      ];
-
-      let allSubsidies: any[] = [];
-      let totalSearches = 0;
-      let errors: any[] = [];
-
-      console.log(`🔍 Starting ${searchStrategies.length} search strategies...`);
-
-      for (const strategy of searchStrategies) {
-        console.log(`🎯 Trying strategy: ${strategy.name}`);
-        
-        try {
-          // Add delay between searches to respect rate limits
-          if (totalSearches > 0) {
-            console.log('⏱️ Rate limiting delay...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-
-          const searchResult = await searchAides(strategy.params);
-          
-          console.log(`📊 Strategy ${strategy.name}: Found ${searchResult.nb_dispositifs || 0} dispositifs`);
-          
-          if (searchResult.depassement) {
-            console.warn(`⚠️ Too many results for ${strategy.name} - refining search recommended`);
-          }
-          
-          if (searchResult.dispositifs && searchResult.dispositifs.length > 0) {
-            // Process each dispositif
-            for (const dispositif of searchResult.dispositifs.slice(0, 20)) { // Limit to first 20 to conserve quota
-              try {
-                // Map dispositif to our schema
-                const subsidy = {
-                  code: `les-aides-${dispositif.numero}`,
-                  title: { fr: dispositif.nom },
-                  description: { fr: dispositif.resume || '' },
-                  source_url: dispositif.uri,
-                  source: 'les-aides-fr',
-                  country: 'france',
-                  status: 'open',
-                  agency: dispositif.sigle || 'les-aides.fr',
-                  external_id: `les-aides-${dispositif.numero}`,
-                  level: dispositif.implantation === 'E' ? 'european' : 
-                         dispositif.implantation === 'N' ? 'national' : 'regional',
-                  tags: dispositif.domaines ? dispositif.domaines.map((d: number) => `domain-${d}`) : [],
-                  funding_type: dispositif.moyens && dispositif.moyens.length > 0 ? 
-                    (dispositif.moyens.includes(833) ? 'grant' : 
-                     dispositif.moyens.includes(827) ? 'loan' : 'other') : 'grant',
-                  last_synced_at: new Date().toISOString(),
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  raw_data: dispositif
-                };
-
-                allSubsidies.push(subsidy);
-                
-              } catch (mappingError) {
-                console.error('Mapping error for dispositif:', mappingError);
-                errors.push({
-                  strategy: strategy.name,
-                  dispositif: dispositif.numero,
-                  error: mappingError.message
-                });
-              }
-            }
-
-            // Store search metadata for potential reuse
-            if (searchResult.idr) {
-              console.log(`💾 Search IDR for ${strategy.name}: ${searchResult.idr}`);
-            }
-          }
-          
-          totalSearches++;
-          
-        } catch (error) {
-          console.error(`❌ Strategy ${strategy.name} failed:`, error.message);
-          errors.push({
-            strategy: strategy.name,
-            error: error.message
-          });
-        }
-      }
-
-      console.log(`📊 Total subsidies found: ${allSubsidies.length}`);
+      console.log('🧹 Cleaning existing data...')
+      await supabase.rpc('safe_data_purge')
       
-      if (allSubsidies.length === 0) {
-        throw new Error(`No subsidies found. Errors: ${JSON.stringify(errors, null, 2)}`);
-      }
-
+      // Perform searches
+      const allSubsidies = await performSearches(client, references)
+      
       // Remove duplicates based on external_id
       const uniqueSubsidies = allSubsidies.filter((subsidy, index, array) => 
         array.findIndex(s => s.external_id === subsidy.external_id) === index
-      );
+      )
 
-      console.log(`📊 After deduplication: ${uniqueSubsidies.length} unique subsidies`);
+      console.log(`📊 After deduplication: ${uniqueSubsidies.length} unique subsidies`)
 
       // Insert subsidies into database
-      console.log('💾 Inserting subsidies into database...');
-      let insertedCount = 0;
-      let skippedCount = 0;
+      console.log('💾 Inserting subsidies into database...')
+      let insertedCount = 0
+      let skippedCount = 0
 
       for (const subsidy of uniqueSubsidies) {
         try {
           const { error: insertError } = await supabase
             .from('subsidies')
-            .insert(subsidy);
+            .insert(subsidy)
 
           if (insertError) {
-            console.error('Insert error:', insertError);
-            skippedCount++;
+            console.error('Insert error:', insertError.message)
+            skippedCount++
           } else {
-            insertedCount++;
+            insertedCount++
           }
         } catch (insertError) {
-          console.error('Exception during insert:', insertError);
-          skippedCount++;
+          console.error('Exception during insert:', insertError)
+          skippedCount++
         }
       }
 
@@ -351,14 +391,12 @@ Deno.serve(async (req) => {
           records_processed: uniqueSubsidies.length,
           records_added: insertedCount,
           completed_at: new Date().toISOString(),
-          errors: errors.length > 0 ? { 
-            errors, 
-            skipped: skippedCount, 
-            quota_used: dailyRequestCount,
-            reference_lists_loaded: Object.keys(referenceLists).length
+          errors: skippedCount > 0 ? { 
+            skipped: skippedCount,
+            reference_lists_loaded: Object.keys(references).length
           } : null
         })
-        .eq('id', syncLogId);
+        .eq('id', syncLogId)
 
       const result = {
         success: true,
@@ -367,52 +405,46 @@ Deno.serve(async (req) => {
         unique_subsidies: uniqueSubsidies.length,
         inserted: insertedCount,
         skipped: skippedCount,
-        searches_performed: totalSearches,
-        strategies_used: searchStrategies.length,
-        quota_used: dailyRequestCount,
-        quota_remaining: DAILY_QUOTA - dailyRequestCount,
-        reference_lists_loaded: Object.keys(referenceLists).length,
-        errors: errors.length > 0 ? errors : undefined
-      };
+        reference_lists_loaded: Object.keys(references).length
+      }
 
-      console.log('🎉 API Sync completed successfully:', result);
+      console.log('🎉 API Sync completed successfully:', result)
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      });
+      })
 
     } catch (error) {
-      console.error('💥 Sync failed:', error);
+      console.error('💥 Sync failed:', error)
       
       // Update sync log with failure
       await supabase
         .from('api_sync_logs')
         .update({
           status: 'failed',
-          errors: { message: error.message, stack: error.stack, quota_used: dailyRequestCount },
+          errors: { message: error.message, stack: error.stack },
           completed_at: new Date().toISOString()
         })
-        .eq('id', syncLogId);
+        .eq('id', syncLogId)
 
       return new Response(JSON.stringify({
         success: false,
         error: error.message,
-        sync_log_id: syncLogId,
-        quota_used: dailyRequestCount
+        sync_log_id: syncLogId
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
-      });
+      })
     }
 
   } catch (error) {
-    console.error('🚨 Critical error:', error);
+    console.error('🚨 Critical error:', error)
     return new Response(JSON.stringify({
       success: false,
       error: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
-    });
+    })
   }
-});
+})
