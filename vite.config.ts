@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
+        // Enable content-based hashing for better caching
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           // Separate vendor libraries to reduce main bundle size
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
@@ -40,6 +44,8 @@ export default defineConfig(({ mode }) => ({
     minify: mode === 'production',
     // Reduce chunk size threshold to split large chunks
     chunkSizeWarningLimit: 200, // KB
+    // Generate sourcemaps for better debugging while maintaining cache efficiency
+    sourcemap: mode === 'development',
   },
   // Optimize dependencies
   optimizeDeps: {
