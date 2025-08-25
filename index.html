@@ -15,6 +15,15 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- Preconnect to critical origins to reduce network latency -->
+    <link rel="preconnect" href="https://gvfgvbztagafjykncwto.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://vision.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://eu-vision.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://oauth2.googleapis.com" crossorigin>
+    
+    <!-- Preload critical resources to improve loading performance -->
+    <link rel="modulepreload" href="/src/main.tsx">
   </head>
 
   <body>
