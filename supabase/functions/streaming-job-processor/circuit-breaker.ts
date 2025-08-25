@@ -148,19 +148,18 @@ export class ResilientApiClient {
         if (response.status >= 500) {
           if (attempt < this.retryConfig.maxAttempts) {
             const delay = this.calculateBackoffDelay(attempt);
-            console.log(`🔄 Server error ${response.status}. Retrying in ${delay}ms...`);
+            console.log(`�🔄 Server error ${response.status}. Retrying in ${delay}ms...`);
             await this.sleep(delay);
             continue;
           }
         }
 
-        // For other errors or successful responses, parse and return
+        // Return Response object as-is - let caller parse body once
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json() as T;
+        return response as unknown as T;
 
       } catch (error) {
         lastError = error as Error;

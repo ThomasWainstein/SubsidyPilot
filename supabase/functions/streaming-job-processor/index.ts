@@ -8,6 +8,71 @@ import { ProcessingPolicyEngine, AsyncGCSProcessor } from './async-gcs-processor
 import { CircuitBreakerManager } from './circuit-breaker.ts';
 import { PIIRedactor, EUComplianceManager, LogRingBuffer } from './pii-redaction.ts';
 
+// Helper functions for file validation
+function assertFetchableUrl(url: string, correlationId: string, jobId: string): void {
+  let parsed: URL;
+  
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw ErrorTaxonomy.createError(
+      ErrorCode.FILE_DOWNLOAD_FAILED,
+      new Error('Invalid URL format'),
+      { url, correlationId, jobId },
+      { 
+        stage: 'preflight-file-access',
+        severity: 'WARN',
+        source: 'USER',
+        correlationId,
+        jobId
+      }
+    );
+  }
+
+  if (!/^https?:$/i.test(parsed.protocol)) {
+    throw ErrorTaxonomy.createError(
+      ErrorCode.FILE_DOWNLOAD_FAILED,
+      new Error(`Unsupported URL scheme: ${parsed.protocol}. Use http:// or https://`),
+      { 
+        url,
+        scheme: parsed.protocol,
+        correlationId,
+        jobId
+      },
+      { 
+        stage: 'preflight-file-access',
+        severity: 'WARN',
+        source: 'USER',
+        correlationId,
+        jobId
+      }
+    );
+  }
+}
+
+function assertValidPdf(bytes: Uint8Array, correlationId: string, jobId: string): void {
+  const signature = String.fromCharCode(...bytes.slice(0, 5));
+  if (signature !== '%PDF-') {
+    throw ErrorTaxonomy.createError(
+      ErrorCode.ENCODING_FAIL,
+      new Error('Invalid PDF file - missing PDF signature'),
+      { 
+        firstBytes: Array.from(bytes.slice(0, 8)),
+        signature,
+        correlationId,
+        jobId
+      },
+      { 
+        stage: 'ocr-encoding',
+        severity: 'ERROR',
+        source: 'USER',
+        correlationId,
+        jobId
+      }
+    );
+  }
+}
+
 // JWT utility functions for Google Cloud authentication
 async function base64UrlEncode(data: Uint8Array): Promise<string> {
   const base64 = btoa(String.fromCharCode(...data));
@@ -418,9 +483,59 @@ async function processDocumentPipeline(job: any, extractionId: string, correlati
 }
 
 async function downloadDocument(context: any) {
-  console.log(`📥 Downloading document: ${context.job.file_url}`);
+  console.log(`📥 Starting file download: ${context.job.file_name}`);
+  console.log(`🔗 URL: ${context.job.file_url}`);
   
   try {
+    // Preflight URL validation
+    assertFetchableUrl(context.job.file_url, context.correlationId, context.job.id);
+    
+    // Preflight access check
+    console.log(`🔍 Preflight check: HEAD request to verify accessibility`);
+    try {
+      const headResponse = await fetch(context.job.file_url, { method: 'HEAD' });
+      if (!headResponse.ok) {
+        throw ErrorTaxonomy.createError(
+          ErrorCode.FILE_DOWNLOAD_FAILED,
+          new Error(`File not accessible: ${headResponse.status} ${headResponse.statusText}`),
+          { 
+            url: context.job.file_url,
+            status: headResponse.status,
+            statusText: headResponse.statusText,
+            contentLength: headResponse.headers.get('Content-Length'),
+            contentType: headResponse.headers.get('Content-Type'),
+            correlationId: context.correlationId
+          },
+          { 
+            stage: 'preflight-file-access',
+            severity: 'ERROR',
+            source: 'USER',
+            correlationId: context.correlationId,
+            jobId: context.job.id
+          }
+        );
+      }
+      console.log(`✅ Preflight check passed - file accessible`);
+      console.log(`📊 Content-Length: ${headResponse.headers.get('Content-Length')}`);
+      console.log(`📊 Content-Type: ${headResponse.headers.get('Content-Type')}`);
+    } catch (error) {
+      if (error.code) throw error; // Already a ProcessingError
+      
+      throw ErrorTaxonomy.createError(
+        ErrorCode.NETWORK_ERROR,
+        error as Error,
+        { url: context.job.file_url, correlationId: context.correlationId },
+        { 
+          stage: 'preflight-file-access',
+          severity: 'ERROR',
+          source: 'NETWORK',
+          correlationId: context.correlationId,
+          jobId: context.job.id
+        }
+      );
+    }
+    
+    // Actual file download
     const response = await fetch(context.job.file_url);
     if (!response.ok) {
       const error = ErrorTaxonomy.createError(
@@ -443,6 +558,22 @@ async function downloadDocument(context: any) {
     
     const fileBuffer = await response.arrayBuffer();
     console.log(`✅ Downloaded ${fileBuffer.byteLength} bytes`);
+    
+    // Validate file is not empty
+    if (fileBuffer.byteLength === 0) {
+      throw ErrorTaxonomy.createError(
+        ErrorCode.FILE_VALIDATION_FAILED,
+        new Error('Downloaded file is empty'),
+        { fileSize: 0, correlationId: context.correlationId },
+        { 
+          stage: 'file-download',
+          severity: 'ERROR',
+          source: 'USER',
+          correlationId: context.correlationId,
+          jobId: context.job.id
+        }
+      );
+    }
     
     // Analyze document size and determine processing mode
     const sizeAnalysis = SizeLimitGuard.analyzeDocument(
@@ -554,7 +685,6 @@ async function downloadDocument(context: any) {
     throw structuredError;
   }
 }
-
 async function performOCR(context: any) {
   console.log(`👁️ Performing OCR extraction`);
   
@@ -606,6 +736,13 @@ async function performOCR(context: any) {
     const startTime = Date.now();
     const isPDF = context.job.file_name?.toLowerCase().endsWith('.pdf');
     
+    // Validate PDF signature if it's a PDF
+    if (isPDF) {
+      const uint8Array = new Uint8Array(context.fileBuffer);
+      assertValidPdf(uint8Array, context.correlationId, context.job.id);
+      console.log(`✅ PDF signature validated`);
+    }
+    
     // Parse service account credentials
     let credentials;
     try {
@@ -642,6 +779,8 @@ async function performOCR(context: any) {
     
     const base64Data = btoa(binaryString);
     console.log(`📄 File converted to base64: ${base64Data.length} characters (from ${uint8Array.length} bytes)`);
+    console.log(`🔍 Base64 length: ${base64Data.length} characters`);
+    console.log(`📋 First 8 bytes as hex: ${Array.from(uint8Array.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
     
     // Validate base64 is not empty
     if (!base64Data || base64Data.length === 0) {
@@ -681,22 +820,46 @@ async function performOCR(context: any) {
       );
     }
     let response;
-    const requestPayload = {
-      requests: [{
-        inputConfig: {
-          content: base64Data,
-          mimeType: isPDF ? 'application/pdf' : 'image/jpeg'
-        },
-        features: [
-          { type: 'DOCUMENT_TEXT_DETECTION' }
-        ]
-      }]
-    };
+    let requestPayload: any;
+    
+    // Build request payload based on file type
+    if (isPDF) {
+      // PDF files - use exact mimeType and limit to first page for debugging
+      requestPayload = {
+        requests: [{
+          inputConfig: {
+            content: base64Data,
+            mimeType: 'application/pdf' // Ensure exact mimeType
+          },
+          features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+          pages: [1] // Debug: process only first page
+        }]
+      };
+    } else {
+      // Image files
+      requestPayload = {
+        requests: [{
+          image: { content: base64Data },
+          features: [{ type: 'DOCUMENT_TEXT_DETECTION' }]
+        }]
+      };
+    }
     
     console.log(`📋 Request payload preview:`, {
-      mimeType: requestPayload.requests[0].inputConfig.mimeType,
+      endpoint: isPDF ? 'files:annotate' : 'images:annotate',
+      mimeType: isPDF ? 'application/pdf' : 'image/*',
       contentLength: base64Data.length,
-      features: requestPayload.requests[0].features
+      requestStructure: {
+        ...requestPayload,
+        requests: requestPayload.requests.map((req: any) => ({
+          ...req,
+          image: req.image ? { content: `[${base64Data.length} chars]` } : undefined,
+          inputConfig: req.inputConfig ? { 
+            content: `[${base64Data.length} chars]`, 
+            mimeType: req.inputConfig.mimeType 
+          } : undefined
+        }))
+      }
     });
     
     // Use resilient API client with circuit breaker
