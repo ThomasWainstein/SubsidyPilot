@@ -332,15 +332,15 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-dry-run');
                      try {
-                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                         body: { max_pages: 2, dry_run: true }
+                       const { data, error } = await supabase.functions.invoke('les-aides-enhanced', {
+                         body: { max_pages: 2 }
                        });
                        if (error) throw error;
-                       toast.success('Dry run completed successfully', {
-                         description: `Found ${data?.found || 0} subsidies, processed ${data?.processed || 0}`
+                       toast.success('Quick test completed', {
+                         description: `Found ${data?.processed || 0} subsidies`
                        });
                      } catch (error: any) {
-                       toast.error('Dry run failed', { description: error?.message });
+                       toast.error('Quick test failed', { description: error?.message });
                      } finally {
                        setSyncing(null);
                      }
@@ -363,12 +363,12 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-backfill');
                      try {
-                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                         body: { max_pages: 20, dry_run: false }
+                       const { data, error } = await supabase.functions.invoke('les-aides-enhanced', {
+                         body: { max_pages: 20 }
                        });
                        if (error) throw error;
                        toast.success('Full sync completed', {
-                         description: `Processed ${data?.processed || 0} subsidies, added ${data?.added || 0}`
+                         description: `Processed ${data?.processed || 0} subsidies`
                        });
                        await fetchApiMetrics();
                      } catch (error: any) {
