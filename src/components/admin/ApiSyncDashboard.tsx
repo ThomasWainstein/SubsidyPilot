@@ -87,7 +87,7 @@ export const ApiSyncDashboard: React.FC = () => {
   const triggerSync = async (apiSource: string) => {
     setSyncing(apiSource);
     try {
-      console.log(`Starting sync for ${apiSource}...`);
+      console.log(`🚀 Starting sync for ${apiSource}...`);
       
       // Map API sources to actual function names
       const functionMap: { [key: string]: string } = {
@@ -97,14 +97,25 @@ export const ApiSyncDashboard: React.FC = () => {
       };
       
       const functionName = functionMap[apiSource] || `sync-${apiSource}`;
+      console.log(`🎯 Calling edge function: ${functionName}`);
+      
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: { sync_type: 'incremental' }
       });
 
-      console.log('Sync response:', { data, error });
+      console.log('📊 Sync response:', { data, error });
 
       if (error) {
-        console.error('Sync error:', error);
+        console.error('❌ Sync error details:', {
+          name: error.name,
+          message: error.message,
+          context: error.context
+        });
+        
+        // Provide specific error messages for common issues
+        if (error.message.includes('non-2xx status code')) {
+          throw new Error(`API Authentication failed. Please check your LES_AIDES_IDC_KEY secret in Supabase Edge Function settings.`);
+        }
         throw error;
       }
 
