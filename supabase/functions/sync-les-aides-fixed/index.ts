@@ -49,12 +49,16 @@ serve(async (req) => {
       const idcKey = '711e55108232352685cca98b49777e6b836bfb79';
       console.log('🔑 Using documented IDC key from API documentation');
       
-      // Try simple searches first - no domain filtering
+      // Updated search strategies - API requires both APE and domain parameters
       const searchStrategies = [
-        { name: 'Basic search', params: {} },
-        { name: 'Agriculture APE', params: { ape: 'A' } },
-        { name: 'Manufacturing APE', params: { ape: 'C' } },
-        { name: 'Commerce APE', params: { ape: 'G' } }
+        { name: 'Agriculture - Aides agricoles', params: { ape: 'A', domaine: '1' } },
+        { name: 'Agriculture - Environnement', params: { ape: 'A', domaine: '2' } },
+        { name: 'Manufacturing - Innovation', params: { ape: 'C', domaine: '3' } },
+        { name: 'Manufacturing - Emploi', params: { ape: 'C', domaine: '4' } },
+        { name: 'Commerce - Développement économique', params: { ape: 'G', domaine: '5' } },
+        { name: 'Commerce - Tourisme', params: { ape: 'G', domaine: '6' } },
+        { name: 'Services - Numérique', params: { ape: 'J', domaine: '7' } },
+        { name: 'All sectors - Formation', params: { ape: 'P', domaine: '8' } }
       ];
 
       let allSubsidies: any[] = [];
