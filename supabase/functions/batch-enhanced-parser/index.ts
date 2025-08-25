@@ -27,7 +27,7 @@ serve(async (req) => {
     
     console.log('🚀 Starting batch enhanced parsing for existing subsidies...');
 
-    // Fetch all subsidies from the correct table
+    // Fetch all subsidies from the subsidies table (where the data actually is)
     const { data: subsidies, error: fetchError } = await supabase
       .from('subsidies')
       .select('*')
@@ -243,19 +243,17 @@ function parseSubsidyLocally(subsidy: any): any {
       subsidy.eligibility,
       subsidy.funding_markdown,
       subsidy.description_markdown,
-      
-      // Raw data extraction (rich HTML content)
-      subsidy.raw_data?.fiche ? cleanHtmlContent(subsidy.raw_data.fiche) : '',
-      
-      // LesAides.fr specific data
+      subsidy.eligibility_markdown,
+      subsidy.application_method_markdown,
+      subsidy.requirements_markdown,
+      subsidy.amounts,
+      subsidy.deadlines,
+      subsidy.presentation,
+      subsidy.application_process,
+      // Raw HTML content from scraped data
       subsidy.lesAidesData?.description,
       subsidy.lesAidesData?.montants,
       subsidy.lesAidesData?.conditions,
-      subsidy.lesAidesData?.demarches,
-      
-      // Any other structured fields
-      subsidy.funding_details,
-      subsidy.application_process,
     ].filter(Boolean);
 
     const content = contentSources.join('\n\n');
@@ -458,8 +456,15 @@ async function updateSubsidyRecord(supabase: any, subsidyId: string, enhancedDat
   const { error } = await supabase
     .from('subsidies')
     .update({
-      enhanced_funding_info: enhancedData,
+      enhanced_funding_info: JSON.parse(JSON.stringify(enhancedData)),
+      enhanced_eligibility_info: JSON.parse(JSON.stringify({
+        entityTypes: enhancedData.eligibility?.entityTypes || [],
+        sectors: enhancedData.eligibility?.sectors || [],
+        geographicScope: enhancedData.eligibility?.geographicScope || []
+      })),
       extraction_completeness_score: Math.round(enhancedData.confidence * 100),
+      ai_enhancement_status: 'completed',
+      last_enhanced_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', subsidyId);

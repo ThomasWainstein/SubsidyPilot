@@ -3524,6 +3524,7 @@ export type Database = {
           activity_sector_codes: string[] | null
           additional_support_mechanisms: string | null
           agency: string | null
+          ai_enhancement_status: string | null
           ai_model: string | null
           amount: number[] | null
           amounts: string | null
@@ -3574,6 +3575,8 @@ export type Database = {
           eligible_actions: string[] | null
           eligible_entities: string[] | null
           eligible_expenses_detailed: Json | null
+          enhanced_eligibility_info: Json | null
+          enhanced_funding_info: Json | null
           entity_size: string | null
           environmental_social_safeguards: string | null
           evaluation_committee: string | null
@@ -3608,6 +3611,7 @@ export type Database = {
           ineligible_expenses: Json | null
           investment_types: string[] | null
           language: string | null
+          last_enhanced_at: string | null
           last_seen_at: string | null
           legal_entity_type: string[] | null
           managing_agency: string | null
@@ -3678,6 +3682,7 @@ export type Database = {
           activity_sector_codes?: string[] | null
           additional_support_mechanisms?: string | null
           agency?: string | null
+          ai_enhancement_status?: string | null
           ai_model?: string | null
           amount?: number[] | null
           amounts?: string | null
@@ -3728,6 +3733,8 @@ export type Database = {
           eligible_actions?: string[] | null
           eligible_entities?: string[] | null
           eligible_expenses_detailed?: Json | null
+          enhanced_eligibility_info?: Json | null
+          enhanced_funding_info?: Json | null
           entity_size?: string | null
           environmental_social_safeguards?: string | null
           evaluation_committee?: string | null
@@ -3762,6 +3769,7 @@ export type Database = {
           ineligible_expenses?: Json | null
           investment_types?: string[] | null
           language?: string | null
+          last_enhanced_at?: string | null
           last_seen_at?: string | null
           legal_entity_type?: string[] | null
           managing_agency?: string | null
@@ -3832,6 +3840,7 @@ export type Database = {
           activity_sector_codes?: string[] | null
           additional_support_mechanisms?: string | null
           agency?: string | null
+          ai_enhancement_status?: string | null
           ai_model?: string | null
           amount?: number[] | null
           amounts?: string | null
@@ -3882,6 +3891,8 @@ export type Database = {
           eligible_actions?: string[] | null
           eligible_entities?: string[] | null
           eligible_expenses_detailed?: Json | null
+          enhanced_eligibility_info?: Json | null
+          enhanced_funding_info?: Json | null
           entity_size?: string | null
           environmental_social_safeguards?: string | null
           evaluation_committee?: string | null
@@ -3916,6 +3927,7 @@ export type Database = {
           ineligible_expenses?: Json | null
           investment_types?: string[] | null
           language?: string | null
+          last_enhanced_at?: string | null
           last_seen_at?: string | null
           legal_entity_type?: string[] | null
           managing_agency?: string | null

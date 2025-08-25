@@ -344,7 +344,7 @@ export const useEnhancedSubsidyParser = (options: UseEnhancedSubsidyParserOption
       await supabase
         .from('subsidies_structured')
         .update({
-          enhanced_funding_info: result,
+          enhanced_funding_info: JSON.parse(JSON.stringify(result)),
           extraction_completeness_score: Math.round(result.confidence * 100),
           updated_at: new Date().toISOString()
         })
