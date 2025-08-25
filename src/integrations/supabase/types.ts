@@ -261,11 +261,16 @@ export type Database = {
           applicant_type: Database["public"]["Enums"]["applicant_type"]
           completion_percentage: number | null
           created_at: string | null
+          gdpr_consent_date: string | null
           id: string
           is_active: boolean | null
+          last_activity_at: string | null
           legacy_farm_id: string | null
+          missing_fields: Json | null
           profile_data: Json
           profile_name: string
+          sector_ids: string[] | null
+          target_currencies: string[] | null
           updated_at: string | null
           user_id: string
         }
@@ -273,11 +278,16 @@ export type Database = {
           applicant_type: Database["public"]["Enums"]["applicant_type"]
           completion_percentage?: number | null
           created_at?: string | null
+          gdpr_consent_date?: string | null
           id?: string
           is_active?: boolean | null
+          last_activity_at?: string | null
           legacy_farm_id?: string | null
+          missing_fields?: Json | null
           profile_data?: Json
           profile_name: string
+          sector_ids?: string[] | null
+          target_currencies?: string[] | null
           updated_at?: string | null
           user_id: string
         }
@@ -285,11 +295,16 @@ export type Database = {
           applicant_type?: Database["public"]["Enums"]["applicant_type"]
           completion_percentage?: number | null
           created_at?: string | null
+          gdpr_consent_date?: string | null
           id?: string
           is_active?: boolean | null
+          last_activity_at?: string | null
           legacy_farm_id?: string | null
+          missing_fields?: Json | null
           profile_data?: Json
           profile_name?: string
+          sector_ids?: string[] | null
+          target_currencies?: string[] | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1449,6 +1464,65 @@ export type Database = {
         }
         Relationships: []
       }
+      document_processing_logs: {
+        Row: {
+          ai_model: string | null
+          applicant_profile_id: string | null
+          confidence_score: number | null
+          created_at: string | null
+          credits_used: number | null
+          document_id: string
+          error_details: Json | null
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          processing_status: string
+          processing_time_ms: number | null
+          processing_type: string
+          retry_attempt: number | null
+        }
+        Insert: {
+          ai_model?: string | null
+          applicant_profile_id?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          credits_used?: number | null
+          document_id: string
+          error_details?: Json | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          processing_status: string
+          processing_time_ms?: number | null
+          processing_type: string
+          retry_attempt?: number | null
+        }
+        Update: {
+          ai_model?: string | null
+          applicant_profile_id?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          credits_used?: number | null
+          document_id?: string
+          error_details?: Json | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          processing_status?: string
+          processing_time_ms?: number | null
+          processing_type?: string
+          retry_attempt?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_processing_logs_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_subsidy_mappings: {
         Row: {
           confidence_score: number | null
@@ -2525,6 +2599,47 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_collaborators: {
+        Row: {
+          accepted_at: string | null
+          access_level: string
+          applicant_profile_id: string
+          id: string
+          invitation_status: string | null
+          invited_at: string | null
+          invited_by: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          access_level?: string
+          applicant_profile_id: string
+          id?: string
+          invitation_status?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          access_level?: string
+          applicant_profile_id?: string
+          id?: string
+          invitation_status?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_collaborators_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quality_metrics: {
         Row: {
           benchmark_comparison: Json | null
@@ -2952,6 +3067,44 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      sectors: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          level: number
+          nace_code: string
+          parent_sector_id: string | null
+          sector_name: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          level?: number
+          nace_code: string
+          parent_sector_id?: string | null
+          sector_name?: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          level?: number
+          nace_code?: string
+          parent_sector_id?: string | null
+          sector_name?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_parent_sector_id_fkey"
+            columns: ["parent_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_audit_log: {
         Row: {
@@ -4431,6 +4584,7 @@ export type Database = {
           id: string
           notes: string | null
           review_status: string | null
+          sector_id: string | null
           status: string | null
           submitted_at: string | null
           subsidy_id: string
@@ -4450,6 +4604,7 @@ export type Database = {
           id?: string
           notes?: string | null
           review_status?: string | null
+          sector_id?: string | null
           status?: string | null
           submitted_at?: string | null
           subsidy_id: string
@@ -4469,6 +4624,7 @@ export type Database = {
           id?: string
           notes?: string | null
           review_status?: string | null
+          sector_id?: string | null
           status?: string | null
           submitted_at?: string | null
           subsidy_id?: string
@@ -4481,6 +4637,13 @@ export type Database = {
             columns: ["applicant_profile_id"]
             isOneToOne: false
             referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "universal_applications_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
           {
@@ -4688,6 +4851,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          action_url: string | null
+          applicant_profile_id: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          notification_type: string
+          priority: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          applicant_profile_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_type: string
+          priority?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          applicant_profile_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_type?: string
+          priority?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_applicant_profile_id_fkey"
+            columns: ["applicant_profile_id"]
+            isOneToOne: false
+            referencedRelation: "applicant_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
