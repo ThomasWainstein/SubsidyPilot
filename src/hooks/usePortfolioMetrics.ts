@@ -87,7 +87,7 @@ export const usePortfolioMetrics = (userId: string) => {
             .forEach(async (subsidy) => {
               // Get subsidy title
               const { data: subsidyData } = await supabase
-                .from('subsidies_structured')
+                .from('subsidies')
                 .select('title')
                 .eq('id', subsidy.subsidyId)
                 .single();
@@ -108,14 +108,14 @@ export const usePortfolioMetrics = (userId: string) => {
             .slice(0, 1) // Top 1 blocked per farm
             .forEach(async (subsidy) => {
               const { data: subsidyData } = await supabase
-                .from('subsidies_structured')
+                .from('subsidies')
                 .select('title')
                 .eq('id', subsidy.subsidyId)
                 .single();
 
               topOpportunities.push({
                 farmName: farm.name,
-                subsidyTitle: subsidyData?.title || 'Unknown Subsidy', 
+                subsidyTitle: subsidyData?.title || 'Unknown Subsidy',
                 amount: subsidy.amount || 0,
                 deadline: subsidy.deadline,
                 action: subsidy.requiredActions[0] || 'Complete Requirements'

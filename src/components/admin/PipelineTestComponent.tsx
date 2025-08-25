@@ -67,7 +67,7 @@ export const PipelineTestComponent = () => {
       setCurrentStep('Collecting final results...');
       
       const { data: finalSubsidies } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select(`
           id, title, url, agency, description, eligibility, 
           application_method, documents, amount, deadline,

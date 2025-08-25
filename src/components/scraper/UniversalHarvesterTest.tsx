@@ -104,9 +104,9 @@ export function UniversalHarvesterTest() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Check subsidies structured (main output)
+      // Check subsidies (main output)
       const { data: subsidiesStructured, error: subsidiesError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('id, title, url, created_at, run_id')
         .order('created_at', { ascending: false })
         .limit(5);

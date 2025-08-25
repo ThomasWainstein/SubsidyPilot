@@ -5,8 +5,8 @@ import { toast } from '@/hooks/use-toast';
 import { calculateMatchConfidence } from '@/utils/tagNormalization';
 import type { Database } from '@/integrations/supabase/types';
 
-type Subsidy = Database['public']['Tables']['subsidies_structured']['Row'];
-type SubsidyInsert = Database['public']['Tables']['subsidies_structured']['Insert'];
+type Subsidy = Database['public']['Tables']['subsidies']['Row'];
+type SubsidyInsert = Database['public']['Tables']['subsidies']['Insert'];
 
 export interface SubsidyFilters {
   region?: string[];
@@ -21,10 +21,10 @@ export interface SubsidyFilters {
 
 export const useSubsidies = (filters?: SubsidyFilters) => {
   return useQuery({
-    queryKey: ['subsidies_structured', filters],
+    queryKey: ['subsidies', filters],
     queryFn: async () => {
       let query = supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -77,10 +77,10 @@ export const useSubsidies = (filters?: SubsidyFilters) => {
 
 export const useSubsidy = (subsidyId: string) => {
   return useQuery({
-    queryKey: ['subsidy_structured', subsidyId],
+    queryKey: ['subsidy', subsidyId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('id', subsidyId)
         .single();
@@ -94,7 +94,7 @@ export const useSubsidy = (subsidyId: string) => {
 
 export const useMatchingSubsidies = (farmId: string) => {
   return useQuery({
-    queryKey: ['matching-subsidies-structured', farmId],
+    queryKey: ['matching-subsidies', farmId],
     queryFn: async () => {
       // First get the farm data
       const { data: farm, error: farmError } = await supabase
@@ -105,9 +105,9 @@ export const useMatchingSubsidies = (farmId: string) => {
 
       if (farmError) throw farmError;
 
-      // Get all subsidies from structured table
+      // Get all subsidies from subsidies table
       const { data: subsidies, error: subsidiesError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*');
 
       if (subsidiesError) throw subsidiesError;
@@ -144,7 +144,7 @@ export const useCreateSubsidy = () => {
   return useMutation({
     mutationFn: async (subsidyData: SubsidyInsert) => {
       const { data, error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .insert(subsidyData)
         .select()
         .single();
@@ -153,7 +153,7 @@ export const useCreateSubsidy = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subsidies_structured'] });
+      queryClient.invalidateQueries({ queryKey: ['subsidies'] });
       toast({
         title: 'Success',
         description: 'Subsidy created successfully',
@@ -175,7 +175,7 @@ export const useDeleteSubsidy = () => {
   return useMutation({
     mutationFn: async (subsidyId: string) => {
       const { error } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .delete()
         .eq('id', subsidyId);
 
@@ -183,7 +183,7 @@ export const useDeleteSubsidy = () => {
       return subsidyId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subsidies_structured'] });
+      queryClient.invalidateQueries({ queryKey: ['subsidies'] });
       toast({
         title: 'Success',
         description: 'Subsidy deleted successfully',

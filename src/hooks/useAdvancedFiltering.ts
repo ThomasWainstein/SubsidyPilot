@@ -147,7 +147,7 @@ export const useAdvancedFiltering = (farmId?: string) => {
 
         // Fetch all subsidies with quality metrics
         const { data: subsidyData, error: subsidyError } = await supabase
-          .from('subsidies_structured')
+          .from('subsidies')
           .select(`
             *,
             audit

@@ -72,10 +72,10 @@ export const useDashboardMetrics = () => {
             farm_id,
             confidence,
             created_at,
-            subsidies_structured (
+            subsidies (
               id,
               title,
-              amount,
+              amount_max,
               deadline
             )
           `)
@@ -91,15 +91,15 @@ export const useDashboardMetrics = () => {
         }).length || 0;
 
         const expiringMatches = subsidyMatches?.filter(m => {
-          const deadline = m.subsidies_structured?.deadline;
+          const deadline = m.subsidies?.deadline;
           return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
         }).length || 0;
 
         const topMatches = subsidyMatches?.slice(0, 3).map(m => ({
           id: m.id,
-          title: m.subsidies_structured?.title || null,
-          amount: m.subsidies_structured?.amount || null,
-          deadline: m.subsidies_structured?.deadline || null,
+          title: m.subsidies?.title || null,
+          amount: m.subsidies?.amount_max ? [0, m.subsidies.amount_max] : null,
+          deadline: m.subsidies?.deadline || null,
           farmName: farms?.find(f => f.id === m.farm_id)?.name || 'Unknown Farm',
           confidence: m.confidence
         })).filter(m => m.title) || []; // Only include matches with real titles

@@ -50,20 +50,20 @@ export const useFarmMetrics = (farmId: string) => {
         !uploadedCategories.includes(cat)
       ).length;
 
-      // Fetch real subsidy matches for this farm (no mock data)
-      const { data: subsidyMatches } = await supabase
-        .from('subsidy_matches')
-        .select(`
-          id,
-          confidence,
-          created_at,
-          subsidies_structured (
+        // Fetch real subsidy matches for this farm (no mock data)
+        const { data: subsidyMatches } = await supabase
+          .from('subsidy_matches')
+          .select(`
             id,
-            title,
-            amount,
-            deadline
-          )
-        `)
+            confidence,
+            created_at,
+            subsidies (
+              id,
+              title,
+              amount_max,
+              deadline
+            )
+          `)
         .eq('farm_id', farmId)
         .eq('status', 'active');
 
@@ -77,17 +77,17 @@ export const useFarmMetrics = (farmId: string) => {
       }).length || 0;
 
       const expiringMatches = subsidyMatches?.filter(m => {
-        const deadline = m.subsidies_structured?.deadline;
+        const deadline = m.subsidies?.deadline;
         return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       }).length || 0;
 
       // Only show top match if real data exists
       const topMatchData = subsidyMatches?.[0];
-      const topMatch = topMatchData?.subsidies_structured
+      const topMatch = topMatchData?.subsidies
         ? {
             id: topMatchData.id,
-            title: topMatchData.subsidies_structured.title || null,
-            amount: topMatchData.subsidies_structured.amount || null,
+            title: topMatchData.subsidies.title || null,
+            amount: topMatchData.subsidies.amount_max ? [0, topMatchData.subsidies.amount_max] : null,
             confidence: topMatchData.confidence,
           }
         : undefined;
