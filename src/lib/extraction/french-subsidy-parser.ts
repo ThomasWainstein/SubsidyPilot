@@ -71,6 +71,15 @@ export class FrenchSubsidyParser {
       /aide\s+compris\s+entre\s+(\d+(?:\s*\d{3})*)\s*et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
     ],
     
+    // Loan patterns (NEW - for prêt amounts)
+    loanPatterns: [
+      /montant\s+du\s+prêt.*?compris\s+entre\s+(\d+(?:\s*\d{3})*)\s*(?:€)?\s+et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+      /prêt.*?entre\s+(\d+(?:\s*\d{3})*)\s*(?:€)?\s+et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+      /prêt.*?de\s+(\d+(?:\s*\d{3})*)\s*(?:€)?\s+à\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+      /prêt.*?jusqu'à\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+      /crédit.*?entre\s+(\d+(?:\s*\d{3})*)\s*(?:€)?\s+et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+    ],
+    
     // Prime (bonus/premium) patterns - important French funding type
     primePatterns: [
       /prime.*?(\d+(?:\s*\d{3})*)\s*€/gi,
@@ -323,7 +332,52 @@ export class FrenchSubsidyParser {
   private static extractFunding(content: string): ExtractedFunding[] {
     const results: ExtractedFunding[] = [];
     
-    // PRIORITY 1: Extract aid ceiling ranges FIRST (actual aid amounts)
+    // PRIORITY 1: Extract loan amounts FIRST (for prêt/crédit subsidies)
+    for (const pattern of this.FUNDING_PATTERNS.loanPatterns) {
+      const matches = [...content.matchAll(pattern)];
+      for (const match of matches) {
+        // Handle both range patterns and single max patterns
+        if (match[2]) {
+          // Range pattern (two amounts)
+          const minAmount = parseInt(match[1].replace(/\s/g, ''));
+          const maxAmount = parseInt(match[2].replace(/\s/g, ''));
+          
+          if (!isNaN(minAmount) && !isNaN(maxAmount) && minAmount >= 0 && maxAmount >= 0) {
+            const validMin = Math.min(minAmount, maxAmount);
+            const validMax = Math.max(minAmount, maxAmount);
+            
+            results.push({
+              type: 'range',
+              minAmount: validMin,
+              maxAmount: validMax,
+              currency: 'EUR',
+              conditions: 'Montant prêt',
+              originalText: match[0]
+            });
+          }
+        } else if (match[1]) {
+          // Single max amount pattern
+          const maxAmount = parseInt(match[1].replace(/\s/g, ''));
+          
+          if (!isNaN(maxAmount) && maxAmount >= 0) {
+            results.push({
+              type: 'maximum',
+              maxAmount,
+              currency: 'EUR',
+              conditions: 'Montant prêt maximum',
+              originalText: match[0]
+            });
+          }
+        }
+      }
+    }
+
+    // If we found loan amounts, prioritize them and stop
+    if (results.length > 0) {
+      return results;
+    }
+
+    // PRIORITY 2: Extract aid ceiling ranges (actual aid amounts)
     for (const pattern of this.FUNDING_PATTERNS.aidCeilingWithRange) {
       const matches = [...content.matchAll(pattern)];
       for (const match of matches) {
@@ -355,7 +409,7 @@ export class FrenchSubsidyParser {
       return results;
     }
 
-    // PRIORITY 2: Extract complex percentage with investment range (fallback)
+    // PRIORITY 3: Extract complex percentage with investment range (fallback)
     for (const pattern of this.FUNDING_PATTERNS.percentageWithInvestmentRange) {
       const matches = [...content.matchAll(pattern)];
       for (const match of matches) {
@@ -853,7 +907,9 @@ export class FrenchSubsidyParser {
         }
         return `${primary.percentage}% de subvention`;
       case 'percentage':
-        return `${primary.percentage}% de subvention`;
+        // Only show percentage if we have no monetary context
+        // For standalone percentages without amounts, they're often not useful
+        return 'Montant non spécifié';
       case 'range':
         return `€${primary.minAmount?.toLocaleString()} - €${primary.maxAmount?.toLocaleString()}`;
       case 'maximum':
