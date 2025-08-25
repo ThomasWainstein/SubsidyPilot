@@ -196,3 +196,6 @@ verify_jwt = false
 
 [functions.batch-enhanced-parser]
 verify_jwt = false
+
+[functions.automatic-subsidy-enrichment]
+verify_jwt = false

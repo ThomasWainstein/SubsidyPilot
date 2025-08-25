@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Building2, MapPin, Euro, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSimplifiedSubsidyParser } from '@/hooks/useSimplifiedSubsidyParser';
-import { debugSubsidyParsing } from '@/utils/debugSubsidyParser';
 
 interface SimplifiedSubsidyCardProps {
   subsidy: any;
@@ -28,12 +27,6 @@ export const SimplifiedSubsidyCard: React.FC<SimplifiedSubsidyCardProps> = ({ su
   const title = getStringValue(subsidy.title) || 'Titre non disponible';
   const description = getStringValue(subsidy.description) || 'Description non disponible';
   const agency = getStringValue(subsidy.agency) || 'Organisation';
-
-  // Debug problematic subsidies
-  if (funding === 'Montant non spécifié' || funding.includes('%')) {
-    console.log(`DEBUG: Problematic subsidy "${title}"`);
-    debugSubsidyParsing(subsidy);
-  }
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300">
