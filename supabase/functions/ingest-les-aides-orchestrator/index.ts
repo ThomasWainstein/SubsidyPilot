@@ -97,9 +97,9 @@ Deno.serve(async (req) => {
         subsidies = await backfillIncompleteSubsidies(max_requests)
         console.log(`🔄 Prepared ${subsidies.length} subsidies for backfill`)
       } else {
-        // 3b. FULL SYNC: Use same simple approach as manual sync
-        subsidies = await fetchLesAidesDataSimple()
-        console.log(`📥 Fetched ${subsidies.length} subsidies using simple API`)
+        // 3b. FULL SYNC: Use comprehensive search to find more subsidies
+        subsidies = await fetchLesAidesDataComprehensive(limit, max_requests)
+        console.log(`📥 Fetched ${subsidies.length} subsidies using comprehensive search`)
       }
 
       if (subsidies.length === 0) {
@@ -443,8 +443,27 @@ function buildComprehensiveSearchScenarios(): SearchScenario[] {
 }
 
 async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchResponse | null> {
-  // Use the same working API as manual sync - no API key required
-  const url = `https://les-aides.fr/api/aides/`
+  // Build URL with search parameters
+  const params = new URLSearchParams()
+  params.set('ape', scenario.ape)
+  
+  // Handle domain parameter (can be single number or array)
+  if (Array.isArray(scenario.domaine)) {
+    scenario.domaine.forEach(d => params.append('domaine', d.toString()))
+  } else {
+    params.set('domaine', scenario.domaine.toString())
+  }
+  
+  if (scenario.region) {
+    params.set('region', scenario.region.toString())
+  }
+  
+  if (scenario.departement) {
+    params.set('departement', scenario.departement)
+  }
+  
+  const url = `https://api.les-aides.fr/aides/?${params.toString()}`
+  console.log(`🔍 Searching: ${url}`)
   
   const response = await fetch(url, {
     headers: {
@@ -474,9 +493,10 @@ async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchRe
 }
 
 async function fetchDeviceDetails(deviceNumber: number, requestId: number) {
-  // Use the same working API as manual sync - no API key required
+  // Fetch specific device details using the device ID
   try {
-    const url = `https://les-aides.fr/api/aides/`
+    const url = `https://api.les-aides.fr/aide/${deviceNumber}/?idr=${requestId}`
+    console.log(`📋 Fetching details for device ${deviceNumber}`)
     
     const response = await fetch(url, {
       headers: {
@@ -506,9 +526,9 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number) {
 }
 
 async function getFreshIdr(): Promise<number | null> {
-  // Use the same working API as manual sync
+  // Get a fresh idr from a broad search
   try {
-    const response = await fetch('https://les-aides.fr/api/aides/', {
+    const response = await fetch('https://api.les-aides.fr/aides/?ape=A&domaine=790', {
       headers: {
         'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
         'Accept': 'application/json'
