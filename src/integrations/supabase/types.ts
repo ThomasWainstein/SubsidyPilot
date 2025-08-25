@@ -5259,6 +5259,13 @@ export type Database = {
         Args: { p_hash: string }
         Returns: string
       }
+      fix_subsidies_source_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_count: number
+          updated_count: number
+        }[]
+      }
       get_active_run_status: {
         Args: Record<PropertyKey, never>
         Returns: {
