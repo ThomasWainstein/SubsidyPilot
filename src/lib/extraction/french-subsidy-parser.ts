@@ -329,10 +329,20 @@ export class FrenchSubsidyParser {
       for (const match of matches) {
         const minAmount = parseInt(match[1].replace(/\s/g, ''));
         const maxAmount = parseInt(match[2].replace(/\s/g, ''));
+        
+        // Validate amounts: ensure min <= max and amounts are reasonable
+        if (isNaN(minAmount) || isNaN(maxAmount) || minAmount < 0 || maxAmount < 0) {
+          continue;
+        }
+        
+        // If min > max, swap them
+        const validMin = Math.min(minAmount, maxAmount);
+        const validMax = Math.max(minAmount, maxAmount);
+        
         results.push({
           type: 'range',
-          minAmount,
-          maxAmount,
+          minAmount: validMin,
+          maxAmount: validMax,
           currency: 'EUR',
           conditions: 'Montant aide directe',
           originalText: match[0]
@@ -353,19 +363,29 @@ export class FrenchSubsidyParser {
         const investmentMin = parseInt(match[2].replace(/\s/g, ''));
         const investmentMax = parseInt(match[3].replace(/\s/g, ''));
         
+        // Validate percentage and amounts: ensure they are reasonable
+        if (isNaN(percentage) || isNaN(investmentMin) || isNaN(investmentMax) || 
+            percentage <= 0 || percentage > 100 || investmentMin < 0 || investmentMax < 0) {
+          continue;
+        }
+        
+        // Ensure min <= max for investment amounts
+        const validInvestMin = Math.min(investmentMin, investmentMax);
+        const validInvestMax = Math.max(investmentMin, investmentMax);
+        
         // Calculate aid amounts based on percentage and investment range
-        const minAmount = Math.round(investmentMin * percentage / 100);
-        const maxAmount = Math.round(investmentMax * percentage / 100);
+        const minAmount = Math.round(validInvestMin * percentage / 100);
+        const maxAmount = Math.round(validInvestMax * percentage / 100);
         
         results.push({
           type: 'percentage_with_range',
           percentage,
           minAmount,
           maxAmount,
-          investmentMin,
-          investmentMax,
+          investmentMin: validInvestMin,
+          investmentMax: validInvestMax,
           currency: 'EUR',
-          conditions: `Sur investissement entre €${investmentMin.toLocaleString()} et €${investmentMax.toLocaleString()}`,
+          conditions: `Sur investissement entre €${validInvestMin.toLocaleString()} et €${validInvestMax.toLocaleString()}`,
           originalText: match[0]
         });
       }
@@ -392,6 +412,12 @@ export class FrenchSubsidyParser {
       const matches = [...content.matchAll(pattern)];
       for (const match of matches) {
         const percentage = parseFloat(match[1].replace(',', '.'));
+        
+        // Validate percentage: ensure it's reasonable (0-100%)
+        if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
+          continue;
+        }
+        
         results.push({
           type: 'percentage',
           percentage,
@@ -407,10 +433,20 @@ export class FrenchSubsidyParser {
       for (const match of matches) {
         const minAmount = parseInt(match[1].replace(/\s/g, ''));
         const maxAmount = parseInt(match[2].replace(/\s/g, ''));
+        
+        // Validate amounts: ensure min <= max and amounts are reasonable
+        if (isNaN(minAmount) || isNaN(maxAmount) || minAmount < 0 || maxAmount < 0) {
+          continue;
+        }
+        
+        // If min > max, swap them
+        const validMin = Math.min(minAmount, maxAmount);
+        const validMax = Math.max(minAmount, maxAmount);
+        
         results.push({
           type: 'range',
-          minAmount,
-          maxAmount,
+          minAmount: validMin,
+          maxAmount: validMax,
           currency: 'EUR',
           originalText: match[0]
         });

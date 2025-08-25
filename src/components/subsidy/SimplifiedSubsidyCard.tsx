@@ -31,14 +31,7 @@ export const SimplifiedSubsidyCard: React.FC<SimplifiedSubsidyCardProps> = ({ su
   return (
     <Card className="group hover:shadow-lg transition-all duration-300">
       <CardContent className="p-6">
-        {/* Confidence indicator */}
-        {confidence > 0.7 && (
-          <div className="mb-3">
-            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-              ✨ Données enrichies ({Math.round(confidence * 100)}%)
-            </Badge>
-          </div>
-        )}
+        {/* Removed enrichment indicator for client view */}
 
         {/* Title & Agency */}
         <div className="mb-4">
