@@ -21,6 +21,7 @@ export function ExtractedDataViewer({ documentId, autoRefresh = false }: Extract
   const fetchExtractedData = async () => {
     if (!documentId) return;
     
+    console.log(`🔍 [ExtractedDataViewer] Fetching data for document: ${documentId}`);
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -31,23 +32,29 @@ export function ExtractedDataViewer({ documentId, autoRefresh = false }: Extract
         .limit(1)
         .maybeSingle();
 
+      console.log(`🔍 [ExtractedDataViewer] Query result:`, { data, error });
+
       if (error) {
-        console.error('Error fetching extracted data:', error);
+        console.error('❌ [ExtractedDataViewer] Error fetching extracted data:', error);
         return;
       }
 
       if (data) {
+        console.log(`✅ [ExtractedDataViewer] Data found:`, data);
         setExtractedData(data.extracted_data);
         setConfidence((data.confidence_score || 0) * 100);
         setModelUsed(data.model_used || 'AI Enhanced');
         
         // Auto-open when data is available for the first time
         if (data.extracted_data && !isOpen) {
+          console.log(`🔓 [ExtractedDataViewer] Auto-opening data viewer`);
           setIsOpen(true);
         }
+      } else {
+        console.log(`⚠️ [ExtractedDataViewer] No data returned from query`);
       }
     } catch (err) {
-      console.error('Failed to fetch extracted data:', err);
+      console.error('❌ [ExtractedDataViewer] Failed to fetch extracted data:', err);
     } finally {
       setLoading(false);
     }
