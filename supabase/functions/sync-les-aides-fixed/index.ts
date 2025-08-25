@@ -40,114 +40,152 @@ serve(async (req) => {
     const logId = syncLog?.id
 
     try {
-      // Enhanced debugging for comprehensive sync analysis
-      console.log('🚀 === ENHANCED SYNC DEBUGGING STARTED ===');
+      // 🎯 COMPREHENSIVE MULTI-DOMAIN SEARCH based on API documentation
+      console.log('🚀 === ENHANCED SYNC STARTED (Using API Documentation) ===');
       console.log('📊 Current time:', new Date().toISOString());
       console.log('🔧 Sync type:', sync_type);
       
-      const idcKey = Deno.env.get('LES_AIDES_IDC_KEY');
-      if (!idcKey) {
-        throw new Error('LES_AIDES_IDC_KEY environment variable not set');
-      }
+      // Use documented IDC key
+      const idcKey = '711e55108232352685cca98b49777e6b836bfb79';
+      console.log('🔑 Using documented IDC key from API documentation');
       
-      console.log('🔑 IDC Key available:', idcKey ? 'YES' : 'NO');
-      console.log('🔑 IDC Key length:', idcKey?.length);
-      
-      // Test multiple search strategies to understand API limitations
-      const searchStrategies = [
-        {
-          name: 'Default Search',
-          url: 'https://api.les-aides.fr/aides/',
-          params: {}
-        },
-        {
-          name: 'Domain 790 Only',
-          url: 'https://api.les-aides.fr/aides/',
-          params: { domaine: '790' }
-        },
-        {
-          name: 'Broad Agricultural Search',
-          url: 'https://api.les-aides.fr/aides/',
-          params: { ape: 'A' } // All agriculture
-        }
+      // Based on API docs: search multiple domains for comprehensive coverage
+      const priorityDomains = [
+        { id: 790, name: 'Création Reprise' },
+        { id: 793, name: 'Cession Transmission' }, 
+        { id: 798, name: 'Développement commercial' },
+        { id: 799, name: 'Innovation' },
+        { id: 801, name: 'Investissement' },
+        { id: 802, name: 'Formation' },
+        { id: 803, name: 'Environnement' }
       ];
       
-      console.log('🔍 Testing different search strategies...');
+      // APE codes for broad business categories (per API documentation)
+      const apeCategories = [
+        'A', // Agriculture, sylviculture et pêche
+        'C', // Industrie manufacturière  
+        'G', // Commerce; réparation d'automobiles
+        'J', // Information et communication
+        'M', // Activités spécialisées, scientifiques et techniques
+        'N', // Activités de services administratifs et de soutien
+        'K', // Activités financières et d'assurance
+        'F', // Construction
+        'I'  // Hébergement et restauration
+      ];
+
+      let allSubsidies: any[] = [];
+      let totalApiCalls = 0;
+      let totalDepassements = 0;
       
-      let bestStrategy = null;
-      let maxSubsidies = 0;
+      console.log(`🔍 Starting comprehensive search across ${priorityDomains.length} domains and ${apeCategories.length} APE categories`);
       
-      for (const strategy of searchStrategies) {
-        const params = new URLSearchParams(strategy.params);
-        const fullUrl = strategy.url + (params.toString() ? '?' + params.toString() : '');
-        
-        console.log(`\n📡 Testing: ${strategy.name}`);
-        console.log('🌐 Request URL:', fullUrl);
-        console.log('📋 Headers:', {
-          'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
-          'Accept': 'application/json',
-          'X-IDC': '[REDACTED]'
-        });
-        
-        try {
-          const testResponse = await fetch(fullUrl, {
-            headers: {
-              'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
-              'Accept': 'application/json',
-              'X-IDC': idcKey
+      // Search each domain + APE combination
+      for (const domain of priorityDomains) {
+        for (const ape of apeCategories) {
+          console.log(`\n📡 Searching Domain ${domain.id} (${domain.name}) + APE ${ape}`);
+          
+          const searchParams = new URLSearchParams({
+            domaine: domain.id.toString(),
+            ape: ape,
+          });
+          
+          const requestUrl = `https://api.les-aides.fr/aides/?${searchParams}`;
+          console.log('🌐 URL:', requestUrl);
+          
+          const headers = {
+            'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+            'Accept': 'application/json',
+            'X-IDC': idcKey,
+          };
+          
+          try {
+            totalApiCalls++;
+            const response = await fetch(requestUrl, { headers });
+            
+            console.log('📊 Status:', response.status);
+            
+            if (response.ok) {
+              const apiData = await response.json();
+              
+              console.log('✅ Success:', {
+                dispositifs: apiData.dispositifs?.length || 0,
+                depassement: apiData.depassement,
+                nb_dispositifs: apiData.nb_dispositifs,
+                idr: apiData.idr
+              });
+              
+              if (apiData.dispositifs && Array.isArray(apiData.dispositifs)) {
+                // Add domain/ape context to each subsidy for tracking
+                const subsidiesWithContext = apiData.dispositifs.map((dispositif: any) => ({
+                  ...dispositif,
+                  _source_domain: domain.name,
+                  _source_ape: ape,
+                  _source_domain_id: domain.id
+                }));
+                
+                allSubsidies.push(...subsidiesWithContext);
+                
+                // Track depassement flags - critical for understanding data limits
+                if (apiData.depassement) {
+                  totalDepassements++;
+                  console.log('⚠️ DEPASSEMENT=true: More than 200 results available for this search!');
+                  console.log(`   • Domain: ${domain.name}, APE: ${ape}`);
+                  console.log(`   • Total available: ${apiData.nb_dispositifs || 'Unknown'}`);
+                  console.log(`   • Retrieved: ${apiData.dispositifs.length}`);
+                }
+              }
+              
+              // Respect rate limiting (720 calls/day per API documentation)
+              await new Promise(resolve => setTimeout(resolve, 800));
+              
+            } else {
+              const errorText = await response.text();
+              console.log('❌ API Error:', response.status, errorText);
             }
-          });
-          
-          console.log('📊 Response status:', testResponse.status);
-          console.log('📊 Response headers:', Object.fromEntries(testResponse.headers.entries()));
-          
-          if (!testResponse.ok) {
-            console.log('❌ API request failed:', testResponse.status, testResponse.statusText);
-            continue;
+            
+          } catch (error) {
+            console.log('❌ Request failed:', error);
           }
-          
-          const testData = await testResponse.json();
-          console.log('📊 Response data structure:', {
-            type: typeof testData,
-            keys: Object.keys(testData || {}),
-            isArray: Array.isArray(testData),
-            length: Array.isArray(testData) ? testData.length : 'N/A'
-          });
-          
-          let subsidyCount = 0;
-          if (Array.isArray(testData)) {
-            subsidyCount = testData.length;
-          } else if (testData.dispositifs) {
-            subsidyCount = testData.dispositifs.length;
-          } else if (testData.results) {
-            subsidyCount = testData.results.length;
-          }
-          
-          console.log(`📊 ${strategy.name} returned: ${subsidyCount} subsidies`);
-          
-          if (testData.depassement) {
-            console.log('⚠️ DEPASSEMENT FLAG DETECTED - More than 200 results available!');
-          }
-          
-          if (testData.nb_dispositifs) {
-            console.log('📊 Total nb_dispositifs reported:', testData.nb_dispositifs);
-          }
-          
-          if (subsidyCount > maxSubsidies) {
-            maxSubsidies = subsidyCount;
-            bestStrategy = { strategy, data: testData, url: fullUrl };
-          }
-          
-        } catch (error) {
-          console.log('❌ Error testing strategy:', error.message);
         }
+        
+        // Longer pause between domains to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      console.log(`\n🏆 Best strategy: ${bestStrategy?.strategy.name} with ${maxSubsidies} subsidies`);
+      console.log(`\n📈 COMPREHENSIVE SEARCH SUMMARY:`);
+      console.log(`Total API calls made: ${totalApiCalls}`);
+      console.log(`Total subsidies collected: ${allSubsidies.length}`);
+      console.log(`Depassement flags encountered: ${totalDepassements}`);
+      console.log(`Unique subsidies: ${new Set(allSubsidies.map(s => s.numero)).size}`);
       
-      if (!bestStrategy) {
-        throw new Error('All API strategies failed');
+      if (totalDepassements > 0) {
+        console.log(`🚨 CRITICAL: ${totalDepassements} searches hit the 200-result limit!`);
+        console.log(`    This indicates MANY MORE subsidies are available than we're importing.`);
       }
+      
+      if (allSubsidies.length === 0) {
+        throw new Error('No subsidies found across all domains and APE categories');
+      }
+      
+      // Remove duplicates based on numero (dispositif ID from API)
+      const uniqueSubsidies = allSubsidies.filter((subsidy, index, array) => 
+        array.findIndex(s => s.numero === subsidy.numero) === index
+      );
+      
+      console.log(`📊 After deduplication: ${uniqueSubsidies.length} unique subsidies`);
+      
+      // Create mock response structure for existing code compatibility
+      const bestStrategy = {
+        strategy: { name: `Multi-domain search (${priorityDomains.length} domains)` },
+        data: {
+          dispositifs: uniqueSubsidies,
+          depassement: totalDepassements > 0,
+          nb_dispositifs: allSubsidies.length, // Conservative estimate
+        },
+        url: 'Multiple domain searches'
+      };
+      
+      let maxSubsidies = uniqueSubsidies.length;
       
       const apiResponse = { ok: true, status: 200 };
       const subsidies = bestStrategy.data;
