@@ -297,11 +297,11 @@ export const ApiSyncDashboard: React.FC = () => {
                     </span>
                   </div>
                   <Button 
-                    onClick={() => triggerSync('les-aides-fixed')}
-                    disabled={syncing === 'les-aides-fixed'}
+                    onClick={() => triggerSync('les-aides-enhanced')}
+                    disabled={syncing === 'les-aides-enhanced'}
                     className="w-full"
                   >
-                    {syncing === 'les-aides-fixed' ? (
+                    {syncing === 'les-aides-enhanced' ? (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                         Syncing...
@@ -327,69 +327,72 @@ export const ApiSyncDashboard: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  onClick={async () => {
-                    setSyncing('les-aides-dry-run');
-                    try {
-                      const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
-                        body: { dry_run: true, max_requests: 10, backfill: true }
-                      });
-                      if (error) throw error;
-                      toast.success('Dry run completed successfully', {
-                        description: `Processed: ${data?.processed || 0} subsidies`
-                      });
-                    } catch (error: any) {
-                      toast.error('Dry run failed', { description: error?.message });
-                    } finally {
-                      setSyncing(null);
-                    }
-                  }}
-                  disabled={syncing === 'les-aides-dry-run'}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {syncing === 'les-aides-dry-run' ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Testing...
-                    </>
-                  ) : (
-                    'Dry Run Test'
-                  )}
-                </Button>
-                
-                <Button 
-                  onClick={async () => {
-                    setSyncing('les-aides-backfill');
-                    try {
-                      const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
-                        body: { dry_run: false, max_requests: 50, backfill: true }
-                      });
-                      if (error) throw error;
-                      toast.success('Full backfill completed', {
-                        description: `Processed: ${data?.processed || 0} subsidies`
-                      });
-                      await fetchApiMetrics();
-                    } catch (error: any) {
-                      toast.error('Full backfill failed', { description: error?.message });
-                    } finally {
-                      setSyncing(null);
-                    }
-                  }}
-                  disabled={syncing === 'les-aides-backfill'}
-                  className="w-full"
-                >
-                  {syncing === 'les-aides-backfill' ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Running...
-                    </>
-                  ) : (
-                    'Full Backfill'
-                  )}
-                </Button>
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <Button 
+                   onClick={async () => {
+                     setSyncing('les-aides-dry-run');
+                     try {
+                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
+                         body: { max_pages: 2, dry_run: true }
+                       });
+                       if (error) throw error;
+                       toast.success('Dry run completed successfully', {
+                         description: `Found ${data?.found || 0} subsidies, processed ${data?.processed || 0}`
+                       });
+                     } catch (error: any) {
+                       toast.error('Dry run failed', { description: error?.message });
+                     } finally {
+                       setSyncing(null);
+                     }
+                   }}
+                   disabled={syncing === 'les-aides-dry-run'}
+                   variant="outline"
+                   className="w-full"
+                 >
+                   {syncing === 'les-aides-dry-run' ? (
+                     <>
+                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                       Testing...
+                     </>
+                   ) : (
+                     'Quick Test (2 pages)'
+                   )}
+                 </Button>
+                 
+                 <Button 
+                   onClick={async () => {
+                     setSyncing('les-aides-backfill');
+                     try {
+                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
+                         body: { max_pages: 20, dry_run: false }
+                       });
+                       if (error) throw error;
+                       toast.success('Full sync completed', {
+                         description: `Processed ${data?.processed || 0} subsidies, added ${data?.added || 0}`
+                       });
+                       await fetchApiMetrics();
+                     } catch (error: any) {
+                       toast.error('Full sync failed', { description: error?.message });
+                     } finally {
+                       setSyncing(null);
+                     }
+                   }}
+                   disabled={syncing === 'les-aides-backfill'}
+                   className="w-full"
+                 >
+                   {syncing === 'les-aides-backfill' ? (
+                     <>
+                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                       Running...
+                     </>
+                   ) : (
+                     'Full Sync (20 pages)'
+                   )}
+                 </Button>
+               </div>
+               <p className="text-xs text-muted-foreground mt-2">
+                 Using optimized sync function - this may take several minutes for full sync
+               </p>
             </CardContent>
           </Card>
 
