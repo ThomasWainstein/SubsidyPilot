@@ -17,7 +17,11 @@ serve(async (req) => {
   }
 
   try {
-    const { subsidyId, forceReprocess = false } = await req.json();
+    const { 
+      subsidyId, 
+      forceReprocess = false, 
+      localResult = null 
+    } = await req.json();
     
     if (!subsidyId) {
       throw new Error('Subsidy ID is required');
@@ -47,75 +51,38 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Processing subsidy: ${subsidy.title}`);
+    console.log(`🤖 AI Processing subsidy: ${subsidy.title}`);
 
     // Prepare content for AI analysis
-    const contentToAnalyze = [
+    const contentSources = [
       subsidy.title,
       subsidy.description,
       subsidy.eligibility,
       subsidy.funding_markdown,
-      subsidy.description_markdown
-    ].filter(Boolean).join('\n\n');
+      subsidy.description_markdown,
+      // Include raw data if available
+      subsidy.raw_data?.fiche ? cleanHtmlContent(subsidy.raw_data.fiche) : '',
+      subsidy.lesAidesData?.description,
+      subsidy.lesAidesData?.montants,
+      subsidy.lesAidesData?.conditions,
+    ].filter(Boolean);
+
+    const contentToAnalyze = contentSources.join('\n\n');
 
     if (!contentToAnalyze.trim()) {
       throw new Error('No content available to analyze');
     }
 
-    // AI extraction prompt
-    const prompt = `Analyze this French subsidy information and extract structured data in JSON format.
-
-Content to analyze:
-${contentToAnalyze}
-
-Extract the following information in JSON format:
-{
-  "funding": {
-    "type": "percentage|fixed|range|maximum|minimum",
-    "percentage": null,
-    "minAmount": null,
-    "maxAmount": null,
-    "currency": "EUR",
-    "conditions": "",
-    "investmentRange": {"min": null, "max": null},
-    "description": ""
-  },
-  "eligibility": {
-    "entityTypes": [],
-    "sectors": [],
-    "geographicScope": [],
-    "sizeRequirements": "",
-    "specificConditions": []
-  },
-  "applicationProcess": {
-    "steps": [],
-    "timeline": "",
-    "requiredDocuments": [],
-    "contactInfo": "",
-    "beforeProjectStart": true/false
-  },
-  "deadline": {
-    "type": "fixed|rolling|annual|unknown",
-    "date": null,
-    "description": ""
-  },
-  "keyInformation": {
-    "issuingBody": "",
-    "programName": "",
-    "sector": "",
-    "region": ""
-  }
-}
-
-Be precise with numbers and extract exact amounts, percentages, and ranges mentioned in the text.
-For entity types, use standardized terms: TPE, PME, GE, associations, collectivities, artisans, farmers, etc.
-Return only valid JSON, no additional text.`;
+    // Create specialized prompt based on whether we have local results
+    const prompt = createHybridPrompt(contentToAnalyze, localResult);
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Make AI extraction request
+    // Make AI extraction request with optimized model selection
+    const model = localResult ? 'gpt-4o-mini' : 'gpt-4o'; // Use cheaper model if we have local baseline
+    
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -123,11 +90,13 @@ Return only valid JSON, no additional text.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model,
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at extracting structured information from French subsidy and funding documents. Always return valid JSON.'
+            content: localResult 
+              ? 'You are an expert at enhancing and validating extracted French subsidy information. Focus on filling gaps and improving accuracy of the provided local extraction.'
+              : 'You are an expert at extracting structured information from French subsidy and funding documents. Always return valid JSON.'
           },
           {
             role: 'user',
@@ -135,7 +104,7 @@ Return only valid JSON, no additional text.`;
           }
         ],
         temperature: 0.1,
-        max_tokens: 2000
+        max_tokens: localResult ? 1500 : 2000, // Fewer tokens needed for enhancement
       }),
     });
 
@@ -160,16 +129,20 @@ Return only valid JSON, no additional text.`;
       throw new Error(`Failed to parse AI response: ${parseError.message}`);
     }
 
+    // Merge with local result if available (hybrid approach)
+    const finalData = localResult ? mergeResults(localResult, parsedData) : parsedData;
+
     // Calculate confidence score
-    const confidence = calculateConfidenceScore(parsedData, contentToAnalyze);
+    const confidence = calculateHybridConfidenceScore(finalData, contentToAnalyze, localResult);
     
     // Prepare enhanced data
     const enhancedData = {
-      ...parsedData,
+      ...finalData,
       confidence,
       extractedAt: new Date().toISOString(),
-      originalContent: contentToAnalyze.substring(0, 1000), // Truncate for storage
-      processingMethod: 'ai-enhanced'
+      originalContent: contentToAnalyze.substring(0, 1000),
+      processingMethod: localResult ? 'hybrid' : 'ai-enhanced',
+      localConfidence: localResult?.confidence || null,
     };
 
     // Update the subsidy record
@@ -186,13 +159,16 @@ Return only valid JSON, no additional text.`;
       console.error('Failed to update subsidy record:', updateError);
     }
 
-    console.log(`Successfully processed subsidy ${subsidyId} with confidence ${confidence}`);
+    const processingMethod = localResult ? 'hybrid' : 'ai-enhanced';
+    console.log(`✅ Successfully processed subsidy ${subsidyId} with ${processingMethod} method (confidence: ${Math.round(confidence * 100)}%)`);
 
     return new Response(JSON.stringify({
       success: true,
       data: enhancedData,
       confidence,
-      subsidyId
+      subsidyId,
+      processingMethod,
+      tokensUsed: aiData.usage?.total_tokens || 0,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -209,35 +185,232 @@ Return only valid JSON, no additional text.`;
   }
 });
 
-function calculateConfidenceScore(data: any, originalContent: string): number {
-  let score = 0;
-  let maxScore = 5;
+function createHybridPrompt(content: string, localResult: any): string {
+  if (localResult) {
+    // Enhancement prompt - focus on filling gaps
+    return `I have already extracted some information from this French subsidy using local parsing. Please enhance and validate this information, focusing on filling any missing details and correcting any errors.
 
-  // Funding information (most important - 40%)
+CONTENT:
+${content}
+
+EXISTING LOCAL EXTRACTION:
+${JSON.stringify(localResult, null, 2)}
+
+Please provide an enhanced version in the same JSON format, focusing on:
+1. Validating and improving funding information accuracy
+2. Adding any missing eligibility criteria or entity types
+3. Enhancing application process details
+4. Filling in missing deadlines or contact information
+5. Correcting any obvious errors in the local extraction
+
+Return only valid JSON with the same structure:
+{
+  "funding": {
+    "type": "percentage|fixed|range|maximum|minimum|percentage_with_range",
+    "percentage": null,
+    "minAmount": null,
+    "maxAmount": null,
+    "investmentMin": null,
+    "investmentMax": null,
+    "currency": "EUR",
+    "conditions": "",
+    "description": ""
+  },
+  "eligibility": {
+    "entityTypes": [],
+    "sectors": [],
+    "geographicScope": [],
+    "specificConditions": []
+  },
+  "applicationProcess": {
+    "steps": [],
+    "timeline": "",
+    "requiredDocuments": [],
+    "contactInfo": "",
+    "beforeProjectStart": true/false
+  },
+  "deadline": {
+    "type": "fixed|rolling|annual|unknown",
+    "date": null,
+    "description": ""
+  },
+  "keyInformation": {
+    "issuingBody": "",
+    "programName": "",
+    "sector": "",
+    "region": ""
+  }
+}`;
+  } else {
+    // Full extraction prompt
+    return `Analyze this French subsidy information and extract structured data in JSON format.
+
+Content to analyze:
+${content}
+
+Extract the following information in JSON format:
+{
+  "funding": {
+    "type": "percentage|fixed|range|maximum|minimum|percentage_with_range",
+    "percentage": null,
+    "minAmount": null,
+    "maxAmount": null,
+    "investmentMin": null,
+    "investmentMax": null,
+    "currency": "EUR",
+    "conditions": "",
+    "description": ""
+  },
+  "eligibility": {
+    "entityTypes": [],
+    "sectors": [],
+    "geographicScope": [],
+    "specificConditions": []
+  },
+  "applicationProcess": {
+    "steps": [],
+    "timeline": "",
+    "requiredDocuments": [],
+    "contactInfo": "",
+    "beforeProjectStart": true/false
+  },
+  "deadline": {
+    "type": "fixed|rolling|annual|unknown",
+    "date": null,
+    "description": ""
+  },
+  "keyInformation": {
+    "issuingBody": "",
+    "programName": "",
+    "sector": "",
+    "region": ""
+  }
+}
+
+Be precise with numbers and extract exact amounts, percentages, and ranges mentioned in the text.
+For entity types, use standardized terms: TPE, PME, GE, associations, collectivities, artisans, farmers, etc.
+For percentage_with_range type, include both the percentage rate and the investment range it applies to.
+Return only valid JSON, no additional text.`;
+  }
+}
+
+function mergeResults(localResult: any, aiResult: any): any {
+  // Smart merge - prefer AI results where they're more detailed, keep local where AI is missing info
+  return {
+    funding: {
+      ...localResult.funding,
+      ...aiResult.funding,
+      // Prefer local calculations if AI doesn't have them
+      minAmount: aiResult.funding?.minAmount || localResult.funding?.minAmount,
+      maxAmount: aiResult.funding?.maxAmount || localResult.funding?.maxAmount,
+      investmentMin: aiResult.funding?.investmentMin || localResult.funding?.investmentMin,
+      investmentMax: aiResult.funding?.investmentMax || localResult.funding?.investmentMax,
+    },
+    eligibility: {
+      entityTypes: [...new Set([
+        ...(localResult.eligibility?.entityTypes || []),
+        ...(aiResult.eligibility?.entityTypes || [])
+      ])],
+      sectors: [...new Set([
+        ...(localResult.eligibility?.sectors || []),
+        ...(aiResult.eligibility?.sectors || [])
+      ])],
+      geographicScope: [...new Set([
+        ...(localResult.eligibility?.geographicScope || []),
+        ...(aiResult.eligibility?.geographicScope || [])
+      ])],
+      specificConditions: [...new Set([
+        ...(localResult.eligibility?.specificConditions || []),
+        ...(aiResult.eligibility?.specificConditions || [])
+      ])]
+    },
+    applicationProcess: {
+      ...localResult.applicationProcess,
+      ...aiResult.applicationProcess,
+      steps: [...new Set([
+        ...(localResult.applicationProcess?.steps || []),
+        ...(aiResult.applicationProcess?.steps || [])
+      ])],
+      requiredDocuments: [...new Set([
+        ...(localResult.applicationProcess?.requiredDocuments || []),
+        ...(aiResult.applicationProcess?.requiredDocuments || [])
+      ])]
+    },
+    deadline: aiResult.deadline || localResult.deadline,
+    keyInformation: {
+      ...localResult.keyInformation,
+      ...aiResult.keyInformation
+    }
+  };
+}
+
+function calculateHybridConfidenceScore(data: any, originalContent: string, localResult: any): number {
+  let score = 0;
+  let maxScore = 10;
+
+  // Base confidence from local result if available
+  if (localResult?.confidence) {
+    score += localResult.confidence * 3; // 30% weight for local foundation
+  }
+
+  // Funding information completeness (40% of total)
   if (data.funding) {
     if (data.funding.type && data.funding.type !== 'unknown') score += 1;
-    if (data.funding.percentage || data.funding.minAmount || data.funding.maxAmount) score += 1;
+    if (data.funding.percentage || data.funding.minAmount || data.funding.maxAmount) score += 1.5;
+    if (data.funding.investmentMin && data.funding.investmentMax) score += 1; // Bonus for investment range
+    if (data.funding.conditions) score += 0.5;
   }
 
-  // Eligibility information (25%)
-  if (data.eligibility && (data.eligibility.entityTypes?.length > 0 || data.eligibility.geographicScope?.length > 0)) {
-    score += 1;
+  // Eligibility information (25% of total)
+  if (data.eligibility) {
+    if (data.eligibility.entityTypes?.length > 0) score += 1;
+    if (data.eligibility.geographicScope?.length > 0) score += 0.75;
+    if (data.eligibility.specificConditions?.length > 0) score += 0.25;
   }
 
-  // Application process (20%)
-  if (data.applicationProcess && data.applicationProcess.steps?.length > 0) {
-    score += 1;
+  // Application process (20% of total)
+  if (data.applicationProcess) {
+    if (data.applicationProcess.steps?.length > 0) score += 1;
+    if (data.applicationProcess.beforeProjectStart !== undefined) score += 0.5;
+    if (data.applicationProcess.requiredDocuments?.length > 0) score += 0.5;
   }
 
-  // Key information completeness (15%)
-  if (data.keyInformation && (data.keyInformation.issuingBody || data.keyInformation.programName)) {
-    score += 1;
+  // Key information completeness (10% of total)
+  if (data.keyInformation) {
+    if (data.keyInformation.issuingBody) score += 0.5;
+    if (data.keyInformation.region) score += 0.5;
   }
 
-  // Adjust for content quality
+  // Deadline information (5% of total)
+  if (data.deadline && data.deadline.type !== 'unknown') score += 0.5;
+
+  // Bonus for hybrid processing (AI + local working together)
+  if (localResult && score > localResult.confidence * 10) {
+    score += 0.5; // Bonus for AI successfully enhancing local results
+  }
+
+  // Content quality adjustment
   const contentLength = originalContent.length;
-  if (contentLength < 100) score *= 0.7; // Penalize very short content
-  if (contentLength > 1000) score *= 1.1; // Bonus for detailed content
+  if (contentLength < 200) score *= 0.8; // Penalize very short content
+  if (contentLength > 1500) score *= 1.1; // Bonus for detailed content
   
   return Math.min(1, score / maxScore);
+}
+
+function cleanHtmlContent(htmlContent: any): string {
+  if (!htmlContent) return '';
+  
+  const content = typeof htmlContent === 'string' ? htmlContent : JSON.stringify(htmlContent);
+  
+  return content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&euro;/g, '€')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
