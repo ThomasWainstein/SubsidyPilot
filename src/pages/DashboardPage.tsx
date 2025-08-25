@@ -1,6 +1,7 @@
 
 import React from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import Navbar from '@/components/Navbar';
 import { UniversalDashboard } from '@/components/dashboard/UniversalDashboard';
 import DashboardErrorFallback from '@/components/dashboard/DashboardErrorFallback';
 import { usePerformanceMonitoring } from '@/hooks/usePerformanceMonitoring';
@@ -16,6 +17,7 @@ const DashboardPage = () => {
   
   return (
     <ErrorBoundary fallback={DashboardErrorFallback}>
+      <Navbar />
       <div className="container mx-auto px-4 py-6">
         <UniversalDashboard />
       </div>
