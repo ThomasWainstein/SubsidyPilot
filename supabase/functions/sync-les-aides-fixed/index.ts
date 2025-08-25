@@ -40,8 +40,8 @@ serve(async (req) => {
     const logId = syncLog?.id
 
     try {
-      // 🎯 COMPREHENSIVE MULTI-DOMAIN SEARCH based on API documentation
-      console.log('🚀 === ENHANCED SYNC STARTED (Using API Documentation) ===');
+      // 🎯 SIMPLIFIED API SEARCH - Test without domain filtering first
+      console.log('🚀 === SIMPLIFIED SYNC STARTED ===');
       console.log('📊 Current time:', new Date().toISOString());
       console.log('🔧 Sync type:', sync_type);
       
@@ -49,138 +49,112 @@ serve(async (req) => {
       const idcKey = '711e55108232352685cca98b49777e6b836bfb79';
       console.log('🔑 Using documented IDC key from API documentation');
       
-      // Based on API docs: search multiple domains for comprehensive coverage
-      const priorityDomains = [
-        { id: 790, name: 'Création Reprise' },
-        { id: 793, name: 'Cession Transmission' }, 
-        { id: 798, name: 'Développement commercial' },
-        { id: 799, name: 'Innovation' },
-        { id: 801, name: 'Investissement' },
-        { id: 802, name: 'Formation' },
-        { id: 803, name: 'Environnement' }
-      ];
-      
-      // APE codes for broad business categories (per API documentation)
-      const apeCategories = [
-        'A', // Agriculture, sylviculture et pêche
-        'C', // Industrie manufacturière  
-        'G', // Commerce; réparation d'automobiles
-        'J', // Information et communication
-        'M', // Activités spécialisées, scientifiques et techniques
-        'N', // Activités de services administratifs et de soutien
-        'K', // Activités financières et d'assurance
-        'F', // Construction
-        'I'  // Hébergement et restauration
+      // Try simple searches first - no domain filtering
+      const searchStrategies = [
+        { name: 'Basic search', params: {} },
+        { name: 'Agriculture APE', params: { ape: 'A' } },
+        { name: 'Manufacturing APE', params: { ape: 'C' } },
+        { name: 'Commerce APE', params: { ape: 'G' } }
       ];
 
       let allSubsidies: any[] = [];
       let totalApiCalls = 0;
       let totalDepassements = 0;
       
-      console.log(`🔍 Starting comprehensive search across ${priorityDomains.length} domains and ${apeCategories.length} APE categories`);
+      console.log(`🔍 Testing simplified search strategies: ${searchStrategies.length} different approaches`);
       
-      // Search each domain + APE combination
-      for (const domain of priorityDomains) {
-        for (const ape of apeCategories) {
-          console.log(`\n📡 Searching Domain ${domain.id} (${domain.name}) + APE ${ape}`);
+      // Try each search strategy
+      for (const strategy of searchStrategies) {
+        console.log(`\n📡 Trying Strategy: ${strategy.name}`);
+        
+        const searchParams = new URLSearchParams(strategy.params as any);
+        const requestUrl = `https://api.les-aides.fr/aides/?${searchParams}`;
+        console.log('🌐 URL:', requestUrl);
+        
+        const headers = {
+          'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
+          'Accept': 'application/json',
+          'X-IDC': idcKey,
+        };
+        
+        try {
+          totalApiCalls++;
+          const response = await fetch(requestUrl, { headers });
           
-          const searchParams = new URLSearchParams({
-            domaine: domain.id.toString(),
-            ape: ape,
-          });
+          console.log('📊 Status:', response.status);
+          console.log('📊 Status Text:', response.statusText);
+          console.log('📊 Response Headers:', Object.fromEntries(response.headers.entries()));
           
-          const requestUrl = `https://api.les-aides.fr/aides/?${searchParams}`;
-          console.log('🌐 URL:', requestUrl);
-          
-          const headers = {
-            'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
-            'Accept': 'application/json',
-            'X-IDC': idcKey,
-          };
-          
-          try {
-            totalApiCalls++;
-            const response = await fetch(requestUrl, { headers });
+          if (response.ok) {
+            const apiData = await response.json();
             
-            console.log('📊 Status:', response.status);
-            console.log('📊 Status Text:', response.statusText);
-            console.log('📊 Response Headers:', Object.fromEntries(response.headers.entries()));
+            console.log('✅ Success:', {
+              dispositifs: apiData.dispositifs?.length || 0,
+              depassement: apiData.depassement,
+              nb_dispositifs: apiData.nb_dispositifs,
+              idr: apiData.idr
+            });
             
-            if (response.ok) {
-              const apiData = await response.json();
+            if (apiData.dispositifs && Array.isArray(apiData.dispositifs)) {
+              // Add strategy context to each subsidy for tracking
+              const subsidiesWithContext = apiData.dispositifs.map((dispositif: any) => ({
+                ...dispositif,
+                _source_strategy: strategy.name
+              }));
               
-              console.log('✅ Success:', {
-                dispositifs: apiData.dispositifs?.length || 0,
-                depassement: apiData.depassement,
-                nb_dispositifs: apiData.nb_dispositifs,
-                idr: apiData.idr
-              });
+              allSubsidies.push(...subsidiesWithContext);
               
-              if (apiData.dispositifs && Array.isArray(apiData.dispositifs)) {
-                // Add domain/ape context to each subsidy for tracking
-                const subsidiesWithContext = apiData.dispositifs.map((dispositif: any) => ({
-                  ...dispositif,
-                  _source_domain: domain.name,
-                  _source_ape: ape,
-                  _source_domain_id: domain.id
-                }));
-                
-                allSubsidies.push(...subsidiesWithContext);
-                
-                // Track depassement flags - critical for understanding data limits
-                if (apiData.depassement) {
-                  totalDepassements++;
-                  console.log('⚠️ DEPASSEMENT=true: More than 200 results available for this search!');
-                  console.log(`   • Domain: ${domain.name}, APE: ${ape}`);
-                  console.log(`   • Total available: ${apiData.nb_dispositifs || 'Unknown'}`);
-                  console.log(`   • Retrieved: ${apiData.dispositifs.length}`);
-                }
+              // Track depassement flags - critical for understanding data limits
+              if (apiData.depassement) {
+                totalDepassements++;
+                console.log('⚠️ DEPASSEMENT=true: More than 200 results available for this search!');
+                console.log(`   • Strategy: ${strategy.name}`);
+                console.log(`   • Total available: ${apiData.nb_dispositifs || 'Unknown'}`);
+                console.log(`   • Retrieved: ${apiData.dispositifs.length}`);
               }
-              
-              // Respect rate limiting (720 calls/day per API documentation)
-              await new Promise(resolve => setTimeout(resolve, 800));
-              
-            } else {
-              // Enhanced error logging for debugging
-              const errorText = await response.text();
-              console.log('❌ API Error Details:', {
-                status: response.status,
-                statusText: response.statusText,
-                url: requestUrl,
-                domain: domain.name,
-                ape: ape,
-                errorBody: errorText
-              });
-              
-              // Check for specific error types
-              if (response.status === 403) {
-                console.log('🚨 403 Forbidden - Possible causes:');
-                console.log('   • IDC Key invalid or expired');
-                console.log('   • Daily quota exceeded (720 requests/day)');
-                console.log('   • API access restricted');
-                console.log('   • Request format incorrect');
-              } else if (response.status === 429) {
-                console.log('🚨 429 Too Many Requests - Rate limited');
-                console.log('   • Need to slow down requests');
-                console.log('   • Consider longer delays between calls');
-              }
-              
-              // Don't throw error immediately, try other combinations
-              console.log('⏭️ Continuing with next API call...');
             }
             
-          } catch (error) {
-            console.log('❌ Request failed with exception:', {
-              error: error.message,
-              domain: domain.name,
-              ape: ape,
-              url: requestUrl
+            // Respect rate limiting (720 calls/day per API documentation)
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+          } else {
+            // Enhanced error logging for debugging
+            const errorText = await response.text();
+            console.log('❌ API Error Details:', {
+              status: response.status,
+              statusText: response.statusText,
+              url: requestUrl,
+              strategy: strategy.name,
+              errorBody: errorText
             });
+            
+            // Check for specific error types
+            if (response.status === 403) {
+              console.log('🚨 403 Forbidden - Possible causes:');
+              console.log('   • IDC Key invalid or expired');
+              console.log('   • Daily quota exceeded (720 requests/day)');
+              console.log('   • API access restricted');
+              console.log('   • Request format incorrect');
+            } else if (response.status === 429) {
+              console.log('🚨 429 Too Many Requests - Rate limited');
+              console.log('   • Need to slow down requests');
+              console.log('   • Consider longer delays between calls');
+            }
+            
+            // Don't throw error immediately, try other strategies
+            console.log('⏭️ Continuing with next strategy...');
           }
+          
+        } catch (error) {
+          console.log('❌ Request failed with exception:', {
+            error: error.message,
+            strategy: strategy.name,
+            url: requestUrl
+          });
         }
         
-        // Longer pause between domains to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Pause between strategies
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
       
       console.log(`\n📈 COMPREHENSIVE SEARCH SUMMARY:`);
@@ -195,7 +169,7 @@ serve(async (req) => {
       }
       
       if (allSubsidies.length === 0) {
-        throw new Error('No subsidies found across all domains and APE categories');
+        throw new Error('No subsidies found across all search strategies');
       }
       
       // Remove duplicates based on numero (dispositif ID from API)
@@ -207,13 +181,13 @@ serve(async (req) => {
       
       // Create mock response structure for existing code compatibility
       const bestStrategy = {
-        strategy: { name: `Multi-domain search (${priorityDomains.length} domains)` },
+        strategy: { name: `Simplified search (${searchStrategies.length} strategies)` },
         data: {
           dispositifs: uniqueSubsidies,
           depassement: totalDepassements > 0,
           nb_dispositifs: allSubsidies.length, // Conservative estimate
         },
-        url: 'Multiple domain searches'
+        url: 'Multiple strategy searches'
       };
       
       let maxSubsidies = uniqueSubsidies.length;
