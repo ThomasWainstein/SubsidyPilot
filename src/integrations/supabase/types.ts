@@ -3293,8 +3293,10 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
+          enhanced_funding_info: Json | null
           external_id: string | null
           extraction_batch_id: string | null
+          extraction_completeness_score: number | null
           funding_type: string | null
           id: string
           import_job_id: string | null
@@ -3333,8 +3335,10 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
+          extraction_completeness_score?: number | null
           funding_type?: string | null
           id?: string
           import_job_id?: string | null
@@ -3373,8 +3377,10 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
+          enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
+          extraction_completeness_score?: number | null
           funding_type?: string | null
           id?: string
           import_job_id?: string | null

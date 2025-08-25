@@ -452,7 +452,7 @@ function calculateConfidence(data: any): number {
 
 async function updateSubsidyRecord(supabase: any, subsidyId: string, enhancedData: any): Promise<void> {
   const { error } = await supabase
-    .from('subsidies_structured')
+    .from('subsidies')
     .update({
       enhanced_funding_info: enhancedData,
       extraction_completeness_score: Math.round(enhancedData.confidence * 100),

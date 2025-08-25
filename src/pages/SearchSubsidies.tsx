@@ -12,14 +12,16 @@ import SubsidyErrorBoundary from '@/components/error/SubsidyErrorBoundary';
 
 interface Subsidy {
   id: string;
-  title: string;
+  title: any; // JSONB field
   agency: string;
-  amount: number[] | null;
+  amount_min: number | null;
+  amount_max: number | null; 
   deadline: string | null;
   region: string[] | null;
-  description: string | null;
-  url: string;
+  description: any; // JSONB field
+  source_url: string;
   created_at: string;
+  enhanced_funding_info?: any; // JSONB field from database
 }
 
 export default function SearchSubsidies() {
@@ -32,7 +34,7 @@ export default function SearchSubsidies() {
     setLoading(true);
     try {
       let query = supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -61,13 +63,43 @@ export default function SearchSubsidies() {
     fetchSubsidies(searchTerm);
   };
 
-  const formatAmount = (amount: number[] | null) => {
-    if (!amount || amount.length === 0) return 'Not specified';
-    const firstAmount = amount[0];
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(firstAmount);
+  const formatAmount = (subsidy: Subsidy) => {
+    // Try enhanced funding info first
+    if (subsidy.enhanced_funding_info?.funding) {
+      const funding = subsidy.enhanced_funding_info.funding;
+      switch (funding.type) {
+        case 'percentage_with_range':
+          if (funding.percentage && funding.investmentMin && funding.investmentMax) {
+            return `${funding.percentage}% sur €${funding.investmentMin.toLocaleString()} - €${funding.investmentMax.toLocaleString()}`;
+          }
+          return `${funding.percentage}% de subvention`;
+        case 'percentage':
+          return funding.percentage ? `${funding.percentage}%` : 'Pourcentage à déterminer';
+        case 'range':
+          if (funding.minAmount && funding.maxAmount) {
+            return `€${funding.minAmount.toLocaleString()} - €${funding.maxAmount.toLocaleString()}`;
+          }
+          break;
+        case 'maximum':
+          return funding.maxAmount ? `Jusqu'à €${funding.maxAmount.toLocaleString()}` : 'Montant maximum à déterminer';
+        case 'minimum':
+          return funding.minAmount ? `À partir de €${funding.minAmount.toLocaleString()}` : 'Montant minimum à déterminer';
+      }
+      if (funding.description) return funding.description;
+      if (funding.conditions) return funding.conditions;
+    }
+    
+    // Fallback to legacy database amount fields
+    if (subsidy.amount_min && subsidy.amount_max) {
+      return `€${subsidy.amount_min.toLocaleString()} - €${subsidy.amount_max.toLocaleString()}`;
+    }
+    if (subsidy.amount_max) {
+      return `Jusqu'à €${subsidy.amount_max.toLocaleString()}`;
+    }
+    if (subsidy.amount_min) {
+      return `À partir de €${subsidy.amount_min.toLocaleString()}`;
+    }
+    return 'Montant non spécifié';
   };
 
   const formatDate = (dateString: string | null) => {
@@ -129,13 +161,17 @@ export default function SearchSubsidies() {
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex-1">
                         <CardTitle className="text-lg leading-tight mb-2">
-                          {subsidy.title}
+                          {typeof subsidy.title === 'string' ? subsidy.title : (
+                            typeof subsidy.title === 'object' && subsidy.title ? 
+                            String(Object.values(subsidy.title)[0] || 'Titre non disponible') : 
+                            'Titre non disponible'
+                          )}
                         </CardTitle>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">{subsidy.agency}</Badge>
-                          {subsidy.amount && (
+                          {(subsidy.amount_min || subsidy.amount_max || subsidy.enhanced_funding_info?.funding) && (
                             <Badge variant="outline">
-                              {formatAmount(subsidy.amount)}
+                              {formatAmount(subsidy)}
                             </Badge>
                           )}
                           {subsidy.deadline && (
@@ -146,7 +182,7 @@ export default function SearchSubsidies() {
                         </div>
                       </div>
                       <a
-                        href={subsidy.url}
+                        href={subsidy.source_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:text-primary/80"
@@ -158,7 +194,11 @@ export default function SearchSubsidies() {
                   <CardContent>
                     {subsidy.description && (
                       <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-                        {subsidy.description}
+                        {typeof subsidy.description === 'string' ? subsidy.description : (
+                          typeof subsidy.description === 'object' && subsidy.description ? 
+                          String(Object.values(subsidy.description)[0] || 'Description non disponible') : 
+                          'Description non disponible'
+                        )}
                       </p>
                     )}
                     {subsidy.region && subsidy.region.length > 0 && (
