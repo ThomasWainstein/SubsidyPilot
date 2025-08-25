@@ -16,6 +16,7 @@ import {
   User
 } from 'lucide-react';
 import { analytics } from '@/lib/analytics/events';
+import { createSafeHTML } from '@/utils/xssPrevention';
 
 interface DocumentItem {
   id: string;
@@ -263,9 +264,7 @@ export const ImprovedDocumentsTab: React.FC<ImprovedDocumentsTabProps> = ({
         </CardHeader>
         <CardContent>
           <div className="prose prose-sm max-w-none">
-            <div dangerouslySetInnerHTML={{ 
-              __html: lesAidesData.conseils.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            }} />
+            <div dangerouslySetInnerHTML={createSafeHTML(lesAidesData.conseils)} />
           </div>
         </CardContent>
       </Card>
