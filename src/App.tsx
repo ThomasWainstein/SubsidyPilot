@@ -21,6 +21,11 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const NewFarmPage = lazy(() => import('@/pages/NewFarmPage'));
 const FarmProfilePage = lazy(() => import('@/pages/FarmProfilePage'));
 const FarmEditPage = lazy(() => import('@/pages/FarmEditPage'));
+// Universal Profile Pages
+const NewProfilePage = lazy(() => import('@/pages/NewProfilePage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const ProfileEditPage = lazy(() => import('@/pages/ProfileEditPage'));
+// Other Pages
 const SubsidySearchPage = lazy(() => import('@/pages/SubsidySearchPage'));
 const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
 const EUSubsidyPortalPage = lazy(() => import('@/pages/EUSubsidyPortalPage'));
@@ -122,17 +127,28 @@ function App() {
                       <Route path="/auth" element={<AuthPage />} />
                       
                       {/* 🚀 PERFORMANCE: Grouped protected routes */}
-                      <Route path="/dashboard" element={
-                        <ProtectedRouteWrapper><DashboardPage /></ProtectedRouteWrapper>
-                      } />
-                      
-                      <Route path="/farm/new" element={
-                        <ProtectedRouteWrapper><NewFarmPage /></ProtectedRouteWrapper>
-                      } />
-                      
-                      <Route path="/farm/:farmId" element={
-                        <ProtectedRouteWrapper><FarmProfilePage /></ProtectedRouteWrapper>
-                      } />
+                       <Route path="/dashboard" element={
+                         <ProtectedRouteWrapper><DashboardPage /></ProtectedRouteWrapper>
+                       } />
+                       
+                       {/* Universal Profile Routes */}
+                       <Route path="/profile/new" element={
+                         <ProtectedRouteWrapper><NewProfilePage /></ProtectedRouteWrapper>
+                       } />
+                       <Route path="/profile/:profileId" element={
+                         <ProtectedRouteWrapper><ProfilePage /></ProtectedRouteWrapper>
+                       } />
+                       <Route path="/profile/:profileId/edit" element={
+                         <ProtectedRouteWrapper><ProfileEditPage /></ProtectedRouteWrapper>
+                       } />
+
+                       {/* Legacy Farm Routes (Backward Compatibility) */}
+                       <Route path="/farm/new" element={
+                         <ProtectedRouteWrapper><NewFarmPage /></ProtectedRouteWrapper>
+                       } />
+                       <Route path="/farm/:farmId" element={
+                         <ProtectedRouteWrapper><FarmProfilePage /></ProtectedRouteWrapper>
+                       } />
                       
                       <Route path="/farm/:farmId/edit" element={
                         <ProtectedRouteWrapper><FarmEditPage /></ProtectedRouteWrapper>

@@ -256,6 +256,45 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_profiles: {
+        Row: {
+          applicant_type: Database["public"]["Enums"]["applicant_type"]
+          completion_percentage: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          legacy_farm_id: string | null
+          profile_data: Json
+          profile_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applicant_type: Database["public"]["Enums"]["applicant_type"]
+          completion_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          legacy_farm_id?: string | null
+          profile_data?: Json
+          profile_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applicant_type?: Database["public"]["Enums"]["applicant_type"]
+          completion_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          legacy_farm_id?: string | null
+          profile_data?: Json
+          profile_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       applicant_types: {
         Row: {
           created_at: string | null
@@ -4836,6 +4875,18 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Database["public"]["Enums"]["access_tier"]
       }
+      get_user_applicant_profiles: {
+        Args: { p_user_id?: string }
+        Returns: {
+          applicant_type: Database["public"]["Enums"]["applicant_type"]
+          completion_percentage: number
+          created_at: string
+          id: string
+          is_active: boolean
+          profile_name: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4937,6 +4988,7 @@ export type Database = {
     Enums: {
       access_tier: "free" | "starter" | "professional" | "enterprise"
       app_role: "admin" | "moderator" | "user" | "qa_reviewer"
+      applicant_type: "individual" | "business" | "nonprofit" | "municipality"
       application_status:
         | "draft"
         | "submitted"
@@ -5103,6 +5155,7 @@ export const Constants = {
     Enums: {
       access_tier: ["free", "starter", "professional", "enterprise"],
       app_role: ["admin", "moderator", "user", "qa_reviewer"],
+      applicant_type: ["individual", "business", "nonprofit", "municipality"],
       application_status: [
         "draft",
         "submitted",

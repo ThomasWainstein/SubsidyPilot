@@ -18,20 +18,20 @@ const Index = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-6">
-            Welcome to <span className="text-green-600">AgriTool</span>
+            Welcome to <span className="text-primary">SubsidyPilot</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Your comprehensive platform for managing agricultural subsidies, farm profiles, and regulatory compliance across Europe.
+            Your comprehensive AI-powered platform for discovering, applying, and managing public funding opportunities across all sectors in Europe.
           </p>
           
           <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center mb-12">
             <Button 
               size="lg" 
-              className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+              className="w-full sm:w-auto"
               onClick={() => navigate('/auth')}
             >
               Get Started
@@ -49,27 +49,27 @@ const Index = () => {
           {/* Features Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                📋
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                👤
               </div>
-              <h3 className="text-lg font-semibold mb-2">Digital Farm Profiles</h3>
-              <p className="text-gray-600">Create and manage comprehensive farm profiles with all required documentation</p>
+              <h3 className="text-lg font-semibold mb-2">Universal Profiles</h3>
+              <p className="text-gray-600">Create profiles for individuals, businesses, NGOs, or municipalities with intelligent document processing</p>
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 🎯
               </div>
-              <h3 className="text-lg font-semibold mb-2">Subsidy Matching</h3>
-              <p className="text-gray-600">AI-powered matching with relevant agricultural subsidies across Europe</p>
+              <h3 className="text-lg font-semibold mb-2">AI-Powered Matching</h3>
+              <p className="text-gray-600">Discover relevant funding opportunities across all sectors with intelligent eligibility analysis</p>
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 📊
               </div>
-              <h3 className="text-lg font-semibold mb-2">Application Tracking</h3>
-              <p className="text-gray-600">Track and manage subsidy applications with automated compliance checking</p>
+              <h3 className="text-lg font-semibold mb-2">Application Automation</h3>
+              <p className="text-gray-600">Streamline applications with AI-powered form completion and compliance tracking</p>
             </div>
           </div>
         </div>
