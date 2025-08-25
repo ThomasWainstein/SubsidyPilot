@@ -61,11 +61,14 @@ export class FrenchSubsidyParser {
       /taux.*?subvention.*?(\d+(?:[.,]\d+)?)\s*%.*?assiette.*?entre\s+(\d+(?:\s*\d{3})*)\s*€.*?et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
     ],
     
-    // Aid ceiling with percentage calculation
+    // Aid ceiling with percentage calculation (HIGHEST PRIORITY - actual aid amounts)
     aidCeilingWithRange: [
       /plafond\s+d.aide.*?entre\s+(\d+(?:\s*\d{3})*)\s*(?:€)?\s+et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
       /soit\s+un\s+plafond.*?entre\s+(\d+(?:\s*\d{3})*)\s*et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
       /aide.*?plafonnée.*?entre\s+(\d+(?:\s*\d{3})*)\s*et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
+      // NEW: Explicit aid amounts in parentheses (your specific case)
+      /\(aide:\s*€?(\d+(?:\s*\d{3})*)\s*(?:€)?\s*[-–]\s*€?(\d+(?:\s*\d{3})*)\s*€?\)/gi,
+      /aide\s+compris\s+entre\s+(\d+(?:\s*\d{3})*)\s*et\s+(\d+(?:\s*\d{3})*)\s*€/gi,
     ],
     
     // Prime (bonus/premium) patterns - important French funding type
@@ -320,7 +323,29 @@ export class FrenchSubsidyParser {
   private static extractFunding(content: string): ExtractedFunding[] {
     const results: ExtractedFunding[] = [];
     
-    // PRIORITY 1: Extract complex percentage with investment range (handles your specific case)
+    // PRIORITY 1: Extract aid ceiling ranges FIRST (actual aid amounts)
+    for (const pattern of this.FUNDING_PATTERNS.aidCeilingWithRange) {
+      const matches = [...content.matchAll(pattern)];
+      for (const match of matches) {
+        const minAmount = parseInt(match[1].replace(/\s/g, ''));
+        const maxAmount = parseInt(match[2].replace(/\s/g, ''));
+        results.push({
+          type: 'range',
+          minAmount,
+          maxAmount,
+          currency: 'EUR',
+          conditions: 'Montant aide directe',
+          originalText: match[0]
+        });
+      }
+    }
+
+    // If we found explicit aid amounts, prioritize them and stop
+    if (results.length > 0) {
+      return results;
+    }
+
+    // PRIORITY 2: Extract complex percentage with investment range (fallback)
     for (const pattern of this.FUNDING_PATTERNS.percentageWithInvestmentRange) {
       const matches = [...content.matchAll(pattern)];
       for (const match of matches) {
@@ -341,23 +366,6 @@ export class FrenchSubsidyParser {
           investmentMax,
           currency: 'EUR',
           conditions: `Sur investissement entre €${investmentMin.toLocaleString()} et €${investmentMax.toLocaleString()}`,
-          originalText: match[0]
-        });
-      }
-    }
-
-    // PRIORITY 2: Extract aid ceiling ranges
-    for (const pattern of this.FUNDING_PATTERNS.aidCeilingWithRange) {
-      const matches = [...content.matchAll(pattern)];
-      for (const match of matches) {
-        const minAmount = parseInt(match[1].replace(/\s/g, ''));
-        const maxAmount = parseInt(match[2].replace(/\s/g, ''));
-        results.push({
-          type: 'range',
-          minAmount,
-          maxAmount,
-          currency: 'EUR',
-          conditions: 'Plafond d\'aide',
           originalText: match[0]
         });
       }
