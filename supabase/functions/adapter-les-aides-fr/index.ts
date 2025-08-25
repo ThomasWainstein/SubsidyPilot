@@ -5,26 +5,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface LesAidesItem {
-  id: string;
-  title: string;
-  description?: string;
-  url: string;
-  amount?: string;
-  deadline?: string;
-  organization?: string;
-  region?: string;
-  sector?: string;
-  agency?: string;
-  implantation?: string; // E/N/T
-  domains?: number[];
-  means?: number[];
-  aps?: boolean;
-  nouveau?: boolean;
-  validation?: string;
-  generation?: string;
-  revision?: number;
-  raw_api_data?: any;
+interface LesAidesDetailResponse {
+  numero: number;
+  nom: string;
+  sigle: string;
+  revision: number;
+  generation: string;
+  validation: string;
+  nouveau: boolean;
+  implantation: string; // E/N/T
+  uri: string;
+  aps: boolean;
+  domaines: number[];
+  moyens: number[];
+  auteur: string;
+  organisme: {
+    numero: number;
+    sigle: string;
+    raison_sociale: string;
+    implantation: string;
+    adresses: Array<{
+      libelle: string;
+      interlocuteur: string;
+      adresse: string;
+      email: string;
+      service: string;
+      telephone: string;
+      telecopie: string;
+      web: string;
+    }>;
+  };
+  objet: string; // HTML content
+  conditions: string; // HTML content
+  montants: string; // HTML content
+  conseils: string; // HTML content
+  references: string; // HTML content
+  restrictions: string[];
+  criteres: {
+    pour: Array<{ libelle: string; enfants?: any[] }>;
+    contre: Array<{ libelle: string; enfants?: any[] }>;
+  };
 }
 
 interface ParsedSubsidy {
@@ -45,6 +65,9 @@ interface ParsedSubsidy {
   language: string[];
   version_hash: string;
   last_synced_at: string;
+  country: string;
+  raw_data?: any;
+  backfill_target_id?: string;
 }
 
 Deno.serve(async (req) => {
@@ -59,13 +82,13 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { run_id, items, dry_run = false } = await req.json()
+    const { run_id, items, dry_run = false, backfill = false } = await req.json()
     
     if (!run_id || !items || !Array.isArray(items)) {
       throw new Error('Missing required fields: run_id, items')
     }
 
-    console.log(`🔄 Processing ${items.length} items for run ${run_id}, dry_run: ${dry_run}`)
+    console.log(`🔄 Processing ${items.length} items for run ${run_id}, dry_run: ${dry_run}, backfill: ${backfill}`)
     
     let processed = 0
     let inserted = 0 
@@ -78,6 +101,7 @@ Deno.serve(async (req) => {
       try {
         // Update sync_item status to processing
         if (!dry_run) {
+          const externalId = item.numero?.toString() || item.external_id
           await supabase
             .from('sync_items')
             .update({ 
@@ -85,93 +109,128 @@ Deno.serve(async (req) => {
               processed_at: new Date().toISOString()
             })
             .eq('run_id', run_id)
-            .eq('external_id', item.id || item.url)
+            .eq('external_id', externalId)
         }
 
         // Parse the item into canonical schema
-        const parsedSubsidy = await parseItem(item, supabase)
+        const parsedSubsidy = await parseItem(item, supabase, backfill)
         
         if (!parsedSubsidy) {
-          await logItemError(supabase, run_id, item.id || item.url, 'PARSE_ERROR', 'Failed to parse item', dry_run)
-          failed++
-          continue
-        }
-
-        // Check if subsidy exists
-        const { data: existingSubsidy, error: fetchError } = await supabase
-          .from('subsidies')
-          .select('id, version_hash')
-          .eq('source', 'les-aides-fr')
-          .eq('external_id', parsedSubsidy.external_id)
-          .maybeSingle()
-
-        if (fetchError) {
-          console.error('Fetch error:', fetchError)
-          await logItemError(supabase, run_id, parsedSubsidy.external_id, 'RLS_ERROR', fetchError.message, dry_run)
+          const externalId = item.numero?.toString() || item.external_id || 'unknown'
+          await logItemError(supabase, run_id, externalId, 'PARSE_ERROR', 'Failed to parse item', dry_run)
           failed++
           continue
         }
 
         if (dry_run) {
-          console.log(`[DRY RUN] Would process: ${parsedSubsidy.title.fr || parsedSubsidy.external_id}`)
+          console.log(`[DRY RUN] Would process: ${parsedSubsidy.title.fr} (${parsedSubsidy.external_id})`)
           skipped++
           continue
         }
 
-        // Insert or update based on version hash
-        if (existingSubsidy) {
-          if (existingSubsidy.version_hash === parsedSubsidy.version_hash) {
-            // No changes, just update last_synced_at
-            await supabase
-              .from('subsidies')
-              .update({ last_synced_at: parsedSubsidy.last_synced_at })
-              .eq('id', existingSubsidy.id)
-            skipped++
-          } else {
-            // Update existing subsidy
-            const { error: updateError } = await supabase
-              .from('subsidies')
-              .update(parsedSubsidy)
-              .eq('id', existingSubsidy.id)
-            
-            if (updateError) {
-              console.error('Update error:', updateError)
-              await logItemError(supabase, run_id, parsedSubsidy.external_id, 'VALIDATION_ERROR', updateError.message, dry_run)
-              failed++
-            } else {
-              updated++
-            }
-          }
-        } else {
-          // Insert new subsidy
-          const { error: insertError } = await supabase
+        if (backfill && item.backfill_target_id) {
+          // Update existing record by ID
+          const { error: updateError } = await supabase
             .from('subsidies')
-            .insert(parsedSubsidy)
+            .update({
+              title: parsedSubsidy.title,
+              description: parsedSubsidy.description,
+              agency: parsedSubsidy.agency,
+              agency_id: parsedSubsidy.agency_id,
+              source_url: parsedSubsidy.source_url,
+              amount_min: parsedSubsidy.amount_min,
+              amount_max: parsedSubsidy.amount_max,
+              deadline: parsedSubsidy.deadline,
+              tags: parsedSubsidy.tags,
+              funding_type: parsedSubsidy.funding_type,
+              version_hash: parsedSubsidy.version_hash,
+              last_synced_at: parsedSubsidy.last_synced_at,
+              raw_data: parsedSubsidy.raw_data
+            })
+            .eq('id', item.backfill_target_id)
           
-          if (insertError) {
-            console.error('Insert error:', insertError)
-            await logItemError(supabase, run_id, parsedSubsidy.external_id, 'VALIDATION_ERROR', insertError.message, dry_run)
+          if (updateError) {
+            console.error('Backfill update error:', updateError)
+            await logItemError(supabase, run_id, parsedSubsidy.external_id, 'VALIDATION_ERROR', updateError.message, dry_run)
             failed++
           } else {
-            inserted++
+            updated++
+            console.log(`🔄 Backfilled: ${parsedSubsidy.title.fr}`)
+          }
+        } else {
+          // Regular flow: check if exists and upsert
+          const { data: existingSubsidy, error: fetchError } = await supabase
+            .from('subsidies')
+            .select('id, version_hash')
+            .eq('source', 'les-aides-fr')
+            .eq('external_id', parsedSubsidy.external_id)
+            .maybeSingle()
+
+          if (fetchError) {
+            console.error('Fetch error:', fetchError)
+            await logItemError(supabase, run_id, parsedSubsidy.external_id, 'RLS_ERROR', fetchError.message, dry_run)
+            failed++
+            continue
+          }
+
+          // Insert or update based on version hash
+          if (existingSubsidy) {
+            if (existingSubsidy.version_hash === parsedSubsidy.version_hash) {
+              // No changes, just update last_synced_at
+              await supabase
+                .from('subsidies')
+                .update({ last_synced_at: parsedSubsidy.last_synced_at })
+                .eq('id', existingSubsidy.id)
+              skipped++
+            } else {
+              // Update existing subsidy
+              const { error: updateError } = await supabase
+                .from('subsidies')
+                .update(parsedSubsidy)
+                .eq('id', existingSubsidy.id)
+              
+              if (updateError) {
+                console.error('Update error:', updateError)
+                await logItemError(supabase, run_id, parsedSubsidy.external_id, 'VALIDATION_ERROR', updateError.message, dry_run)
+                failed++
+              } else {
+                updated++
+              }
+            }
+          } else {
+            // Insert new subsidy
+            const { error: insertError } = await supabase
+              .from('subsidies')
+              .insert(parsedSubsidy)
+            
+            if (insertError) {
+              console.error('Insert error:', insertError)
+              await logItemError(supabase, run_id, parsedSubsidy.external_id, 'VALIDATION_ERROR', insertError.message, dry_run)
+              failed++
+            } else {
+              inserted++
+            }
           }
         }
 
         // Mark sync_item as completed
-        await supabase
-          .from('sync_items')
-          .update({ 
-            status: 'completed',
-            processed_at: new Date().toISOString()
-          })
-          .eq('run_id', run_id)
-          .eq('external_id', parsedSubsidy.external_id)
+        if (!dry_run) {
+          await supabase
+            .from('sync_items')
+            .update({ 
+              status: 'completed',
+              processed_at: new Date().toISOString()
+            })
+            .eq('run_id', run_id)
+            .eq('external_id', parsedSubsidy.external_id)
+        }
 
         processed++
 
       } catch (error) {
         console.error('Item processing error:', error)
-        await logItemError(supabase, run_id, item.id || item.url, 'UNKNOWN', error.message, dry_run)
+        const externalId = item.numero?.toString() || item.external_id || 'unknown'
+        await logItemError(supabase, run_id, externalId, 'UNKNOWN', error.message, dry_run)
         failed++
       }
     }
@@ -203,74 +262,112 @@ Deno.serve(async (req) => {
   }
 })
 
-async function parseItem(item: LesAidesItem, supabase: any): Promise<ParsedSubsidy | null> {
+async function parseItem(item: LesAidesDetailResponse | any, supabase: any, isBackfill: boolean = false): Promise<ParsedSubsidy | null> {
   try {
     const now = new Date().toISOString()
     
-    // Parse amount - check both amount field and raw API data
+    // Handle both full detail responses and search result items
+    const numero = item.numero
+    const nom = item.nom
+    const uri = item.uri
+    
+    if (!numero || !nom) {
+      console.error('Missing required fields: numero or nom', item)
+      return null
+    }
+
+    // Parse amount from montants HTML field
     let amountMin, amountMax
-    if (item.amount) {
-      const amounts = parseAmount(item.amount)
-      amountMin = amounts.min
-      amountMax = amounts.max
-    } else if (item.raw_api_data?.details?.montants) {
-      const amounts = parseAmount(item.raw_api_data.details.montants)
+    if (item.montants) {
+      const amounts = parseAmountFromHtml(item.montants)
       amountMin = amounts.min
       amountMax = amounts.max
     }
     
-    // Parse deadline - prefer details if available
+    // Parse deadline from conditions/montants HTML 
     let deadline: string | undefined
-    if (item.deadline) {
-      deadline = parseDeadline(item.deadline)
+    if (item.conditions || item.montants) {
+      deadline = parseDeadlineFromHtml(item.conditions || item.montants)
     }
 
-    // Resolve or create agency - prefer agency field over organization
+    // Resolve or create agency using organisme data
     let agencyId: string | undefined
-    const agencyName = item.agency || item.organization
-    if (agencyName) {
+    let agencyName: string | undefined
+    
+    if (item.organisme?.raison_sociale) {
+      agencyName = item.organisme.raison_sociale
+      agencyId = await resolveAgency(supabase, agencyName, item.organisme.sigle, item.organisme.adresses?.[0]?.web)
+    } else if (item.sigle) {
+      agencyName = item.sigle
       agencyId = await resolveAgency(supabase, agencyName)
     }
 
     // Build tags from multiple sources
     const tags = []
-    if (item.sector) tags.push(item.sector)
     if (item.implantation === 'E') tags.push('european')
-    else if (item.implantation === 'N') tags.push('national')
+    else if (item.implantation === 'N') tags.push('national')  
     else if (item.implantation === 'T') tags.push('territorial')
     if (item.aps) tags.push('aps')
-    if (item.nouveau) tags.push('nouveau')
+    if (item.nouveau) tags.push('new')
+    
+    // Add domain and means as tags
+    if (item.domaines?.length) {
+      item.domaines.forEach((d: number) => tags.push(`domain:${d}`))
+    }
+    if (item.moyens?.length) {
+      item.moyens.forEach((m: number) => tags.push(`means:${m}`))
+    }
 
-    // Determine funding type from means if available
+    // Determine funding type from means
     let fundingType = 'public'
-    if (item.means?.includes(822)) fundingType = 'equity' // Intervention en fonds propres
-    else if (item.means?.includes(827)) fundingType = 'loan' // Avance − Prêts − Garanties
-    else if (item.means?.includes(833)) fundingType = 'grant' // Subvention
+    if (item.moyens?.includes(822)) fundingType = 'equity' // Intervention en fonds propres
+    else if (item.moyens?.includes(827)) fundingType = 'loan' // Avance − Prêts − Garanties
+    else if (item.moyens?.includes(833)) fundingType = 'grant' // Subvention
 
     const parsedData: ParsedSubsidy = {
       source: 'les-aides-fr',
-      external_id: item.id,
-      title: { fr: item.title || 'Aide sans titre' },
-      description: { fr: item.description || '' },
+      external_id: numero.toString(),
+      title: { fr: nom },
+      description: { fr: stripHtmlTags(item.objet || item.resume || '') },
       agency: agencyName,
       agency_id: agencyId,
-      region: item.region ? [item.region] : undefined,
+      region: undefined, // Will be enhanced with search scenario region
       tags: tags.length > 0 ? tags : undefined,
       funding_type: fundingType,
       status: 'open',
-      source_url: item.url,
+      source_url: uri || `https://les-aides.fr/aide/${numero}`,
       amount_min: amountMin,
       amount_max: amountMax,
       deadline,
       language: ['fr'],
+      country: 'FR',
       version_hash: '', // Will be computed below
-      last_synced_at: now
+      last_synced_at: now,
+      raw_data: {
+        search_scenario: item.search_scenario,
+        api_response: item,
+        organisme: item.organisme,
+        is_backfill: isBackfill
+      }
     }
 
-    // Compute version hash including more fields for better change detection
+    // Add search scenario region if available
+    if (item.search_scenario?.region && !parsedData.region) {
+      const regionMap: Record<number, string> = {
+        84: 'Auvergne-Rhône-Alpes', 11: 'Île-de-France', 32: 'Hauts-de-France',
+        75: 'Nouvelle-Aquitaine', 76: 'Occitanie', 93: 'Provence-Alpes-Côte d\'Azur',
+        44: 'Grand Est', 52: 'Pays de la Loire', 53: 'Bretagne', 28: 'Normandie'
+      }
+      const regionName = regionMap[item.search_scenario.region]
+      if (regionName) {
+        parsedData.region = [regionName]
+      }
+    }
+
+    // Compute version hash including key fields for change detection
     parsedData.version_hash = await computeHash(JSON.stringify({
       title: parsedData.title,
-      description: parsedData.description,
+      description: stripHtmlTags(parsedData.description.fr || ''),
       amount_min: parsedData.amount_min,
       amount_max: parsedData.amount_max,
       deadline: parsedData.deadline,
@@ -278,24 +375,33 @@ async function parseItem(item: LesAidesItem, supabase: any): Promise<ParsedSubsi
       funding_type: parsedData.funding_type,
       tags: parsedData.tags,
       validation: item.validation,
-      revision: item.revision
+      revision: item.revision,
+      uri: parsedData.source_url
     }))
+
+    // Set backfill target if this is a backfill operation
+    if (isBackfill && item.backfill_target_id) {
+      parsedData.backfill_target_id = item.backfill_target_id
+    }
 
     return parsedData
 
   } catch (error) {
-    console.error('Parse item error:', error, 'Item:', JSON.stringify(item, null, 2))
+    console.error('Parse item error:', error, 'Item keys:', Object.keys(item))
     return null
   }
 }
 
-async function resolveAgency(supabase: any, agencyName: string): Promise<string | undefined> {
+async function resolveAgency(supabase: any, agencyName: string, sigle?: string, website?: string): Promise<string | undefined> {
   try {
-    // Check if agency exists
+    // Clean agency name
+    const cleanName = agencyName.trim()
+    
+    // Check if agency exists by name or sigle
     const { data: existing, error } = await supabase
       .from('agencies')
       .select('id')
-      .eq('name', agencyName)
+      .or(`name.eq.${cleanName},code.eq.${sigle || cleanName}`)
       .maybeSingle()
 
     if (error) {
@@ -311,9 +417,12 @@ async function resolveAgency(supabase: any, agencyName: string): Promise<string 
     const { data: newAgency, error: insertError } = await supabase
       .from('agencies')
       .insert({
-        name: agencyName,
+        name: cleanName,
+        code: sigle || cleanName.substring(0, 50), // Limit code length
         country_code: 'FR',
-        agency_type: 'government'
+        agency_type: 'government',
+        website: website || null,
+        contact_info: website ? { website } : {}
       })
       .select('id')
       .single()
@@ -323,6 +432,7 @@ async function resolveAgency(supabase: any, agencyName: string): Promise<string 
       return undefined
     }
 
+    console.log(`🏛️ Created agency: ${cleanName} (${newAgency.id})`)
     return newAgency.id
 
   } catch (error) {
@@ -331,54 +441,78 @@ async function resolveAgency(supabase: any, agencyName: string): Promise<string 
   }
 }
 
-function parseAmount(amountStr: string): { min?: number, max?: number } {
-  // Remove currency symbols and normalize
-  const cleaned = amountStr.replace(/[€$,\s]/g, '').toLowerCase()
+function parseAmountFromHtml(amountHtml: string): { min?: number, max?: number } {
+  if (!amountHtml) return {}
   
-  // Look for range patterns like "1000-5000" or "jusqu'à 10000"
-  if (cleaned.includes('-')) {
-    const parts = cleaned.split('-')
-    return {
-      min: parseFloat(parts[0]) || undefined,
-      max: parseFloat(parts[1]) || undefined
-    }
+  // Remove HTML tags and normalize text
+  const text = stripHtmlTags(amountHtml).toLowerCase()
+  
+  // Look for currency amounts in euros
+  const euroRegex = /(\d+(?:[,.\s]\d+)*)\s*(?:€|euros?|eur)/gi
+  const matches = text.match(euroRegex)
+  
+  if (!matches) return {}
+  
+  // Extract numbers from currency matches
+  const amounts = matches.map(match => {
+    const numStr = match.replace(/[€euros?eur,\s]/gi, '').replace('.', '')
+    return parseInt(numStr) || 0
+  }).filter(n => n > 0)
+  
+  if (amounts.length === 0) return {}
+  if (amounts.length === 1) return { min: amounts[0] }
+  
+  return {
+    min: Math.min(...amounts),
+    max: Math.max(...amounts)
   }
-  
-  if (cleaned.includes('jusqu') || cleaned.includes('max')) {
-    const num = parseFloat(cleaned.replace(/[^0-9.]/g, ''))
-    return { max: num || undefined }
-  }
-  
-  const num = parseFloat(cleaned.replace(/[^0-9.]/g, ''))
-  return { min: num || undefined }
 }
 
-function parseDeadline(deadlineStr: string): string | undefined {
-  try {
-    // Handle various French date formats
-    const datePatterns = [
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,  // DD/MM/YYYY
-      /(\d{1,2})-(\d{1,2})-(\d{4})/,   // DD-MM-YYYY  
-      /(\d{4})-(\d{1,2})-(\d{1,2})/    // YYYY-MM-DD
-    ]
-    
-    for (const pattern of datePatterns) {
-      const match = deadlineStr.match(pattern)
-      if (match) {
-        const [, p1, p2, p3] = match
-        // Assume first format is DD/MM/YYYY or DD-MM-YYYY
-        if (pattern.source.includes('4')) {
-          return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`
-        } else {
-          return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`
+function parseDeadlineFromHtml(htmlContent: string): string | undefined {
+  if (!htmlContent) return undefined
+  
+  const text = stripHtmlTags(htmlContent)
+  
+  // Look for French date patterns
+  const datePatterns = [
+    /(\d{1,2})\s*(?:er|e)?\s*(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s*(\d{4})/gi,
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})/g,
+    /(\d{1,2})-(\d{1,2})-(\d{4})/g,
+    /(\d{4})-(\d{1,2})-(\d{1,2})/g
+  ]
+  
+  const monthNames: Record<string, string> = {
+    'janvier': '01', 'février': '02', 'mars': '03', 'avril': '04',
+    'mai': '05', 'juin': '06', 'juillet': '07', 'août': '08',
+    'septembre': '09', 'octobre': '10', 'novembre': '11', 'décembre': '12'
+  }
+  
+  for (const pattern of datePatterns) {
+    const match = pattern.exec(text)
+    if (match) {
+      if (pattern.source.includes('janvier')) {
+        // French month name format
+        const day = match[1].padStart(2, '0')
+        const month = monthNames[match[2].toLowerCase()]
+        const year = match[3]
+        if (month) {
+          return `${year}-${month}-${day}`
         }
+      } else if (pattern.source.includes('4')) {
+        // YYYY-MM-DD format
+        return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
+      } else {
+        // DD/MM/YYYY or DD-MM-YYYY format
+        return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
       }
     }
-    
-    return undefined
-  } catch {
-    return undefined
   }
+  
+  return undefined
+}
+
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 
 async function computeHash(content: string): Promise<string> {

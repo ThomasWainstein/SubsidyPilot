@@ -9,7 +9,37 @@ interface ScrapeConfig {
   dry_run?: boolean;
   since?: string;
   limit?: number;
-  max_pages?: number;
+  max_requests?: number;
+  backfill?: boolean;
+}
+
+interface SearchScenario {
+  ape: string;
+  domaine: number | number[];
+  region?: number;
+  departement?: string;
+}
+
+interface LesAidesSearchResponse {
+  idr: number;
+  depassement: boolean;
+  nb_dispositifs: number;
+  date: string;
+  dispositifs: Array<{
+    numero: number;
+    nom: string;
+    sigle: string;
+    revision: number;
+    generation: string;
+    validation: string;
+    nouveau: boolean;
+    implantation: string;
+    uri: string;
+    aps: boolean;
+    domaines: number[];
+    moyens: number[];
+    resume: string;
+  }>;
 }
 
 Deno.serve(async (req) => {
@@ -25,9 +55,14 @@ Deno.serve(async (req) => {
     )
 
     const config: ScrapeConfig = await req.json().catch(() => ({}))
-    const { dry_run = false, limit = 200, max_pages = 10 } = config
+    const { 
+      dry_run = false, 
+      limit = 200, 
+      max_requests = 400, // Stay well under 720/day limit
+      backfill = false 
+    } = config
 
-    console.log(`🚀 Starting comprehensive les-aides.fr ingestion - dry_run: ${dry_run}, limit: ${limit}`)
+    console.log(`🚀 Starting les-aides.fr ${backfill ? 'BACKFILL' : 'ingestion'} - dry_run: ${dry_run}, limit: ${limit}, max_requests: ${max_requests}`)
 
     // 1. Clean up any stuck syncs
     const { data: cleanupResult } = await supabase.rpc('cleanup_stuck_syncs')
@@ -41,8 +76,9 @@ Deno.serve(async (req) => {
       .insert({
         source_code: 'les-aides-fr',
         status: 'running',
-        config: { dry_run, limit, max_pages },
-        run_type: 'manual'
+        config: { dry_run, limit, max_requests, backfill },
+        run_type: backfill ? 'backfill' : 'manual',
+        notes: backfill ? 'Backfilling incomplete subsidies' : 'Full comprehensive sync'
       })
       .select('id')
       .single()
@@ -55,9 +91,17 @@ Deno.serve(async (req) => {
     console.log(`📝 Created sync run: ${runId}`)
 
     try {
-      // 3. Fetch data from les-aides.fr API with comprehensive coverage
-      const subsidies = await fetchLesAidesData(limit, max_pages)
-      console.log(`📥 Fetched ${subsidies.length} unique subsidies from les-aides.fr`)
+      let subsidies: any[] = []
+
+      if (backfill) {
+        // 3a. BACKFILL: Get incomplete subsidies and fetch their details
+        subsidies = await backfillIncompleteSubsidies(max_requests)
+        console.log(`🔄 Prepared ${subsidies.length} subsidies for backfill`)
+      } else {
+        // 3b. FULL SYNC: Fetch fresh data using comprehensive search
+        subsidies = await fetchLesAidesDataComprehensive(limit, max_requests)
+        console.log(`📥 Fetched ${subsidies.length} subsidies from comprehensive search`)
+      }
 
       if (subsidies.length === 0) {
         await supabase
@@ -67,7 +111,7 @@ Deno.serve(async (req) => {
             finished_at: new Date().toISOString(),
             total: 0,
             skipped: 0,
-            error_message: 'No subsidies found'
+            notes: backfill ? 'No subsidies found for backfill' : 'No subsidies found in search'
           })
           .eq('id', runId)
 
@@ -83,7 +127,7 @@ Deno.serve(async (req) => {
       // 4. Create sync items for tracking
       const syncItems = subsidies.map(subsidy => ({
         run_id: runId,
-        external_id: subsidy.id || subsidy.url,
+        external_id: subsidy.numero?.toString() || subsidy.external_id || subsidy.id,
         item_type: 'subsidy',
         status: 'pending',
         item_data: subsidy
@@ -104,7 +148,8 @@ Deno.serve(async (req) => {
         body: {
           run_id: runId,
           items: subsidies,
-          dry_run
+          dry_run,
+          backfill
         }
       })
 
@@ -133,22 +178,26 @@ Deno.serve(async (req) => {
       if (!dry_run && (adapterResult.inserted > 0 || adapterResult.updated > 0)) {
         await supabase
           .from('ingestion_sources')
-          .update({ 
+          .upsert({ 
+            code: 'les-aides-fr',
+            name: 'Les Aides France',
+            base_url: 'https://api.les-aides.fr',
+            is_enabled: true,
             last_success_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('code', 'les-aides-fr')
       }
 
       const result = {
         success: true,
         run_id: runId,
         dry_run,
+        backfill,
         summary: {
           fetched: subsidies.length,
           ...adapterResult
         },
-        message: dry_run ? 'Dry run completed successfully' : 'Comprehensive sync completed successfully'
+        message: dry_run ? 'Dry run completed successfully' : `${backfill ? 'Backfill' : 'Comprehensive sync'} completed successfully`
       }
 
       console.log('✅ Orchestration completed:', result)
@@ -183,25 +232,78 @@ Deno.serve(async (req) => {
   }
 })
 
-async function fetchLesAidesData(limit: number, maxPages: number) {
-  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
-  if (!apiKey) {
-    throw new Error('LES_AIDES_API_KEY environment variable not found')
+async function backfillIncompleteSubsidies(maxRequests: number) {
+  console.log('🔄 Starting backfill of incomplete subsidies')
+  
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  // Get subsidies that need backfilling (have external_id but missing details)
+  const { data: incompleteSubsidies, error } = await supabase
+    .from('subsidies')
+    .select('id, external_id, source_url')
+    .eq('source', 'les-aides-fr')
+    .or('title->fr.is.null,agency_id.is.null,source_url.is.null')
+
+  if (error) {
+    console.error('Failed to fetch incomplete subsidies:', error)
+    return []
   }
 
-  console.log(`🔍 Starting comprehensive les-aides.fr data fetch (limit: ${limit})`)
+  console.log(`📋 Found ${incompleteSubsidies.length} incomplete subsidies to backfill`)
 
-  // First, get reference data to build systematic search scenarios
-  const { domains, regions } = await fetchReferenceData(apiKey)
-  
+  // Get a fresh idr by doing a broad search
+  const freshIdr = await getFreshIdr()
+  if (!freshIdr) {
+    console.error('❌ Could not get fresh idr for backfill')
+    return []
+  }
+
+  const backfilledItems = []
+  let requestCount = 0
+
+  for (const subsidy of incompleteSubsidies) {
+    if (requestCount >= maxRequests) {
+      console.log(`⏹️ Hit max requests limit (${maxRequests}) during backfill`)
+      break
+    }
+
+    try {
+      const details = await fetchDeviceDetails(parseInt(subsidy.external_id), freshIdr)
+      if (details) {
+        backfilledItems.push({
+          ...details,
+          backfill_target_id: subsidy.id,
+          is_backfill: true
+        })
+        requestCount++
+      }
+      
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+    } catch (error) {
+      console.error(`Failed to backfill subsidy ${subsidy.external_id}:`, error)
+      continue
+    }
+  }
+
+  console.log(`✅ Backfilled ${backfilledItems.length} subsidies using ${requestCount} requests`)
+  return backfilledItems
+}
+
+async function fetchLesAidesDataComprehensive(limit: number, maxRequests: number) {
+  console.log(`🔍 Starting comprehensive les-aides.fr data fetch (limit: ${limit}, max_requests: ${maxRequests})`)
+
   const subsidies = []
   const processedIds = new Set() // Avoid duplicates
   let totalFetched = 0
   let requestCount = 0
-  const maxRequests = 80 // Stay well under 720 daily limit
 
-  // Build systematic search scenarios
-  const searchScenarios = buildSearchScenarios(domains, regions)
+  // Build systematic search scenarios according to API documentation
+  const searchScenarios = buildComprehensiveSearchScenarios()
   console.log(`📋 Built ${searchScenarios.length} systematic search scenarios`)
 
   for (const scenario of searchScenarios) {
@@ -210,56 +312,27 @@ async function fetchLesAidesData(limit: number, maxPages: number) {
     try {
       requestCount++
       
-      // Build search parameters according to API documentation
-      const params = new URLSearchParams({
-        ape: scenario.ape,
-        domaine: scenario.domaine.toString(),
-        format: 'json'
-      })
-      
-      // Add geographical filters if available
-      if (scenario.region) params.append('region', scenario.region.toString())
-
-      const url = `https://api.les-aides.fr/aides/?${params}`
-      console.log(`📄 [${requestCount}/${maxRequests}] APE:${scenario.ape} Domain:${scenario.domaine}${scenario.region ? ` Region:${scenario.region}` : ''}`)
-      
-      const response = await fetch(url, {
-        headers: {
-          'X-IDC': apiKey,
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip',
-          'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
-        }
-      })
-
-      if (!response.ok) {
-        console.error(`HTTP ${response.status}: ${response.statusText}`)
-        if (response.status === 403) {
-          const errorText = await response.text()
-          console.error(`API Error: ${errorText.substring(0, 300)}`)
-        }
+      // Step 1: Search using /aides/ endpoint
+      const searchResult = await performSearch(scenario)
+      if (!searchResult || !searchResult.dispositifs?.length) {
+        console.log(`📄 No dispositifs found for scenario: ${JSON.stringify(scenario)}`)
         continue
       }
 
-      const data = await response.json()
+      console.log(`✅ Found ${searchResult.dispositifs.length} dispositifs (total: ${searchResult.nb_dispositifs}, depassement: ${searchResult.depassement})`)
       
-      // Handle API error responses
-      if (data.exception) {
-        console.warn(`API exception: ${data.exception}`)
-        continue
-      }
-      
-      // Parse les-aides.fr API response format
-      if (!data.dispositifs || !Array.isArray(data.dispositifs)) {
-        console.log(`No dispositifs found (total available: ${data.nb_dispositifs || 0})`)
-        continue
+      // Handle depassement by splitting query
+      if (searchResult.depassement && !scenario.region && !scenario.departement) {
+        console.log(`⚠️ Depassement detected, should split by region - skipping for now`)
+        // TODO: Implement region splitting for depassement cases
       }
 
-      console.log(`✅ Found ${data.dispositifs.length} subsidies (total available: ${data.nb_dispositifs})`)
-
-      // Process all unique devices from this search
-      for (const device of data.dispositifs) {
-        if (totalFetched >= limit) break
+      // Step 2: Fetch details for each dispositif using /aide/ endpoint
+      const deviceCount = Math.min(searchResult.dispositifs.length, Math.ceil((limit - totalFetched) / Math.max(1, searchScenarios.length - searchScenarios.indexOf(scenario))))
+      const selectedDevices = searchResult.dispositifs.slice(0, deviceCount)
+      
+      for (const device of selectedDevices) {
+        if (totalFetched >= limit || requestCount >= maxRequests) break
 
         const deviceId = device.numero.toString()
         
@@ -270,49 +343,27 @@ async function fetchLesAidesData(limit: number, maxPages: number) {
         processedIds.add(deviceId)
 
         // Fetch full device details 
-        let deviceDetails = null
-        if (requestCount < maxRequests) {
-          deviceDetails = await fetchDeviceDetails(device.numero, data.idr, apiKey)
-          requestCount++
+        const deviceDetails = await fetchDeviceDetails(device.numero, searchResult.idr)
+        requestCount++
+        
+        if (deviceDetails) {
+          subsidies.push({
+            ...deviceDetails,
+            search_scenario: scenario,
+            is_backfill: false
+          })
+          totalFetched++
         }
         
-        const transformedSubsidy = {
-          id: deviceId,
-          title: device.nom || 'Aide sans titre',
-          description: deviceDetails?.objet || device.resume || '',
-          url: device.uri || `https://les-aides.fr/aide/${device.numero}`,
-          amount: deviceDetails?.montants || '',
-          deadline: '', // Available in device details conditions
-          organization: deviceDetails?.organisme?.raison_sociale || device.sigle || 'Organisation inconnue',
-          region: scenario.region ? regions.find(r => r.region === scenario.region)?.nom : '',
-          sector: mapDomainsToSector(device.domaines || []),
-          agency: deviceDetails?.organisme?.raison_sociale || device.sigle || '',
-          implantation: device.implantation, // E/N/T
-          domains: device.domaines || [],
-          means: device.moyens || [],
-          aps: device.aps || false,
-          nouveau: device.nouveau || false,
-          validation: device.validation,
-          generation: device.generation,
-          revision: device.revision,
-          raw_api_data: { 
-            search_scenario: scenario, 
-            device, 
-            details: deviceDetails,
-            idr: data.idr,
-            nb_dispositifs: data.nb_dispositifs
-          }
-        }
-
-        subsidies.push(transformedSubsidy)
-        totalFetched++
+        // Rate limiting: stay under 720/day = 30/hour = 1 every 2 minutes
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
       
-      // Rate limiting: API allows 720/day = ~30/hour = 1 every 2min
-      await new Promise(resolve => setTimeout(resolve, 2500))
+      // Longer pause between scenarios
+      await new Promise(resolve => setTimeout(resolve, 2000))
 
     } catch (error) {
-      console.error(`Error in scenario APE:${scenario.ape} Domain:${scenario.domaine}:`, error)
+      console.error(`Error in scenario ${JSON.stringify(scenario)}:`, error)
       continue
     }
   }
@@ -321,123 +372,101 @@ async function fetchLesAidesData(limit: number, maxPages: number) {
   return subsidies
 }
 
-async function fetchReferenceData(apiKey: string) {
-  console.log('📚 Fetching reference data from les-aides.fr API...')
-  
-  const headers = {
-    'X-IDC': apiKey,
-    'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
-  }
-
-  // Use documented domain values from the API documentation provided
-  const domains = [
-    {numero: 790, libelle: "Création Reprise"},
-    {numero: 793, libelle: "Cession Transmission"},
-    {numero: 798, libelle: "Développement commercial"},
-    {numero: 288, libelle: "Aéronautique"},
-    {numero: 289, libelle: "Agroalimentaire - Nutrition"},
-    {numero: 290, libelle: "Agroindustrie"},
-    {numero: 336, libelle: "Artisanat"},
-    {numero: 341, libelle: "Automobile"},
-    {numero: 295, libelle: "BTP matériaux de construction"},
-    {numero: 335, libelle: "Economie Sociale et Solidaire"},
-    {numero: 293, libelle: "Environnement"},
-    {numero: 361, libelle: "Numérique"},
-    {numero: 338, libelle: "Tourisme"},
-    {numero: 392, libelle: "Logistique"},
-    {numero: 297, libelle: "Santé"}
-  ]
-
-  // Use documented region values
-  const regions = [
-    {region: 84, nom: "Auvergne-Rhône-Alpes"},
-    {region: 11, nom: "Île-de-France"},
-    {region: 32, nom: "Hauts-de-France"},
-    {region: 75, nom: "Nouvelle-Aquitaine"},
-    {region: 76, nom: "Occitanie"},
-    {region: 93, nom: "Provence-Alpes-Côte d'Azur"},
-    {region: 44, nom: "Grand Est"},
-    {region: 52, nom: "Pays de la Loire"},
-    {region: 53, nom: "Bretagne"},
-    {region: 28, nom: "Normandie"}
-  ]
-
-  console.log(`📚 Using reference data: ${domains.length} domains, ${regions.length} regions`)
-  
-  return { domains, regions }
-}
-
-function buildSearchScenarios(domains: any[], regions: any[]) {
-  const scenarios = []
-  
+function buildComprehensiveSearchScenarios(): SearchScenario[] {
   // Major APE sections covering all economic sectors
-  const apeSections = [
-    'A', // Agriculture, sylviculture et pêche
-    'C', // Industrie manufacturière  
-    'F', // Construction
-    'G', // Commerce
-    'I', // Hébergement et restauration
-    'J', // Information et communication
-    'K', // Activités financières
-    'M', // Activités spécialisées, scientifiques et techniques
-    'N', // Activités de services administratifs
-    'P', // Enseignement
-    'Q', // Santé humaine et action sociale
-    'R', // Arts, spectacles et activités récréatives
-    'S'  // Autres activités de services
-  ]
+  const apeSections = ['A', 'C', 'F', 'G', 'I', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S']
   
-  // Key domains to cover different types of aid
-  const keyDomains = [790, 793, 798, 288, 289, 290, 336, 341, 295, 335, 293, 361, 338]
+  // Key domains from documentation
+  const keyDomains = [790, 793, 798] // Creation, Transmission, Development
+  const sectorDomains = [288, 289, 290, 336, 341, 295, 335, 293, 361, 338] // Sector-specific
   
-  // Major regions for geographical diversity
-  const majorRegions = [84, 11, 32, 75, 76, 93] // Top 6 regions
+  // Major French regions for geographical diversity
+  const majorRegions = [84, 11, 32, 75, 76, 93, 44, 52, 53, 28] // Top 10 regions
   
-  // Build comprehensive scenarios
+  const scenarios: SearchScenario[] = []
+  
+  // Core scenarios: APE × Key Domains
   for (const ape of apeSections) {
-    for (const domain of keyDomains) {
-      // Base scenario without region
-      scenarios.push({ ape, domaine: domain })
-      
-      // Regional variants for key combinations
-      if (scenarios.length < 60) { // Limit to stay under API quotas
-        for (const region of majorRegions.slice(0, 2)) {
-          scenarios.push({ ape, domaine: domain, region })
-        }
-      }
+    for (const domaine of keyDomains) {
+      scenarios.push({ ape, domaine })
     }
   }
   
-  // Ensure we don't exceed reasonable limits
-  return scenarios.slice(0, 50)
-}
-
-function mapDomainsToSector(domains: number[]): string {
-  const sectorMap: Record<number, string> = {
-    288: 'Aéronautique',
-    289: 'Agroalimentaire', 
-    290: 'Agroindustrie',
-    336: 'Artisanat',
-    341: 'Automobile',
-    295: 'BTP',
-    335: 'ESS',
-    293: 'Environnement',
-    361: 'Numérique',
-    338: 'Tourisme',
-    392: 'Logistique',
-    297: 'Santé',
-    790: 'Création',
-    793: 'Transmission',
-    798: 'Développement'
+  // Sector-specific scenarios
+  for (const ape of ['A', 'C', 'J', 'M']) { // Focus on key sectors
+    for (const domaine of sectorDomains.slice(0, 5)) { // Limit to avoid quota issues
+      scenarios.push({ ape, domaine })
+    }
   }
   
-  if (!domains?.length) return 'Général'
-  const sectors = domains.map(d => sectorMap[d]).filter(Boolean)
-  return sectors.length > 0 ? sectors.join(', ') : 'Autre'
+  // Regional scenarios for major regions
+  for (const region of majorRegions.slice(0, 6)) {
+    scenarios.push({ ape: 'J', domaine: 790, region }) // Tech startups by region
+    scenarios.push({ ape: 'A', domaine: 798, region }) // Agriculture development by region
+  }
+  
+  return scenarios.slice(0, 50) // Limit total scenarios to respect quotas
 }
 
-async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKey: string) {
+async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchResponse | null> {
+  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
+  if (!apiKey) {
+    throw new Error('LES_AIDES_API_KEY environment variable not found')
+  }
+
+  const params = new URLSearchParams({
+    ape: scenario.ape,
+    format: 'json'
+  })
+  
+  // Handle domain array or single value
+  if (Array.isArray(scenario.domaine)) {
+    scenario.domaine.forEach(d => params.append('domaine[]', d.toString()))
+  } else {
+    params.append('domaine', scenario.domaine.toString())
+  }
+  
+  // Add geographical filters if specified
+  if (scenario.region) params.append('region', scenario.region.toString())
+  if (scenario.departement) params.append('departement', scenario.departement)
+
+  const url = `https://api.les-aides.fr/aides/?${params}`
+  
+  const response = await fetch(url, {
+    headers: {
+      'X-IDC': apiKey,
+      'Accept': 'application/json',
+      'Accept-Encoding': 'gzip',
+      'User-Agent': 'AgriTool/ingest-les-aides (supabase edge)'
+    }
+  })
+
+  if (!response.ok) {
+    console.error(`HTTP ${response.status} for search: ${response.statusText}`)
+    if (response.status === 403) {
+      const errorText = await response.text()
+      console.error(`API Error: ${errorText.substring(0, 300)}`)
+    }
+    return null
+  }
+
+  const data = await response.json()
+  
+  // Handle API error responses
+  if (data.exception) {
+    console.warn(`API exception: ${data.exception}`)
+    return null
+  }
+  
+  return data as LesAidesSearchResponse
+}
+
+async function fetchDeviceDetails(deviceNumber: number, requestId: number) {
+  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
+  if (!apiKey) {
+    throw new Error('LES_AIDES_API_KEY environment variable not found')
+  }
+
   try {
     const url = `https://api.les-aides.fr/aide/?requete=${requestId}&dispositif=${deviceNumber}&format=json`
     
@@ -446,7 +475,7 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKe
         'X-IDC': apiKey,
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip',
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
+        'User-Agent': 'AgriTool/ingest-les-aides (supabase edge)'
       }
     })
 
@@ -455,9 +484,40 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKe
       return null
     }
 
-    return await response.json()
+    const details = await response.json()
+    
+    // Handle API error responses
+    if (details.exception) {
+      console.warn(`API exception for device ${deviceNumber}: ${details.exception}`)
+      return null
+    }
+
+    return details
   } catch (error) {
     console.error(`Error fetching device details for ${deviceNumber}:`, error)
+    return null
+  }
+}
+
+async function getFreshIdr(): Promise<number | null> {
+  const apiKey = Deno.env.get('LES_AIDES_API_KEY')
+  if (!apiKey) return null
+
+  try {
+    // Use a broad search to get a valid idr
+    const response = await fetch('https://api.les-aides.fr/aides/?ape=J&domaine=790&format=json', {
+      headers: {
+        'X-IDC': apiKey,
+        'Accept': 'application/json',
+        'User-Agent': 'AgriTool/ingest-les-aides (supabase edge)'
+      }
+    })
+
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.idr || null
+  } catch (error) {
+    console.error('Error getting fresh idr:', error)
     return null
   }
 }
