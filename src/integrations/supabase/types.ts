@@ -214,6 +214,33 @@ export type Database = {
         }
         Relationships: []
       }
+      api_rate_limits: {
+        Row: {
+          api_source: string
+          created_at: string | null
+          date: string
+          id: string
+          request_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          api_source: string
+          created_at?: string | null
+          date: string
+          id?: string
+          request_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          api_source?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          request_count?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       api_sync_logs: {
         Row: {
           api_source: string
@@ -4953,6 +4980,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_api_rate_count: {
+        Args: { p_api_source: string; p_date?: string }
+        Returns: number
       }
       increment_retry_count: {
         Args: { p_backoff_seconds?: number; p_extraction_id: string }
