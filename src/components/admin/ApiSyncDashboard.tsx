@@ -91,7 +91,7 @@ export const ApiSyncDashboard: React.FC = () => {
       
       // Map API sources to actual function names
       const functionMap: { [key: string]: string } = {
-        'les-aides-enhanced': 'sync-les-aides-optimal', // Use authenticated function
+        'les-aides-enhanced': 'sync-les-aides-fixed', // Use the fixed function with IDC auth
         'aides-territoires': 'sync-aides-territoires',
         'romania-data': 'sync-romania-data'
       };
@@ -342,8 +342,8 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-dry-run');
                      try {
-                         const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                           body: { sync_type: 'manual', max_pages: 2 }
+                         const { data, error } = await supabase.functions.invoke('sync-les-aides-fixed', {
+                           body: { sync_type: 'manual' }
                         });
                        if (error) throw error;
                        toast.success('Quick test started', {
@@ -375,8 +375,8 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-backfill');
                      try {
-                         const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                           body: { sync_type: 'manual', max_pages: 20 }
+                         const { data, error } = await supabase.functions.invoke('sync-les-aides-fixed', {
+                           body: { sync_type: 'manual' }
                         });
                        if (error) throw error;
                         toast.success('Full sync started', {

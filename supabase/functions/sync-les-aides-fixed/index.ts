@@ -30,7 +30,7 @@ serve(async (req) => {
     const { data: syncLog } = await supabase
       .from('api_sync_logs')
       .insert({
-        api_source: 'les-aides-fr-fixed',
+        api_source: 'les-aides-fr', // Match database source name
         sync_type,
         status: 'running'
       })
@@ -40,13 +40,19 @@ serve(async (req) => {
     const logId = syncLog?.id
 
     try {
-      // Fetch from les-aides.fr API 
-      console.log('📡 Fetching from les-aides.fr API...');
+      // Fetch from les-aides.fr API with IDC authentication
+      console.log('📡 Fetching from les-aides.fr API with authentication...');
       
-      const apiResponse = await fetch('https://les-aides.fr/api/aides/', {
+      const idcKey = Deno.env.get('LES_AIDES_IDC_KEY');
+      if (!idcKey) {
+        throw new Error('LES_AIDES_IDC_KEY environment variable not set');
+      }
+      
+      const apiResponse = await fetch('https://api.les-aides.fr/aides/', {
         headers: {
           'User-Agent': 'SubsidyPilot/1.0 (https://subsidypilot.com)',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'X-IDC': idcKey
         }
       });
 
@@ -64,10 +70,19 @@ serve(async (req) => {
 
       // Process each subsidy
       if (Array.isArray(subsidies)) {
-        for (const subsidy of subsidies.slice(0, 50)) { // Limit for safety
+        for (const subsidy of subsidies) { // Process ALL subsidies, not just first 50
           try {
+            const subsidyId = `les-aides-${subsidy.id || crypto.randomUUID()}`;
+            
+            // Check if subsidy already exists to determine add vs update
+            const { data: existingSubsidy } = await supabase
+              .from('subsidies')
+              .select('id')
+              .eq('id', subsidyId)
+              .maybeSingle();
+            
             const subsidyData = {
-              id: `les-aides-${subsidy.id || crypto.randomUUID()}`,
+              id: subsidyId,
               title: subsidy.title || subsidy.name || 'Untitled Aid',
               description: subsidy.description || subsidy.details || '',
               amount: subsidy.amount || subsidy.budget,
@@ -77,9 +92,9 @@ serve(async (req) => {
               sector: subsidy.sector || subsidy.category || 'General',
               funding_type: subsidy.funding_type || 'Grant',
               application_url: subsidy.url || subsidy.application_link,
-              source: 'les-aides.fr',
+              source: 'les-aides-fr', // Fixed: Match the database source
               status: 'active',
-              created_at: new Date().toISOString(),
+              created_at: existingSubsidy ? undefined : new Date().toISOString(), // Don't override created_at for existing records
               updated_at: new Date().toISOString()
             };
 
@@ -92,9 +107,13 @@ serve(async (req) => {
               });
 
             if (upsertError) {
-              errors.push({ subsidy: subsidyData.id, error: upsertError.message });
+              errors.push({ subsidy: subsidyId, error: upsertError.message });
             } else {
-              added++;
+              if (existingSubsidy) {
+                updated++;
+              } else {
+                added++;
+              }
             }
             processed++;
 
