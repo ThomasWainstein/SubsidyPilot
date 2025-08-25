@@ -331,9 +331,45 @@ async function fetchLesAidesDataSimple() {
 async function fetchLesAidesDataComprehensive(limit: number, maxRequests: number) {
   console.log(`🔍 Starting comprehensive les-aides.fr data fetch (limit: ${limit}, max_requests: ${maxRequests})`)
   
-  // Since the API requires authentication for advanced search, fall back to simple method
-  console.log('⚠️ Falling back to simple API method for comprehensive search')
-  return await fetchLesAidesDataSimple()
+  const scenarios = buildComprehensiveSearchScenarios()
+  console.log(`📋 Built ${scenarios.length} systematic search scenarios`)
+  
+  const allSubsidies = new Map<string, any>()
+  let requestCount = 0
+  
+  // Process scenarios up to maxRequests limit
+  for (const scenario of scenarios.slice(0, maxRequests)) {
+    if (requestCount >= maxRequests) {
+      console.log(`⏹️ Hit max requests limit (${maxRequests})`)
+      break
+    }
+    
+    try {
+      const response = await performSearch(scenario)
+      if (response && response.dispositifs) {
+        // Add unique subsidies to our collection
+        for (const device of response.dispositifs) {
+          const key = `${device.numero}-${device.revision}`
+          if (!allSubsidies.has(key)) {
+            allSubsidies.set(key, device)
+          }
+        }
+      }
+      requestCount++
+      
+      // Rate limiting between requests
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+    } catch (error) {
+      console.error(`Error in scenario ${JSON.stringify(scenario)}:`, error)
+      continue
+    }
+  }
+  
+  const uniqueSubsidies = Array.from(allSubsidies.values())
+  console.log(`📊 Final result: ${uniqueSubsidies.length} unique subsidies from ${requestCount} API requests`)
+  
+  return uniqueSubsidies
 }
 
 function buildComprehensiveSearchScenarios(): SearchScenario[] {
@@ -373,8 +409,14 @@ function buildComprehensiveSearchScenarios(): SearchScenario[] {
 }
 
 async function performSearch(scenario: SearchScenario): Promise<LesAidesSearchResponse | null> {
-  // Use the simple API that doesn't require authentication
-  const url = `https://les-aides.fr/api/aides/`
+  // Build URL with search parameters
+  const params = new URLSearchParams()
+  
+  if (scenario.ape) params.append('ape', scenario.ape)
+  if (scenario.domaine) params.append('domaine', scenario.domaine.toString())
+  if (scenario.region) params.append('region', scenario.region.toString())
+  
+  const url = `https://les-aides.fr/api/aides/?${params.toString()}`
   console.log(`🔍 Searching: ${url}`)
   
   const response = await fetch(url, {
