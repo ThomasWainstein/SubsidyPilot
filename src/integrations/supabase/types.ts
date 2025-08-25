@@ -481,15 +481,7 @@ export type Database = {
           subsidy_id?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "application_forms_subsidy_id_fkey"
-            columns: ["subsidy_id"]
-            isOneToOne: false
-            referencedRelation: "subsidies_structured"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       application_sessions: {
         Row: {
@@ -3278,7 +3270,6 @@ export type Database = {
         Row: {
           agency: string | null
           agency_id: string | null
-          ai_enhancement_status: string | null
           amount_max: number | null
           amount_min: number | null
           api_source: string | null
@@ -3294,19 +3285,16 @@ export type Database = {
           documents: Json | null
           domain: string | null
           eligibility_criteria: Json | null
-          enhanced_eligibility_info: Json | null
-          enhanced_funding_info: Json | null
           external_id: string | null
           extraction_batch_id: string | null
-          extraction_completeness_score: number | null
           funding_type: string | null
           id: string
           import_job_id: string | null
           language: string[] | null
-          last_enhanced_at: string | null
           last_synced_at: string | null
           legal_entities: string[] | null
           matching_tags: string[] | null
+          parsed_data: Json | null
           raw_content: Json | null
           raw_data: Json | null
           record_status: string | null
@@ -3323,7 +3311,6 @@ export type Database = {
         Insert: {
           agency?: string | null
           agency_id?: string | null
-          ai_enhancement_status?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3339,19 +3326,16 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
-          enhanced_eligibility_info?: Json | null
-          enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
-          extraction_completeness_score?: number | null
           funding_type?: string | null
           id?: string
           import_job_id?: string | null
           language?: string[] | null
-          last_enhanced_at?: string | null
           last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
+          parsed_data?: Json | null
           raw_content?: Json | null
           raw_data?: Json | null
           record_status?: string | null
@@ -3368,7 +3352,6 @@ export type Database = {
         Update: {
           agency?: string | null
           agency_id?: string | null
-          ai_enhancement_status?: string | null
           amount_max?: number | null
           amount_min?: number | null
           api_source?: string | null
@@ -3384,19 +3367,16 @@ export type Database = {
           documents?: Json | null
           domain?: string | null
           eligibility_criteria?: Json | null
-          enhanced_eligibility_info?: Json | null
-          enhanced_funding_info?: Json | null
           external_id?: string | null
           extraction_batch_id?: string | null
-          extraction_completeness_score?: number | null
           funding_type?: string | null
           id?: string
           import_job_id?: string | null
           language?: string[] | null
-          last_enhanced_at?: string | null
           last_synced_at?: string | null
           legal_entities?: string[] | null
           matching_tags?: string[] | null
+          parsed_data?: Json | null
           raw_content?: Json | null
           raw_data?: Json | null
           record_status?: string | null
@@ -3527,505 +3507,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      subsidies_structured: {
-        Row: {
-          activity_sector_codes: string[] | null
-          additional_support_mechanisms: string | null
-          agency: string | null
-          ai_enhancement_status: string | null
-          ai_model: string | null
-          amount: number[] | null
-          amounts: string | null
-          application_language: string | null
-          application_method: string | null
-          application_method_markdown: string | null
-          application_process: string | null
-          application_requirements: Json | null
-          application_window_end: string | null
-          application_window_start: string | null
-          archived: boolean | null
-          audit: Json | null
-          audit_notes: string | null
-          beneficiary_reporting_requirements: string | null
-          beneficiary_types: string[] | null
-          budget_tranches: Json | null
-          call_type: string | null
-          categories: string[] | null
-          checksum: string | null
-          co_financing_rate: number | null
-          co_financing_rates_by_category: Json | null
-          cofinancing_sources: Json | null
-          compliance_audit_mechanisms: string | null
-          compliance_requirements: string | null
-          conditional_eligibility: Json | null
-          confidence_score: number | null
-          conflict_of_interest_notes: string | null
-          contact_information: Json | null
-          content_checksum: string | null
-          content_hash: string | null
-          created_at: string
-          cross_funding_links: Json | null
-          deadline: string | null
-          deadlines: string | null
-          deadlines_jsonb: Json | null
-          deadlines_markdown: string | null
-          decision_publication_method: string | null
-          description: string | null
-          description_markdown: string | null
-          document_analysis_performed: boolean | null
-          document_count: number | null
-          documents: Json | null
-          documents_jsonb: Json | null
-          documents_markdown: string | null
-          duration_limits: string | null
-          eligibility: string | null
-          eligibility_markdown: string | null
-          eligible_actions: string[] | null
-          eligible_entities: string[] | null
-          eligible_expenses_detailed: Json | null
-          enhanced_eligibility_info: Json | null
-          enhanced_funding_info: Json | null
-          entity_size: string | null
-          environmental_social_safeguards: string | null
-          evaluation_committee: string | null
-          evaluation_criteria: string | null
-          evaluation_phases: Json | null
-          evaluation_start_date: string | null
-          expected_results: string | null
-          extended_deadlines: Json | null
-          extracted_documents: Json | null
-          extraction_batch_id: string | null
-          extraction_completeness_score: number | null
-          extraction_method: string | null
-          extraction_model: string | null
-          extraction_timestamp: string | null
-          extraction_version: string | null
-          fingerprint: string | null
-          forms_analysis_performed: boolean | null
-          forms_detected: Json | null
-          forms_recreated: Json | null
-          funding_markdown: string | null
-          funding_programme: string | null
-          funding_rate_details: Json | null
-          funding_source: string | null
-          funding_tranches: Json | null
-          funding_type: string | null
-          geographic_eligibility: Json | null
-          geographic_scope: Json | null
-          id: string
-          impact_indicators: Json | null
-          import_job_id: string | null
-          ineligible_actions: string[] | null
-          ineligible_expenses: Json | null
-          investment_types: string[] | null
-          language: string | null
-          last_enhanced_at: string | null
-          last_seen_at: string | null
-          legal_entity_type: string[] | null
-          managing_agency: string | null
-          matching_algorithm_score: number | null
-          minimum_score: number | null
-          missing_fields: string[] | null
-          objectives: string[] | null
-          objectives_detailed: string | null
-          opening_date: string | null
-          payment_modality: string | null
-          payment_schedule: Json | null
-          payment_terms: string | null
-          policy_objective: string | null
-          presentation: string | null
-          previous_acceptance_rate: number | null
-          previous_award_restrictions: string | null
-          previous_recipients_list: string | null
-          priority_groups: Json | null
-          priority_themes: string[] | null
-          process_steps: Json | null
-          procurement_obligations: string | null
-          program: string | null
-          program_markdown: string | null
-          project_duration: string | null
-          publication_date: string | null
-          questionnaire_steps: Json | null
-          raw_log_id: string | null
-          record_status: string | null
-          reference_code: string | null
-          region: string[] | null
-          regulatory_references: Json | null
-          rejection_conditions: string[] | null
-          related_programmes: string[] | null
-          reporting_requirements: string | null
-          required_documents_detailed: Json | null
-          requirements_extraction_status: string | null
-          requirements_markdown: string | null
-          run_id: string | null
-          sanctions_for_non_compliance: string | null
-          scoring_criteria: Json | null
-          scrape_bundle_id: string | null
-          scrape_date: string | null
-          sector: string[] | null
-          selection_criteria: Json | null
-          signature_date: string | null
-          source_slug: string | null
-          source_url_verified: string | null
-          special_conditions: string | null
-          status_detailed: string | null
-          submission_conditions: string | null
-          submission_format: string | null
-          submission_method_detailed: string | null
-          support_resources: Json | null
-          technical_support: string | null
-          timeline_notes: string | null
-          title: string | null
-          total_budget: number | null
-          translations: Json | null
-          transparency_notes: string | null
-          updated_at: string
-          url: string | null
-          verbatim_blocks: Json | null
-          verbatim_extraction: boolean | null
-          verbatim_jsonb: Json | null
-          verbatim_preserved: boolean | null
-        }
-        Insert: {
-          activity_sector_codes?: string[] | null
-          additional_support_mechanisms?: string | null
-          agency?: string | null
-          ai_enhancement_status?: string | null
-          ai_model?: string | null
-          amount?: number[] | null
-          amounts?: string | null
-          application_language?: string | null
-          application_method?: string | null
-          application_method_markdown?: string | null
-          application_process?: string | null
-          application_requirements?: Json | null
-          application_window_end?: string | null
-          application_window_start?: string | null
-          archived?: boolean | null
-          audit?: Json | null
-          audit_notes?: string | null
-          beneficiary_reporting_requirements?: string | null
-          beneficiary_types?: string[] | null
-          budget_tranches?: Json | null
-          call_type?: string | null
-          categories?: string[] | null
-          checksum?: string | null
-          co_financing_rate?: number | null
-          co_financing_rates_by_category?: Json | null
-          cofinancing_sources?: Json | null
-          compliance_audit_mechanisms?: string | null
-          compliance_requirements?: string | null
-          conditional_eligibility?: Json | null
-          confidence_score?: number | null
-          conflict_of_interest_notes?: string | null
-          contact_information?: Json | null
-          content_checksum?: string | null
-          content_hash?: string | null
-          created_at?: string
-          cross_funding_links?: Json | null
-          deadline?: string | null
-          deadlines?: string | null
-          deadlines_jsonb?: Json | null
-          deadlines_markdown?: string | null
-          decision_publication_method?: string | null
-          description?: string | null
-          description_markdown?: string | null
-          document_analysis_performed?: boolean | null
-          document_count?: number | null
-          documents?: Json | null
-          documents_jsonb?: Json | null
-          documents_markdown?: string | null
-          duration_limits?: string | null
-          eligibility?: string | null
-          eligibility_markdown?: string | null
-          eligible_actions?: string[] | null
-          eligible_entities?: string[] | null
-          eligible_expenses_detailed?: Json | null
-          enhanced_eligibility_info?: Json | null
-          enhanced_funding_info?: Json | null
-          entity_size?: string | null
-          environmental_social_safeguards?: string | null
-          evaluation_committee?: string | null
-          evaluation_criteria?: string | null
-          evaluation_phases?: Json | null
-          evaluation_start_date?: string | null
-          expected_results?: string | null
-          extended_deadlines?: Json | null
-          extracted_documents?: Json | null
-          extraction_batch_id?: string | null
-          extraction_completeness_score?: number | null
-          extraction_method?: string | null
-          extraction_model?: string | null
-          extraction_timestamp?: string | null
-          extraction_version?: string | null
-          fingerprint?: string | null
-          forms_analysis_performed?: boolean | null
-          forms_detected?: Json | null
-          forms_recreated?: Json | null
-          funding_markdown?: string | null
-          funding_programme?: string | null
-          funding_rate_details?: Json | null
-          funding_source?: string | null
-          funding_tranches?: Json | null
-          funding_type?: string | null
-          geographic_eligibility?: Json | null
-          geographic_scope?: Json | null
-          id?: string
-          impact_indicators?: Json | null
-          import_job_id?: string | null
-          ineligible_actions?: string[] | null
-          ineligible_expenses?: Json | null
-          investment_types?: string[] | null
-          language?: string | null
-          last_enhanced_at?: string | null
-          last_seen_at?: string | null
-          legal_entity_type?: string[] | null
-          managing_agency?: string | null
-          matching_algorithm_score?: number | null
-          minimum_score?: number | null
-          missing_fields?: string[] | null
-          objectives?: string[] | null
-          objectives_detailed?: string | null
-          opening_date?: string | null
-          payment_modality?: string | null
-          payment_schedule?: Json | null
-          payment_terms?: string | null
-          policy_objective?: string | null
-          presentation?: string | null
-          previous_acceptance_rate?: number | null
-          previous_award_restrictions?: string | null
-          previous_recipients_list?: string | null
-          priority_groups?: Json | null
-          priority_themes?: string[] | null
-          process_steps?: Json | null
-          procurement_obligations?: string | null
-          program?: string | null
-          program_markdown?: string | null
-          project_duration?: string | null
-          publication_date?: string | null
-          questionnaire_steps?: Json | null
-          raw_log_id?: string | null
-          record_status?: string | null
-          reference_code?: string | null
-          region?: string[] | null
-          regulatory_references?: Json | null
-          rejection_conditions?: string[] | null
-          related_programmes?: string[] | null
-          reporting_requirements?: string | null
-          required_documents_detailed?: Json | null
-          requirements_extraction_status?: string | null
-          requirements_markdown?: string | null
-          run_id?: string | null
-          sanctions_for_non_compliance?: string | null
-          scoring_criteria?: Json | null
-          scrape_bundle_id?: string | null
-          scrape_date?: string | null
-          sector?: string[] | null
-          selection_criteria?: Json | null
-          signature_date?: string | null
-          source_slug?: string | null
-          source_url_verified?: string | null
-          special_conditions?: string | null
-          status_detailed?: string | null
-          submission_conditions?: string | null
-          submission_format?: string | null
-          submission_method_detailed?: string | null
-          support_resources?: Json | null
-          technical_support?: string | null
-          timeline_notes?: string | null
-          title?: string | null
-          total_budget?: number | null
-          translations?: Json | null
-          transparency_notes?: string | null
-          updated_at?: string
-          url?: string | null
-          verbatim_blocks?: Json | null
-          verbatim_extraction?: boolean | null
-          verbatim_jsonb?: Json | null
-          verbatim_preserved?: boolean | null
-        }
-        Update: {
-          activity_sector_codes?: string[] | null
-          additional_support_mechanisms?: string | null
-          agency?: string | null
-          ai_enhancement_status?: string | null
-          ai_model?: string | null
-          amount?: number[] | null
-          amounts?: string | null
-          application_language?: string | null
-          application_method?: string | null
-          application_method_markdown?: string | null
-          application_process?: string | null
-          application_requirements?: Json | null
-          application_window_end?: string | null
-          application_window_start?: string | null
-          archived?: boolean | null
-          audit?: Json | null
-          audit_notes?: string | null
-          beneficiary_reporting_requirements?: string | null
-          beneficiary_types?: string[] | null
-          budget_tranches?: Json | null
-          call_type?: string | null
-          categories?: string[] | null
-          checksum?: string | null
-          co_financing_rate?: number | null
-          co_financing_rates_by_category?: Json | null
-          cofinancing_sources?: Json | null
-          compliance_audit_mechanisms?: string | null
-          compliance_requirements?: string | null
-          conditional_eligibility?: Json | null
-          confidence_score?: number | null
-          conflict_of_interest_notes?: string | null
-          contact_information?: Json | null
-          content_checksum?: string | null
-          content_hash?: string | null
-          created_at?: string
-          cross_funding_links?: Json | null
-          deadline?: string | null
-          deadlines?: string | null
-          deadlines_jsonb?: Json | null
-          deadlines_markdown?: string | null
-          decision_publication_method?: string | null
-          description?: string | null
-          description_markdown?: string | null
-          document_analysis_performed?: boolean | null
-          document_count?: number | null
-          documents?: Json | null
-          documents_jsonb?: Json | null
-          documents_markdown?: string | null
-          duration_limits?: string | null
-          eligibility?: string | null
-          eligibility_markdown?: string | null
-          eligible_actions?: string[] | null
-          eligible_entities?: string[] | null
-          eligible_expenses_detailed?: Json | null
-          enhanced_eligibility_info?: Json | null
-          enhanced_funding_info?: Json | null
-          entity_size?: string | null
-          environmental_social_safeguards?: string | null
-          evaluation_committee?: string | null
-          evaluation_criteria?: string | null
-          evaluation_phases?: Json | null
-          evaluation_start_date?: string | null
-          expected_results?: string | null
-          extended_deadlines?: Json | null
-          extracted_documents?: Json | null
-          extraction_batch_id?: string | null
-          extraction_completeness_score?: number | null
-          extraction_method?: string | null
-          extraction_model?: string | null
-          extraction_timestamp?: string | null
-          extraction_version?: string | null
-          fingerprint?: string | null
-          forms_analysis_performed?: boolean | null
-          forms_detected?: Json | null
-          forms_recreated?: Json | null
-          funding_markdown?: string | null
-          funding_programme?: string | null
-          funding_rate_details?: Json | null
-          funding_source?: string | null
-          funding_tranches?: Json | null
-          funding_type?: string | null
-          geographic_eligibility?: Json | null
-          geographic_scope?: Json | null
-          id?: string
-          impact_indicators?: Json | null
-          import_job_id?: string | null
-          ineligible_actions?: string[] | null
-          ineligible_expenses?: Json | null
-          investment_types?: string[] | null
-          language?: string | null
-          last_enhanced_at?: string | null
-          last_seen_at?: string | null
-          legal_entity_type?: string[] | null
-          managing_agency?: string | null
-          matching_algorithm_score?: number | null
-          minimum_score?: number | null
-          missing_fields?: string[] | null
-          objectives?: string[] | null
-          objectives_detailed?: string | null
-          opening_date?: string | null
-          payment_modality?: string | null
-          payment_schedule?: Json | null
-          payment_terms?: string | null
-          policy_objective?: string | null
-          presentation?: string | null
-          previous_acceptance_rate?: number | null
-          previous_award_restrictions?: string | null
-          previous_recipients_list?: string | null
-          priority_groups?: Json | null
-          priority_themes?: string[] | null
-          process_steps?: Json | null
-          procurement_obligations?: string | null
-          program?: string | null
-          program_markdown?: string | null
-          project_duration?: string | null
-          publication_date?: string | null
-          questionnaire_steps?: Json | null
-          raw_log_id?: string | null
-          record_status?: string | null
-          reference_code?: string | null
-          region?: string[] | null
-          regulatory_references?: Json | null
-          rejection_conditions?: string[] | null
-          related_programmes?: string[] | null
-          reporting_requirements?: string | null
-          required_documents_detailed?: Json | null
-          requirements_extraction_status?: string | null
-          requirements_markdown?: string | null
-          run_id?: string | null
-          sanctions_for_non_compliance?: string | null
-          scoring_criteria?: Json | null
-          scrape_bundle_id?: string | null
-          scrape_date?: string | null
-          sector?: string[] | null
-          selection_criteria?: Json | null
-          signature_date?: string | null
-          source_slug?: string | null
-          source_url_verified?: string | null
-          special_conditions?: string | null
-          status_detailed?: string | null
-          submission_conditions?: string | null
-          submission_format?: string | null
-          submission_method_detailed?: string | null
-          support_resources?: Json | null
-          technical_support?: string | null
-          timeline_notes?: string | null
-          title?: string | null
-          total_budget?: number | null
-          translations?: Json | null
-          transparency_notes?: string | null
-          updated_at?: string
-          url?: string | null
-          verbatim_blocks?: Json | null
-          verbatim_extraction?: boolean | null
-          verbatim_jsonb?: Json | null
-          verbatim_preserved?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subsidies_structured_raw_log_id_fkey"
-            columns: ["raw_log_id"]
-            isOneToOne: false
-            referencedRelation: "raw_logs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subsidies_structured_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subsidies_structured_scrape_bundle_id_fkey"
-            columns: ["scrape_bundle_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_bundles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       subsidies_structured_archive: {
         Row: {
@@ -4458,15 +3939,7 @@ export type Database = {
           updated_at?: string
           version?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_subsidy_form_schemas_subsidy"
-            columns: ["subsidy_id"]
-            isOneToOne: false
-            referencedRelation: "subsidies_structured"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       subsidy_locations: {
         Row: {
@@ -4573,13 +4046,6 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subsidy_matches_subsidy_id_fkey"
-            columns: ["subsidy_id"]
-            isOneToOne: false
-            referencedRelation: "subsidies_structured"
             referencedColumns: ["id"]
           },
         ]

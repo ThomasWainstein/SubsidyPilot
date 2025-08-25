@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Euro, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSubsidyTitle } from '@/utils/subsidyFormatting';
-import { EnhancedSubsidyCard } from '../subsidy/EnhancedSubsidyCard';
+import { SimplifiedSubsidyCard } from '../subsidy/SimplifiedSubsidyCard';
 
 interface SubsidiesTabContentProps {
   farmId: string;
@@ -161,10 +161,9 @@ export const SubsidiesTabContent: React.FC<SubsidiesTabContentProps> = ({ farmId
             </div>
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
               {matchingSubsidies.slice(0, 6).map((subsidy) => (
-                <EnhancedSubsidyCard 
+                <SimplifiedSubsidyCard 
                   key={subsidy.id} 
                   subsidy={subsidy}
-                  showMatchScore={true}
                 />
               ))}
             </div>
