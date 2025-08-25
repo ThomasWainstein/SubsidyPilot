@@ -4716,9 +4716,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      check_sync_health: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          count: number
+          description: string
+          issue_type: string
+          recommended_action: string
+          severity: string
+        }[]
+      }
       cleanup_stuck_syncs: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: {
+          cleaned_processes: number
+          cleanup_timestamp: string
+        }[]
       }
       complete_data_purge: {
         Args: Record<PropertyKey, never>

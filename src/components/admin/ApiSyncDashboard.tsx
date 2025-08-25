@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { RefreshCw, Database, CheckCircle, AlertCircle, Activity, Zap, RefreshCcw, BarChart3, Clock, TrendingUp, Wifi } from 'lucide-react';
+import { RefreshCw, Database, CheckCircle, AlertCircle, Activity, Zap, RefreshCcw, BarChart3, Clock, TrendingUp, Wifi, Settings, Wrench } from 'lucide-react';
 import { ChangeDetectionDashboard } from './ChangeDetectionDashboard';
 import { FullRefreshDashboard } from './FullRefreshDashboard';
 
@@ -21,6 +21,8 @@ interface ApiMetrics {
 export const ApiSyncDashboard: React.FC = () => {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [lastSyncResult, setLastSyncResult] = useState<any>(null);
+  const [systemHealth, setSystemHealth] = useState<any[]>([]);
+  const [emergencyRepairMode, setEmergencyRepairMode] = useState(false);
   const [apiMetrics, setApiMetrics] = useState<ApiMetrics>({
     totalSubsidies: 0,
     recentSyncs: 0,
@@ -89,9 +91,9 @@ export const ApiSyncDashboard: React.FC = () => {
       
       // Map API sources to actual function names
       const functionMap: { [key: string]: string } = {
-        'les-aides-enhanced': 'sync-les-aides-optimal',
-        'aides-territoires': 'sync-aides-territoires', // TODO: Create this function
-        'romania-data': 'sync-romania-data' // TODO: Create this function
+        'les-aides-enhanced': 'ingest-les-aides-orchestrator', // Fixed mapping
+        'aides-territoires': 'sync-aides-territoires',
+        'romania-data': 'sync-romania-data'
       };
       
       const functionName = functionMap[apiSource] || `sync-${apiSource}`;
@@ -340,8 +342,8 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-dry-run');
                      try {
-                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                         body: { max_pages: 2 }
+                        const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
+                          body: { max_pages: 2 }
                        });
                        if (error) throw error;
                        toast.success('Quick test started', {
@@ -373,8 +375,8 @@ export const ApiSyncDashboard: React.FC = () => {
                    onClick={async () => {
                      setSyncing('les-aides-backfill');
                      try {
-                       const { data, error } = await supabase.functions.invoke('sync-les-aides-optimal', {
-                         body: { max_pages: 20 }
+                        const { data, error } = await supabase.functions.invoke('ingest-les-aides-orchestrator', {
+                          body: { max_pages: 20 }
                        });
                        if (error) throw error;
                         toast.success('Full sync started', {
