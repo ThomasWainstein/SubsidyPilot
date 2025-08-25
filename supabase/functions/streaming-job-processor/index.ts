@@ -78,12 +78,34 @@ async function getAccessToken(credentials: any): Promise<string> {
   });
   
   if (!response.ok) {
-    const errorText = await response.text();
+    let errorText = 'Failed to parse error response';
+    try {
+      if (typeof response.text === 'function') {
+        errorText = await response.text();
+      } else if (typeof response.json === 'function') {
+        const errorData = await response.json();
+        errorText = JSON.stringify(errorData);
+      } else {
+        errorText = `OAuth request failed: ${response.status} ${response.statusText}`;
+      }
+    } catch (e) {
+      errorText = `OAuth request failed: ${response.status} ${response.statusText} - ${e.message}`;
+    }
     console.error('OAuth2 token request failed:', errorText);
     throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`);
   }
   
-  const tokenData = await response.json();
+  // Also safely parse the successful response
+  let tokenData;
+  try {
+    if (typeof response.json === 'function') {
+      tokenData = await response.json();
+    } else {
+      throw new Error('Response object missing json() method');
+    }
+  } catch (parseError) {
+    throw new Error(`Failed to parse OAuth token response: ${parseError.message}`);
+  }
   return tokenData.access_token;
 }
 
