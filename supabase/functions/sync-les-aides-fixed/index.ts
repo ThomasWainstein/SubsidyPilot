@@ -259,22 +259,26 @@ serve(async (req) => {
             console.log('📋 Subsidy ID:', subsidy.numero || subsidy.id || 'NO_ID');
             console.log('📋 Subsidy name:', subsidy.nom?.substring(0, 60) || subsidy.title?.substring(0, 60) || 'NO_NAME');
             
-            // Create consistent ID based on the Les-Aides API structure
-            const subsidyId = `les-aides-${subsidy.numero || subsidy.id || crypto.randomUUID()}`;
+            // Generate proper UUID for database, use external_id to track Les-Aides numero
+            const externalId = (subsidy.numero || subsidy.id)?.toString() || null;
             
-            // Check if subsidy already exists to determine add vs update
-            console.log('🔍 Checking if subsidy exists in database...');
+            // Check if subsidy already exists using external_id and source
+            console.log('🔍 Checking if subsidy exists using external_id:', externalId);
             const { data: existingSubsidy, error: selectError } = await supabase
               .from('subsidies')
-              .select('id, title, updated_at')
-              .eq('id', subsidyId)
+              .select('id, title, updated_at, external_id')
+              .eq('external_id', externalId)
+              .eq('source', 'les-aides-fr')
               .maybeSingle();
             
             if (selectError) {
               console.log('❌ Error checking existing subsidy:', selectError.message);
-              errors.push({ subsidy: subsidyId, error: `Select error: ${selectError.message}` });
+              errors.push({ subsidy: `external_id:${externalId}`, error: `Select error: ${selectError.message}` });
               continue;
             }
+            
+            // Use existing UUID or generate new one
+            const subsidyId = existingSubsidy?.id || crypto.randomUUID();
             
             if (existingSubsidy) {
               console.log('🔄 FOUND existing subsidy:', existingSubsidy.title?.substring(0, 50));
