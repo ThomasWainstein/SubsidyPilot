@@ -37,17 +37,18 @@ const SubsidyManagement = () => {
 
   const onSubmit = async (data: SubsidyCreationData) => {
     try {
-      // Map legacy form data to subsidies_structured fields
+      // Map legacy form data to subsidies fields
       const subsidyData = {
-        raw_log_id: 'manual-' + Date.now(), // Required field for subsidies_structured
+        code: `manual-${Date.now()}`, // Required field for subsidies
         title: typeof data.title === 'object' ? data.title.en || data.title.ro || '' : data.title,
         description: typeof data.description === 'object' ? data.description.en || data.description.ro || '' : data.description,
         eligibility: typeof data.eligibility_criteria === 'object' ? JSON.stringify(data.eligibility_criteria) : data.eligibility_criteria,
         region: Array.isArray(data.region) ? data.region : [data.region || ''], // Keep as array
-        sector: Array.isArray(data.categories) ? data.categories : [data.categories || ''], // Keep as array
+        categories: Array.isArray(data.categories) ? data.categories : [data.categories || ''], // Keep as array
         funding_type: data.funding_type,
         deadline: data.deadline,
-        amount: data.amount_max && data.amount_min ? [data.amount_min, data.amount_max] : (data.amount_max ? [data.amount_max] : (data.amount_min ? [data.amount_min] : null)),
+        amount_min: data.amount_min || 0,
+        amount_max: data.amount_max || 0,
         url: `manual-subsidy-${Date.now()}`,
         agency: 'Manual Entry',
       };
@@ -226,9 +227,9 @@ const SubsidyManagement = () => {
                     </div>
                     
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {(Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : [])).map((sector, idx) => (
+                      {(Array.isArray(subsidy.categories) ? subsidy.categories : (subsidy.categories ? [subsidy.categories] : [])).map((category, idx) => (
                         <Badge key={idx} variant="secondary" className="text-xs">
-                          {sector}
+                          {category}
                         </Badge>
                       ))}
                       {subsidy.funding_type && (

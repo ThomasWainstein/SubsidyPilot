@@ -48,12 +48,14 @@ const EnhancedSubsidyManagement = () => {
         description: typeof data.description === 'object' ? data.description.en || data.description.ro || '' : data.description,
         eligibility: typeof data.eligibility_criteria === 'object' ? JSON.stringify(data.eligibility_criteria) : data.eligibility_criteria,
         region: Array.isArray(data.region) ? data.region : [data.region || ''],
-        sector: Array.isArray(data.categories) ? data.categories : [data.categories || ''],
+        categories: Array.isArray(data.categories) ? data.categories : [data.categories || ''],
         funding_type: data.funding_type,
         deadline: data.deadline,
-        amount: data.amount_max && data.amount_min ? [data.amount_min, data.amount_max] : (data.amount_max ? [data.amount_max] : (data.amount_min ? [data.amount_min] : null)),
+        amount_min: data.amount_min || 0,
+        amount_max: data.amount_max || 0,
         url: `manual-subsidy-${Date.now()}`,
         agency: 'Manual Entry',
+        code: `manual-${Date.now()}`, // Required field
       };
       
       await createSubsidyMutation.mutateAsync(subsidyData);
@@ -358,9 +360,9 @@ const EnhancedSubsidyManagement = () => {
                       </div>
                       
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {(Array.isArray(subsidy.sector) ? subsidy.sector : (subsidy.sector ? [subsidy.sector] : [])).map((sector, idx) => (
+                        {(Array.isArray(subsidy.categories) ? subsidy.categories : (subsidy.categories ? [subsidy.categories] : [])).map((category, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs">
-                            {sector}
+                            {category}
                           </Badge>
                         ))}
                         {subsidy.funding_type && (

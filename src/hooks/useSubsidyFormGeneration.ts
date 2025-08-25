@@ -68,7 +68,7 @@ export const useSubsidyFormGeneration = () => {
 
       // Fetch subsidy data
       const { data: subsidy, error: subsidyError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('id', subsidyId)
         .single();

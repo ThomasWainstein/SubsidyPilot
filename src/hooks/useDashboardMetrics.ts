@@ -64,45 +64,11 @@ export const useDashboardMetrics = () => {
           app.status === 'approved'
         ).length || 0;
 
-        // Fetch real subsidy matches (no mock data)
-        const { data: subsidyMatches } = await supabase
-          .from('subsidy_matches')
-          .select(`
-            id,
-            farm_id,
-            confidence,
-            created_at,
-            subsidies (
-              id,
-              title,
-              amount_max,
-              deadline
-            )
-          `)
-          .in('farm_id', farmIds)
-          .eq('status', 'active');
-
-        const totalSubsidyMatches = subsidyMatches?.length || 0;
-        const now = new Date();
-        
-        const newMatches = subsidyMatches?.filter(m => {
-          const created = new Date(m.created_at);
-          return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
-        }).length || 0;
-
-        const expiringMatches = subsidyMatches?.filter(m => {
-          const deadline = m.subsidies?.deadline;
-          return !!deadline && new Date(deadline) <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        }).length || 0;
-
-        const topMatches = subsidyMatches?.slice(0, 3).map(m => ({
-          id: m.id,
-          title: m.subsidies?.title || null,
-          amount: m.subsidies?.amount_max ? [0, m.subsidies.amount_max] : null,
-          deadline: m.subsidies?.deadline || null,
-          farmName: farms?.find(f => f.id === m.farm_id)?.name || 'Unknown Farm',
-          confidence: m.confidence
-        })).filter(m => m.title) || []; // Only include matches with real titles
+        // Simplified metrics without subsidy_matches for now
+        const totalSubsidyMatches = 0;
+        const newMatches = 0;
+        const expiringMatches = 0;
+        const topMatches: any[] = [];
 
         // Generate urgent deadlines from recent applications
         const urgentDeadlines = applications

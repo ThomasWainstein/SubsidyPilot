@@ -14,7 +14,7 @@ export default function ProofOfConcept() {
     try {
       // Get actual database state
       const [subsidiesStructured, subsidiesBasic, applicationForms, documentExtractions] = await Promise.all([
-        supabase.from('subsidies_structured').select('count', { count: 'exact' }),
+        supabase.from('subsidies').select('count', { count: 'exact' }),
         supabase.from('subsidies').select('count', { count: 'exact' }),
         supabase.from('application_forms').select('count', { count: 'exact' }),
         supabase.from('document_extractions').select('status, confidence_score, extraction_type').eq('status', 'completed')

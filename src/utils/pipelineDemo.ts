@@ -44,16 +44,16 @@ export const runProductionReadinessDemo = async () => {
   console.log('\n3️⃣ VERIFYING DATA QUALITY...');
   try {
     const { data: subsidies, error } = await supabase
-      .from('subsidies_structured')
-      .select('id, title, sector, region, description')
+      .from('subsidies')
+      .select('id, title, categories, region, description')
       .limit(5);
       
     if (!error && subsidies) {
       const qualityChecks = {
-        hasSector: subsidies.every(s => s.sector && s.sector.length > 0),
+        hasSector: subsidies.every(s => s.categories && s.categories.length > 0),
         hasRegion: subsidies.every(s => s.region && s.region.length > 0),
-        hasCleanDescription: subsidies.every(s => s.description && !s.description.includes('==')),
-        hasTitle: subsidies.every(s => s.title && s.title.trim().length > 0)
+        hasCleanDescription: subsidies.every(s => s.description && !String(s.description).includes('==')),
+        hasTitle: subsidies.every(s => s.title && String(s.title).trim().length > 0)
       };
       
       console.log('📊 Data Quality Results:', qualityChecks);

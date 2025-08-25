@@ -94,7 +94,7 @@ export const usePortfolioMetrics = (userId: string) => {
 
               topOpportunities.push({
                 farmName: farm.name,
-                subsidyTitle: subsidyData?.title || 'Unknown Subsidy',
+                subsidyTitle: String(subsidyData?.title || 'Unknown Subsidy'),
                 amount: subsidy.amount || 0,
                 deadline: subsidy.deadline,
                 action: 'Apply Now'
@@ -115,7 +115,7 @@ export const usePortfolioMetrics = (userId: string) => {
 
               topOpportunities.push({
                 farmName: farm.name,
-                subsidyTitle: subsidyData?.title || 'Unknown Subsidy',
+                subsidyTitle: String(subsidyData?.title || 'Unknown Subsidy'),
                 amount: subsidy.amount || 0,
                 deadline: subsidy.deadline,
                 action: subsidy.requiredActions[0] || 'Complete Requirements'

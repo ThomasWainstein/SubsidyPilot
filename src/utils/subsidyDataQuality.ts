@@ -83,8 +83,8 @@ export class SubsidyDataQuality {
   }> {
     try {
       const { data: subsidies, error } = await supabase
-        .from('subsidies_structured')
-        .select('id, title, amount, description');
+        .from('subsidies')
+        .select('id, title, amount_max, description');
       
       if (error) throw error;
       
@@ -96,8 +96,8 @@ export class SubsidyDataQuality {
       };
       
       subsidies?.forEach(sub => {
-        if (!sub.title || sub.title === 'Subsidy Page') stats.missingTitles++;
-        if (!sub.amount || (Array.isArray(sub.amount) && sub.amount.length === 0)) stats.missingAmounts++;
+        if (!sub.title || String(sub.title) === 'Subsidy Page') stats.missingTitles++;
+        if (!sub.amount_max || (Array.isArray(sub.amount_max) && sub.amount_max.length === 0)) stats.missingAmounts++;
         if (!sub.description) stats.missingDescriptions++;
       });
       

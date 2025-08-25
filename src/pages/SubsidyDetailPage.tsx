@@ -18,9 +18,9 @@ const SubsidyDetailPage = () => {
   const { data: subsidy, isLoading, error } = useQuery({
     queryKey: ['subsidy', subsidyId],
     queryFn: async () => {
-      // First try subsidies_structured table
+      // First try subsidies table
       const { data: structuredData, error: structuredError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('id', subsidyId)
         .maybeSingle();

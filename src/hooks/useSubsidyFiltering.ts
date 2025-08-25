@@ -124,7 +124,6 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
             eligibility: String(eligibilityCriteria?.conditions || ''),
             program: String(subsidy.code || ''),
             api_source: subsidy.api_source,
-            enhanced_funding_info: subsidy.enhanced_funding_info, // Pass through enhanced funding info
             matchConfidence: Math.min(matchConfidence, 100)
           };
         });

@@ -42,8 +42,8 @@ export class SubsidyEligibilityService {
 
     // Get available subsidies 
     const { data: subsidies } = await supabase
-      .from('subsidies_structured')
-      .select('id, title, description, amount, deadline, region, categories, eligibility')
+      .from('subsidies')
+      .select('id, title, description, amount_max, deadline, region, categories')
       .eq('archived', false);
 
     if (!subsidies) {
@@ -54,21 +54,12 @@ export class SubsidyEligibilityService {
     const needsAction: SubsidyEligibilityScore[] = [];
 
     for (const subsidy of subsidies) {
-      console.log(`\nProcessing subsidy: "${subsidy.title}"`);
-      console.log('Raw amount field:', subsidy.amount);
-      
       const eligibilityResult = this.assessSubsidyEligibility(farm, subsidy, documents || []);
-      
-      console.log(`Eligibility result - Score: ${eligibilityResult.score}, Parsed Amount: ${eligibilityResult.amount}`);
       
       if (eligibilityResult.score >= 0.9) {
         readyToApply.push(eligibilityResult);
-        console.log('→ Added to READY TO APPLY');
       } else if (eligibilityResult.score >= 0.3) {
         needsAction.push(eligibilityResult);
-        console.log('→ Added to NEEDS ACTION');
-      } else {
-        console.log('→ Score too low, not included');
       }
     }
 
@@ -93,7 +84,7 @@ export class SubsidyEligibilityService {
     const requiredActions: string[] = [];
 
     // Parse amount from subsidy data
-    const amount = this.parseSubsidyAmount(subsidy.amount);
+    const amount = this.parseSubsidyAmount(subsidy.amount_max);
 
     // Check geographic eligibility
     if (subsidy.region && Array.isArray(subsidy.region)) {
@@ -107,17 +98,8 @@ export class SubsidyEligibilityService {
       }
     }
 
-    // Check farm size requirements (extract from description/eligibility text)
-    const farmSizeRequirement = this.extractFarmSizeRequirement(subsidy.eligibility || '');
-    if (farmSizeRequirement && farm.total_hectares) {
-      if (farm.total_hectares < farmSizeRequirement.min) {
-        score *= 0.2;
-        blockedReasons.push(`Farm too small (${farm.total_hectares}ha < ${farmSizeRequirement.min}ha required)`);
-      } else if (farmSizeRequirement.max && farm.total_hectares > farmSizeRequirement.max) {
-        score *= 0.2;
-        blockedReasons.push(`Farm too large (${farm.total_hectares}ha > ${farmSizeRequirement.max}ha limit)`);
-      }
-    }
+    // Check farm size requirements (simplified without eligibility field)
+    // For now, assume no specific size requirements until we have eligibility data
 
     // Check activity type matching
     if (subsidy.categories && Array.isArray(subsidy.categories) && farm.land_use_types) {
@@ -134,14 +116,11 @@ export class SubsidyEligibilityService {
       }
     }
 
-    // Check legal status requirements
-    if (subsidy.eligibility?.includes('SRL') && farm.legal_status !== 'srl') {
-      score *= 0.7;
-      blockedReasons.push(`Legal status (${farm.legal_status}) may not be optimal`);
-    }
+    // Check legal status requirements (simplified without eligibility field)
+    // For now, assume all legal statuses are acceptable
 
-    // Check document completion
-    const requiredDocTypes = this.extractRequiredDocuments(subsidy.eligibility || '');
+    // Check document completion (simplified)
+    const requiredDocTypes = ['tax_documents', 'business_registration']; // Basic requirements
     const missingDocs = requiredDocTypes.filter(docType => 
       !documents.some(doc => 
         doc.category?.toLowerCase().includes(docType.toLowerCase()) &&

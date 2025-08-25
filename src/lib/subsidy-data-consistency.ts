@@ -68,9 +68,9 @@ export class SubsidyDataManager {
     console.log('🔄 Fetching fresh unified subsidies');
     
     try {
-      // Primary source: subsidies_structured (has processed data)
+      // Primary source: subsidies (has processed data)
       const { data: structuredSubsidies, error: structuredError } = await supabase
-        .from('subsidies_structured')
+        .from('subsidies')
         .select('*')
         .eq('archived', false)
         .order('created_at', { ascending: false });
@@ -173,7 +173,7 @@ export class SubsidyDataManager {
       sector: this.extractSectors(extractedData),
       fundingType: subsidy.funding_type || 'Financement',
       applicationUrl: extractedData.applicationUrl,
-      source: 'subsidies_structured',
+      source: 'subsidies',
       lastUpdated: new Date(subsidy.updated_at || subsidy.created_at)
     };
   }
