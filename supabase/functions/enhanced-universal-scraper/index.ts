@@ -1,7 +1,7 @@
 // index.ts — Enhanced universal scraper with pagination-based discovery for
 // FranceAgriMer and Les-Aides listing pages.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
