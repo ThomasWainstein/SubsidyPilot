@@ -717,12 +717,23 @@ async function performOCR(context: any) {
       let errorCode = ErrorCode.VISION_API_ERROR;
       
       try {
-        const errorResponse = await response.json();
-        errorDetails = JSON.stringify(errorResponse, null, 2);
-        console.error(`❌ Google Vision API error response:`, errorDetails);
+        // Safely handle response parsing - check if methods exist
+        if (typeof response.json === 'function') {
+          const errorResponse = await response.json();
+          errorDetails = JSON.stringify(errorResponse, null, 2);
+          console.error(`❌ Google Vision API error response:`, errorDetails);
+        } else if (typeof response.text === 'function') {
+          errorDetails = await response.text();
+          console.error(`❌ Google Vision API error text:`, errorDetails);
+        } else {
+          // Response object doesn't have expected methods
+          errorDetails = `Invalid response object: ${JSON.stringify(response)}`;
+          console.error(`❌ Invalid response object:`, response);
+        }
       } catch (e) {
-        errorDetails = await response.text();
-        console.error(`❌ Google Vision API error text:`, errorDetails);
+        // Fallback error handling
+        errorDetails = `Failed to parse error response: ${e.message}`;
+        console.error(`❌ Response parsing failed:`, e);
       }
       
       // Categorize specific Vision API errors
@@ -754,7 +765,31 @@ async function performOCR(context: any) {
       throw error;
     }
 
-    const data = await response.json();
+    // Safely parse the successful response
+    let data;
+    try {
+      if (typeof response.json === 'function') {
+        data = await response.json();
+      } else {
+        throw new Error('Response object missing json() method');
+      }
+    } catch (parseError) {
+      const error = ErrorTaxonomy.createError(
+        ErrorCode.VISION_API_ERROR,
+        parseError,
+        { 
+          correlationId: context.correlationId,
+          responseType: typeof response,
+          responseStatus: response?.status 
+        },
+        {
+          stage: 'ocr-response-parsing',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
+      );
+      throw error;
+    }
     console.log(`🔍 Google Vision API response:`, JSON.stringify(data, null, 2));
     
     let extractedText = '';

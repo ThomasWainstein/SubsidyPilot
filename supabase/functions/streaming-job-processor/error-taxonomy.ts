@@ -2,10 +2,12 @@
 export enum ErrorCode {
   // File & Encoding Errors
   FILE_DOWNLOAD_FAILED = 'FILE_DOWNLOAD_FAILED',
+  FILE_URL_INVALID_SCHEME = 'FILE_URL_INVALID_SCHEME',
   FILE_TOO_LARGE = 'FILE_TOO_LARGE',
   FILE_CORRUPTED = 'FILE_CORRUPTED',
   ENCODING_FAIL = 'ENCODING_FAIL',
   MIME_UNSUPPORTED = 'MIME_UNSUPPORTED',
+  PAYLOAD_TOO_LARGE = 'PAYLOAD_TOO_LARGE',
   
   // Authentication & API Errors
   AUTH_OAUTH_FAIL = 'AUTH_OAUTH_FAIL',
@@ -95,6 +97,24 @@ export class ErrorTaxonomy {
         retryDelay: 5000,
         severity: 'ERROR',
         source: 'EXTERNAL'
+      },
+      
+      [ErrorCode.FILE_URL_INVALID_SCHEME]: {
+        code,
+        userMessage: "Invalid file URL detected. Please upload the file first for processing.",
+        retryable: false,
+        retryDelay: 0,
+        severity: 'WARN',
+        source: 'USER'
+      },
+      
+      [ErrorCode.PAYLOAD_TOO_LARGE]: {
+        code,
+        userMessage: "File is too large for synchronous processing. Please use a smaller file or contact support.",
+        retryable: false,
+        retryDelay: 0,
+        severity: 'WARN',
+        source: 'USER'
       },
       
       [ErrorCode.FILE_TOO_LARGE]: {
@@ -285,19 +305,54 @@ export class ErrorTaxonomy {
   static categorizeError(error: any): ErrorCode {
     const message = error?.message?.toLowerCase() || '';
     
-    // File and encoding errors
-    if (message.includes('failed to fetch') || message.includes('network') || message.includes('download')) {
+    // URL scheme issues - catch blob URLs and invalid schemes first
+    if (message.includes('only absolute urls are supported') || 
+        message.includes('scheme \'blob\' not supported') ||
+        message.includes('failed to parse url') ||
+        message.includes('blob:') || message.includes('data:') ||
+        !/^https?:\/\//i.test(error?.url || '')) {
+      return ErrorCode.FILE_URL_INVALID_SCHEME;
+    }
+    
+    // Response parsing issues - catch .text() and .json() method errors
+    if (message.includes('.text is not a function') ||
+        message.includes('.json is not a function') ||
+        message.includes('unexpected end of json') ||
+        message.includes('invalid json')) {
+      return ErrorCode.VISION_API_ERROR; // Treat as API response issue
+    }
+    
+    // Network and connectivity
+    if (message.includes('network') || message.includes('connection') || 
+        message.includes('enotfound') || message.includes('timeout') ||
+        message.includes('certificate') || message.includes('handshake') ||
+        message.includes('name not resolved') || message.includes('cors') ||
+        message.includes('failed to fetch')) {
+      return ErrorCode.NETWORK_ERROR;
+    }
+    
+    // File access issues
+    if (message.includes('file not found') || message.includes('no such file') ||
+        message.includes('access denied') || message.includes('signed url') ||
+        message.includes('bucket') || error?.status === 403 || 
+        message.includes('download')) {
       return ErrorCode.FILE_DOWNLOAD_FAILED;
     }
     
+    // Size and payload issues  
+    if (message.includes('too large') || message.includes('size limit') ||
+        message.includes('maximum') && message.includes('size') ||
+        message.includes('payload') && message.includes('large') ||
+        message.includes('file too large') || message.includes('payload too large')) {
+      return ErrorCode.FILE_TOO_LARGE;
+    }
+    
+    // Encoding issues
     if (message.includes('base64') || message.includes('encoding')) {
       return ErrorCode.ENCODING_FAIL;
     }
     
-    if (message.includes('file too large') || message.includes('payload too large')) {
-      return ErrorCode.FILE_TOO_LARGE;
-    }
-    
+    // File corruption
     if (message.includes('corrupted') || message.includes('invalid pdf') || message.includes('password')) {
       return ErrorCode.FILE_CORRUPTED;
     }
