@@ -52,7 +52,11 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
   }, [documentId]);
 
   const getActualExtractedFields = (data: any) => {
-    // Handle nested structure from streaming pipeline
+    // Handle nested structure from streaming pipeline - check for fields first
+    if (data?.fields) {
+      return data.fields;
+    }
+    // Handle legacy extracted_fields structure
     if (data?.extracted_fields) {
       return data.extracted_fields;
     }
@@ -65,6 +69,12 @@ export function ExtractedDataViewer({ documentId }: ExtractedDataViewerProps) {
 
   const formatValue = (key: string, value: any): string => {
     if (value === null || value === undefined) return 'N/A';
+    
+    // Handle nested extraction format with value/confidence/source_snippet
+    if (typeof value === 'object' && value.value !== undefined) {
+      return String(value.value);
+    }
+    
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
     return String(value);
