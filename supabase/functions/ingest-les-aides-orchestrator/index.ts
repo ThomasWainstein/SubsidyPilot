@@ -25,9 +25,9 @@ Deno.serve(async (req) => {
     )
 
     const config: ScrapeConfig = await req.json().catch(() => ({}))
-    const { dry_run = false, limit = 100, max_pages = 10 } = config
+    const { dry_run = false, limit = 200, max_pages = 10 } = config
 
-    console.log(`🚀 Starting les-aides.fr ingestion - dry_run: ${dry_run}, limit: ${limit}`)
+    console.log(`🚀 Starting comprehensive les-aides.fr ingestion - dry_run: ${dry_run}, limit: ${limit}`)
 
     // 1. Clean up any stuck syncs
     const { data: cleanupResult } = await supabase.rpc('cleanup_stuck_syncs')
@@ -55,9 +55,9 @@ Deno.serve(async (req) => {
     console.log(`📝 Created sync run: ${runId}`)
 
     try {
-      // 3. Fetch data from les-aides.fr API  
+      // 3. Fetch data from les-aides.fr API with comprehensive coverage
       const subsidies = await fetchLesAidesData(limit, max_pages)
-      console.log(`📥 Fetched ${subsidies.length} subsidies from les-aides.fr`)
+      console.log(`📥 Fetched ${subsidies.length} unique subsidies from les-aides.fr`)
 
       if (subsidies.length === 0) {
         await supabase
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
           fetched: subsidies.length,
           ...adapterResult
         },
-        message: dry_run ? 'Dry run completed successfully' : 'Sync completed successfully'
+        message: dry_run ? 'Dry run completed successfully' : 'Comprehensive sync completed successfully'
       }
 
       console.log('✅ Orchestration completed:', result)
@@ -189,82 +189,104 @@ async function fetchLesAidesData(limit: number, maxPages: number) {
     throw new Error('LES_AIDES_API_KEY environment variable not found')
   }
 
-  const baseUrl = 'https://api.les-aides.fr/aides/'
+  console.log(`🔍 Starting comprehensive les-aides.fr data fetch (limit: ${limit})`)
+
+  // First, get reference data to build systematic search scenarios
+  const { domains, regions } = await fetchReferenceData(apiKey)
+  
   const subsidies = []
+  const processedIds = new Set() // Avoid duplicates
   let totalFetched = 0
+  let requestCount = 0
+  const maxRequests = 80 // Stay well under 720 daily limit
 
-  console.log(`🔍 Fetching from les-aides.fr API (limit: ${limit})`)
-
-  // Define multiple search scenarios to get diverse subsidies
-  const searchScenarios = [
-    { ape: 'A', domaine: 790 }, // Agriculture - Création Reprise
-    { ape: 'C', domaine: 798 }, // Manufacturing - Développement commercial  
-    { ape: 'G', domaine: 793 }, // Commerce - Cession Transmission
-    { ape: 'J', domaine: 790 }, // Information - Création Reprise
-    { ape: 'M', domaine: 798 }, // Services - Développement commercial
-    { ape: 'N', domaine: 790 }, // Admin services - Création Reprise
-  ]
+  // Build systematic search scenarios
+  const searchScenarios = buildSearchScenarios(domains, regions)
+  console.log(`📋 Built ${searchScenarios.length} systematic search scenarios`)
 
   for (const scenario of searchScenarios) {
-    if (totalFetched >= limit) break
+    if (totalFetched >= limit || requestCount >= maxRequests) break
 
     try {
-      // Build search parameters
+      requestCount++
+      
+      // Build search parameters according to API documentation
       const params = new URLSearchParams({
         ape: scenario.ape,
         domaine: scenario.domaine.toString(),
         format: 'json'
       })
+      
+      // Add geographical filters if available
+      if (scenario.region) params.append('region', scenario.region.toString())
 
-      const url = `${baseUrl}?${params}`
-      console.log(`📄 Searching with APE: ${scenario.ape}, Domain: ${scenario.domaine}`)
+      const url = `https://api.les-aides.fr/aides/?${params}`
+      console.log(`📄 [${requestCount}/${maxRequests}] APE:${scenario.ape} Domain:${scenario.domaine}${scenario.region ? ` Region:${scenario.region}` : ''}`)
       
       const response = await fetch(url, {
         headers: {
           'X-IDC': apiKey,
           'Accept': 'application/json',
           'Accept-Encoding': 'gzip',
-          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:41.0) API les-aides.fr'
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
         }
       })
 
       if (!response.ok) {
-        console.error(`HTTP ${response.status} for scenario ${JSON.stringify(scenario)}: ${response.statusText}`)
+        console.error(`HTTP ${response.status}: ${response.statusText}`)
+        if (response.status === 403) {
+          const errorText = await response.text()
+          console.error(`API Error: ${errorText.substring(0, 300)}`)
+        }
         continue
       }
 
       const data = await response.json()
-      console.log(`📊 API Response keys:`, Object.keys(data))
+      
+      // Handle API error responses
+      if (data.exception) {
+        console.warn(`API exception: ${data.exception}`)
+        continue
+      }
       
       // Parse les-aides.fr API response format
       if (!data.dispositifs || !Array.isArray(data.dispositifs)) {
-        console.warn(`No dispositifs found for scenario ${JSON.stringify(scenario)}`)
+        console.log(`No dispositifs found (total available: ${data.nb_dispositifs || 0})`)
         continue
       }
 
-      const deviceCount = Math.min(data.dispositifs.length, Math.floor(limit / searchScenarios.length))
-      const selectedDevices = data.dispositifs.slice(0, deviceCount)
-      
-      console.log(`📄 Found ${data.dispositifs.length} subsidies, taking ${selectedDevices.length}`)
+      console.log(`✅ Found ${data.dispositifs.length} subsidies (total available: ${data.nb_dispositifs})`)
 
-      // Transform API data to our format
-      for (const device of selectedDevices) {
+      // Process all unique devices from this search
+      for (const device of data.dispositifs) {
         if (totalFetched >= limit) break
 
-        // Fetch full device details
-        const deviceDetails = await fetchDeviceDetails(device.numero, data.idr, apiKey)
+        const deviceId = device.numero.toString()
+        
+        // Skip duplicates
+        if (processedIds.has(deviceId)) {
+          continue
+        }
+        processedIds.add(deviceId)
+
+        // Fetch full device details 
+        let deviceDetails = null
+        if (requestCount < maxRequests) {
+          deviceDetails = await fetchDeviceDetails(device.numero, data.idr, apiKey)
+          requestCount++
+        }
         
         const transformedSubsidy = {
-          id: device.numero.toString(),
-          title: device.nom || 'Untitled',
+          id: deviceId,
+          title: device.nom || 'Aide sans titre',
           description: deviceDetails?.objet || device.resume || '',
           url: device.uri || `https://les-aides.fr/aide/${device.numero}`,
           amount: deviceDetails?.montants || '',
-          deadline: '', // Not available in basic search
-          organization: device.sigle || '',
-          region: '', // Varies by search location
-          sector: '', // Determined by APE code
-          agency: device.sigle,
+          deadline: '', // Available in device details conditions
+          organization: deviceDetails?.organisme?.raison_sociale || device.sigle || 'Organisation inconnue',
+          region: scenario.region ? regions.find(r => r.region === scenario.region)?.nom : '',
+          sector: mapDomainsToSector(device.domaines || []),
+          agency: deviceDetails?.organisme?.raison_sociale || device.sigle || '',
           implantation: device.implantation, // E/N/T
           domains: device.domaines || [],
           means: device.moyens || [],
@@ -273,24 +295,146 @@ async function fetchLesAidesData(limit: number, maxPages: number) {
           validation: device.validation,
           generation: device.generation,
           revision: device.revision,
-          raw_api_data: { search_scenario: scenario, device, details: deviceDetails }
+          raw_api_data: { 
+            search_scenario: scenario, 
+            device, 
+            details: deviceDetails,
+            idr: data.idr,
+            nb_dispositifs: data.nb_dispositifs
+          }
         }
 
         subsidies.push(transformedSubsidy)
         totalFetched++
       }
       
-      // Rate limiting between searches
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Rate limiting: API allows 720/day = ~30/hour = 1 every 2min
+      await new Promise(resolve => setTimeout(resolve, 2500))
 
     } catch (error) {
-      console.error(`Error fetching scenario ${JSON.stringify(scenario)}:`, error)
+      console.error(`Error in scenario APE:${scenario.ape} Domain:${scenario.domaine}:`, error)
       continue
     }
   }
 
-  console.log(`📊 Final result: ${subsidies.length} subsidies from ${searchScenarios.length} scenarios`)
+  console.log(`📊 Final result: ${subsidies.length} unique subsidies from ${requestCount} API requests`)
   return subsidies
+}
+
+async function fetchReferenceData(apiKey: string) {
+  console.log('📚 Fetching reference data from les-aides.fr API...')
+  
+  const headers = {
+    'X-IDC': apiKey,
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
+  }
+
+  // Use documented domain values from the API documentation provided
+  const domains = [
+    {numero: 790, libelle: "Création Reprise"},
+    {numero: 793, libelle: "Cession Transmission"},
+    {numero: 798, libelle: "Développement commercial"},
+    {numero: 288, libelle: "Aéronautique"},
+    {numero: 289, libelle: "Agroalimentaire - Nutrition"},
+    {numero: 290, libelle: "Agroindustrie"},
+    {numero: 336, libelle: "Artisanat"},
+    {numero: 341, libelle: "Automobile"},
+    {numero: 295, libelle: "BTP matériaux de construction"},
+    {numero: 335, libelle: "Economie Sociale et Solidaire"},
+    {numero: 293, libelle: "Environnement"},
+    {numero: 361, libelle: "Numérique"},
+    {numero: 338, libelle: "Tourisme"},
+    {numero: 392, libelle: "Logistique"},
+    {numero: 297, libelle: "Santé"}
+  ]
+
+  // Use documented region values
+  const regions = [
+    {region: 84, nom: "Auvergne-Rhône-Alpes"},
+    {region: 11, nom: "Île-de-France"},
+    {region: 32, nom: "Hauts-de-France"},
+    {region: 75, nom: "Nouvelle-Aquitaine"},
+    {region: 76, nom: "Occitanie"},
+    {region: 93, nom: "Provence-Alpes-Côte d'Azur"},
+    {region: 44, nom: "Grand Est"},
+    {region: 52, nom: "Pays de la Loire"},
+    {region: 53, nom: "Bretagne"},
+    {region: 28, nom: "Normandie"}
+  ]
+
+  console.log(`📚 Using reference data: ${domains.length} domains, ${regions.length} regions`)
+  
+  return { domains, regions }
+}
+
+function buildSearchScenarios(domains: any[], regions: any[]) {
+  const scenarios = []
+  
+  // Major APE sections covering all economic sectors
+  const apeSections = [
+    'A', // Agriculture, sylviculture et pêche
+    'C', // Industrie manufacturière  
+    'F', // Construction
+    'G', // Commerce
+    'I', // Hébergement et restauration
+    'J', // Information et communication
+    'K', // Activités financières
+    'M', // Activités spécialisées, scientifiques et techniques
+    'N', // Activités de services administratifs
+    'P', // Enseignement
+    'Q', // Santé humaine et action sociale
+    'R', // Arts, spectacles et activités récréatives
+    'S'  // Autres activités de services
+  ]
+  
+  // Key domains to cover different types of aid
+  const keyDomains = [790, 793, 798, 288, 289, 290, 336, 341, 295, 335, 293, 361, 338]
+  
+  // Major regions for geographical diversity
+  const majorRegions = [84, 11, 32, 75, 76, 93] // Top 6 regions
+  
+  // Build comprehensive scenarios
+  for (const ape of apeSections) {
+    for (const domain of keyDomains) {
+      // Base scenario without region
+      scenarios.push({ ape, domaine: domain })
+      
+      // Regional variants for key combinations
+      if (scenarios.length < 60) { // Limit to stay under API quotas
+        for (const region of majorRegions.slice(0, 2)) {
+          scenarios.push({ ape, domaine: domain, region })
+        }
+      }
+    }
+  }
+  
+  // Ensure we don't exceed reasonable limits
+  return scenarios.slice(0, 50)
+}
+
+function mapDomainsToSector(domains: number[]): string {
+  const sectorMap: Record<number, string> = {
+    288: 'Aéronautique',
+    289: 'Agroalimentaire', 
+    290: 'Agroindustrie',
+    336: 'Artisanat',
+    341: 'Automobile',
+    295: 'BTP',
+    335: 'ESS',
+    293: 'Environnement',
+    361: 'Numérique',
+    338: 'Tourisme',
+    392: 'Logistique',
+    297: 'Santé',
+    790: 'Création',
+    793: 'Transmission',
+    798: 'Développement'
+  }
+  
+  if (!domains?.length) return 'Général'
+  const sectors = domains.map(d => sectorMap[d]).filter(Boolean)
+  return sectors.length > 0 ? sectors.join(', ') : 'Autre'
 }
 
 async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKey: string) {
@@ -302,7 +446,7 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKe
         'X-IDC': apiKey,
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip',
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:41.0) API les-aides.fr'
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x64_64; rv:41.0) API les-aides.fr'
       }
     })
 
@@ -315,61 +459,5 @@ async function fetchDeviceDetails(deviceNumber: number, requestId: number, apiKe
   } catch (error) {
     console.error(`Error fetching device details for ${deviceNumber}:`, error)
     return null
-  }
-}
-
-async function fallbackScraping(limit: number) {
-  console.log('🕷️ Starting fallback scraping')
-  
-  try {
-    const response = await fetch('https://les-aides.fr/aides', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SubsidyPilot/1.0)',
-        'Accept': 'text/html,application/xhtml+xml'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-
-    const html = await response.text()
-    
-    // Simple HTML parsing for subsidy cards
-    const subsidies = []
-    const cardRegex = /<div[^>]*class="[^"]*aide[^"]*"[^>]*>([\s\S]*?)<\/div>/gi
-    const titleRegex = /<h[2-4][^>]*>(.*?)<\/h[2-4]>/i
-    const linkRegex = /href="([^"]*aide[^"]*)"/i
-    
-    let match
-    while ((match = cardRegex.exec(html)) !== null && subsidies.length < limit) {
-      const cardHtml = match[1]
-      const titleMatch = cardHtml.match(titleRegex)
-      const linkMatch = cardHtml.match(linkRegex)
-      
-      if (titleMatch && linkMatch) {
-        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim()
-        const url = linkMatch[1].startsWith('http') ? linkMatch[1] : `https://les-aides.fr${linkMatch[1]}`
-        
-        subsidies.push({
-          id: url.split('/').pop() || `scraped-${subsidies.length}`,
-          title,
-          description: '',
-          url,
-          amount: '',
-          deadline: '',
-          organization: '',
-          region: '',
-          sector: ''
-        })
-      }
-    }
-    
-    console.log(`🕷️ Fallback scraping found ${subsidies.length} subsidies`)
-    return subsidies
-    
-  } catch (error) {
-    console.error('Fallback scraping failed:', error)
-    return []
   }
 }
