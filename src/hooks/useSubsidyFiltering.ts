@@ -32,7 +32,8 @@ interface SubsidyWithMatch {
   program: string | null;
   matchConfidence: number;
   created_at?: string;
-  api_source?: string; // Added for country filtering
+  api_source?: string;
+  enhanced_funding_info?: any; // Add enhanced funding info field
   // Legacy fields for backward compatibility
   categories?: string[];
   amount_min?: number;
@@ -122,7 +123,8 @@ export const useSubsidyFiltering = (farmId: string | undefined, filters: FilterS
             agency: String(eligibilityCriteria?.organisme || ''),
             eligibility: String(eligibilityCriteria?.conditions || ''),
             program: String(subsidy.code || ''),
-            api_source: subsidy.api_source, // Include api_source for country filtering
+            api_source: subsidy.api_source,
+            enhanced_funding_info: subsidy.enhanced_funding_info, // Pass through enhanced funding info
             matchConfidence: Math.min(matchConfidence, 100)
           };
         });
