@@ -123,12 +123,11 @@ export class FrenchSubsidyParser {
       /plancher.*?d'aide.*?(\d+(?:\s*\d{3})*)\s*€/gi,
     ],
     
-    // Standard percentage patterns
+    // Standard percentage patterns (LOWER PRIORITY - only extract if they have monetary context)
     percentage: [
-      /(?:subvention|aide).*?(?:hauteur\s+de|jusqu'à|maximum\s+de)\s*(\d+(?:[.,]\d+)?)\s*%/gi,
-      /(\d+(?:[.,]\d+)?)\s*%.*?(?:dépense|investissement|coût)/gi,
-      /taux.*?subvention.*?(\d+(?:[.,]\d+)?)\s*%/gi,
-      /aide.*?représente.*?(\d+(?:[.,]\d+)?)\s*%/gi,
+      /(?:subvention|aide).*?(?:hauteur\s+de|jusqu'à|maximum\s+de)\s*(\d+(?:[.,]\d+)?)\s*%.*?(?:sur|de|du)\s*(?:\d+(?:\s*\d{3})*)\s*€/gi, // Only if followed by amount
+      /(\d+(?:[.,]\d+)?)\s*%.*?(?:dépense|investissement|coût).*?(?:\d+(?:\s*\d{3})*)\s*€/gi, // Only if has amount context
+      // Remove standalone percentages - they're not useful without monetary context
     ],
     
     // Amount ranges
