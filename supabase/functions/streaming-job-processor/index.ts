@@ -662,9 +662,24 @@ async function performOCR(context: any) {
     }
     
     // Get OAuth2 access token using service account
-    const accessToken = await getAccessToken(credentials);
-    console.log(`🔐 Access token obtained: ${accessToken ? 'YES' : 'NO'}`);
-    
+    let accessToken;
+    try {
+      console.log(`🔐 Getting OAuth2 access token...`);
+      accessToken = await getAccessToken(credentials);
+      console.log(`🔐 Access token obtained: ${accessToken ? 'YES' : 'NO'} (length: ${accessToken?.length})`);
+    } catch (tokenError) {
+      console.error(`❌ OAuth token error:`, tokenError);
+      throw ErrorTaxonomy.createError(
+        ErrorCode.AUTH_OAUTH_FAIL,
+        tokenError,
+        { correlationId: context.correlationId },
+        {
+          stage: 'ocr-oauth',
+          jobId: context.job.id,
+          tenantId: context.job.user_id
+        }
+      );
+    }
     let response;
     const requestPayload = {
       requests: [{
@@ -688,51 +703,98 @@ async function performOCR(context: any) {
     const visionClient = CircuitBreakerManager.getClient('google-vision');
     const baseUrl = ProcessingPolicyEngine.getEndpointUrl();
     
+    console.log(`🌍 Using Vision API endpoint: ${baseUrl}`);
+    console.log(`📄 Processing ${isPDF ? 'PDF' : 'image'} file: ${context.job.file_name}`);
+
     if (isPDF) {
       // Use files:annotate endpoint for PDFs with EU compliance
       console.log(`📄 Processing PDF with files:annotate endpoint using EU endpoint: ${baseUrl}`);
-      response = await visionClient.callWithResilience(
-        () => fetch(`${baseUrl}/v1/files:annotate`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+      
+      try {
+        console.log(`🚀 Making Vision API call to ${baseUrl}/v1/files:annotate`);
+        response = await visionClient.callWithResilience(
+          async () => {
+            const fetchResponse = await fetch(`${baseUrl}/v1/files:annotate`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify(requestPayload)
+            });
+            console.log(`📡 Vision API response status: ${fetchResponse.status} ${fetchResponse.statusText}`);
+            console.log(`📡 Vision API response headers:`, Object.fromEntries(fetchResponse.headers.entries()));
+            return fetchResponse;
           },
-          body: JSON.stringify(requestPayload)
-        }),
-        {
-          operationName: 'vision-files-annotate',
-          correlationId: context.correlationId,
-          tenantId: context.job.user_id
-        }
-      );
+          {
+            operationName: 'vision-files-annotate',
+            correlationId: context.correlationId,
+            tenantId: context.job.user_id
+          }
+        );
+      } catch (circuitError) {
+        console.error(`❌ Circuit breaker error:`, circuitError);
+        throw ErrorTaxonomy.createError(
+          ErrorCode.VISION_API_ERROR,
+          circuitError,
+          { correlationId: context.correlationId },
+          {
+            stage: 'ocr-circuit-breaker',
+            jobId: context.job.id,
+            tenantId: context.job.user_id
+          }
+        );
+      }
     } else {
       // Use images:annotate endpoint for image files with EU compliance
       console.log(`🖼️ Processing image with images:annotate endpoint using EU endpoint: ${baseUrl}`);
-      response = await visionClient.callWithResilience(
-        () => fetch(`${baseUrl}/v1/images:annotate`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+      
+      try {
+        console.log(`🚀 Making Vision API call to ${baseUrl}/v1/images:annotate`);
+        response = await visionClient.callWithResilience(
+          async () => {
+            const fetchResponse = await fetch(`${baseUrl}/v1/images:annotate`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                requests: [{
+                  image: { content: base64Data },
+                  features: [
+                    { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
+                    { type: 'TEXT_DETECTION', maxResults: 1 }
+                  ]
+                }]
+              })
+            });
+            console.log(`📡 Vision API response status: ${fetchResponse.status} ${fetchResponse.statusText}`);
+            console.log(`📡 Vision API response headers:`, Object.fromEntries(fetchResponse.headers.entries()));
+            return fetchResponse;
           },
-          body: JSON.stringify({
-            requests: [{
-              image: { content: base64Data },
-              features: [
-                { type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 },
-                { type: 'TEXT_DETECTION', maxResults: 1 }
-              ]
-            }]
-          })
-        }),
-        {
-          operationName: 'vision-images-annotate',
-          correlationId: context.correlationId,
-          tenantId: context.job.user_id
-        }
-      );
+          {
+            operationName: 'vision-images-annotate',
+            correlationId: context.correlationId,
+            tenantId: context.job.user_id
+          }
+        );
+      } catch (circuitError) {
+        console.error(`❌ Circuit breaker error:`, circuitError);
+        throw ErrorTaxonomy.createError(
+          ErrorCode.VISION_API_ERROR,
+          circuitError,
+          { correlationId: context.correlationId },
+          {
+            stage: 'ocr-circuit-breaker',
+            jobId: context.job.id,
+            tenantId: context.job.user_id
+          }
+        );
+      }
     }
+
+    console.log(`📡 Vision API call completed with status: ${response?.status}`);
 
     if (!response.ok) {
       let errorDetails = '';
