@@ -403,10 +403,16 @@ export const useEnhancedSubsidyParser = (options: UseEnhancedSubsidyParserOption
   const getEligibilityDisplay = (data?: ParsedSubsidyData): string[] => {
     if (!data?.eligibility) return [];
     
+    const safeArray = (arr: any): string[] => {
+      if (Array.isArray(arr)) return arr;
+      if (typeof arr === 'string') return [arr];
+      return [];
+    };
+    
     return [
-      ...data.eligibility.entityTypes,
-      ...data.eligibility.sectors,
-      ...data.eligibility.geographicScope
+      ...safeArray(data.eligibility.entityTypes),
+      ...safeArray(data.eligibility.sectors),
+      ...safeArray(data.eligibility.geographicScope)
     ].filter(Boolean);
   };
 
