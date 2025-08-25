@@ -53,6 +53,32 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
   
   // Get enhanced funding display or fall back to original
   const getEnhancedFundingDisplay = () => {
+    // First check for enhanced_funding_info directly from the subsidy
+    if (subsidy.enhanced_funding_info?.funding) {
+      const funding = subsidy.enhanced_funding_info.funding;
+      switch (funding.type) {
+        case 'percentage_with_range':
+          if (funding.percentage && funding.investmentMin && funding.investmentMax) {
+            return `${funding.percentage}% sur €${funding.investmentMin.toLocaleString()} - €${funding.investmentMax.toLocaleString()}`;
+          }
+          return `${funding.percentage}% de subvention`;
+        case 'percentage':
+          return funding.percentage ? `${funding.percentage}%` : 'Pourcentage à déterminer';
+        case 'range':
+          if (funding.minAmount && funding.maxAmount) {
+            return `€${funding.minAmount.toLocaleString()} - €${funding.maxAmount.toLocaleString()}`;
+          }
+          break;
+        case 'maximum':
+          return funding.maxAmount ? `Jusqu'à €${funding.maxAmount.toLocaleString()}` : 'Montant maximum à déterminer';
+        case 'minimum':
+          return funding.minAmount ? `À partir de €${funding.minAmount.toLocaleString()}` : 'Montant minimum à déterminer';
+      }
+      if (funding.description) return funding.description;
+      if (funding.conditions) return funding.conditions;
+    }
+
+    // Check localParsedData as secondary source
     if (localParsedData && localParsedData.funding) {
       return getFundingDisplay(localParsedData);
     }
