@@ -2,10 +2,11 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, ExternalLink, MapPin, Building2, Calendar, Euro } from 'lucide-react';
+import { Heart, ExternalLink, MapPin, Building2, Calendar, Euro, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSubsidyTitle, getSubsidyDescription } from '@/utils/subsidyFormatting';
 import { getDeadlineStatus } from '@/utils/subsidyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 import OrganizationLogo from './OrganizationLogo';
 
 interface EnhancedSubsidyCardProps {
@@ -22,6 +23,7 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
   isFavorited = false
 }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const deadlineStatus = getDeadlineStatus(subsidy.deadline);
   
   // Get clean funding amount display
@@ -32,12 +34,12 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
     if (subsidy.amount) {
       return `€${subsidy.amount.toLocaleString()}`;
     }
-    return 'Montant variable';
+    return 'Variable Amount';
   };
 
   // Get organization name for logo
   const getOrganizationName = () => {
-    return subsidy.agency || subsidy.lesAidesData?.agency || 'Organisation';
+    return subsidy.agency || subsidy.lesAidesData?.agency || 'Organization';
   };
 
   // Get clean region display
@@ -51,123 +53,183 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
     return subsidy.region;
   };
 
-  // Check if application is closed
-  const isClosed = deadlineStatus.status === 'Application closed';
+  // Get deadline display with urgency
+  const getDeadlineInfo = () => {
+    if (!subsidy.deadline) return null;
+    
+    const deadline = new Date(subsidy.deadline);
+    const now = new Date();
+    const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    let urgencyColor = 'text-muted-foreground';
+    let urgencyBg = 'bg-muted';
+    let Icon = Calendar;
+    
+    if (daysLeft < 0) {
+      urgencyColor = 'text-destructive';
+      urgencyBg = 'bg-destructive/10';
+      Icon = AlertCircle;
+    } else if (daysLeft <= 7) {
+      urgencyColor = 'text-orange-600';
+      urgencyBg = 'bg-orange-100';
+      Icon = Clock;
+    } else if (daysLeft <= 30) {
+      urgencyColor = 'text-yellow-600';
+      urgencyBg = 'bg-yellow-100';
+      Icon = Clock;
+    } else {
+      urgencyColor = 'text-emerald-600';
+      urgencyBg = 'bg-emerald-100';
+      Icon = CheckCircle;
+    }
+    
+    return {
+      date: deadline.toLocaleDateString('fr-FR'),
+      daysLeft,
+      urgencyColor,
+      urgencyBg,
+      Icon,
+      isClosed: daysLeft < 0
+    };
+  };
+
+  const deadlineInfo = getDeadlineInfo();
+  const isClosed = deadlineInfo?.isClosed || deadlineStatus.status === 'Application closed';
 
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-white ${isClosed ? 'opacity-70' : ''}`}>
+    <Card className="group hover:shadow-xl transition-all duration-500 border border-border/50 bg-card hover:border-primary/20 overflow-hidden">
       <CardContent className="p-0">
-        {/* Header with logo and favorite */}
-        <div className="flex items-start justify-between p-6 pb-4">
-          <div className="flex items-start gap-4 flex-1">
-            {/* Organization Logo */}
-            <div className="flex-shrink-0">
+        {/* Status Bar */}
+        <div className={`h-1.5 w-full ${isClosed ? 'bg-destructive' : 'bg-gradient-to-r from-primary via-purple-500 to-blue-500'}`} />
+        
+        {/* Header Section */}
+        <div className="p-6 pb-0">
+          <div className="flex items-start justify-between mb-4">
+            {/* Organization Logo & Info */}
+            <div className="flex items-start gap-4 flex-1">
               <OrganizationLogo 
                 organizationName={getOrganizationName()} 
                 size="lg"
-                className="w-16 h-16 rounded-lg shadow-sm border border-gray-100"
+                className="w-14 h-14 rounded-xl shadow-sm border border-border shrink-0"
               />
+              
+              <div className="flex-1 min-w-0">
+                {/* Badges Row */}
+                <div className="flex items-center gap-2 mb-3">
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-medium">
+                    Grant
+                  </Badge>
+                  {showMatchScore && (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 font-medium">
+                      {subsidy.matchConfidence}% {t('subsidies.matchConfidence')}
+                    </Badge>
+                  )}
+                  {deadlineInfo && (
+                    <Badge 
+                      variant="outline" 
+                      className={`${deadlineInfo.urgencyBg} ${deadlineInfo.urgencyColor} border-current/20`}
+                    >
+                      <deadlineInfo.Icon className="w-3 h-3 mr-1" />
+                      {deadlineInfo.daysLeft < 0 
+                        ? 'Closed'
+                        : deadlineInfo.daysLeft === 0 
+                        ? 'Today'
+                        : `${deadlineInfo.daysLeft}j`
+                      }
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                  {getSubsidyTitle(subsidy)}
+                </h3>
+                
+                {/* Agency */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Building2 className="w-4 h-4" />
+                  <span className="truncate font-medium">{getOrganizationName()}</span>
+                </div>
+              </div>
             </div>
             
-            {/* Title and Organization */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-2 mb-2">
-                <Badge 
-                  className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 text-sm font-medium"
-                >
-                  Subvention
-                </Badge>
-                {showMatchScore && (
-                  <Badge variant="outline" className="text-xs">
-                    {subsidy.matchConfidence}% match
-                  </Badge>
-                )}
-              </div>
-              
-              <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-2 leading-tight">
-                {getSubsidyTitle(subsidy)}
-              </h3>
-              
-              <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
-                <Building2 className="w-4 h-4" />
-                <span className="truncate">{getOrganizationName()}</span>
-              </div>
-            </div>
+            {/* Favorite Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onFavorite?.(subsidy.id)}
+              className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+            >
+              <Heart className={`w-5 h-5 ${isFavorited ? 'fill-destructive text-destructive' : ''}`} />
+            </Button>
           </div>
-          
-          {/* Favorite Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onFavorite?.(subsidy.id)}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-          </Button>
         </div>
 
         {/* Description */}
         <div className="px-6 pb-4">
-          <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
+          <p className="text-muted-foreground text-sm line-clamp-3 leading-relaxed">
             {getSubsidyDescription(subsidy)}
           </p>
         </div>
 
-        {/* Tags and Details */}
-        <div className="px-6 pb-4 space-y-3">
-          {/* For and Location tags */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-700 font-medium">Pour:</span>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <Building2 className="w-3 h-3 mr-1" />
-                Toutes entreprises
-              </Badge>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <MapPin className="w-3 h-3 mr-1" />
-                {getRegionDisplay()}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Status and Deadline */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {!isClosed ? (
-                <Badge className="bg-green-100 text-green-800 border-green-300">
-                  Ouvert
+        {/* Key Information Grid */}
+        <div className="px-6 pb-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Eligibility */}
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t('subsidies.eligibilityCriteria')}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                  <Building2 className="w-3 h-3 mr-1" />
+                  All Businesses
                 </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-300">
-                  Fermé
-                </Badge>
-              )}
-              {subsidy.region && (
-                <span className="text-xs text-gray-500">{getRegionDisplay()}</span>
-              )}
-            </div>
-            
-            {subsidy.deadline && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <Calendar className="w-3 h-3" />
-                <span>{new Date(subsidy.deadline).toLocaleDateString('fr-FR')}</span>
               </div>
-            )}
+            </div>
+
+            {/* Geographic Coverage */}
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t('subsidies.region')}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  {getRegionDisplay()}
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Funding Amount - Highlighted Section */}
-        <div className="mx-6 mb-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-full">
-              <Euro className="w-5 h-5 text-purple-600" />
+        {/* Funding Section - Enhanced */}
+        <div className="mx-6 mb-6 p-5 bg-gradient-to-br from-primary/5 via-purple-50/80 to-blue-50/80 border border-primary/10 rounded-xl backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Euro className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  Funding
+                </p>
+                <p className="text-2xl font-bold text-primary">
+                  {getFundingDisplay()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Financement disponible</p>
-              <p className="text-lg font-bold text-purple-600">
-                {getFundingDisplay()}
-              </p>
-            </div>
+            
+            {deadlineInfo && (
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground mb-1">
+                  {t('subsidies.deadline')}
+                </p>
+                <p className={`text-sm font-semibold ${deadlineInfo.urgencyColor}`}>
+                  {deadlineInfo.date}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -175,17 +237,17 @@ export const EnhancedSubsidyCard: React.FC<EnhancedSubsidyCardProps> = ({
         <div className="px-6 pb-6">
           <div className="flex gap-3">
             <Button 
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium"
+              className="flex-1 font-medium"
               onClick={() => navigate(`/subsidy/${subsidy.id}`)}
               disabled={isClosed}
             >
-              En savoir plus
+              {t('common.viewDetails')}
             </Button>
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="icon"
               onClick={() => window.open(subsidy.source_url || '#', '_blank')}
-              className="text-gray-500 hover:text-purple-600"
+              className="shrink-0"
             >
               <ExternalLink className="w-4 h-4" />
             </Button>
