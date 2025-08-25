@@ -77,8 +77,7 @@ Deno.serve(async (req) => {
         source_code: 'les-aides-fr',
         status: 'running',
         config: { dry_run, limit, max_requests, backfill },
-        run_type: backfill ? 'backfill' : 'manual',
-        notes: backfill ? 'Backfilling incomplete subsidies' : 'Full comprehensive sync'
+        run_type: backfill ? 'backfill' : 'manual'
       })
       .select('id')
       .single()
@@ -110,8 +109,7 @@ Deno.serve(async (req) => {
             status: 'completed',
             finished_at: new Date().toISOString(),
             total: 0,
-            skipped: 0,
-            notes: backfill ? 'No subsidies found for backfill' : 'No subsidies found in search'
+            skipped: 0
           })
           .eq('id', runId)
 
