@@ -1618,63 +1618,6 @@ async function finalizeExtraction(context: any) {
     processingTime
   };
 }
-  
-  // Determine if manual review is needed
-  const needsReview = context.confidence < 0.7 || context.validationErrors?.length > 0;
-  
-  // Log performance summary
-  PerformanceMonitor.logPerformanceSummary();
-  
-  // Create final cost tracking entry
-  const finalCostTracker = CostMonitor.createCostEntry(
-    'document_extraction',
-    context.job.document_id,
-    context.costBreakdown?.totalEstimated || 0,
-    {
-      fileSize: context.fileBuffer?.byteLength || 0,
-      pages: context.sizeAnalysis?.estimatedPages || 1,
-      processingTier: context.processingTier,
-      tokensUsed: context.tokensUsed || 0,
-      processingTimeMs: context.ocrTime || 0
-    },
-    context.job.user_id
-  );
-  
-  console.log(CostMonitor.formatCostSummary(finalCostTracker));
-  
-  // Update final extraction record
-  await supabase
-    .from('document_extractions')
-    .update({
-      status_v2: needsReview ? 'needs_review' : 'completed',
-      extracted_data: {
-        document_type: context.documentType,
-        fields: context.structuredData,
-        processing_metadata: {
-          tier_used: context.processingTier,
-          retry_count: context.retryCount,
-          validation_errors: context.validationErrors || [],
-          needs_manual_review: needsReview,
-          text_length: context.extractedText.length
-        }
-      },
-      confidence_score: context.confidence,
-      progress_metadata: {
-        job_id: context.job.id,
-        stage: 'completed',
-        progress: 100,
-        extraction_method: 'enhanced-pipeline',
-        final_confidence: context.confidence,
-        needs_review: needsReview
-      },
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', context.extractionId);
-
-  console.log(`✅ Extraction finalized, needs review: ${needsReview}`);
-  
-  return context;
-}
 
 async function updateExtractionProgress(extractionId: string, stage: string, progress: number) {
   await supabase
